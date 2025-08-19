@@ -61,6 +61,50 @@ module.exports = {
         if (interaction.isButton()) {
             const { customId } = interaction;
             
+            // Botão de verificação
+            if (customId === 'verify_button') {
+                // Criar modal de verificação
+                const modal = new ModalBuilder()
+                    .setCustomId('verification_modal')
+                    .setTitle('🔒 Verificação de Conta');
+
+                const nicknameInput = new TextInputBuilder()
+                    .setCustomId('nickname_input')
+                    .setLabel('Como te queres chamar no servidor?')
+                    .setStyle(TextInputStyle.Short)
+                    .setMinLength(2)
+                    .setMaxLength(32)
+                    .setPlaceholder('Escolhe um nickname adequado...')
+                    .setRequired(true);
+
+                const ageInput = new TextInputBuilder()
+                    .setCustomId('age_input')
+                    .setLabel('Qual é a tua idade?')
+                    .setStyle(TextInputStyle.Short)
+                    .setMinLength(1)
+                    .setMaxLength(2)
+                    .setPlaceholder('18')
+                    .setRequired(true);
+
+                const reasonInput = new TextInputBuilder()
+                    .setCustomId('reason_input')
+                    .setLabel('Porque queres juntar-te ao YSNM?')
+                    .setStyle(TextInputStyle.Paragraph)
+                    .setMinLength(10)
+                    .setMaxLength(500)
+                    .setPlaceholder('Conta-nos um pouco sobre ti e os teus interesses...')
+                    .setRequired(true);
+
+                const firstActionRow = new ActionRowBuilder().addComponents(nicknameInput);
+                const secondActionRow = new ActionRowBuilder().addComponents(ageInput);
+                const thirdActionRow = new ActionRowBuilder().addComponents(reasonInput);
+
+                modal.addComponents(firstActionRow, secondActionRow, thirdActionRow);
+
+                await interaction.showModal(modal);
+                return;
+            }
+            
             // Botões do painel de status
             if (customId === 'refresh_status' || customId === 'detailed_status' || customId === 'system_info') {
                 const isOwner = interaction.user.id === '381762006329589760';
@@ -309,6 +353,83 @@ module.exports = {
                 } else {
                     await interaction.reply({
                         content: '❌ Canal de pedidos não encontrado! Contacta um administrador.',
+                        ephemeral: true
+                    });
+                }
+            }
+        }
+
+        // Sistema de Verificação - Modal
+        if (interaction.isModalSubmit()) {
+            if (interaction.customId === 'verification_modal') {
+                const nickname = interaction.fields.getTextInputValue('nickname_input');
+                const age = interaction.fields.getTextInputValue('age_input');
+                const reason = interaction.fields.getTextInputValue('reason_input');
+
+                // Validar idade
+                const ageNum = parseInt(age);
+                if (isNaN(ageNum) || ageNum < 13) {
+                    return interaction.reply({
+                        content: '❌ Deves ter pelo menos 13 anos para te juntares ao servidor!',
+                        ephemeral: true
+                    });
+                }
+
+                try {
+                    // Dar cargo de verificado
+                    const verifiedRole = interaction.guild.roles.cache.get(config.roles.verified);
+                    if (verifiedRole) {
+                        await interaction.member.roles.add(verifiedRole);
+                    }
+
+                    // Definir nickname se fornecido
+                    if (nickname && nickname !== interaction.member.displayName) {
+                        try {
+                            await interaction.member.setNickname(nickname);
+                        } catch (error) {
+                            console.log('Não foi possível alterar o nickname (permissões)');
+                        }
+                    }
+
+                    // Enviar log para o canal de logs
+                    const logsChannel = interaction.guild.channels.cache.get(config.channels.logs);
+                    if (logsChannel) {
+                        const logEmbed = new EmbedBuilder()
+                            .setColor('#00ff00')
+                            .setTitle('✅ Novo Membro Verificado')
+                            .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
+                            .addFields(
+                                { name: '👤 Utilizador', value: `${interaction.user.tag}`, inline: true },
+                                { name: '🏷️ Nickname', value: nickname, inline: true },
+                                { name: '🎂 Idade', value: `${age} anos`, inline: true },
+                                { name: '📝 Motivo', value: reason, inline: false },
+                                { name: '📅 Verificado em', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
+                            )
+                            .setFooter({ text: 'Sistema de Verificação • YSNM Community' })
+                            .setTimestamp();
+
+                        await logsChannel.send({ embeds: [logEmbed] });
+                    }
+
+                    // Responder ao utilizador
+                    const successEmbed = new EmbedBuilder()
+                        .setColor('#00ff00')
+                        .setTitle('🎉 Verificação Concluída!')
+                        .setDescription(`Bem-vindo ao **${interaction.guild.name}**, ${nickname}!`)
+                        .addFields(
+                            { name: '✅ O que ganhas:', value: '• Acesso a todos os canais\n• Possibilidade de participar em eventos\n• Interação completa com a comunidade\n• Acesso ao sistema de tags', inline: false },
+                            { name: '📋 Próximos passos:', value: '• Explora os canais disponíveis\n• Lê as regras do servidor\n• Solicita tags se te interessarem\n• Diverte-te na comunidade!', inline: false }
+                        )
+                        .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
+                        .setFooter({ text: 'YSNM Community™ • Bem-vindo!' })
+                        .setTimestamp();
+
+                    await interaction.reply({ embeds: [successEmbed], ephemeral: true });
+
+                } catch (error) {
+                    console.error('❌ Erro durante verificação:', error);
+                    await interaction.reply({
+                        content: '❌ Ocorreu um erro durante a verificação. Contacta um administrador!',
                         ephemeral: true
                     });
                 }
