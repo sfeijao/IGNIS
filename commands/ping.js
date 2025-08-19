@@ -1,5 +1,4 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const config = require('../config.json');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -7,12 +6,18 @@ module.exports = {
         .setDescription('Testa resposta do bot'),
     
     async execute(interaction) {
-        const embed = new EmbedBuilder()
-            .setColor(0x00ff00)
-            .setTitle('🏓 Pong!')
-            .setDescription(`Latência: \`${Date.now() - interaction.createdTimestamp}ms\`\nAPI: \`${Math.round(interaction.client.ws.ping)}ms\``)
-            .setTimestamp();
+        try {
+            const embed = new EmbedBuilder()
+                .setColor('#00ff00')
+                .setTitle('🏓 Pong!')
+                .setDescription(`Latência: \`${Date.now() - interaction.createdTimestamp}ms\`\nAPI: \`${Math.round(interaction.client.ws.ping)}ms\``)
+                .setTimestamp();
 
-        await interaction.reply({ embeds: [embed] });
+            await interaction.reply({ embeds: [embed] });
+            console.log(`✅ Ping executado por ${interaction.user.tag}`);
+        } catch (error) {
+            console.error('❌ Erro no comando ping:', error);
+            await interaction.reply({ content: '❌ Erro interno!', ephemeral: true });
+        }
     },
 };
