@@ -72,15 +72,21 @@ module.exports = {
 
         const row = new ActionRowBuilder().addComponents(selectMenu);
 
+        // Resposta ephemeral para confirmar ao admin
         await interaction.reply({
+            content: '✅ Configurando painel de tags...',
+            ephemeral: true
+        });
+
+        // Enviar o painel no canal
+        const painelMessage = await interaction.channel.send({
             embeds: [embed],
             components: [row]
         });
 
-        // Confirmação para o admin
-        await interaction.followUp({
-            content: '✅ Painel de solicitação de tags configurado com sucesso!',
-            ephemeral: true
+        // Editar a resposta para confirmar sucesso
+        await interaction.editReply({
+            content: `✅ Painel de solicitação de tags configurado com sucesso!\n📍 Mensagem criada: [Clica aqui para ver](${painelMessage.url})`
         });
     }
 };
