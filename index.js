@@ -115,4 +115,17 @@ async function registerCommands() {
     });
 })();
 
+// Inicializar website de updates
+client.once('ready', () => {
+    // Tornar cliente disponível globalmente para o website
+    global.discordClient = client;
+    
+    // Iniciar servidor web
+    try {
+        require('./website/server.js');
+    } catch (error) {
+        console.error('⚠️ Erro ao iniciar website de updates:', error);
+    }
+});
+
 module.exports = client;
