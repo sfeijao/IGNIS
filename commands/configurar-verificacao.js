@@ -7,9 +7,12 @@ module.exports = {
         .setDescription('Configura o sistema de verificação de membros'),
     
     async execute(interaction) {
-        // Verificar permissões
-        if (!interaction.member.roles.cache.has(config.roles.admin) && 
-            !interaction.member.roles.cache.has(config.roles.owner)) {
+        // Verificar permissões (incluindo owner)
+        const isOwner = interaction.user.id === '381762006329589760';
+        const hasAdminRole = interaction.member.roles.cache.has(config.roles.admin);
+        const hasAdminPerm = interaction.member.permissions.has('Administrator');
+        
+        if (!isOwner && !hasAdminRole && !hasAdminPerm) {
             return interaction.reply({ 
                 content: '❌ Não tens permissão para usar este comando!', 
                 ephemeral: true 

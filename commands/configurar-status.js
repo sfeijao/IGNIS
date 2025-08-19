@@ -9,7 +9,11 @@ module.exports = {
         .setDMPermission(false),
 
     async execute(interaction) {
-        if (!interaction.member.permissions.has('Administrator')) {
+        // Verificar se é owner ou tem permissão de Administrator
+        const isOwner = interaction.user.id === '381762006329589760';
+        const hasAdminPerm = interaction.member.permissions.has('Administrator');
+        
+        if (!isOwner && !hasAdminPerm) {
             return interaction.reply({
                 content: '❌ Você não tem permissão para usar este comando.',
                 ephemeral: true
