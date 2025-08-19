@@ -92,16 +92,7 @@ npm run deploy
 
 ---
 
-## 🔄 Deploy Automático (GitHub Actions)
-
-Quando fazeres push para `main`:
-- ✅ **Tests automáticos** (se configurados)
-- ✅ **Deploy automático** para Railway
-- ✅ **Restart automático** do bot
-
----
-
-## 📞 Suporte
+##  Suporte
 
 - 🐛 **Bugs**: [Issues GitHub](https://github.com/SEU_USUARIO/YSNM-Discord-Bot/issues)
 - 💬 **Discussões**: [Discord YSNM](https://discord.gg/ysnm)

@@ -212,46 +212,7 @@ Em **OAuth2** → **URL Generator**:
 
 ---
 
-## 🚀 Deploy Automático com GitHub Actions
-
-O projeto inclui CI/CD automático. Crie `.github/workflows/railway.yml`:
-
-```yaml
-name: Deploy to Railway
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Use Node.js 18
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Deploy to Railway
-      run: |
-        npx @railway/cli login --browserless
-        npx @railway/cli up
-      env:
-        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-```
-
----
-
-## 📊 Funcionalidades Técnicas
+##  Funcionalidades Técnicas
 
 ### 🎨 **Tema Roxo Personalizado**
 - **Cores principais**: `#7B68EE`, `#9932CC`, `#8B5FBF`
@@ -430,8 +391,7 @@ npm start
 }
 ```
 
-### 3. Deploy Automático
-O Railway irá automaticamente fazer deploy quando fizer push para o repositório.
+---
 
 ## 🔧 Configuração do Servidor Discord
 

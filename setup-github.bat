@@ -29,14 +29,12 @@ git commit -m "🎉 Initial commit: YSNM Discord Bot v2.1.0
 echo.
 
 echo 🌐 Conectando ao GitHub...
-echo Para conectar ao GitHub:
-echo 1. Cria um repositório em https://github.com/new
-echo 2. Nome: YSNM-Discord-Bot
-echo 3. Executa os comandos abaixo:
+echo Repositório já existe em: https://github.com/sfeijao/YSNM_BOT
+echo Para fazer upload das alterações:
 echo.
-echo git remote add origin https://github.com/SEU_USUARIO/YSNM-Discord-Bot.git
-echo git branch -M main
-echo git push -u origin main
+echo git add .
+echo git commit -m "docs: update project documentation"
+echo git push origin master
 echo.
 
 echo ✅ Setup concluído!

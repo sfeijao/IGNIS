@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SEU_USUARIO/YSNM-Discord-Bot.git"
+    "url": "git+https://github.com/sfeijao/YSNM_BOT.git"
   },
   "keywords": [
     "discord",
@@ -28,9 +28,9 @@
   "author": "YSNM Community",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/SEU_USUARIO/YSNM-Discord-Bot/issues"
+    "url": "https://github.com/sfeijao/YSNM_BOT/issues"
   },
-  "homepage": "https://github.com/SEU_USUARIO/YSNM-Discord-Bot#readme",
+  "homepage": "https://github.com/sfeijao/YSNM_BOT#readme",
   "dependencies": {
     "discord.js": "^14.14.1",
     "dotenv": "^16.3.1"
