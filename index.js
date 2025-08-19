@@ -1,4 +1,4 @@
-﻿const { Client, Collection, GatewayIntentBits, Partials } = require('discord.js');
+﻿const { Client, Collection, GatewayIntentBits, Partials, REST, Routes } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -64,10 +64,42 @@ process.on('uncaughtException', error => {
     process.exit(1);
 });
 
-// Login do bot
-client.login(process.env.DISCORD_TOKEN || config.token).catch(error => {
-    console.error('❌ Erro ao fazer login:', error);
-    process.exit(1);
-});
+// Função para registrar comandos automaticamente
+async function registerCommands() {
+    try {
+        console.log('🔄 Registrando comandos slash...');
+        
+        const commands = [];
+        for (const file of commandFiles) {
+            const filePath = path.join(commandsPath, file);
+            const command = require(filePath);
+            
+            if ('data' in command && 'execute' in command) {
+                commands.push(command.data.toJSON());
+            }
+        }
+
+        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN || config.token);
+        
+        await rest.put(
+            Routes.applicationGuildCommands(config.clientId, config.guildId),
+            { body: commands }
+        );
+        
+        console.log(`✅ ${commands.length} comandos registrados com sucesso!`);
+    } catch (error) {
+        console.error('❌ Erro ao registrar comandos:', error);
+    }
+}
+
+// Registrar comandos e fazer login
+(async () => {
+    await registerCommands();
+    
+    client.login(process.env.DISCORD_TOKEN || config.token).catch(error => {
+        console.error('❌ Erro ao fazer login:', error);
+        process.exit(1);
+    });
+})();
 
 module.exports = client;
