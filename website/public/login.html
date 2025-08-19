@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YSNM Updates - Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --discord-bg: #36393f;
+            --discord-bg-secondary: #2f3136;
+            --discord-bg-tertiary: #202225;
+            --discord-text: #dcddde;
+            --discord-text-muted: #72767d;
+            --discord-purple: #9932CC;
+            --discord-purple-hover: #7A2AA0;
+            --discord-danger: #ed4245;
+            --discord-success: #3ba55d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--discord-bg-tertiary) 0%, var(--discord-bg) 100%);
+            color: var(--discord-text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            background: var(--discord-bg-secondary);
+            padding: 3rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            border: 1px solid #40444b;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            color: var(--discord-purple);
+            margin-bottom: 1rem;
+        }
+
+        .title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--discord-text);
+        }
+
+        .subtitle {
+            color: var(--discord-text-muted);
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--discord-text);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            background: var(--discord-bg-tertiary);
+            border: 1px solid #40444b;
+            border-radius: 8px;
+            color: var(--discord-text);
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--discord-purple);
+            box-shadow: 0 0 0 2px rgba(153, 50, 204, 0.2);
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 12px;
+            background: var(--discord-purple);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-bottom: 1rem;
+        }
+
+        .login-button:hover {
+            background: var(--discord-purple-hover);
+        }
+
+        .login-button:disabled {
+            background: #4f545c;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            background: rgba(237, 66, 69, 0.1);
+            color: var(--discord-danger);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(237, 66, 69, 0.3);
+            display: none;
+        }
+
+        .security-note {
+            background: rgba(153, 50, 204, 0.1);
+            color: var(--discord-purple);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            border: 1px solid rgba(153, 50, 204, 0.3);
+        }
+
+        .loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #40444b;
+            border-top: 2px solid var(--discord-purple);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <i class="fas fa-shield-alt"></i>
+        </div>
+        <h1 class="title">YSNM Updates</h1>
+        <p class="subtitle">Acesso restrito - Insira a palavra-passe</p>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="password">Palavra-passe:</label>
+                <input type="password" id="password" name="password" required placeholder="Digite a palavra-passe">
+            </div>
+
+            <button type="submit" class="login-button" id="loginButton">
+                <span id="loginText">Entrar</span>
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <span>Verificando...</span>
+                </div>
+            </button>
+        </form>
+
+        <div class="security-note">
+            <i class="fas fa-info-circle"></i>
+            Esta área é protegida para prevenir uso não autorizado.
+        </div>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const errorMessage = document.getElementById('errorMessage');
+        const loginButton = document.getElementById('loginButton');
+        const loginText = document.getElementById('loginText');
+        const loading = document.getElementById('loading');
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+
+        function setLoading(isLoading) {
+            loginButton.disabled = isLoading;
+            if (isLoading) {
+                loginText.style.display = 'none';
+                loading.style.display = 'flex';
+            } else {
+                loginText.style.display = 'block';
+                loading.style.display = 'none';
+            }
+        }
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideError();
+            setLoading(true);
+
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    window.location.href = '/';
+                } else {
+                    showError(data.message || 'Palavra-passe incorreta');
+                }
+            } catch (error) {
+                console.error('Erro no login:', error);
+                showError('Erro de conexão. Tente novamente.');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // Focus no input quando carregar
+        document.getElementById('password').focus();
+    </script>
+</body>
+</html>

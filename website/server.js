@@ -1,4 +1,5 @@
 const express = require('express');
+const session = require('express-session');
 const path = require('path');
 const fs = require('fs');
 const { EmbedBuilder, WebhookClient } = require('discord.js');
@@ -6,10 +7,43 @@ const { EmbedBuilder, WebhookClient } = require('discord.js');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Configuração da sessão
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'ysnm-updates-secret-key-2024',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false, // true apenas em HTTPS
+        maxAge: 24 * 60 * 60 * 1000 // 24 horas
+    }
+}));
+
 // Middleware
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
+
+// Password de acesso (configurável via env)
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'YSNM2024!';
+
+// Middleware de autenticação
+function requireAuth(req, res, next) {
+    if (req.session.authenticated) {
+        return next();
+    }
+    
+    // Se for uma requisição AJAX, retorna erro JSON
+    if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+        return res.status(401).json({ error: 'Não autenticado' });
+    }
+    
+    // Caso contrário, redireciona para login
+    res.redirect('/login');
+}
+
+// Servir ficheiros estáticos apenas para recursos públicos
+app.use('/css', express.static(path.join(__dirname, 'public/css')));
+app.use('/js', express.static(path.join(__dirname, 'public/js')));
+app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
 
 // Carregar configuração
 let config;
@@ -24,13 +58,43 @@ try {
     };
 }
 
-// Página principal
-app.get('/', (req, res) => {
+// Página de login
+app.get('/login', (req, res) => {
+    if (req.session.authenticated) {
+        return res.redirect('/');
+    }
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// API de login
+app.post('/api/login', (req, res) => {
+    const { password } = req.body;
+    
+    if (password === ADMIN_PASSWORD) {
+        req.session.authenticated = true;
+        res.json({ success: true, message: 'Login realizado com sucesso' });
+    } else {
+        res.status(401).json({ success: false, message: 'Palavra-passe incorreta' });
+    }
+});
+
+// API de logout
+app.post('/api/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: 'Erro ao fazer logout' });
+        }
+        res.json({ success: true, message: 'Logout realizado com sucesso' });
+    });
+});
+
+// Página principal (protegida)
+app.get('/', requireAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// API para obter canais do servidor
-app.get('/api/channels', (req, res) => {
+// API para obter canais do servidor (protegida)
+app.get('/api/channels', requireAuth, (req, res) => {
     try {
         if (!global.discordClient || !global.discordClient.isReady()) {
             return res.status(503).json({ error: 'Bot não está conectado' });
@@ -61,8 +125,8 @@ app.get('/api/channels', (req, res) => {
     }
 });
 
-// API para enviar update
-app.post('/api/send-update', async (req, res) => {
+// API para enviar update (protegida)
+app.post('/api/send-update', requireAuth, async (req, res) => {
     try {
         const { title, description, icon, banner, color, fields, channelId } = req.body;
 
@@ -189,7 +253,8 @@ app.get('/api/updates-history', (req, res) => {
 });
 
 // API para preview do embed
-app.post('/api/preview-embed', (req, res) => {
+// API para preview do embed (protegida)
+app.post('/api/preview-embed', requireAuth, (req, res) => {
     try {
         const { title, description, icon, banner, color, fields } = req.body;
 

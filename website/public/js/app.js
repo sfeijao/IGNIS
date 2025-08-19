@@ -395,3 +395,26 @@ function showNotification(message, type = 'success') {
 
 // Preview inicial
 setTimeout(updatePreview, 500);
+
+// Logout
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+    if (confirm('Tem certeza que deseja terminar a sessão?')) {
+        try {
+            const response = await fetch('/api/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                window.location.href = '/login';
+            } else {
+                alert('Erro ao fazer logout');
+            }
+        } catch (error) {
+            console.error('Erro no logout:', error);
+            alert('Erro de conexão');
+        }
+    }
+});
