@@ -79,6 +79,7 @@ async function handleStartupLogs(client) {
                     .setTitle('� YSNM Bot - Update de Sistema')
                     .setDescription('```yaml\n🟢 Bot Atualizado e Online\n📊 Sistemas Verificados\n⚡ Funcionamento Normal\n```')
                     .addFields(
+                        { name: '📋 Últimas Atualizações:', value: '```diff\n+ Tema roxo implementado\n+ Design com bordas estilizado\n+ Status simplificado\n+ Sistema otimizado\n+ ' + client.commands.size + ' comandos funcionais```', inline: false },
                         { name: '🎯 Status', value: '`Operacional`', inline: true },
                         { name: '🏠 Servidor', value: `\`${guild.name}\``, inline: true },
                         { name: '👥 Membros', value: `\`${guild.memberCount}\``, inline: true },

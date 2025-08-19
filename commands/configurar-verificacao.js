@@ -40,7 +40,7 @@ module.exports = {
                 '• Siga as regras do servidor\n' +
                 '• Mantenha um perfil adequado\n' +
                 '• Divirta-se!')
-            .setThumbnail('https://i.imgur.com/your-server-icon.png') // Substitua pela URL do ícone do servidor
+            .setThumbnail(interaction.guild.iconURL({ dynamic: true, size: 256 }))
             .setFooter({ 
                 text: 'YSNM COMMUNITY™ • Sistema de verificação seguro • 2025'
             })

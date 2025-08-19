@@ -37,9 +37,12 @@ module.exports = {
                     '2. Completa a verificação\n' +
                     '3. Escolhe as tuas tags\n' +
                     '4. Diverte-te na comunidade!')
-                .setThumbnail(member.user.displayAvatarURL())
+                .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }))
                 .setTimestamp()
-                .setFooter({ text: 'YSNM Community' });
+                .setFooter({ 
+                    text: 'YSNM Community', 
+                    iconURL: member.user.displayAvatarURL() 
+                });
 
             welcomeChannel.send({ 
                 content: `${member}`, 
