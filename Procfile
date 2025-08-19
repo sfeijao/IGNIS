@@ -1,2 +1,1 @@
-# Start the application
-web: npm start
+worker: node index.js
