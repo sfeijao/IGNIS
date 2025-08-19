@@ -1,0 +1,58 @@
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const config = require('../config.json');
+
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName('configurar-tags')
+        .setDescription('Configura o sistema de tags personalizadas'),
+    
+    async execute(interaction) {
+        // Verificar permissões
+        if (!interaction.member.roles.cache.has(config.roles.admin) && 
+            !interaction.member.roles.cache.has(config.roles.owner)) {
+            return interaction.reply({ 
+                content: '❌ Não tens permissão para usar este comando!', 
+                ephemeral: true 
+            });
+        }
+
+        const embed = new EmbedBuilder()
+            .setColor(0x0099ff)
+            .setTitle('🏷️ Painel de Gestão de Tags/Cargos')
+            .setDescription('**Apenas Staff** - Gerir tags e cargos de utilizadores\n\n' +
+                '🏷️ **Adicionar Tag** ➜ **Remover Tag** ➜ **Gerir Cargos**\n' +
+                '• Adicionar tag → Adicionar/remover tag de um utilizador\n' +
+                '• Remover tag → Adicionar/remover tag de um utilizador\n' +
+                '• Gerir Cargos → Adicionar/remover cargos específicos\n\n' +
+                '💡 **Como usar:**\n' +
+                '• Clica no botão desejado\n' +
+                '• Insere o ID do utilizador\n' +
+                '• Especifica a tag/cargo\n' +
+                '• Confirma a ação')
+            .setTimestamp()
+            .setFooter({ text: 'Sistema de Tags • Staff Roles' });
+
+        const addTagButton = new ButtonBuilder()
+            .setCustomId('add_tag_staff')
+            .setLabel('✅ Adicionar Tag')
+            .setStyle(ButtonStyle.Success);
+
+        const removeTagButton = new ButtonBuilder()
+            .setCustomId('remove_tag_staff')
+            .setLabel('❌ Remover Tag')
+            .setStyle(ButtonStyle.Danger);
+
+        const manageRolesButton = new ButtonBuilder()
+            .setCustomId('manage_roles_staff')
+            .setLabel('⚙️ Gerir Cargos')
+            .setStyle(ButtonStyle.Primary);
+
+        const row = new ActionRowBuilder()
+            .addComponents(addTagButton, removeTagButton, manageRolesButton);
+
+        await interaction.reply({
+            embeds: [embed],
+            components: [row]
+        });
+    },
+};

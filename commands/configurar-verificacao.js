@@ -1,0 +1,59 @@
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const config = require('../config.json');
+
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName('configurar-verificacao')
+        .setDescription('Configura o sistema de verificação de membros'),
+    
+    async execute(interaction) {
+        // Verificar permissões
+        if (!interaction.member.roles.cache.has(config.roles.admin) && 
+            !interaction.member.roles.cache.has(config.roles.owner)) {
+            return interaction.reply({ 
+                content: '❌ Não tens permissão para usar este comando!', 
+                ephemeral: true 
+            });
+        }
+
+        const embed = new EmbedBuilder()
+            .setColor(0x00ff00)
+            .setTitle('🌟 VERIFICAÇÃO DO SERVIDOR 🌟')
+            .setDescription(`Bem-vindo(a) ao **${config.serverName}**!\n\n` +
+                '📋 **Sistema de Verificação**\n' +
+                'Para aceder todos os canais e interagir com a nossa comunidade, é necessário passar pela verificação.\n\n' +
+                'O processo é rápido e garante um ambiente seguro para todos os membros.\n\n' +
+                '⚡ **Processo de Verificação:**\n' +
+                '1. 🔄 Clique no botão "Verificar" abaixo\n' +
+                '2. 📝 Preenche o formulário solicitado\n' +
+                '3. 🎯 Escolhe um nickname adequado\n' +
+                '4. ✅ Recebe acesso completo ao servidor\n\n' +
+                '✨ **Benefícios:**\n' +
+                '• Acesso a todos os canais\n' +
+                '• Participação em eventos exclusivos\n' +
+                '• Tag de membro verificado\n' +
+                '• Interação com a comunidade\n\n' +
+                '⚠️ **Importante:**\n' +
+                '• Siga as regras do servidor\n' +
+                '• Mantenha um perfil adequado\n' +
+                '• Divirta-se!')
+            .setThumbnail('https://i.imgur.com/your-server-icon.png') // Substitua pela URL do ícone do servidor
+            .setFooter({ 
+                text: 'YSNM COMMUNITY™ • Sistema de verificação seguro • 2025'
+            })
+            .setTimestamp();
+
+        const button = new ButtonBuilder()
+            .setCustomId('verify_button')
+            .setLabel('🔒 Verificar Conta')
+            .setStyle(ButtonStyle.Success);
+
+        const row = new ActionRowBuilder()
+            .addComponents(button);
+
+        await interaction.reply({
+            embeds: [embed],
+            components: [row]
+        });
+    },
+};

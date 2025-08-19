@@ -1,0 +1,45 @@
+{
+  "name": "ysnm-community-bot",
+  "version": "2.1.0",
+  "description": "🤖 Bot Discord completo para YSNM Community com sistema de verificação, tags, status roxo e administração avançada",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "deploy": "node deploy-commands.js",
+    "test": "echo \"✅ No tests specified\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SEU_USUARIO/YSNM-Discord-Bot.git"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "ysnm",
+    "community",
+    "slash-commands",
+    "discord.js",
+    "verification",
+    "moderation",
+    "railway",
+    "purple-theme"
+  ],
+  "author": "YSNM Community",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/SEU_USUARIO/YSNM-Discord-Bot/issues"
+  },
+  "homepage": "https://github.com/SEU_USUARIO/YSNM-Discord-Bot#readme",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=16.9.0",
+    "npm": ">=8.0.0"
+  }
+}
