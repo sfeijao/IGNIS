@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "lastDeployment": null,
+  "releases": [
+    {
+      "version": "1.0.0",
+      "date": "2025-08-19",
+      "changes": [
+        "Bot completamente recriado com 16 comandos",
+        "Sistema de verificação com ícone do servidor",
+        "Mensagens de boas-vindas melhoradas",
+        "Comandos admin invisíveis (ephemeral)",
+        "Sistema de controle de logs (pausar/despausar)",
+        "Tema roxo consistente em todo o bot",
+        "Integração completa com Railway"
+      ]
+    }
+  ]
+}

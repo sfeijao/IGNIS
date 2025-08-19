@@ -43,15 +43,16 @@ module.exports = {
             } catch (error) {
                 console.error('❌ Erro ao executar comando:', error);
                 
-                const errorMessage = {
-                    content: '❌ Houve um erro ao executar este comando!',
-                    ephemeral: true
-                };
-
-                if (interaction.replied || interaction.deferred) {
-                    await interaction.followUp(errorMessage);
-                } else {
-                    await interaction.reply(errorMessage);
+                // Verificar se a interação já foi respondida antes de tentar responder
+                if (!interaction.replied && !interaction.deferred) {
+                    try {
+                        await interaction.reply({
+                            content: '❌ Houve um erro ao executar este comando!',
+                            ephemeral: true
+                        });
+                    } catch (replyError) {
+                        console.error('❌ Erro ao responder interação:', replyError);
+                    }
                 }
             }
         }

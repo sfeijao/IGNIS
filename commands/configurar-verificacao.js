@@ -54,20 +54,35 @@ module.exports = {
         const row = new ActionRowBuilder()
             .addComponents(button);
 
-        await interaction.reply({
-            content: '✅ Configurando sistema de verificação...',
-            ephemeral: true
-        });
+        try {
+            await interaction.reply({
+                content: '✅ Configurando sistema de verificação...',
+                ephemeral: true
+            });
 
-        // Enviar o painel no canal
-        const verificationMessage = await interaction.channel.send({
-            embeds: [embed],
-            components: [row]
-        });
+            // Enviar o painel no canal
+            const verificationMessage = await interaction.channel.send({
+                embeds: [embed],
+                components: [row]
+            });
 
-        // Editar resposta para confirmar
-        await interaction.editReply({
-            content: `✅ Sistema de verificação configurado com sucesso!\n📍 Mensagem criada: [Clica aqui para ver](${verificationMessage.url})`
-        });
+            // Editar resposta para confirmar
+            await interaction.editReply({
+                content: `✅ Sistema de verificação configurado com sucesso!\n📍 Mensagem criada: [Clica aqui para ver](${verificationMessage.url})`
+            });
+        } catch (error) {
+            console.error('❌ Erro ao configurar verificação:', error);
+            
+            if (!interaction.replied) {
+                await interaction.reply({
+                    content: '❌ Erro ao configurar o sistema de verificação!',
+                    ephemeral: true
+                });
+            } else {
+                await interaction.editReply({
+                    content: '❌ Erro ao configurar o sistema de verificação!'
+                });
+            }
+        }
     },
 };
