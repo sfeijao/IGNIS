@@ -2,7 +2,20 @@
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
-const config = require('./config.json');
+
+// Carregar configuração com fallback
+let config;
+try {
+    config = require('./config.json');
+    console.log('✅ Config.json carregado');
+} catch (error) {
+    console.log('⚠️ Config.json não encontrado, usando variáveis de ambiente');
+    config = {
+        clientId: process.env.CLIENT_ID,
+        guildId: process.env.GUILD_ID,
+        token: process.env.DISCORD_TOKEN
+    };
+}
 
 const client = new Client({
     intents: [
