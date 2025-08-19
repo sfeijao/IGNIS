@@ -2,6 +2,29 @@
 let quill;
 let fieldsCount = 0;
 
+// Função para fazer requests autenticados
+async function authenticatedFetch(url, options = {}) {
+    // Verificar se tem token nos cookies
+    const token = document.cookie.split('; ').find(row => row.startsWith('authToken='))?.split('=')[1];
+    
+    if (token) {
+        options.headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`
+        };
+    }
+    
+    const response = await fetch(url, options);
+    
+    // Se token expirou, redirecionar para login
+    if (response.status === 401) {
+        window.location.href = '/login';
+        return null;
+    }
+    
+    return response;
+}
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', function() {
     initializeQuill();
@@ -13,7 +36,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // Carregar canais disponíveis
 async function loadChannels() {
     try {
-        const response = await fetch('/api/channels');
+        const response = await authenticatedFetch('/api/channels');
+        if (!response) return; // Redirecionado para login
+        
         const channels = await response.json();
         
         const channelSelect = document.getElementById('channelSelect');
@@ -176,23 +201,25 @@ function removeField(fieldId) {
 }
 
 // Atualizar preview do embed
-function updatePreview() {
+async function updatePreview() {
     const formData = getFormData();
     
-    fetch('/api/preview-embed', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-    })
-    .then(response => response.json())
-    .then(embedData => {
+    try {
+        const response = await authenticatedFetch('/api/preview-embed', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (!response) return; // Redirecionado para login
+        
+        const embedData = await response.json();
         renderEmbedPreview(embedData);
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Erro ao gerar preview:', error);
-    });
+    }
 }
 
 // Renderizar preview do embed
@@ -304,13 +331,15 @@ async function handleSubmit(e) {
             throw new Error('Selecione um canal de destino!');
         }
         
-        const response = await fetch('/api/send-update', {
+        const response = await authenticatedFetch('/api/send-update', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(formData)
         });
+        
+        if (!response) return; // Redirecionado para login
         
         const result = await response.json();
         
@@ -400,7 +429,7 @@ setTimeout(updatePreview, 500);
 document.getElementById('logoutBtn').addEventListener('click', async () => {
     if (confirm('Tem certeza que deseja terminar a sessão?')) {
         try {
-            const response = await fetch('/api/logout', {
+            const response = await authenticatedFetch('/api/logout', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

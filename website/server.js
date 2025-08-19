@@ -1,5 +1,5 @@
 const express = require('express');
-const session = require('express-session');
+const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
 const { EmbedBuilder, WebhookClient } = require('discord.js');
@@ -7,38 +7,54 @@ const { EmbedBuilder, WebhookClient } = require('discord.js');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Configuração da sessão
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'ysnm-updates-secret-key-2024',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: false, // true apenas em HTTPS
-        maxAge: 24 * 60 * 60 * 1000 // 24 horas
-    }
-}));
-
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Password de acesso (configurável via env)
+// Chave secreta para JWT (configurável via env)
+const JWT_SECRET = process.env.JWT_SECRET || 'ysnm-updates-jwt-secret-2024';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'YSNM2024!';
 
-// Middleware de autenticação
+// Middleware de autenticação com JWT
 function requireAuth(req, res, next) {
-    if (req.session.authenticated) {
-        return next();
+    const token = req.headers.authorization?.replace('Bearer ', '') || req.cookies?.authToken;
+    
+    if (!token) {
+        // Se for uma requisição AJAX, retorna erro JSON
+        if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+            return res.status(401).json({ error: 'Token não fornecido' });
+        }
+        // Caso contrário, redireciona para login
+        return res.redirect('/login');
     }
     
-    // Se for uma requisição AJAX, retorna erro JSON
-    if (req.xhr || req.headers.accept.indexOf('json') > -1) {
-        return res.status(401).json({ error: 'Não autenticado' });
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (error) {
+        // Token inválido ou expirado
+        if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+            return res.status(401).json({ error: 'Token inválido ou expirado' });
+        }
+        return res.redirect('/login');
     }
-    
-    // Caso contrário, redireciona para login
-    res.redirect('/login');
 }
+
+// Middleware para cookies
+app.use((req, res, next) => {
+    // Parse manual de cookies simples
+    req.cookies = {};
+    if (req.headers.cookie) {
+        req.headers.cookie.split(';').forEach(cookie => {
+            const parts = cookie.trim().split('=');
+            if (parts.length === 2) {
+                req.cookies[parts[0]] = parts[1];
+            }
+        });
+    }
+    next();
+});
 
 // Servir ficheiros estáticos apenas para recursos públicos
 app.use('/css', express.static(path.join(__dirname, 'public/css')));
@@ -60,8 +76,15 @@ try {
 
 // Página de login
 app.get('/login', (req, res) => {
-    if (req.session.authenticated) {
-        return res.redirect('/');
+    // Verificar se já tem token válido
+    const token = req.cookies?.authToken;
+    if (token) {
+        try {
+            jwt.verify(token, JWT_SECRET);
+            return res.redirect('/');
+        } catch (error) {
+            // Token inválido, continua para login
+        }
     }
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -71,8 +94,19 @@ app.post('/api/login', (req, res) => {
     const { password } = req.body;
     
     if (password === ADMIN_PASSWORD) {
-        req.session.authenticated = true;
-        res.json({ success: true, message: 'Login realizado com sucesso' });
+        // Criar token JWT válido por 24 horas
+        const token = jwt.sign(
+            { authenticated: true, timestamp: Date.now() },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+        
+        // Definir cookie com token
+        res.setHeader('Set-Cookie', [
+            `authToken=${token}; Max-Age=${24 * 60 * 60}; HttpOnly; SameSite=Strict`
+        ]);
+        
+        res.json({ success: true, message: 'Login realizado com sucesso', token });
     } else {
         res.status(401).json({ success: false, message: 'Palavra-passe incorreta' });
     }
@@ -80,12 +114,11 @@ app.post('/api/login', (req, res) => {
 
 // API de logout
 app.post('/api/logout', (req, res) => {
-    req.session.destroy((err) => {
-        if (err) {
-            return res.status(500).json({ success: false, message: 'Erro ao fazer logout' });
-        }
-        res.json({ success: true, message: 'Logout realizado com sucesso' });
-    });
+    // Limpar cookie
+    res.setHeader('Set-Cookie', [
+        'authToken=; Max-Age=0; HttpOnly; SameSite=Strict'
+    ]);
+    res.json({ success: true, message: 'Logout realizado com sucesso' });
 });
 
 // Página principal (protegida)
