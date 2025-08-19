@@ -1,10 +1,25 @@
 const { Events, ActivityType, EmbedBuilder } = require('discord.js');
-const config = require('../config.json');
+const fs = require('fs');
+const path = require('path');
+
+// Carregar config com fallback
+let config;
+try {
+    config = require('../config.json');
+} catch (error) {
+    console.log('⚠️ Config.json não encontrado no ready, usando valores padrão');
+    config = {
+        channels: {
+            logs: process.env.LOGS_CHANNEL_ID,
+            updates: process.env.UPDATES_CHANNEL_ID
+        }
+    };
+}
 
 module.exports = {
     name: Events.ClientReady,
     once: true,
-    execute(client) {
+    async execute(client) {
         console.log('==========================================');
         console.log(`✅ ${client.user.tag} está online!`);
         console.log(`🎯 Conectado como: ${client.user.username}`);
@@ -20,31 +35,92 @@ module.exports = {
             await updateStatusPanels(client);
         }, 2 * 60 * 1000); // 2 minutos
 
-        // Enviar embed de inicialização se o canal de logs existir
-        const guild = client.guilds.cache.first();
-        if (guild) {
-            const logsChannel = guild.channels.cache.get(config.channels.logs);
-            if (logsChannel) {
-                const startEmbed = new EmbedBuilder()
-                    .setColor('#9932CC')
-                    .setTitle('🚀 YSNM Bot Iniciado')
-                    .setDescription('```yaml\n🟢 Bot Online e Operacional\n📊 Todos os Sistemas Ativos\n⚡ Pronto para Utilização\n```')
-                    .addFields(
-                        { name: '🎯 Status', value: '`Online`', inline: true },
-                        { name: '🏠 Servidor', value: `\`${guild.name}\``, inline: true },
-                        { name: '👥 Membros', value: `\`${guild.memberCount}\``, inline: true }
-                    )
-                    .setTimestamp()
-                    .setFooter({ text: 'YSNM Bot System', iconURL: client.user.displayAvatarURL() });
-
-                logsChannel.send({ embeds: [startEmbed] }).catch(console.error);
-            }
-        }
+        // Verificar se deve enviar logs de startup
+        await handleStartupLogs(client);
 
         console.log('🔄 Sistema de auto-atualização de status ativado (2 minutos)');
         console.log('🏷️ Sistema de tags configurado e pronto para uso');
     }
 };
+
+// Função para gerenciar logs de startup
+async function handleStartupLogs(client) {
+    try {
+        const logsStatePath = path.join(__dirname, '..', 'logs-state.json');
+        let logsState;
+        
+        try {
+            logsState = JSON.parse(fs.readFileSync(logsStatePath, 'utf8'));
+        } catch (error) {
+            logsState = { logsEnabled: true, lastUpdate: null, startupMessages: [] };
+        }
+
+        // Se logs estão pausados, não enviar
+        if (!logsState.logsEnabled) {
+            console.log('⏸️ Logs pausados - não enviando mensagem de startup');
+            return;
+        }
+
+        const guild = client.guilds.cache.first();
+        if (!guild) return;
+
+        // Enviar para canal de updates (evitando spam)
+        const updatesChannel = guild.channels.cache.get(config.channels.updates);
+        if (updatesChannel) {
+            const currentTime = new Date().toISOString();
+            const lastUpdate = logsState.lastUpdate;
+            
+            // Só enviar se passou mais de 5 minutos desde o último update
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+            
+            if (!lastUpdate || lastUpdate < fiveMinutesAgo) {
+                const updateEmbed = new EmbedBuilder()
+                    .setColor('#9932CC')
+                    .setTitle('� YSNM Bot - Update de Sistema')
+                    .setDescription('```yaml\n🟢 Bot Atualizado e Online\n📊 Sistemas Verificados\n⚡ Funcionamento Normal\n```')
+                    .addFields(
+                        { name: '🎯 Status', value: '`Operacional`', inline: true },
+                        { name: '🏠 Servidor', value: `\`${guild.name}\``, inline: true },
+                        { name: '👥 Membros', value: `\`${guild.memberCount}\``, inline: true },
+                        { name: '📅 Última Atualização', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: false }
+                    )
+                    .setTimestamp()
+                    .setFooter({ text: 'YSNM Bot System • Auto-Update', iconURL: client.user.displayAvatarURL() });
+
+                await updatesChannel.send({ embeds: [updateEmbed] });
+                
+                // Atualizar timestamp do último update
+                logsState.lastUpdate = currentTime;
+                fs.writeFileSync(logsStatePath, JSON.stringify(logsState, null, 2));
+                
+                console.log('📢 Update enviado para canal de updates');
+            } else {
+                console.log('⏳ Update recente detectado - aguardando para evitar spam');
+            }
+        }
+
+        // Sempre enviar para logs (se existir)
+        const logsChannel = guild.channels.cache.get(config.channels.logs);
+        if (logsChannel) {
+            const startEmbed = new EmbedBuilder()
+                .setColor('#9932CC')
+                .setTitle('� YSNM Bot Iniciado')
+                .setDescription('```yaml\n🟢 Bot Online e Operacional\n📊 Todos os Sistemas Ativos\n⚡ Pronto para Utilização\n```')
+                .addFields(
+                    { name: '🎯 Status', value: '`Online`', inline: true },
+                    { name: '🏠 Servidor', value: `\`${guild.name}\``, inline: true },
+                    { name: '👥 Membros', value: `\`${guild.memberCount}\``, inline: true }
+                )
+                .setTimestamp()
+                .setFooter({ text: 'YSNM Bot System', iconURL: client.user.displayAvatarURL() });
+
+            await logsChannel.send({ embeds: [startEmbed] });
+        }
+
+    } catch (error) {
+        console.error('❌ Erro ao processar logs de startup:', error);
+    }
+}
 
 // Função para atualizar painéis de status automaticamente
 async function updateStatusPanels(client) {

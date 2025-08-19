@@ -55,8 +55,19 @@ module.exports = {
             .addComponents(button);
 
         await interaction.reply({
+            content: '✅ Configurando sistema de verificação...',
+            ephemeral: true
+        });
+
+        // Enviar o painel no canal
+        const verificationMessage = await interaction.channel.send({
             embeds: [embed],
             components: [row]
+        });
+
+        // Editar resposta para confirmar
+        await interaction.editReply({
+            content: `✅ Sistema de verificação configurado com sucesso!\n📍 Mensagem criada: [Clica aqui para ver](${verificationMessage.url})`
         });
     },
 };

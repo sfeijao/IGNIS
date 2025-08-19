@@ -54,8 +54,19 @@ module.exports = {
             .addComponents(addTagButton, removeTagButton, manageRolesButton);
 
         await interaction.reply({
+            content: '✅ Configurando sistema de tags...',
+            ephemeral: true
+        });
+
+        // Enviar o painel no canal
+        const tagsMessage = await interaction.channel.send({
             embeds: [embed],
             components: [row]
+        });
+
+        // Editar resposta para confirmar
+        await interaction.editReply({
+            content: `✅ Sistema de tags configurado com sucesso!\n📍 Mensagem criada: [Clica aqui para ver](${tagsMessage.url})`
         });
     },
 };

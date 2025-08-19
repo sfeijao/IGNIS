@@ -78,8 +78,19 @@ module.exports = {
             );
 
         await interaction.reply({
+            content: '✅ Configurando painel de status...',
+            ephemeral: true
+        });
+
+        // Enviar o painel no canal
+        const statusMessage = await interaction.channel.send({
             embeds: [embed],
             components: [row]
+        });
+
+        // Editar resposta para confirmar
+        await interaction.editReply({
+            content: `✅ Painel de status configurado com sucesso!\n📍 Mensagem criada: [Clica aqui para ver](${statusMessage.url})`
         });
 
         // Coletor de botões
