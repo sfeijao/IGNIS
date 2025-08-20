@@ -48,11 +48,17 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Detectar ambiente e configurar URL de callback
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT;
+const callbackURL = isProduction ? 
+    (config.website.production?.redirectUri || 'https://ysnm-bot-production.up.railway.app/auth/discord/callback') :
+    config.website.redirectUri;
+
 // Estratégia do Discord
 passport.use(new DiscordStrategy({
     clientID: config.clientId,
     clientSecret: config.clientSecret,
-    callbackURL: config.website.redirectUri,
+    callbackURL: callbackURL,
     scope: ['identify', 'guilds']
 }, (accessToken, refreshToken, profile, done) => {
     return done(null, profile);
@@ -233,7 +239,8 @@ app.post('/api/send-update', requireAuth, requireServerAccess, async (req, res) 
 // Iniciar servidor
 app.listen(PORT, () => {
     console.log(`🌐 Website de Updates rodando em http://localhost:${PORT}`);
-    console.log(`🔑 OAuth2 Discord configurado para: ${config.website.redirectUri}`);
+    console.log(`🔑 OAuth2 Discord configurado para: ${callbackURL}`);
+    console.log(`🏷️ Ambiente: ${isProduction ? 'Produção' : 'Desenvolvimento'}`);
 });
 
 module.exports = app;
