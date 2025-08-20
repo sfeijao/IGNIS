@@ -165,11 +165,28 @@ app.post('/api/login', (req, res) => {
 
 // API de logout
 app.post('/api/logout', (req, res) => {
-    // Limpar cookie
-    res.setHeader('Set-Cookie', [
-        'authToken=; Max-Age=0; HttpOnly; SameSite=Strict'
-    ]);
-    res.json({ success: true, message: 'Logout realizado com sucesso' });
+    console.log('🚪 Logout request received');
+    
+    // Limpar cookie com todas as opções possíveis
+    res.clearCookie('authToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/'
+    });
+    
+    // Limpar também sem as opções (fallback)
+    res.clearCookie('authToken');
+    
+    // Adicionar headers para prevenir cache
+    res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+    });
+    
+    console.log('🧹 All auth cookies cleared with cache headers');
+    res.json({ success: true, message: 'Logout realizado com sucesso', redirect: '/login' });
 });
 
 // Página principal (protegida)
