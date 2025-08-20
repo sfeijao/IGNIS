@@ -73,8 +73,16 @@ passport.use(new DiscordStrategy({
     callbackURL: callbackURL,
     scope: ['identify', 'guilds']
 }, (accessToken, refreshToken, profile, done) => {
+    console.log('✅ OAuth2 estratégia executada com sucesso');
+    console.log('   Profile ID:', profile.id);
+    console.log('   Profile Username:', profile.username);
     return done(null, profile);
 }));
+
+console.log('🔧 Configuração OAuth2 Discord:');
+console.log('   Client ID:', config.clientId ? `${config.clientId.substring(0, 8)}...` : 'AUSENTE');
+console.log('   Client Secret:', config.clientSecret ? `${config.clientSecret.substring(0, 8)}...` : 'AUSENTE');
+console.log('   Callback URL:', callbackURL);
 
 passport.serializeUser((user, done) => {
     done(null, user);
@@ -94,13 +102,22 @@ function requireAuth(req, res, next) {
 
 // Middleware para verificar acesso ao servidor
 function requireServerAccess(req, res, next) {
-    if (!req.user) {
-        return res.redirect('/login');
-    }
+    try {
+        console.log('🔐 Verificando acesso ao servidor para:', req.user?.username || 'Usuário desconhecido');
+        
+        if (!req.user) {
+            console.log('❌ Usuário não encontrado, redirecionando para login');
+            return res.redirect('/login');
+        }
 
-    // Verificar se o usuário tem acesso a pelo menos um servidor onde o bot está presente
-    // Por agora, permitir todos os usuários autenticados
-    next();
+        console.log('✅ Usuário autenticado, permitindo acesso');
+        // Verificar se o usuário tem acesso a pelo menos um servidor onde o bot está presente
+        // Por agora, permitir todos os usuários autenticados
+        next();
+    } catch (error) {
+        console.error('❌ Erro no middleware requireServerAccess:', error);
+        res.status(500).json({ error: 'Erro de autenticação', details: error.message });
+    }
 }
 
 // Servir ficheiros estáticos apenas para recursos públicos
@@ -112,9 +129,27 @@ app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
 app.get('/auth/discord', passport.authenticate('discord'));
 
 app.get('/auth/discord/callback',
-    passport.authenticate('discord', { failureRedirect: '/login' }),
-    (req, res) => {
-        res.redirect('/dashboard');
+    (req, res, next) => {
+        passport.authenticate('discord', { failureRedirect: '/login' }, (err, user, info) => {
+            if (err) {
+                console.error('❌ Erro OAuth2 detalhado:', err);
+                console.error('   Tipo do erro:', err.name);
+                console.error('   Mensagem:', err.message);
+                return res.redirect('/login?error=oauth_error');
+            }
+            if (!user) {
+                console.error('❌ Usuário não encontrado após OAuth2');
+                return res.redirect('/login?error=user_not_found');
+            }
+            req.logIn(user, (loginErr) => {
+                if (loginErr) {
+                    console.error('❌ Erro ao fazer login:', loginErr);
+                    return res.redirect('/login?error=login_error');
+                }
+                console.log('✅ OAuth2 callback bem-sucedido para:', user.username);
+                return res.redirect('/dashboard');
+            });
+        })(req, res, next);
     }
 );
 
@@ -150,7 +185,13 @@ app.get('/login', (req, res) => {
 
 // Dashboard (protegido)
 app.get('/dashboard', requireAuth, requireServerAccess, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+    try {
+        console.log('📊 Usuário acessando dashboard:', req.user?.username || 'Desconhecido');
+        res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+    } catch (error) {
+        console.error('❌ Erro no dashboard:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
 });
 
 // API para obter dados do usuário
