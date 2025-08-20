@@ -49,7 +49,12 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Detectar ambiente e configurar URL de callback
-const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT_NAME || process.env.RAILWAY_PROJECT_NAME;
+const isProduction = process.env.NODE_ENV === 'production' || 
+                    !!process.env.RAILWAY_ENVIRONMENT_NAME || 
+                    !!process.env.RAILWAY_PROJECT_NAME ||
+                    !!process.env.RAILWAY_SERVICE_NAME ||
+                    (process.env.PORT && process.env.PORT !== '3001');
+                    
 const callbackURL = isProduction ? 
     (config.website.production?.redirectUri || 'https://ysnmbot-alberto.up.railway.app/auth/discord/callback') :
     config.website.redirectUri;
