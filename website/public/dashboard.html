@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - YSNM Bot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6B73FF;
+            --primary-dark: #5A63E8;
+            --primary-light: rgba(107, 115, 255, 0.1);
+            --bg: #0F1419;
+            --bg-secondary: #1A1F2E;
+            --bg-card: #252A3A;
+            --text: #FFFFFF;
+            --text-muted: #94A3B8;
+            --border: rgba(255, 255, 255, 0.1);
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --info: #3B82F6;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(107, 115, 255, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1.2rem 0;
+            box-shadow: 
+                0 8px 32px rgba(107, 115, 255, 0.3),
+                0 2px 8px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-brand {
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-brand .logo {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .server-selector {
+            background: var(--bg-card);
+            border-radius: 20px;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+        }
+
+        .server-selector h2 {
+            margin-bottom: 2rem;
+            color: var(--text);
+            font-size: 1.8rem;
+            font-weight: 700;
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary), #8B5CF6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .server-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .server-card {
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--bg-secondary);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .server-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary), #8B5CF6);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 0;
+        }
+
+        .server-card:hover::before {
+            opacity: 0.1;
+        }
+
+        .server-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 
+                0 20px 40px rgba(107, 115, 255, 0.2),
+                0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .server-card.selected {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            transform: translateY(-4px);
+        }
+
+        .server-card > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .server-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .server-icon img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .server-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .server-members {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .dashboard-content {
+            display: none;
+            grid-template-columns: 250px 1fr;
+            gap: 2rem;
+        }
+
+        .dashboard-content.active {
+            display: grid;
+        }
+
+        .sidebar {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: 
+                0 10px 30px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            height: fit-content;
+            position: sticky;
+            top: 120px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+        }
+
+        .sidebar-menu li {
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 1rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar-menu a::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary), #8B5CF6);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-menu a:hover::before,
+        .sidebar-menu a.active::before {
+            opacity: 0.1;
+        }
+
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            color: var(--text);
+            transform: translateX(4px);
+        }
+
+        .sidebar-menu a > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .main-content {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: 
+                0 10px 30px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+            min-height: 600px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+        }
+
+        .content-section {
+            display: none;
+            padding: 2rem;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        .section-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .section-header h3 {
+            color: var(--text);
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), #8B5CF6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-header p {
+            color: var(--text-muted);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 2rem;
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary), #8B5CF6);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .stat-card:hover::before {
+            opacity: 0.05;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-card > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .stat-icon.members { background: var(--info); }
+        .stat-icon.channels { background: var(--success); }
+        .stat-icon.roles { background: var(--warning); }
+        .stat-icon.messages { background: var(--primary); }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--text);
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .config-form {
+            background: var(--bg-secondary);
+            padding: 2rem;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(107, 115, 255, 0.1);
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            display: inline-block;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(107, 115, 255, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(107, 115, 255, 0.5);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            border: 1px solid;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .loading::after {
+            content: '';
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            display: inline-block;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-content {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: static;
+            }
+
+            .server-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <div class="logo">YB</div>
+                <span>YSNM Bot Dashboard</span>
+            </div>
+            <div class="nav-user">
+                <div class="user-info">
+                    <img id="userAvatar" class="user-avatar" alt="Avatar">
+                    <span id="userName">Carregando...</span>
+                </div>
+                <a href="/logout" class="logout-btn">Sair</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Server Selection -->
+        <div id="serverSelection" class="server-selector">
+            <h2>Seleciona um Servidor</h2>
+            <div id="serverGrid" class="server-grid">
+                <div class="loading">Carregando servidores...</div>
+            </div>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div id="dashboardContent" class="dashboard-content">
+            <aside class="sidebar">
+                <ul class="sidebar-menu">
+                    <li><a href="#overview" class="menu-item active" data-section="overview">📊 Visão Geral</a></li>
+                    <li><a href="#config" class="menu-item" data-section="config">⚙️ Configuração</a></li>
+                    <li><a href="#moderation" class="menu-item" data-section="moderation">🛡️ Moderação</a></li>
+                    <li><a href="#embeds" class="menu-item" data-section="embeds">🎨 Embed Builder</a></li>
+                    <li><a href="#logs" class="menu-item" data-section="logs">📋 Logs</a></li>
+                </ul>
+            </aside>
+
+            <main class="main-content">
+                <!-- Overview Section -->
+                <section id="overview" class="content-section active">
+                    <div class="section-header">
+                        <h3>Visão Geral do Servidor</h3>
+                        <p>Estatísticas e informações gerais sobre o teu servidor</p>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon members">👥</div>
+                            <div class="stat-number" id="memberCount">-</div>
+                            <div class="stat-label">Membros</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon channels">#</div>
+                            <div class="stat-number" id="channelCount">-</div>
+                            <div class="stat-label">Canais</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon roles">🎭</div>
+                            <div class="stat-number" id="roleCount">-</div>
+                            <div class="stat-label">Cargos</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon messages">💬</div>
+                            <div class="stat-number" id="messageCount">-</div>
+                            <div class="stat-label">Mensagens Hoje</div>
+                        </div>
+                    </div>
+
+                    <div class="config-form">
+                        <h4>Status do Bot</h4>
+                        <p>Bot Status: <span id="botStatus" style="color: var(--success);">🟢 Online</span></p>
+                        <p>Última atualização: <span id="lastUpdate">-</span></p>
+                    </div>
+                </section>
+
+                <!-- Configuration Section -->
+                <section id="config" class="content-section">
+                    <div class="section-header">
+                        <h3>Configuração do Bot</h3>
+                        <p>Personaliza as definições do bot para o teu servidor</p>
+                    </div>
+
+                    <div class="config-form">
+                        <form id="configForm">
+                            <div class="form-group">
+                                <label for="prefix">Prefixo do Bot</label>
+                                <input type="text" id="prefix" name="prefix" value="!" placeholder="!">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="welcomeChannel">Canal de Boas-vindas</label>
+                                <select id="welcomeChannel" name="welcomeChannel">
+                                    <option value="">Seleciona um canal...</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="logChannel">Canal de Logs</label>
+                                <select id="logChannel" name="logChannel">
+                                    <option value="">Seleciona um canal...</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="autoRole">Cargo Automático</label>
+                                <select id="autoRole" name="autoRole">
+                                    <option value="">Seleciona um cargo...</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">Guardar Configurações</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- Moderation Section -->
+                <section id="moderation" class="content-section">
+                    <div class="section-header">
+                        <h3>Sistema de Moderação</h3>
+                        <p>Ferramentas de moderação e gestão do servidor</p>
+                    </div>
+
+                    <div class="config-form">
+                        <h4>Ações Rápidas</h4>
+                        <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+                            <button class="btn btn-primary" onclick="clearChat()">Limpar Chat</button>
+                            <button class="btn btn-success" onclick="massUnban()">Desbanir Todos</button>
+                            <button class="btn btn-danger" onclick="lockServer()">Bloquear Servidor</button>
+                        </div>
+
+                        <h4>Filtros Automáticos</h4>
+                        <form id="moderationForm">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="automod" name="automod"> Ativar Automoderação
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="spamFilter" name="spamFilter"> Filtro Anti-Spam
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="linkFilter" name="linkFilter"> Filtro de Links
+                                </label>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">Guardar Configurações</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- Embed Builder Section -->
+                <section id="embeds" class="content-section">
+                    <div class="section-header">
+                        <h3>Embed Builder</h3>
+                        <p>Cria embeds personalizados para o teu servidor</p>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div class="config-form">
+                            <h4>Editor de Embed</h4>
+                            <form id="embedForm">
+                                <div class="form-group">
+                                    <label for="embedTitle">Título</label>
+                                    <input type="text" id="embedTitle" name="embedTitle" placeholder="Título do embed">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="embedDescription">Descrição</label>
+                                    <textarea id="embedDescription" name="embedDescription" rows="4" placeholder="Descrição do embed"></textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="embedColor">Cor</label>
+                                    <input type="color" id="embedColor" name="embedColor" value="#9932CC">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="embedFooter">Rodapé</label>
+                                    <input type="text" id="embedFooter" name="embedFooter" placeholder="Texto do rodapé">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="embedChannel">Canal para Enviar</label>
+                                    <select id="embedChannel" name="embedChannel">
+                                        <option value="">Seleciona um canal...</option>
+                                    </select>
+                                </div>
+
+                                <button type="button" class="btn btn-primary" onclick="sendEmbed()">Enviar Embed</button>
+                            </form>
+                        </div>
+
+                        <div class="config-form">
+                            <h4>Pré-visualização</h4>
+                            <div id="embedPreview" style="border: 1px solid var(--border); padding: 1rem; border-radius: 5px; background: #2f3136; color: white;">
+                                <div style="border-left: 4px solid #9932CC; padding-left: 1rem;">
+                                    <h5 id="previewTitle">Título do Embed</h5>
+                                    <p id="previewDescription">Descrição do embed aparecerá aqui...</p>
+                                    <small id="previewFooter" style="color: #72767d;">Rodapé</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Logs Section -->
+                <section id="logs" class="content-section">
+                    <div class="section-header">
+                        <h3>Logs do Sistema</h3>
+                        <p>Histórico de atividades e eventos do bot</p>
+                    </div>
+
+                    <div class="config-form">
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                            <select id="logFilter">
+                                <option value="all">Todos os Logs</option>
+                                <option value="moderation">Moderação</option>
+                                <option value="commands">Comandos</option>
+                                <option value="errors">Erros</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="refreshLogs()">Atualizar</button>
+                        </div>
+
+                        <div id="logsList" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); padding: 1rem; border-radius: 5px; background: #f8f9fa;">
+                            <div class="loading">Carregando logs...</div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        let currentServerId = null;
+        let userGuilds = [];
+
+        // Load user info and guilds
+        async function loadUserData() {
+            try {
+                const [userResponse, guildsResponse] = await Promise.all([
+                    fetch('/api/user'),
+                    fetch('/api/guilds')
+                ]);
+
+                const userData = await userResponse.json();
+                const guildsData = await guildsResponse.json();
+
+                if (userData.success && guildsData.success) {
+                    document.getElementById('userName').textContent = userData.user.username;
+                    document.getElementById('userAvatar').src = userData.user.avatar;
+                    
+                    userGuilds = guildsData.guilds;
+                    displayServers();
+                } else {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                window.location.href = '/login';
+            }
+        }
+
+        function displayServers() {
+            const serverGrid = document.getElementById('serverGrid');
+            
+            if (userGuilds.length === 0) {
+                serverGrid.innerHTML = '<p>Não tens acesso a nenhum servidor com o bot instalado.</p>';
+                return;
+            }
+
+            serverGrid.innerHTML = userGuilds.map(guild => `
+                <div class="server-card" onclick="selectServer('${guild.id}')">
+                    <div class="server-icon">
+                        ${guild.icon ? 
+                            `<img src="https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png" alt="${guild.name}">` :
+                            guild.name.charAt(0).toUpperCase()
+                        }
+                    </div>
+                    <div class="server-name">${guild.name}</div>
+                    <div class="server-members">${guild.approximate_member_count || '?'} membros</div>
+                </div>
+            `).join('');
+        }
+
+        function selectServer(serverId) {
+            currentServerId = serverId;
+            const serverCards = document.querySelectorAll('.server-card');
+            serverCards.forEach(card => card.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+
+            document.getElementById('serverSelection').style.display = 'none';
+            document.getElementById('dashboardContent').classList.add('active');
+
+            loadServerData();
+        }
+
+        async function loadServerData() {
+            // Load server statistics
+            document.getElementById('memberCount').textContent = '...';
+            document.getElementById('channelCount').textContent = '...';
+            document.getElementById('roleCount').textContent = '...';
+            document.getElementById('messageCount').textContent = '...';
+
+            // Simulate loading server data
+            setTimeout(() => {
+                const guild = userGuilds.find(g => g.id === currentServerId);
+                if (guild) {
+                    document.getElementById('memberCount').textContent = guild.approximate_member_count || '?';
+                    document.getElementById('channelCount').textContent = Math.floor(Math.random() * 50) + 10;
+                    document.getElementById('roleCount').textContent = Math.floor(Math.random() * 20) + 5;
+                    document.getElementById('messageCount').textContent = Math.floor(Math.random() * 500) + 50;
+                }
+            }, 1000);
+        }
+
+        // Menu navigation
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('menu-item')) {
+                e.preventDefault();
+                
+                const section = e.target.dataset.section;
+                
+                // Update active menu item
+                document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                // Show corresponding section
+                document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
+                document.getElementById(section).classList.add('active');
+            }
+        });
+
+        // Embed preview update
+        function updateEmbedPreview() {
+            const title = document.getElementById('embedTitle').value || 'Título do Embed';
+            const description = document.getElementById('embedDescription').value || 'Descrição do embed aparecerá aqui...';
+            const footer = document.getElementById('embedFooter').value || 'Rodapé';
+            const color = document.getElementById('embedColor').value;
+
+            document.getElementById('previewTitle').textContent = title;
+            document.getElementById('previewDescription').textContent = description;
+            document.getElementById('previewFooter').textContent = footer;
+            document.getElementById('embedPreview').querySelector('div').style.borderLeftColor = color;
+        }
+
+        // Event listeners for embed preview
+        ['embedTitle', 'embedDescription', 'embedFooter', 'embedColor'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateEmbedPreview);
+        });
+
+        // Mock functions for demonstration
+        function clearChat() {
+            alert('Funcionalidade em desenvolvimento');
+        }
+
+        function massUnban() {
+            alert('Funcionalidade em desenvolvimento');
+        }
+
+        function lockServer() {
+            alert('Funcionalidade em desenvolvimento');
+        }
+
+        function sendEmbed() {
+            alert('Embed enviado! (Funcionalidade em desenvolvimento)');
+        }
+
+        function refreshLogs() {
+            const logsList = document.getElementById('logsList');
+            logsList.innerHTML = '<div class="loading">Carregando logs...</div>';
+            
+            setTimeout(() => {
+                logsList.innerHTML = `
+                    <div style="margin-bottom: 1rem; padding: 0.5rem; border-left: 3px solid var(--info);">
+                        <strong>15:30</strong> - Usuário entrou no servidor
+                    </div>
+                    <div style="margin-bottom: 1rem; padding: 0.5rem; border-left: 3px solid var(--success);">
+                        <strong>15:25</strong> - Comando /help executado
+                    </div>
+                    <div style="margin-bottom: 1rem; padding: 0.5rem; border-left: 3px solid var(--warning);">
+                        <strong>15:20</strong> - Mensagem moderada
+                    </div>
+                `;
+            }, 1000);
+        }
+
+        // Initialize
+        loadUserData();
+    </script>
+</body>
+</html>

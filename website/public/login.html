@@ -3,21 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YSNM Updates - Login</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>Login - YSNM Bot Dashboard</title>
     <style>
-        :root {
-            --discord-bg: #36393f;
-            --discord-bg-secondary: #2f3136;
-            --discord-bg-tertiary: #202225;
-            --discord-text: #dcddde;
-            --discord-text-muted: #72767d;
-            --discord-purple: #9932CC;
-            --discord-purple-hover: #7A2AA0;
-            --discord-danger: #ed4245;
-            --discord-success: #3ba55d;
-        }
-
         * {
             margin: 0;
             padding: 0;
@@ -25,236 +12,276 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, var(--discord-bg-tertiary) 0%, var(--discord-bg) 100%);
-            color: var(--discord-text);
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #6B73FF 0%, #000DFF 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 119, 198, 0.15) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(2deg); }
         }
 
         .login-container {
-            background: var(--discord-bg-secondary);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             padding: 3rem;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            width: 100%;
-            max-width: 400px;
+            border-radius: 25px;
+            box-shadow: 
+                0 25px 45px rgba(0, 0, 0, 0.1),
+                0 0 0 1px rgba(255, 255, 255, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
             text-align: center;
-            border: 1px solid #40444b;
+            max-width: 420px;
+            width: 90%;
+            position: relative;
+            z-index: 10;
+            color: white;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .logo {
-            font-size: 2.5rem;
-            color: var(--discord-purple);
-            margin-bottom: 1rem;
+            width: 90px;
+            height: 90px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            margin: 0 auto 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            color: white;
+            font-weight: bold;
+            box-shadow: 
+                0 15px 35px rgba(102, 126, 234, 0.4),
+                0 5px 15px rgba(0, 0, 0, 0.1);
+            position: relative;
+            animation: pulse 2s ease-in-out infinite;
         }
 
-        .title {
-            font-size: 1.8rem;
-            font-weight: 600;
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .logo::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(135deg, #667eea, #764ba2, #667eea);
+            border-radius: 22px;
+            z-index: -1;
+            opacity: 0.7;
+            animation: rotate 3s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        h1 {
+            color: white;
             margin-bottom: 0.5rem;
-            color: var(--discord-text);
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            letter-spacing: -0.5px;
         }
 
         .subtitle {
-            color: var(--discord-text-muted);
-            margin-bottom: 2rem;
-            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 2.5rem;
+            font-size: 1.1rem;
+            font-weight: 400;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         }
 
-        .form-group {
-            margin-bottom: 1.5rem;
+        .discord-login {
+            background: linear-gradient(135deg, #5865F2 0%, #7289DA 100%);
+            color: white;
+            border: none;
+            padding: 1.2rem 2.5rem;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            justify-content: center;
+            box-shadow: 
+                0 10px 25px rgba(88, 101, 242, 0.4),
+                0 4px 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .discord-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .discord-login:hover::before {
+            left: 100%;
+        }
+
+        .discord-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 15px 35px rgba(88, 101, 242, 0.5),
+                0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .discord-login:active {
+            transform: translateY(0);
+        }
+
+        .discord-icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .features {
+            margin-top: 2.5rem;
             text-align: left;
         }
 
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: var(--discord-text);
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 12px 15px;
-            background: var(--discord-bg-tertiary);
-            border: 1px solid #40444b;
-            border-radius: 8px;
-            color: var(--discord-text);
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--discord-purple);
-            box-shadow: 0 0 0 2px rgba(153, 50, 204, 0.2);
-        }
-
-        .login-button {
-            width: 100%;
-            padding: 12px;
-            background: var(--discord-purple);
+        .features h3 {
             color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            font-size: 1.3rem;
             font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
             margin-bottom: 1rem;
+            color: rgba(255, 255, 255, 0.9);
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
         }
 
-        .login-button:hover {
-            background: var(--discord-purple-hover);
+        .feature-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(5px);
         }
 
-        .login-button:disabled {
-            background: #4f545c;
-            cursor: not-allowed;
-        }
-
-        .error-message {
-            background: rgba(237, 66, 69, 0.1);
-            color: var(--discord-danger);
-            padding: 10px;
+        .feature-icon {
+            margin-right: 12px;
+            font-size: 1.3rem;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 8px;
-            margin-bottom: 1rem;
-            border: 1px solid rgba(237, 66, 69, 0.3);
-            display: none;
         }
 
         .security-note {
-            background: rgba(153, 50, 204, 0.1);
-            color: var(--discord-purple);
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            border: 1px solid rgba(153, 50, 204, 0.3);
+            margin-top: 2.5rem;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.95rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            line-height: 1.6;
+            text-align: left;
         }
 
-        .loading {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid #40444b;
-            border-top: 2px solid var(--discord-purple);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .security-note strong {
+            color: white;
         }
     </style>
 </head>
 <body>
     <div class="login-container">
-        <div class="logo">
-            <i class="fas fa-shield-alt"></i>
-        </div>
-        <h1 class="title">YSNM Updates</h1>
-        <p class="subtitle">Acesso restrito - Insira a palavra-passe</p>
+        <div class="logo">YB</div>
+        <h1>YSNM Bot</h1>
+        <p class="subtitle">Dashboard de Administração</p>
+        
+        <a href="/auth/discord" class="discord-login">
+            <svg class="discord-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.211.375-.445.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.195.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
+            </svg>
+            Entrar com Discord
+        </a>
 
-        <div class="error-message" id="errorMessage"></div>
-
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="password">Palavra-passe:</label>
-                <input type="password" id="password" name="password" required placeholder="Digite a palavra-passe">
+        <div class="features">
+            <h3>🎛️ Dashboard Features</h3>
+            <div class="feature-item">
+                <span class="feature-icon">🔧</span>
+                <span>Configuração completa do bot</span>
             </div>
-
-            <button type="submit" class="login-button" id="loginButton">
-                <span id="loginText">Entrar</span>
-                <div class="loading" id="loading">
-                    <div class="spinner"></div>
-                    <span>Verificando...</span>
-                </div>
-            </button>
-        </form>
+            <div class="feature-item">
+                <span class="feature-icon">📊</span>
+                <span>Monitorização em tempo real</span>
+            </div>
+            <div class="feature-item">
+                <span class="feature-icon">🎨</span>
+                <span>Embed Builder visual</span>
+            </div>
+            <div class="feature-item">
+                <span class="feature-icon">🛡️</span>
+                <span>Sistema de moderação</span>
+            </div>
+        </div>
 
         <div class="security-note">
-            <i class="fas fa-info-circle"></i>
-            Esta área é protegida para prevenir uso não autorizado.
+            🔒 <strong>Seguro:</strong> Usamos Discord OAuth2. Só tens acesso aos servidores onde tens permissão de "Gerir Servidor" e onde o bot está presente.
         </div>
     </div>
-
-    <script>
-        const loginForm = document.getElementById('loginForm');
-        const errorMessage = document.getElementById('errorMessage');
-        const loginButton = document.getElementById('loginButton');
-        const loginText = document.getElementById('loginText');
-        const loading = document.getElementById('loading');
-
-        function showError(message) {
-            errorMessage.textContent = message;
-            errorMessage.style.display = 'block';
-        }
-
-        function hideError() {
-            errorMessage.style.display = 'none';
-        }
-
-        function setLoading(isLoading) {
-            loginButton.disabled = isLoading;
-            if (isLoading) {
-                loginText.style.display = 'none';
-                loading.style.display = 'flex';
-            } else {
-                loginText.style.display = 'block';
-                loading.style.display = 'none';
-            }
-        }
-
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            console.log('Form submitted'); // Debug
-            hideError();
-            setLoading(true);
-
-            const password = document.getElementById('password').value;
-            console.log('Password length:', password.length); // Debug
-
-            try {
-                console.log('Sending request to /api/login'); // Debug
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ password })
-                });
-
-                console.log('Response status:', response.status); // Debug
-                const data = await response.json();
-                console.log('Response data:', data); // Debug
-
-                if (data.success) {
-                    console.log('Login successful, redirecting'); // Debug
-                    window.location.href = '/';
-                } else {
-                    console.log('Login failed:', data.message); // Debug
-                    showError(data.message || 'Palavra-passe incorreta');
-                }
-            } catch (error) {
-                console.error('Erro no login:', error);
-                showError('Erro de conexão. Tente novamente.');
-            } finally {
-                setLoading(false);
-            }
-        });
-
-        // Focus no input quando carregar
-        document.getElementById('password').focus();
-    </script>
 </body>
 </html>
