@@ -110,9 +110,9 @@ function requireServerAccess(req, res, next) {
             return res.redirect('/login');
         }
 
-        console.log('✅ Usuário autenticado, permitindo acesso');
-        // Verificar se o usuário tem acesso a pelo menos um servidor onde o bot está presente
-        // Por agora, permitir todos os usuários autenticados
+        // Para desenvolvimento, permitir todos os usuários autenticados
+        // TODO: Implementar verificação real dos servidores onde o bot está presente
+        console.log('✅ Usuário autenticado, permitindo acesso (modo desenvolvimento)');
         next();
     } catch (error) {
         console.error('❌ Erro no middleware requireServerAccess:', error);
@@ -212,15 +212,25 @@ app.get('/api/user', requireAuth, (req, res) => {
 // API para obter servidores do usuário
 app.get('/api/guilds', requireAuth, async (req, res) => {
     try {
-        // Por agora, retornar lista vazia - seria necessário implementar
-        // verificação dos servidores onde o usuário tem permissão e o bot está presente
+        console.log('📡 API /api/guilds chamada por:', req.user?.username);
+        
+        // Para desenvolvimento, retornar o servidor YSNM se o usuário está autenticado
+        const guilds = [{
+            id: config.guildId,
+            name: config.serverName,
+            icon: null,
+            permissions: ['ADMINISTRATOR'], // Simular permissões de admin para development
+            botPresent: true
+        }];
+        
+        console.log('✅ Retornando guilds:', guilds.length);
         res.json({
             success: true,
-            guilds: []
+            guilds: guilds
         });
     } catch (error) {
-        console.error('Erro ao obter guilds:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        console.error('❌ Erro ao obter guilds:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
 
