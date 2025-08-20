@@ -86,20 +86,10 @@ module.exports = {
                     .setPlaceholder('18')
                     .setRequired(true);
 
-                const reasonInput = new TextInputBuilder()
-                    .setCustomId('reason_input')
-                    .setLabel('Porque queres juntar-te ao YSNM?')
-                    .setStyle(TextInputStyle.Paragraph)
-                    .setMinLength(10)
-                    .setMaxLength(500)
-                    .setPlaceholder('Conta-nos um pouco sobre ti e os teus interesses...')
-                    .setRequired(true);
-
                 const firstActionRow = new ActionRowBuilder().addComponents(nicknameInput);
                 const secondActionRow = new ActionRowBuilder().addComponents(ageInput);
-                const thirdActionRow = new ActionRowBuilder().addComponents(reasonInput);
 
-                modal.addComponents(firstActionRow, secondActionRow, thirdActionRow);
+                modal.addComponents(firstActionRow, secondActionRow);
 
                 await interaction.showModal(modal);
                 return;
@@ -364,7 +354,6 @@ module.exports = {
             if (interaction.customId === 'verification_modal') {
                 const nickname = interaction.fields.getTextInputValue('nickname_input');
                 const age = interaction.fields.getTextInputValue('age_input');
-                const reason = interaction.fields.getTextInputValue('reason_input');
 
                 // Validar idade
                 const ageNum = parseInt(age);
@@ -402,8 +391,7 @@ module.exports = {
                                 { name: '👤 Utilizador', value: `${interaction.user.tag}`, inline: true },
                                 { name: '🏷️ Nickname', value: nickname, inline: true },
                                 { name: '🎂 Idade', value: `${age} anos`, inline: true },
-                                { name: '📝 Motivo', value: reason, inline: false },
-                                { name: '📅 Verificado em', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
+                                { name: ' Verificado em', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
                             )
                             .setFooter({ text: 'Sistema de Verificação • YSNM Community' })
                             .setTimestamp();
