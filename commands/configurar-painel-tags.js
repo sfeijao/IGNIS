@@ -27,15 +27,15 @@ module.exports = {
                 `Para solicitar uma tag especial, seleciona a opção desejada no menu abaixo e explica o motivo do teu pedido.\n\n` +
                 `**🎯 Tags Disponíveis:**\n` +
                 `⭐ **VIP** - Acesso especial VIP à comunidade\n` +
-                `👑 **Member** - Membro ativo e reconhecido\n` +
-                `💎 **Mod** - Moderador (requer experiência)\n` +
-                `⚡ **Support** - Suporte técnico à comunidade\n\n` +
+                `👑 **Membro** - Membro ativo e reconhecido\n` +
+                `💎 **Moderador** - Moderador (requer experiência)\n` +
+                `⚡ **Suporte** - Suporte técnico à comunidade\n\n` +
                 `**📋 Como funciona:**\n` +
                 `1️⃣ Seleciona a tag que desejas\n` +
                 `2️⃣ Preenche o formulário com a justificação\n` +
                 `3️⃣ A tua solicitação será analisada pela staff\n` +
                 `4️⃣ Receberás uma resposta por mensagem privada\n\n` +
-                `⚠️ **Importante:** Tags administrativas (Mod, Support) requerem experiência comprovada.`)
+                `⚠️ **Importante:** Tags administrativas (Moderador, Suporte) requerem experiência comprovada.`)
             .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
             .setFooter({ text: 'YSNM Community • Sistema de Tags' })
             .setTimestamp();
@@ -51,19 +51,19 @@ module.exports = {
                     emoji: '⭐'
                 },
                 {
-                    label: 'Member',
+                    label: 'Membro',
                     description: 'Tag de membro ativo da comunidade',
                     value: 'tag_member',
                     emoji: '👑'
                 },
                 {
-                    label: 'Mod',
+                    label: 'Moderador',
                     description: 'Tag de moderador (requer experiência)',
                     value: 'tag_mod',
                     emoji: '💎'
                 },
                 {
-                    label: 'Support',
+                    label: 'Suporte',
                     description: 'Tag de suporte técnico',
                     value: 'tag_support',
                     emoji: '⚡'

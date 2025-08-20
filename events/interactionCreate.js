@@ -179,22 +179,30 @@ module.exports = {
                 let roleId = '';
                 let tagName = '';
                 
+                // Mapeamento de tradução de cargos
+                const tagTranslations = {
+                    'vip': 'VIP',
+                    'member': 'Membro',
+                    'mod': 'Moderador',
+                    'support': 'Suporte'
+                };
+                
                 switch (tagType) {
                     case 'vip':
                         roleId = config.roles.vip;
-                        tagName = 'VIP';
+                        tagName = tagTranslations.vip;
                         break;
                     case 'member':
                         roleId = config.roles.member;
-                        tagName = 'Member';
+                        tagName = tagTranslations.member;
                         break;
                     case 'mod':
                         roleId = config.roles.mod;
-                        tagName = 'Mod';
+                        tagName = tagTranslations.mod;
                         break;
                     case 'support':
                         roleId = config.roles.support;
-                        tagName = 'Support';
+                        tagName = tagTranslations.support;
                         break;
                 }
 
@@ -248,10 +256,20 @@ module.exports = {
             if (interaction.customId === 'solicitar_tag_menu') {
                 const selectedTag = interaction.values[0].replace('tag_', ''); // remove 'tag_' prefix
                 
+                // Mapeamento de tradução de cargos para títulos
+                const tagTitleTranslations = {
+                    'vip': 'VIP',
+                    'member': 'Membro',
+                    'mod': 'Moderador',
+                    'support': 'Suporte'
+                };
+                
+                const tagDisplayName = tagTitleTranslations[selectedTag] || selectedTag.toUpperCase();
+                
                 // Criar modal para justificação
                 const modal = new ModalBuilder()
                     .setCustomId(`tag_modal_${selectedTag}`)
-                    .setTitle(`Pedido de Tag - ${selectedTag.toUpperCase()}`);
+                    .setTitle(`Pedido de Tag - ${tagDisplayName}`);
 
                 const reasonInput = new TextInputBuilder()
                     .setCustomId('tag_reason')
@@ -285,21 +303,15 @@ module.exports = {
                 const reason = interaction.fields.getTextInputValue('tag_reason');
                 const experience = interaction.fields.getTextInputValue('tag_experience') || 'Não fornecido';
 
-                let tagName = '';
-                switch (tagType) {
-                    case 'vip':
-                        tagName = 'VIP';
-                        break;
-                    case 'member':
-                        tagName = 'Member';
-                        break;
-                    case 'mod':
-                        tagName = 'Mod';
-                        break;
-                    case 'support':
-                        tagName = 'Support';
-                        break;
-                }
+                // Mapeamento de tradução de cargos
+                const tagTranslations = {
+                    'vip': 'VIP',
+                    'member': 'Membro',
+                    'mod': 'Moderador',
+                    'support': 'Suporte'
+                };
+
+                let tagName = tagTranslations[tagType] || tagType.toUpperCase();
 
                 // Enviar para o canal de pending tags
                 const pendTagsChannel = interaction.guild.channels.cache.get('1404310493480489031');
