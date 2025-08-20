@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YSNM - Teste de Login</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 400px; 
+            margin: 50px auto; 
+            padding: 20px; 
+            background: #2f3136; 
+            color: white;
+        }
+        input, button { 
+            width: 100%; 
+            padding: 10px; 
+            margin: 10px 0; 
+            border: none; 
+            border-radius: 5px; 
+        }
+        button { 
+            background: #9932CC; 
+            color: white; 
+            cursor: pointer; 
+        }
+        .result { 
+            margin-top: 20px; 
+            padding: 10px; 
+            border-radius: 5px; 
+            background: #40444b; 
+        }
+    </style>
+</head>
+<body>
+    <h2>🔐 YSNM Login Test</h2>
+    <form id="testForm">
+        <input type="password" id="pass" placeholder="Password: YSNM2024!" value="YSNM2024!">
+        <button type="submit">Test Login</button>
+    </form>
+    
+    <div id="result" class="result"></div>
+    
+    <script>
+        document.getElementById('testForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const result = document.getElementById('result');
+            const password = document.getElementById('pass').value;
+            
+            result.innerHTML = '⏳ Testing...';
+            
+            try {
+                console.log('Testing with password:', password);
+                
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (data.success) {
+                    result.innerHTML = '✅ SUCCESS! Redirecting...';
+                    result.style.background = '#3ba55d';
+                    setTimeout(() => window.location.href = '/', 1000);
+                } else {
+                    result.innerHTML = '❌ FAILED: ' + data.message;
+                    result.style.background = '#ed4245';
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                result.innerHTML = '💥 ERROR: ' + error.message;
+                result.style.background = '#ed4245';
+            }
+        });
+    </script>
+</body>
+</html>
