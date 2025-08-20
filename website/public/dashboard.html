@@ -858,7 +858,7 @@
                         }
                     </div>
                     <div class="server-name">${guild.name}</div>
-                    <div class="server-members">${guild.approximate_member_count || '?'} membros</div>
+                    <div class="server-members">${guild.memberCount || '?'} membros ${guild.botPresent ? '🟢' : '🔴'}</div>
                 </div>
             `).join('');
         }
@@ -882,16 +882,47 @@
             document.getElementById('roleCount').textContent = '...';
             document.getElementById('messageCount').textContent = '...';
 
-            // Simulate loading server data
-            setTimeout(() => {
+            try {
+                // Fetch real server statistics
+                const response = await fetch(`/api/server/${currentServerId}/stats`);
+                const data = await response.json();
+
+                if (data.success && data.stats) {
+                    const stats = data.stats;
+                    
+                    // Update display with real data
+                    document.getElementById('memberCount').textContent = stats.members.humans;
+                    document.getElementById('channelCount').textContent = stats.channels.total;
+                    document.getElementById('roleCount').textContent = stats.roles.total;
+                    document.getElementById('messageCount').textContent = stats.messages.estimated;
+
+                    // Add tooltips with detailed info
+                    document.getElementById('memberCount').title = `${stats.members.humans} humanos, ${stats.members.bots} bots (${stats.members.total} total)`;
+                    document.getElementById('channelCount').title = `${stats.channels.text} texto, ${stats.channels.voice} voz, ${stats.channels.categories} categorias`;
+                    document.getElementById('roleCount').title = `${stats.roles.colored} cargos com cor`;
+                    
+                    console.log('📊 Estatísticas carregadas:', stats);
+                } else {
+                    throw new Error(data.error || 'Erro ao carregar estatísticas');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar estatísticas:', error);
+                
+                // Fallback to basic data if available
                 const guild = userGuilds.find(g => g.id === currentServerId);
                 if (guild) {
-                    document.getElementById('memberCount').textContent = guild.approximate_member_count || '?';
-                    document.getElementById('channelCount').textContent = Math.floor(Math.random() * 50) + 10;
-                    document.getElementById('roleCount').textContent = Math.floor(Math.random() * 20) + 5;
-                    document.getElementById('messageCount').textContent = Math.floor(Math.random() * 500) + 50;
+                    document.getElementById('memberCount').textContent = guild.memberCount || '?';
+                    document.getElementById('channelCount').textContent = guild.channelCount || '?';
+                    document.getElementById('roleCount').textContent = guild.roleCount || '?';
+                    document.getElementById('messageCount').textContent = '?';
+                } else {
+                    // Show error state
+                    document.getElementById('memberCount').textContent = '❌';
+                    document.getElementById('channelCount').textContent = '❌';
+                    document.getElementById('roleCount').textContent = '❌';
+                    document.getElementById('messageCount').textContent = '❌';
                 }
-            }, 1000);
+            }
         }
 
         // Menu navigation

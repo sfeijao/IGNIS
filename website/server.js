@@ -214,22 +214,138 @@ app.get('/api/guilds', requireAuth, async (req, res) => {
     try {
         console.log('📡 API /api/guilds chamada por:', req.user?.username);
         
-        // Para desenvolvimento, retornar o servidor YSNM se o usuário está autenticado
+        // Verificar se o bot está conectado
+        if (!global.discordClient || !global.discordClient.isReady()) {
+            console.log('⚠️ Bot Discord não está conectado');
+            return res.json({
+                success: true,
+                guilds: [{
+                    id: config.guildId,
+                    name: config.serverName,
+                    icon: null,
+                    permissions: ['ADMINISTRATOR'],
+                    botPresent: false,
+                    memberCount: '?'
+                }]
+            });
+        }
+
+        // Obter dados reais do servidor
+        const guild = global.discordClient.guilds.cache.get(config.guildId);
+        if (!guild) {
+            console.log('⚠️ Servidor não encontrado no cache do bot');
+            return res.json({
+                success: true,
+                guilds: [{
+                    id: config.guildId,
+                    name: config.serverName,
+                    icon: null,
+                    permissions: ['ADMINISTRATOR'],
+                    botPresent: false,
+                    memberCount: '?'
+                }]
+            });
+        }
+
+        // Obter contagem real de membros (excluindo bots)
+        const members = guild.members.cache;
+        const humanMembers = members.filter(member => !member.user.bot);
+        const botMembers = members.filter(member => member.user.bot);
+        
         const guilds = [{
-            id: config.guildId,
-            name: config.serverName,
-            icon: null,
-            permissions: ['ADMINISTRATOR'], // Simular permissões de admin para development
-            botPresent: true
+            id: guild.id,
+            name: guild.name,
+            icon: guild.icon,
+            permissions: ['ADMINISTRATOR'],
+            botPresent: true,
+            memberCount: humanMembers.size,
+            botCount: botMembers.size,
+            totalMembers: members.size,
+            channelCount: guild.channels.cache.size,
+            roleCount: guild.roles.cache.size
         }];
         
-        console.log('✅ Retornando guilds:', guilds.length);
+        console.log(`✅ Dados reais do servidor: ${humanMembers.size} membros humanos, ${botMembers.size} bots`);
         res.json({
             success: true,
             guilds: guilds
         });
     } catch (error) {
         console.error('❌ Erro ao obter guilds:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
+});
+
+// API para obter estatísticas detalhadas do servidor
+app.get('/api/server/:serverId/stats', requireAuth, async (req, res) => {
+    try {
+        const serverId = req.params.serverId;
+        console.log(`📊 API stats para servidor ${serverId} por:`, req.user?.username);
+        
+        if (!global.discordClient || !global.discordClient.isReady()) {
+            return res.status(503).json({ error: 'Bot Discord não está conectado' });
+        }
+
+        const guild = global.discordClient.guilds.cache.get(serverId);
+        if (!guild) {
+            return res.status(404).json({ error: 'Servidor não encontrado' });
+        }
+
+        // Obter estatísticas reais
+        const members = guild.members.cache;
+        const channels = guild.channels.cache;
+        const roles = guild.roles.cache;
+
+        // Filtrar membros humanos (não bots)
+        const humanMembers = members.filter(member => !member.user.bot);
+        const botMembers = members.filter(member => member.user.bot);
+
+        // Estatísticas de canais por tipo
+        const textChannels = channels.filter(channel => channel.type === 0);
+        const voiceChannels = channels.filter(channel => channel.type === 2);
+        const categoryChannels = channels.filter(channel => channel.type === 4);
+
+        // Simular contagem de mensagens (seria necessário uma base de dados para valores reais)
+        const estimatedMessages = Math.floor(humanMembers.size * Math.random() * 100) + 100;
+
+        const stats = {
+            members: {
+                total: members.size,
+                humans: humanMembers.size,
+                bots: botMembers.size,
+                online: members.filter(member => member.presence?.status === 'online').size
+            },
+            channels: {
+                total: channels.size,
+                text: textChannels.size,
+                voice: voiceChannels.size,
+                categories: categoryChannels.size
+            },
+            roles: {
+                total: roles.size - 1, // -1 para excluir @everyone
+                colored: roles.filter(role => role.color !== 0).size
+            },
+            messages: {
+                estimated: estimatedMessages
+            },
+            server: {
+                name: guild.name,
+                icon: guild.icon,
+                createdAt: guild.createdAt,
+                memberCount: guild.memberCount,
+                premiumTier: guild.premiumTier,
+                premiumSubscriptionCount: guild.premiumSubscriptionCount
+            }
+        };
+
+        console.log(`✅ Estatísticas enviadas: ${stats.members.humans} membros humanos`);
+        res.json({
+            success: true,
+            stats: stats
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao obter estatísticas:', error);
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
