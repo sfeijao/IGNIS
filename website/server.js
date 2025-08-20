@@ -1,5 +1,7 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
+const session = require('express-session');
+const passport = require('passport');
+const DiscordStrategy = require('passport-discord').Strategy;
 const path = require('path');
 const fs = require('fs');
 const { EmbedBuilder, WebhookClient } = require('discord.js');
@@ -11,64 +13,6 @@ const PORT = process.env.PORT || 3001;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Chave secreta para JWT (configurável via env)
-const JWT_SECRET = process.env.JWT_SECRET || 'ysnm-updates-jwt-secret-2024';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'YSNM2024!';
-
-// Middleware de autenticação com JWT
-function requireAuth(req, res, next) {
-    // Verificar token em vários lugares: Authorization header, cookies, query param
-    const token = req.headers.authorization?.replace('Bearer ', '') || 
-                  req.cookies?.authToken || 
-                  req.query.token;
-    
-    console.log('🔍 Auth check - Token found:', token ? 'Yes' : 'No'); // Debug
-    
-    if (!token) {
-        console.log('❌ No token provided'); // Debug
-        // Se for uma requisição AJAX, retorna erro JSON
-        if (req.xhr || req.headers.accept?.indexOf('json') > -1) {
-            return res.status(401).json({ error: 'Token não fornecido' });
-        }
-        // Caso contrário, redireciona para login
-        return res.redirect('/login');
-    }
-    
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        console.log('✅ Token valid, user authenticated'); // Debug
-        req.user = decoded;
-        next();
-    } catch (error) {
-        console.log('❌ Token invalid or expired:', error.message); // Debug
-        // Token inválido ou expirado
-        if (req.xhr || req.headers.accept?.indexOf('json') > -1) {
-            return res.status(401).json({ error: 'Token inválido ou expirado' });
-        }
-        return res.redirect('/login');
-    }
-}
-
-// Middleware para cookies
-app.use((req, res, next) => {
-    // Parse manual de cookies simples
-    req.cookies = {};
-    if (req.headers.cookie) {
-        req.headers.cookie.split(';').forEach(cookie => {
-            const parts = cookie.trim().split('=');
-            if (parts.length === 2) {
-                req.cookies[parts[0]] = parts[1];
-            }
-        });
-    }
-    next();
-});
-
-// Servir ficheiros estáticos apenas para recursos públicos
-app.use('/css', express.static(path.join(__dirname, 'public/css')));
-app.use('/js', express.static(path.join(__dirname, 'public/js')));
-app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
-
 // Carregar configuração
 let config;
 try {
@@ -76,313 +20,220 @@ try {
 } catch (error) {
     console.log('⚠️ Usando configuração padrão para o website');
     config = {
+        clientId: process.env.DISCORD_CLIENT_ID,
+        clientSecret: process.env.DISCORD_CLIENT_SECRET,
+        website: {
+            baseUrl: process.env.BASE_URL || 'http://localhost:3001',
+            redirectUri: process.env.REDIRECT_URI || 'http://localhost:3001/auth/discord/callback',
+            sessionSecret: process.env.SESSION_SECRET || 'fallback-session-secret'
+        },
         channels: {
             updates: process.env.UPDATES_CHANNEL_ID || '1404310493468041228'
         }
     };
 }
 
-// Página de login
-app.get('/login', (req, res) => {
-    // Verificar se já tem token válido
-    const token = req.cookies?.authToken;
-    if (token) {
-        try {
-            jwt.verify(token, JWT_SECRET);
-            return res.redirect('/');
-        } catch (error) {
-            // Token inválido, continua para login
+// Configuração de sessão
+app.use(session({
+    secret: config.website.sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false, // true para HTTPS
+        maxAge: 24 * 60 * 60 * 1000 // 24 horas
+    }
+}));
+
+// Configurar Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Estratégia do Discord
+passport.use(new DiscordStrategy({
+    clientID: config.clientId,
+    clientSecret: config.clientSecret,
+    callbackURL: config.website.redirectUri,
+    scope: ['identify', 'guilds']
+}, (accessToken, refreshToken, profile, done) => {
+    return done(null, profile);
+}));
+
+passport.serializeUser((user, done) => {
+    done(null, user);
+});
+
+passport.deserializeUser((user, done) => {
+    done(null, user);
+});
+
+// Middleware de autenticação
+function requireAuth(req, res, next) {
+    if (req.isAuthenticated()) {
+        return next();
+    }
+    res.redirect('/login');
+}
+
+// Middleware para verificar acesso ao servidor
+function requireServerAccess(req, res, next) {
+    if (!req.user) {
+        return res.redirect('/login');
+    }
+
+    // Verificar se o usuário tem acesso a pelo menos um servidor onde o bot está presente
+    // Por agora, permitir todos os usuários autenticados
+    next();
+}
+
+// Servir ficheiros estáticos apenas para recursos públicos
+app.use('/css', express.static(path.join(__dirname, 'public/css')));
+app.use('/js', express.static(path.join(__dirname, 'public/js')));
+app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
+
+// Rotas de autenticação Discord
+app.get('/auth/discord', passport.authenticate('discord'));
+
+app.get('/auth/discord/callback',
+    passport.authenticate('discord', { failureRedirect: '/login' }),
+    (req, res) => {
+        res.redirect('/dashboard');
+    }
+);
+
+// Rota de logout
+app.get('/logout', (req, res) => {
+    req.logout((err) => {
+        if (err) {
+            console.error('Erro no logout:', err);
         }
+        req.session.destroy((err) => {
+            if (err) {
+                console.error('Erro ao destruir sessão:', err);
+            }
+            res.redirect('/login');
+        });
+    });
+});
+
+// Página de login
+app.get('/', (req, res) => {
+    if (req.isAuthenticated()) {
+        return res.redirect('/dashboard');
+    }
+    res.redirect('/login');
+});
+
+app.get('/login', (req, res) => {
+    if (req.isAuthenticated()) {
+        return res.redirect('/dashboard');
     }
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// Página de teste de login
-app.get('/test-login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'test-login.html'));
+// Dashboard (protegido)
+app.get('/dashboard', requireAuth, requireServerAccess, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-// Página de teste de login (versão alternativa)
-app.get('/teste-login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'test-login.html'));
-});
-
-// Página de status de autenticação
-app.get('/auth-status', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'auth-status.html'));
-});
-
-// API de login
-app.post('/api/login', (req, res) => {
-    console.log('🔐 Login attempt received'); // Debug
-    console.log('Request body:', req.body); // Debug
-    
-    const { password } = req.body;
-    
-    console.log('Password received:', password ? `${password.length} characters` : 'undefined'); // Debug
-    console.log('Expected password:', ADMIN_PASSWORD); // Debug
-    
-    if (password === ADMIN_PASSWORD) {
-        console.log('✅ Password correct, generating token'); // Debug
-        
-        // Criar token JWT válido por 24 horas
-        const token = jwt.sign(
-            { authenticated: true, timestamp: Date.now() },
-            JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-        
-        // Definir cookie com configurações mais compatíveis
-        const cookieOptions = [
-            `authToken=${token}`,
-            'Max-Age=86400', // 24 horas em segundos
-            'HttpOnly',
-            'SameSite=Lax', // Mudando de Strict para Lax
-            'Path=/'
-        ];
-        
-        // Se for HTTPS, adicionar Secure
-        if (req.headers['x-forwarded-proto'] === 'https' || req.secure) {
-            cookieOptions.push('Secure');
+// API para obter dados do usuário
+app.get('/api/user', requireAuth, (req, res) => {
+    res.json({
+        success: true,
+        user: {
+            id: req.user.id,
+            username: req.user.username,
+            discriminator: req.user.discriminator,
+            avatar: req.user.avatar ? 
+                `https://cdn.discordapp.com/avatars/${req.user.id}/${req.user.avatar}.png` :
+                'https://cdn.discordapp.com/embed/avatars/0.png'
         }
-        
-        res.setHeader('Set-Cookie', cookieOptions.join('; '));
-        
-        console.log('✅ Login successful, sending response with token'); // Debug
-        console.log('Cookie set:', cookieOptions.join('; ')); // Debug
-        
-        res.json({ 
-            success: true, 
-            message: 'Login realizado com sucesso', 
-            token: token,
-            redirect: '/'
-        });
-    } else {
-        console.log('❌ Password incorrect'); // Debug
-        res.status(401).json({ success: false, message: 'Palavra-passe incorreta' });
-    }
-});
-
-// API de logout
-app.post('/api/logout', (req, res) => {
-    console.log('🚪 Logout request received');
-    
-    // Limpar cookie com todas as opções possíveis
-    res.clearCookie('authToken', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/'
     });
-    
-    // Limpar também sem as opções (fallback)
-    res.clearCookie('authToken');
-    
-    // Adicionar headers para prevenir cache
-    res.set({
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-    });
-    
-    console.log('🧹 All auth cookies cleared with cache headers');
-    res.json({ success: true, message: 'Logout realizado com sucesso', redirect: '/login' });
 });
 
-// Página principal (protegida)
-app.get('/', requireAuth, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// API para obter canais do servidor (protegida)
-app.get('/api/channels', requireAuth, (req, res) => {
+// API para obter servidores do usuário
+app.get('/api/guilds', requireAuth, async (req, res) => {
     try {
-        if (!global.discordClient || !global.discordClient.isReady()) {
-            return res.status(503).json({ error: 'Bot não está conectado' });
-        }
-
-        const guild = global.discordClient.guilds.cache.first();
-        if (!guild) {
-            return res.status(404).json({ error: 'Servidor não encontrado' });
-        }
-
-        // Filtrar apenas canais de texto onde o bot pode enviar mensagens
-        const textChannels = guild.channels.cache
-            .filter(channel => 
-                channel.type === 0 && // TEXT CHANNEL
-                channel.permissionsFor(guild.members.me).has('SendMessages')
-            )
-            .map(channel => ({
-                id: channel.id,
-                name: channel.name,
-                parent: channel.parent ? channel.parent.name : null
-            }))
-            .sort((a, b) => a.name.localeCompare(b.name));
-
-        res.json(textChannels);
+        // Por agora, retornar lista vazia - seria necessário implementar
+        // verificação dos servidores onde o usuário tem permissão e o bot está presente
+        res.json({
+            success: true,
+            guilds: []
+        });
     } catch (error) {
-        console.error('Erro ao obter canais:', error);
+        console.error('Erro ao obter guilds:', error);
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
 
-// API para enviar update (protegida)
-app.post('/api/send-update', requireAuth, async (req, res) => {
+// API para configurações do bot (legacy - manter para compatibilidade)
+app.get('/api/config', requireAuth, requireServerAccess, (req, res) => {
     try {
-        const { title, description, icon, banner, color, fields, channelId } = req.body;
+        const safeConfig = {
+            channels: {
+                updates: config.channels.updates
+            }
+        };
+        res.json({ success: true, config: safeConfig });
+    } catch (error) {
+        console.error('Erro ao carregar configuração:', error);
+        res.status(500).json({ error: 'Erro ao carregar configuração' });
+    }
+});
 
-        // Validar dados
+// API para atualizar configurações (legacy - manter para compatibilidade)
+app.post('/api/config', requireAuth, requireServerAccess, (req, res) => {
+    try {
+        const { channels } = req.body;
+        
+        if (channels && channels.updates) {
+            config.channels.updates = channels.updates;
+        }
+        
+        fs.writeFileSync(path.join(__dirname, '..', 'config.json'), JSON.stringify(config, null, 2));
+        
+        res.json({ success: true, message: 'Configuração atualizada com sucesso!' });
+    } catch (error) {
+        console.error('Erro ao atualizar configuração:', error);
+        res.status(500).json({ error: 'Erro ao atualizar configuração' });
+    }
+});
+
+// API para enviar updates (legacy - manter para compatibilidade)
+app.post('/api/send-update', requireAuth, requireServerAccess, async (req, res) => {
+    try {
+        const { title, description, color, imageUrl } = req.body;
+        
         if (!title || !description) {
             return res.status(400).json({ error: 'Título e descrição são obrigatórios' });
         }
-
-        if (!channelId) {
-            return res.status(400).json({ error: 'Canal de destino é obrigatório' });
-        }
-
-        // Criar embed
+        
         const embed = new EmbedBuilder()
             .setTitle(title)
             .setDescription(description)
-            .setColor(color || '#9932CC')
+            .setColor(color || '#00ff00')
             .setTimestamp();
-
-        // Adicionar ícone se fornecido
-        if (icon) {
-            embed.setThumbnail(icon);
+            
+        if (imageUrl) {
+            embed.setImage(imageUrl);
         }
-
-        // Adicionar banner se fornecido
-        if (banner) {
-            embed.setImage(banner);
-        }
-
-        // Adicionar campos personalizados
-        if (fields && fields.length > 0) {
-            fields.forEach(field => {
-                if (field.name && field.value) {
-                    embed.addFields({
-                        name: field.name,
-                        value: field.value,
-                        inline: field.inline || false
-                    });
-                }
-            });
-        }
-
-        // Adicionar footer
-        embed.setFooter({
-            text: 'YSNM Community • Sistema de Updates',
-            iconURL: 'https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif'
-        });
-
-        // Enviar para Discord usando o bot (se estiver online)
-        if (global.discordClient && global.discordClient.isReady()) {
-            const guild = global.discordClient.guilds.cache.first();
-            if (guild) {
-                const targetChannel = guild.channels.cache.get(channelId);
-                if (targetChannel) {
-                    await targetChannel.send({ embeds: [embed] });
-                } else {
-                    return res.status(404).json({ error: 'Canal não encontrado' });
-                }
-            } else {
-                return res.status(404).json({ error: 'Servidor não encontrado' });
-            }
-        } else {
-            return res.status(503).json({ error: 'Bot não está conectado' });
-        }
-
-        // Salvar histórico de updates
-        const updatesHistory = path.join(__dirname, '..', 'updates-history.json');
-        let history = [];
         
-        try {
-            history = JSON.parse(fs.readFileSync(updatesHistory, 'utf8'));
-        } catch (error) {
-            history = [];
+        // Enviar via webhook se configurado
+        if (config.webhook && config.webhook.url) {
+            const webhook = new WebhookClient({ url: config.webhook.url });
+            await webhook.send({ embeds: [embed] });
         }
-
-        history.push({
-            id: Date.now(),
-            timestamp: new Date().toISOString(),
-            title,
-            description,
-            icon,
-            banner,
-            color,
-            fields,
-            channelId,
-            channelName: global.discordClient ? 
-                global.discordClient.guilds.cache.first()?.channels.cache.get(channelId)?.name : 
-                'Canal desconhecido',
-            author: 'Website Admin'
-        });
-
-        // Manter apenas os últimos 50 updates
-        if (history.length > 50) {
-            history = history.slice(-50);
-        }
-
-        fs.writeFileSync(updatesHistory, JSON.stringify(history, null, 2));
-
+        
         res.json({ success: true, message: 'Update enviado com sucesso!' });
-
     } catch (error) {
         console.error('Erro ao enviar update:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
-    }
-});
-
-// API para obter histórico de updates
-app.get('/api/updates-history', (req, res) => {
-    try {
-        const updatesHistory = path.join(__dirname, '..', 'updates-history.json');
-        let history = [];
-        
-        try {
-            history = JSON.parse(fs.readFileSync(updatesHistory, 'utf8'));
-        } catch (error) {
-            history = [];
-        }
-
-        res.json(history.reverse()); // Mais recentes primeiro
-    } catch (error) {
-        console.error('Erro ao obter histórico:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
-    }
-});
-
-// API para preview do embed
-// API para preview do embed (protegida)
-app.post('/api/preview-embed', requireAuth, (req, res) => {
-    try {
-        const { title, description, icon, banner, color, fields } = req.body;
-
-        const embedData = {
-            title: title || 'Título do Update',
-            description: description || 'Descrição do update...',
-            color: parseInt((color || '#9932CC').replace('#', ''), 16),
-            timestamp: new Date().toISOString(),
-            thumbnail: icon ? { url: icon } : null,
-            image: banner ? { url: banner } : null,
-            fields: fields || [],
-            footer: {
-                text: 'YSNM Community • Sistema de Updates',
-                icon_url: 'https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif'
-            }
-        };
-
-        res.json(embedData);
-    } catch (error) {
-        console.error('Erro ao gerar preview:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        res.status(500).json({ error: 'Erro ao enviar update' });
     }
 });
 
 // Iniciar servidor
 app.listen(PORT, () => {
     console.log(`🌐 Website de Updates rodando em http://localhost:${PORT}`);
+    console.log(`🔑 OAuth2 Discord configurado para: ${config.website.redirectUri}`);
 });
 
 module.exports = app;
