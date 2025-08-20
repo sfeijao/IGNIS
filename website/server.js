@@ -94,6 +94,11 @@ app.get('/test-login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'test-login.html'));
 });
 
+// Página de teste de login (versão alternativa)
+app.get('/teste-login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'test-login.html'));
+});
+
 // API de login
 app.post('/api/login', (req, res) => {
     console.log('🔐 Login attempt received'); // Debug
