@@ -13,7 +13,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Chave secreta para JWT (configurável via env)
 const JWT_SECRET = process.env.JWT_SECRET || 'ysnm-updates-jwt-secret-2024';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'YSNM2024!';
+// const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'YSNM2024!'; // DESATIVADO
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null; // Autenticação desativada
 
 // Middleware de autenticação com JWT
 function requireAuth(req, res, next) {
@@ -114,53 +115,46 @@ app.get('/auth-status', (req, res) => {
 
 // API de login
 app.post('/api/login', (req, res) => {
-    console.log('🔐 Login attempt received'); // Debug
+    console.log('🔐 Login attempt received (AUTH DISABLED)'); // Debug
     console.log('Request body:', req.body); // Debug
     
     const { password } = req.body;
     
-    console.log('Password received:', password ? `${password.length} characters` : 'undefined'); // Debug
-    console.log('Expected password:', ADMIN_PASSWORD); // Debug
+    // AUTENTICAÇÃO DESATIVADA - SEMPRE PERMITE ACESSO
+    console.log('⚠️ Authentication disabled - auto login'); // Debug
     
-    if (password === ADMIN_PASSWORD) {
-        console.log('✅ Password correct, generating token'); // Debug
-        
-        // Criar token JWT válido por 24 horas
-        const token = jwt.sign(
-            { authenticated: true, timestamp: Date.now() },
-            JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-        
-        // Definir cookie com configurações mais compatíveis
-        const cookieOptions = [
-            `authToken=${token}`,
-            'Max-Age=86400', // 24 horas em segundos
-            'HttpOnly',
-            'SameSite=Lax', // Mudando de Strict para Lax
-            'Path=/'
-        ];
-        
-        // Se for HTTPS, adicionar Secure
-        if (req.headers['x-forwarded-proto'] === 'https' || req.secure) {
-            cookieOptions.push('Secure');
-        }
-        
-        res.setHeader('Set-Cookie', cookieOptions.join('; '));
-        
-        console.log('✅ Login successful, sending response with token'); // Debug
-        console.log('Cookie set:', cookieOptions.join('; ')); // Debug
-        
-        res.json({ 
-            success: true, 
-            message: 'Login realizado com sucesso', 
-            token: token,
-            redirect: '/'
-        });
-    } else {
-        console.log('❌ Password incorrect'); // Debug
-        res.status(401).json({ success: false, message: 'Palavra-passe incorreta' });
+    // Criar token JWT válido por 24 horas
+    const token = jwt.sign(
+        { authenticated: true, timestamp: Date.now() },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+    );
+    
+    // Definir cookie com configurações mais compatíveis
+    const cookieOptions = [
+        `authToken=${token}`,
+        'Max-Age=86400', // 24 horas em segundos
+        'HttpOnly',
+        'SameSite=Lax', // Mudando de Strict para Lax
+        'Path=/'
+    ];
+    
+    // Se for HTTPS, adicionar Secure
+    if (req.headers['x-forwarded-proto'] === 'https' || req.secure) {
+        cookieOptions.push('Secure');
     }
+    
+    res.setHeader('Set-Cookie', cookieOptions.join('; '));
+    
+    console.log('✅ Auto login successful (no password required)'); // Debug
+    console.log('Cookie set:', cookieOptions.join('; ')); // Debug
+    
+    res.json({ 
+        success: true, 
+        message: 'Acesso autorizado (autenticação desativada)', 
+        token: token,
+        redirect: '/'
+    });
 });
 
 // API de logout
