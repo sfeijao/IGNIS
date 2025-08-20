@@ -32,6 +32,10 @@
   "website": {
     "baseUrl": "http://localhost:3001",
     "redirectUri": "http://localhost:3001/auth/discord/callback",
-    "sessionSecret": "your-session-secret-key-here"
+    "sessionSecret": "your-session-secret-key-here",
+    "production": {
+      "baseUrl": "https://ysnmbot-alberto.up.railway.app",
+      "redirectUri": "https://ysnmbot-alberto.up.railway.app/auth/discord/callback"
+    }
   }
 }
