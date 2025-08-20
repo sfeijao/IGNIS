@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YSNM - Status de Autenticação</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 600px; 
+            margin: 50px auto; 
+            padding: 20px; 
+            background: #2f3136; 
+            color: white;
+        }
+        .status { 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+            background: #40444b; 
+        }
+        .success { background: #3ba55d; }
+        .error { background: #ed4245; }
+        button { 
+            padding: 10px 20px; 
+            margin: 5px; 
+            border: none; 
+            border-radius: 5px; 
+            background: #9932CC; 
+            color: white; 
+            cursor: pointer; 
+        }
+    </style>
+</head>
+<body>
+    <h2>🔐 YSNM - Status de Autenticação</h2>
+    
+    <div id="cookieStatus" class="status">
+        <h3>🍪 Cookie Status</h3>
+        <p id="cookieInfo">Verificando...</p>
+    </div>
+    
+    <div id="localStorageStatus" class="status">
+        <h3>💾 LocalStorage Status</h3>
+        <p id="localStorageInfo">Verificando...</p>
+    </div>
+    
+    <div id="apiStatus" class="status">
+        <h3>🌐 API Status</h3>
+        <p id="apiInfo">Verificando...</p>
+    </div>
+    
+    <div>
+        <button onclick="testAPI()">🧪 Test API</button>
+        <button onclick="clearAuth()">🗑️ Clear Auth</button>
+        <button onclick="goToLogin()">🔑 Go to Login</button>
+        <button onclick="goToMain()">🏠 Go to Main</button>
+    </div>
+    
+    <script>
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+        
+        function checkStatus() {
+            // Check cookies
+            const cookieToken = getCookie('authToken');
+            const cookieInfo = document.getElementById('cookieInfo');
+            const cookieStatus = document.getElementById('cookieStatus');
+            
+            if (cookieToken) {
+                cookieInfo.textContent = `Token encontrado: ${cookieToken.substring(0, 20)}...`;
+                cookieStatus.className = 'status success';
+            } else {
+                cookieInfo.textContent = 'Nenhum token encontrado nos cookies';
+                cookieStatus.className = 'status error';
+            }
+            
+            // Check localStorage
+            const localToken = localStorage.getItem('authToken');
+            const localInfo = document.getElementById('localStorageInfo');
+            const localStatus = document.getElementById('localStorageStatus');
+            
+            if (localToken) {
+                localInfo.textContent = `Token encontrado: ${localToken.substring(0, 20)}...`;
+                localStatus.className = 'status success';
+            } else {
+                localInfo.textContent = 'Nenhum token encontrado no localStorage';
+                localStatus.className = 'status error';
+            }
+        }
+        
+        async function testAPI() {
+            const apiInfo = document.getElementById('apiInfo');
+            const apiStatus = document.getElementById('apiStatus');
+            
+            try {
+                apiInfo.textContent = 'Testando API...';
+                
+                const response = await fetch('/api/channels', {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    apiInfo.textContent = `API funcionando! ${data.length} canais encontrados`;
+                    apiStatus.className = 'status success';
+                } else {
+                    apiInfo.textContent = `Erro API: ${response.status} - ${response.statusText}`;
+                    apiStatus.className = 'status error';
+                }
+            } catch (error) {
+                apiInfo.textContent = `Erro: ${error.message}`;
+                apiStatus.className = 'status error';
+            }
+        }
+        
+        function clearAuth() {
+            // Clear cookies
+            document.cookie = 'authToken=; Max-Age=0; Path=/';
+            // Clear localStorage
+            localStorage.removeItem('authToken');
+            alert('Autenticação limpa!');
+            checkStatus();
+        }
+        
+        function goToLogin() {
+            window.location.href = '/login';
+        }
+        
+        function goToMain() {
+            window.location.href = '/';
+        }
+        
+        // Check status on load
+        checkStatus();
+        testAPI();
+    </script>
+</body>
+</html>

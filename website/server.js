@@ -17,11 +17,17 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'YSNM2024!';
 
 // Middleware de autenticação com JWT
 function requireAuth(req, res, next) {
-    const token = req.headers.authorization?.replace('Bearer ', '') || req.cookies?.authToken;
+    // Verificar token em vários lugares: Authorization header, cookies, query param
+    const token = req.headers.authorization?.replace('Bearer ', '') || 
+                  req.cookies?.authToken || 
+                  req.query.token;
+    
+    console.log('🔍 Auth check - Token found:', token ? 'Yes' : 'No'); // Debug
     
     if (!token) {
+        console.log('❌ No token provided'); // Debug
         // Se for uma requisição AJAX, retorna erro JSON
-        if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+        if (req.xhr || req.headers.accept?.indexOf('json') > -1) {
             return res.status(401).json({ error: 'Token não fornecido' });
         }
         // Caso contrário, redireciona para login
@@ -30,11 +36,13 @@ function requireAuth(req, res, next) {
     
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
+        console.log('✅ Token valid, user authenticated'); // Debug
         req.user = decoded;
         next();
     } catch (error) {
+        console.log('❌ Token invalid or expired:', error.message); // Debug
         // Token inválido ou expirado
-        if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+        if (req.xhr || req.headers.accept?.indexOf('json') > -1) {
             return res.status(401).json({ error: 'Token inválido ou expirado' });
         }
         return res.redirect('/login');
@@ -99,6 +107,11 @@ app.get('/teste-login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'test-login.html'));
 });
 
+// Página de status de autenticação
+app.get('/auth-status', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'auth-status.html'));
+});
+
 // API de login
 app.post('/api/login', (req, res) => {
     console.log('🔐 Login attempt received'); // Debug
@@ -119,13 +132,31 @@ app.post('/api/login', (req, res) => {
             { expiresIn: '24h' }
         );
         
-        // Definir cookie com token
-        res.setHeader('Set-Cookie', [
-            `authToken=${token}; Max-Age=${24 * 60 * 60}; HttpOnly; SameSite=Strict`
-        ]);
+        // Definir cookie com configurações mais compatíveis
+        const cookieOptions = [
+            `authToken=${token}`,
+            'Max-Age=86400', // 24 horas em segundos
+            'HttpOnly',
+            'SameSite=Lax', // Mudando de Strict para Lax
+            'Path=/'
+        ];
         
-        console.log('✅ Login successful, sending response'); // Debug
-        res.json({ success: true, message: 'Login realizado com sucesso', token });
+        // Se for HTTPS, adicionar Secure
+        if (req.headers['x-forwarded-proto'] === 'https' || req.secure) {
+            cookieOptions.push('Secure');
+        }
+        
+        res.setHeader('Set-Cookie', cookieOptions.join('; '));
+        
+        console.log('✅ Login successful, sending response with token'); // Debug
+        console.log('Cookie set:', cookieOptions.join('; ')); // Debug
+        
+        res.json({ 
+            success: true, 
+            message: 'Login realizado com sucesso', 
+            token: token,
+            redirect: '/'
+        });
     } else {
         console.log('❌ Password incorrect'); // Debug
         res.status(401).json({ success: false, message: 'Palavra-passe incorreta' });

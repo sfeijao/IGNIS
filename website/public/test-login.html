@@ -55,17 +55,31 @@
                 const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
+                    body: JSON.stringify({ password }),
+                    credentials: 'include' // Importante para cookies
                 });
                 
                 console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
                 const data = await response.json();
                 console.log('Response data:', data);
                 
                 if (data.success) {
-                    result.innerHTML = '✅ SUCCESS! Redirecting...';
+                    result.innerHTML = '✅ SUCCESS! Token received. Redirecting in 3 seconds...';
                     result.style.background = '#3ba55d';
-                    setTimeout(() => window.location.href = '/', 1000);
+                    
+                    // Guardar token também no localStorage como backup
+                    if (data.token) {
+                        localStorage.setItem('authToken', data.token);
+                        console.log('Token saved to localStorage');
+                    }
+                    
+                    // Redirecionamento com delay
+                    setTimeout(() => {
+                        console.log('Redirecting to main page...');
+                        window.location.href = '/';
+                    }, 3000);
                 } else {
                     result.innerHTML = '❌ FAILED: ' + data.message;
                     result.style.background = '#ed4245';
