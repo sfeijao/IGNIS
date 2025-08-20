@@ -217,12 +217,15 @@
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            console.log('Form submitted'); // Debug
             hideError();
             setLoading(true);
 
             const password = document.getElementById('password').value;
+            console.log('Password length:', password.length); // Debug
 
             try {
+                console.log('Sending request to /api/login'); // Debug
                 const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: {
@@ -231,11 +234,15 @@
                     body: JSON.stringify({ password })
                 });
 
+                console.log('Response status:', response.status); // Debug
                 const data = await response.json();
+                console.log('Response data:', data); // Debug
 
                 if (data.success) {
+                    console.log('Login successful, redirecting'); // Debug
                     window.location.href = '/';
                 } else {
+                    console.log('Login failed:', data.message); // Debug
                     showError(data.message || 'Palavra-passe incorreta');
                 }
             } catch (error) {

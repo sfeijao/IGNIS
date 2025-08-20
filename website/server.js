@@ -91,9 +91,17 @@ app.get('/login', (req, res) => {
 
 // API de login
 app.post('/api/login', (req, res) => {
+    console.log('🔐 Login attempt received'); // Debug
+    console.log('Request body:', req.body); // Debug
+    
     const { password } = req.body;
     
+    console.log('Password received:', password ? `${password.length} characters` : 'undefined'); // Debug
+    console.log('Expected password:', ADMIN_PASSWORD); // Debug
+    
     if (password === ADMIN_PASSWORD) {
+        console.log('✅ Password correct, generating token'); // Debug
+        
         // Criar token JWT válido por 24 horas
         const token = jwt.sign(
             { authenticated: true, timestamp: Date.now() },
@@ -106,8 +114,10 @@ app.post('/api/login', (req, res) => {
             `authToken=${token}; Max-Age=${24 * 60 * 60}; HttpOnly; SameSite=Strict`
         ]);
         
+        console.log('✅ Login successful, sending response'); // Debug
         res.json({ success: true, message: 'Login realizado com sucesso', token });
     } else {
+        console.log('❌ Password incorrect'); // Debug
         res.status(401).json({ success: false, message: 'Palavra-passe incorreta' });
     }
 });
