@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Teste Simples YSNM</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #6B73FF; text-align: center; }
+        .btn {
+            background: #6B73FF;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+            display: block;
+            width: 100%;
+            max-width: 400px;
+        }
+        .btn:hover { background: #5A63E8; }
+        .result {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            min-height: 100px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .error { background: #cc3333; }
+        .success { background: #339933; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Teste Simples YSNM</h1>
+        <p>Teste básico para verificar JavaScript e APIs</p>
+        
+        <button class="btn" onclick="testeBasico()">1. Teste JavaScript Básico</button>
+        <div id="resultado1" class="result">Clique no botão acima...</div>
+        
+        <button class="btn" onclick="testeAPI()">2. Teste API Simples</button>
+        <div id="resultado2" class="result">Clique no botão acima...</div>
+        
+        <button class="btn" onclick="testeCompleto()">3. Teste Completo</button>
+        <div id="resultado3" class="result">Clique no botão acima...</div>
+        
+        <h3>Estado do Console:</h3>
+        <div id="console-log" class="result">Aguardando...</div>
+    </div>
+
+    <script>
+        // Capturar console
+        const consoleDiv = document.getElementById('console-log');
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        function logToDiv(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6666' : '#66ff66';
+            consoleDiv.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
+        }
+        
+        console.log = function(...args) {
+            logToDiv(`LOG: ${args.join(' ')}`, 'log');
+            originalLog.apply(console, args);
+        };
+        
+        console.error = function(...args) {
+            logToDiv(`ERROR: ${args.join(' ')}`, 'error');
+            originalError.apply(console, args);
+        };
+
+        // Capturar erros globais
+        window.addEventListener('error', function(event) {
+            logToDiv(`ERRO GLOBAL: ${event.error?.message || event.message}`, 'error');
+        });
+
+        function testeBasico() {
+            const resultado = document.getElementById('resultado1');
+            resultado.className = 'result';
+            resultado.innerHTML = 'Executando teste básico...\n';
+            
+            try {
+                // Teste 1: Variáveis
+                const teste = 'Olá mundo!';
+                resultado.innerHTML += `✅ Variáveis: ${teste}\n`;
+                
+                // Teste 2: Funções
+                function soma(a, b) { return a + b; }
+                const resultadoSoma = soma(2, 3);
+                resultado.innerHTML += `✅ Funções: 2 + 3 = ${resultadoSoma}\n`;
+                
+                // Teste 3: DOM
+                const elemento = document.getElementById('resultado1');
+                resultado.innerHTML += `✅ DOM: Elemento encontrado = ${elemento ? 'Sim' : 'Não'}\n`;
+                
+                // Teste 4: Fetch disponível
+                resultado.innerHTML += `✅ Fetch API: ${typeof fetch === 'function' ? 'Disponível' : 'Não disponível'}\n`;
+                
+                console.log('✅ Teste básico completado com sucesso');
+                resultado.className = 'result success';
+                resultado.innerHTML += '\n🎉 TESTE BÁSICO: SUCESSO!';
+                
+            } catch (error) {
+                console.error('❌ Erro no teste básico:', error);
+                resultado.className = 'result error';
+                resultado.innerHTML += `\n❌ ERRO: ${error.message}`;
+            }
+        }
+
+        function testeAPI() {
+            const resultado = document.getElementById('resultado2');
+            resultado.className = 'result';
+            resultado.innerHTML = 'Testando APIs...\n';
+            
+            // Teste API de usuário
+            fetch('/api/user')
+                .then(response => {
+                    resultado.innerHTML += `Status /api/user: ${response.status}\n`;
+                    return response.json();
+                })
+                .then(data => {
+                    resultado.innerHTML += `Resposta /api/user:\n${JSON.stringify(data, null, 2)}\n`;
+                    console.log('✅ API /api/user funcionando');
+                    
+                    // Teste API de guilds
+                    return fetch('/api/guilds');
+                })
+                .then(response => {
+                    resultado.innerHTML += `\nStatus /api/guilds: ${response.status}\n`;
+                    return response.json();
+                })
+                .then(data => {
+                    resultado.innerHTML += `Resposta /api/guilds:\n${JSON.stringify(data, null, 2)}\n`;
+                    console.log('✅ API /api/guilds funcionando');
+                    resultado.className = 'result success';
+                    resultado.innerHTML += '\n🎉 TESTE API: SUCESSO!';
+                })
+                .catch(error => {
+                    console.error('❌ Erro na API:', error);
+                    resultado.className = 'result error';
+                    resultado.innerHTML += `\n❌ ERRO API: ${error.message}`;
+                });
+        }
+
+        function testeCompleto() {
+            const resultado = document.getElementById('resultado3');
+            resultado.className = 'result';
+            resultado.innerHTML = 'Executando teste completo...\n';
+            
+            console.log('🚀 Iniciando teste completo');
+            
+            // Simular o fluxo do dashboard
+            Promise.all([
+                fetch('/api/user'),
+                fetch('/api/guilds')
+            ])
+            .then(responses => {
+                resultado.innerHTML += `Respostas recebidas: ${responses.length}\n`;
+                
+                const statusCodes = responses.map(r => r.status);
+                resultado.innerHTML += `Status codes: ${statusCodes.join(', ')}\n`;
+                
+                return Promise.all(responses.map(r => r.json()));
+            })
+            .then(([userData, guildsData]) => {
+                resultado.innerHTML += '\nDados recebidos:\n';
+                resultado.innerHTML += `User success: ${userData.success}\n`;
+                resultado.innerHTML += `Guilds success: ${guildsData.success}\n`;
+                
+                if (userData.success && guildsData.success) {
+                    resultado.innerHTML += `Username: ${userData.user?.username || 'Developer'}\n`;
+                    resultado.innerHTML += `Guilds count: ${guildsData.guilds?.length || 0}\n`;
+                    
+                    if (guildsData.guilds && guildsData.guilds.length > 0) {
+                        const firstGuild = guildsData.guilds[0];
+                        resultado.innerHTML += `\nTestando primeiro servidor: ${firstGuild.name}\n`;
+                        
+                        return fetch(`/api/server/${firstGuild.id}/stats`);
+                    } else {
+                        throw new Error('Nenhum servidor encontrado');
+                    }
+                } else {
+                    throw new Error('Falha na autenticação ou guilds');
+                }
+            })
+            .then(response => {
+                resultado.innerHTML += `Status stats: ${response.status}\n`;
+                return response.json();
+            })
+            .then(statsData => {
+                resultado.innerHTML += `Stats success: ${statsData.success}\n`;
+                
+                if (statsData.success) {
+                    resultado.innerHTML += `Stats: ${JSON.stringify(statsData.stats, null, 2)}\n`;
+                    console.log('✅ Teste completo bem-sucedido');
+                    resultado.className = 'result success';
+                    resultado.innerHTML += '\n🎉 TESTE COMPLETO: SUCESSO!';
+                } else {
+                    throw new Error(`Falha nas stats: ${statsData.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Erro no teste completo:', error);
+                resultado.className = 'result error';
+                resultado.innerHTML += `\n❌ ERRO COMPLETO: ${error.message}`;
+            });
+        }
+
+        // Inicialização
+        window.addEventListener('load', function() {
+            console.log('🚀 Página teste simples carregada');
+            logToDiv('Página carregada com sucesso', 'log');
+            
+            // Teste automático básico
+            setTimeout(() => {
+                console.log('🔄 Executando teste automático...');
+                testeBasico();
+            }, 1000);
+        });
+
+        // Verificar se os botões respondem
+        document.addEventListener('click', function(event) {
+            if (event.target.tagName === 'BUTTON') {
+                console.log(`🖱️ Botão clicado: ${event.target.textContent}`);
+            }
+        });
+    </script>
+</body>
+</html>

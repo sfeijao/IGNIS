@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - YSNM Bot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6B73FF;
+            --primary-dark: #5A63E8;
+            --primary-light: rgba(107, 115, 255, 0.1);
+            --bg: #0F1419;
+            --bg-secondary: #1A1F2E;
+            --bg-card: #252A3A;
+            --text: #FFFFFF;
+            --text-muted: #94A3B8;
+            --border: rgba(255, 255, 255, 0.1);
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --info: #3B82F6;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(107, 115, 255, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1.2rem 0;
+            box-shadow: 
+                0 8px 32px rgba(107, 115, 255, 0.3),
+                0 2px 8px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+        }
+
+        .navbar-brand {
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .server-selection {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+        }
+
+        .server-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .server-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .server-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(107, 115, 255, 0.2);
+        }
+
+        .server-card.selected {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .server-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        .server-icon img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .server-info {
+            flex: 1;
+        }
+
+        .server-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .server-members {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .dashboard-content {
+            display: none;
+        }
+
+        .dashboard-content.active {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .content-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 0.25rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-success { background: var(--success); }
+        .btn-success:hover { background: #059669; }
+        .btn-warning { background: var(--warning); }
+        .btn-warning:hover { background: #D97706; }
+        .btn-danger { background: var(--danger); }
+        .btn-danger:hover { background: #DC2626; }
+        .btn-info { background: var(--info); }
+        .btn-info:hover { background: #2563EB; }
+        .btn-secondary { background: #6B7280; }
+        .btn-secondary:hover { background: #4B5563; }
+
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .loading {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 2rem;
+        }
+
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger);
+            color: #FCA5A5;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success);
+            color: #6EE7B7;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .navbar-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+        }
+
+        #console-debug {
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            padding: 1rem;
+            border-radius: 8px;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 1rem;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="navbar-brand">
+                🤖 YSNM Dashboard
+            </div>
+            <div class="navbar-user">
+                <img id="userAvatar" src="/assets/default-avatar.png" alt="Avatar" class="user-avatar">
+                <span id="userName">Carregando...</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Seleção de Servidor -->
+        <div id="serverSelection" class="server-selection">
+            <h2>🏠 Selecione um Servidor</h2>
+            <p>Escolha o servidor que deseja gerenciar</p>
+            <div id="serverGrid" class="server-grid">
+                <div class="loading">Carregando servidores...</div>
+            </div>
+        </div>
+
+        <!-- Conteúdo do Dashboard -->
+        <div id="dashboardContent" class="dashboard-content">
+            <!-- Estatísticas -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="memberCount">...</div>
+                    <div class="stat-label">👥 Membros</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="channelCount">...</div>
+                    <div class="stat-label">📺 Canais</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="roleCount">...</div>
+                    <div class="stat-label">👑 Cargos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="messageCount">...</div>
+                    <div class="stat-label">💬 Mensagens</div>
+                </div>
+            </div>
+
+            <!-- Conteúdo Principal -->
+            <div class="main-content">
+                <!-- Moderação -->
+                <div class="content-section">
+                    <h3 class="section-title">🛡️ Moderação</h3>
+                    <div class="actions-grid">
+                        <button class="btn btn-primary" onclick="showAlert('🧹 Limpar Chat', 'Funcionalidade em desenvolvimento')">🧹 Limpar Chat</button>
+                        <button class="btn btn-success" onclick="showAlert('🔓 Desbanir Todos', 'Funcionalidade em desenvolvimento')">🔓 Desbanir Todos</button>
+                        <button class="btn btn-danger" onclick="showAlert('🔒 Bloquear Servidor', 'Funcionalidade em desenvolvimento')">🔒 Bloquear Servidor</button>
+                        <button class="btn btn-warning" onclick="showAlert('⏰ Timeout Usuário', 'Funcionalidade em desenvolvimento')">⏰ Timeout Usuário</button>
+                        <button class="btn btn-info" onclick="showAlert('👢 Expulsar Usuário', 'Funcionalidade em desenvolvimento')">👢 Expulsar Usuário</button>
+                        <button class="btn btn-danger" onclick="showAlert('🔨 Banir Usuário', 'Funcionalidade em desenvolvimento')">🔨 Banir Usuário</button>
+                    </div>
+                </div>
+
+                <!-- Tickets -->
+                <div class="content-section">
+                    <h3 class="section-title">🎫 Sistema de Tickets</h3>
+                    <div class="actions-grid">
+                        <button class="btn btn-primary" onclick="showAlert('🔄 Atualizar', 'Tickets atualizados!')">🔄 Atualizar</button>
+                        <button class="btn btn-success" onclick="showAlert('➕ Novo Ticket', 'Funcionalidade em desenvolvimento')">➕ Novo Ticket</button>
+                        <button class="btn btn-secondary" onclick="showAlert('🗑️ Limpar', 'Filtros limpos!')">🗑️ Limpar</button>
+                        <button class="btn btn-info" onclick="loadTickets()">📋 Carregar Tickets</button>
+                    </div>
+                    <div id="ticketsList" style="margin-top: 1rem;">
+                        <p>Nenhum ticket encontrado</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Debug Console -->
+            <div class="content-section" style="margin-top: 2rem;">
+                <h3 class="section-title">🐛 Debug Console</h3>
+                <button class="btn btn-secondary" onclick="clearDebugConsole()">🗑️ Limpar Console</button>
+                <div id="console-debug"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables
+        let currentServerId = null;
+        let userGuilds = [];
+
+        // Debug console
+        function addDebugLog(message, type = 'info') {
+            const console = document.getElementById('console-debug');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                info: '#0ff',
+                success: '#0f0', 
+                error: '#f00',
+                warning: '#ff0'
+            };
+            
+            console.innerHTML += `<div style="color: ${colors[type] || '#0ff'}">[${timestamp}] ${message}</div>`;
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function clearDebugConsole() {
+            document.getElementById('console-debug').innerHTML = '';
+            addDebugLog('Console limpo', 'info');
+        }
+
+        // Alert system
+        function showAlert(title, message, type = 'info') {
+            addDebugLog(`${title}: ${message}`, type);
+            alert(`${title}\n\n${message}`);
+        }
+
+        // Load user data and guilds
+        async function loadUserData() {
+            try {
+                addDebugLog('🔄 Carregando dados do usuário...', 'info');
+                
+                const [userResponse, guildsResponse] = await Promise.all([
+                    fetch('/api/user'),
+                    fetch('/api/guilds')
+                ]);
+
+                addDebugLog(`Status /api/user: ${userResponse.status}`, 'info');
+                addDebugLog(`Status /api/guilds: ${guildsResponse.status}`, 'info');
+
+                const userData = await userResponse.json();
+                const guildsData = await guildsResponse.json();
+
+                if (userData.success && guildsData.success) {
+                    addDebugLog('✅ Dados carregados com sucesso', 'success');
+                    
+                    document.getElementById('userName').textContent = userData.user?.username || 'Developer';
+                    if (userData.user?.avatar) {
+                        document.getElementById('userAvatar').src = userData.user.avatar;
+                    }
+                    
+                    userGuilds = guildsData.guilds || [];
+                    displayServers();
+                } else {
+                    addDebugLog('❌ Falha ao carregar dados', 'error');
+                    showAlert('Erro', 'Falha ao carregar dados do usuário', 'error');
+                }
+            } catch (error) {
+                addDebugLog(`❌ Erro: ${error.message}`, 'error');
+                showAlert('Erro', `Erro ao carregar dados: ${error.message}`, 'error');
+            }
+        }
+
+        function displayServers() {
+            const serverGrid = document.getElementById('serverGrid');
+            
+            if (userGuilds.length === 0) {
+                serverGrid.innerHTML = '<p>Não tens acesso a nenhum servidor com o bot instalado.</p>';
+                return;
+            }
+
+            addDebugLog(`📊 Exibindo ${userGuilds.length} servidor(es)`, 'info');
+
+            serverGrid.innerHTML = userGuilds.map(guild => `
+                <div class="server-card" data-server-id="${guild.id}">
+                    <div class="server-icon">
+                        ${guild.icon ? 
+                            `<img src="https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png" alt="${guild.name}">` :
+                            guild.name.charAt(0).toUpperCase()
+                        }
+                    </div>
+                    <div class="server-info">
+                        <div class="server-name">${guild.name}</div>
+                        <div class="server-members">${guild.memberCount || '?'} membros ${guild.botPresent ? '🟢' : '🔴'}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Add click listeners to server cards
+            document.querySelectorAll('.server-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const serverId = this.getAttribute('data-server-id');
+                    selectServer(serverId, this);
+                });
+            });
+        }
+
+        function selectServer(serverId, clickedElement) {
+            currentServerId = serverId;
+            addDebugLog(`🎯 Servidor selecionado: ${serverId}`, 'success');
+            
+            const serverCards = document.querySelectorAll('.server-card');
+            serverCards.forEach(card => card.classList.remove('selected'));
+            
+            if (clickedElement) {
+                clickedElement.classList.add('selected');
+            }
+
+            document.getElementById('serverSelection').style.display = 'none';
+            document.getElementById('dashboardContent').classList.add('active');
+
+            loadServerData();
+        }
+
+        async function loadServerData() {
+            try {
+                addDebugLog('📊 Carregando dados do servidor...', 'info');
+                
+                // Reset stats
+                document.getElementById('memberCount').textContent = '...';
+                document.getElementById('channelCount').textContent = '...';
+                document.getElementById('roleCount').textContent = '...';
+                document.getElementById('messageCount').textContent = '...';
+
+                // Fetch real server statistics
+                const response = await fetch(`/api/server/${currentServerId}/stats`);
+                const data = await response.json();
+
+                addDebugLog(`Status /api/server/stats: ${response.status}`, 'info');
+
+                if (data.success && data.stats) {
+                    const stats = data.stats;
+                    
+                    document.getElementById('memberCount').textContent = stats.memberCount || 0;
+                    document.getElementById('channelCount').textContent = stats.channelCount || 0;
+                    document.getElementById('roleCount').textContent = stats.roleCount || 0;
+                    document.getElementById('messageCount').textContent = stats.messageCount || 0;
+                    
+                    addDebugLog('✅ Estatísticas carregadas', 'success');
+                } else {
+                    addDebugLog('⚠️ Sem estatísticas disponíveis', 'warning');
+                    
+                    // Set default values
+                    document.getElementById('memberCount').textContent = '0';
+                    document.getElementById('channelCount').textContent = '0';
+                    document.getElementById('roleCount').textContent = '0';
+                    document.getElementById('messageCount').textContent = '0';
+                }
+            } catch (error) {
+                addDebugLog(`❌ Erro ao carregar estatísticas: ${error.message}`, 'error');
+                showAlert('Erro', `Erro ao carregar estatísticas: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadTickets() {
+            try {
+                addDebugLog('🎫 Carregando tickets...', 'info');
+                
+                const response = await fetch('/api/tickets');
+                const data = await response.json();
+                
+                addDebugLog(`Status /api/tickets: ${response.status}`, 'info');
+                
+                const ticketsList = document.getElementById('ticketsList');
+                
+                if (data.success && data.tickets) {
+                    const tickets = data.tickets;
+                    
+                    if (tickets.length > 0) {
+                        ticketsList.innerHTML = tickets.map(ticket => `
+                            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin: 0.5rem 0;">
+                                <strong>#${ticket.id}</strong> - ${ticket.title || 'Sem título'}
+                                <br><small>Status: ${ticket.status || 'Aberto'}</small>
+                            </div>
+                        `).join('');
+                        
+                        addDebugLog(`✅ ${tickets.length} ticket(s) carregado(s)`, 'success');
+                    } else {
+                        ticketsList.innerHTML = '<p>Nenhum ticket encontrado</p>';
+                        addDebugLog('ℹ️ Nenhum ticket encontrado', 'info');
+                    }
+                } else {
+                    ticketsList.innerHTML = '<p>Erro ao carregar tickets</p>';
+                    addDebugLog('❌ Erro ao carregar tickets', 'error');
+                }
+            } catch (error) {
+                addDebugLog(`❌ Erro nos tickets: ${error.message}`, 'error');
+                document.getElementById('ticketsList').innerHTML = '<p>Erro ao carregar tickets</p>';
+            }
+        }
+
+        // Global error handler
+        window.addEventListener('error', function(event) {
+            addDebugLog(`❌ ERRO GLOBAL: ${event.error?.message || event.message}`, 'error');
+        });
+
+        // Initialize dashboard
+        window.addEventListener('load', function() {
+            addDebugLog('🚀 Dashboard iniciado', 'success');
+            loadUserData();
+        });
+
+        // Log clicks for debugging
+        document.addEventListener('click', function(event) {
+            if (event.target.tagName === 'BUTTON') {
+                addDebugLog(`🖱️ Botão clicado: ${event.target.textContent}`, 'info');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -319,6 +319,47 @@ app.get('/dashboard', requireAuth, requireServerAccess, (req, res) => {
     }
 });
 
+// Páginas de teste (desenvolvimento)
+app.get('/debug.html', requireAuth, (req, res) => {
+    try {
+        console.log('🔧 Usuário acessando debug:', req.user?.username || 'Developer');
+        res.sendFile(path.join(__dirname, 'public', 'debug.html'));
+    } catch (error) {
+        console.error('❌ Erro no debug:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
+});
+
+app.get('/test-api.html', requireAuth, (req, res) => {
+    try {
+        console.log('🧪 Usuário acessando test-api:', req.user?.username || 'Developer');
+        res.sendFile(path.join(__dirname, 'public', 'test-api.html'));
+    } catch (error) {
+        console.error('❌ Erro no test-api:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
+});
+
+app.get('/simple-test.html', requireAuth, (req, res) => {
+    try {
+        console.log('🔧 Usuário acessando simple-test:', req.user?.username || 'Developer');
+        res.sendFile(path.join(__dirname, 'public', 'simple-test.html'));
+    } catch (error) {
+        console.error('❌ Erro no simple-test:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
+});
+
+app.get('/dashboard-fixed.html', requireAuth, requireServerAccess, (req, res) => {
+    try {
+        console.log('🔧 Usuário acessando dashboard-fixed:', req.user?.username || 'Developer');
+        res.sendFile(path.join(__dirname, 'public', 'dashboard-fixed.html'));
+    } catch (error) {
+        console.error('❌ Erro no dashboard-fixed:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
+});
+
 // API para obter dados do usuário
 app.get('/api/user', requireAuth, (req, res) => {
     res.json({

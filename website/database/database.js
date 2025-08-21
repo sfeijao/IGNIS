@@ -33,6 +33,58 @@ class Database {
                     reject(err);
                 } else {
                     console.log('✅ Tabelas criadas/verificadas com sucesso');
+                    
+                    // Verificar e corrigir estrutura da tabela logs se necessário
+                    this.fixLogsTable()
+                        .then(() => resolve())
+                        .catch(reject);
+                }
+            });
+        });
+    }
+
+    async fixLogsTable() {
+        return new Promise((resolve, reject) => {
+            // Verificar se a coluna timestamp existe na tabela logs
+            this.db.all("PRAGMA table_info(logs)", (err, rows) => {
+                if (err) {
+                    console.error('❌ Erro ao verificar estrutura da tabela logs:', err);
+                    reject(err);
+                    return;
+                }
+
+                const hasTimestamp = rows.some(row => row.name === 'timestamp');
+                
+                if (!hasTimestamp) {
+                    console.log('🔧 Adicionando coluna timestamp à tabela logs...');
+                    
+                    // Adicionar coluna timestamp se não existir
+                    this.db.run(
+                        "ALTER TABLE logs ADD COLUMN timestamp DATETIME DEFAULT CURRENT_TIMESTAMP",
+                        (err) => {
+                            if (err) {
+                                console.error('❌ Erro ao adicionar coluna timestamp:', err);
+                                reject(err);
+                            } else {
+                                console.log('✅ Coluna timestamp adicionada com sucesso');
+                                
+                                // Atualizar registos existentes sem timestamp
+                                this.db.run(
+                                    "UPDATE logs SET timestamp = CURRENT_TIMESTAMP WHERE timestamp IS NULL",
+                                    (err) => {
+                                        if (err) {
+                                            console.error('⚠️ Aviso ao atualizar timestamps:', err);
+                                        } else {
+                                            console.log('✅ Timestamps atualizados');
+                                        }
+                                        resolve();
+                                    }
+                                );
+                            }
+                        }
+                    );
+                } else {
+                    console.log('✅ Estrutura da tabela logs está correta');
                     resolve();
                 }
             });
@@ -490,21 +542,32 @@ class Database {
 
     async getRecentLogs(limit = 50) {
         return new Promise((resolve, reject) => {
-            this.db.all(`
-                SELECT * FROM logs 
-                ORDER BY timestamp DESC 
-                LIMIT ?
-            `, [limit], (err, rows) => {
+            // Primeiro verificar se a coluna timestamp existe
+            this.db.all("PRAGMA table_info(logs)", (err, columns) => {
                 if (err) {
                     reject(err);
-                } else {
-                    // Parse details JSON
-                    const logs = rows.map(row => ({
-                        ...row,
-                        details: row.details ? JSON.parse(row.details) : null
-                    }));
-                    resolve(logs);
+                    return;
                 }
+
+                const hasTimestamp = columns.some(col => col.name === 'timestamp');
+                const orderBy = hasTimestamp ? 'timestamp' : 'id';
+                
+                this.db.all(`
+                    SELECT * FROM logs 
+                    ORDER BY ${orderBy} DESC 
+                    LIMIT ?
+                `, [limit], (err, rows) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        // Parse details JSON
+                        const logs = rows.map(row => ({
+                            ...row,
+                            details: row.details ? JSON.parse(row.details) : null
+                        }));
+                        resolve(logs);
+                    }
+                });
             });
         });
     }
@@ -512,38 +575,50 @@ class Database {
     async getLogs(options = {}) {
         const { limit = 50, offset = 0, type, level, guild_id } = options;
         
-        let query = 'SELECT * FROM logs WHERE 1=1';
-        const params = [];
-        
-        if (guild_id) {
-            query += ' AND guild_id = ?';
-            params.push(guild_id);
-        }
-        
-        if (type) {
-            query += ' AND type = ?';
-            params.push(type);
-        }
-        
-        if (level) {
-            query += ' AND level = ?';
-            params.push(level);
-        }
-        
-        query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
-        params.push(limit, offset);
-        
         return new Promise((resolve, reject) => {
-            this.db.all(query, params, (err, rows) => {
+            // Primeiro verificar se a coluna timestamp existe
+            this.db.all("PRAGMA table_info(logs)", (err, columns) => {
                 if (err) {
                     reject(err);
-                } else {
-                    const logs = rows.map(row => ({
-                        ...row,
-                        details: row.details ? JSON.parse(row.details) : null
-                    }));
-                    resolve(logs);
+                    return;
                 }
+
+                const hasTimestamp = columns.some(col => col.name === 'timestamp');
+                const orderBy = hasTimestamp ? 'timestamp' : 'id';
+                
+                let query = 'SELECT * FROM logs WHERE 1=1';
+                const params = [];
+                
+                if (guild_id) {
+                    query += ' AND guild_id = ?';
+                    params.push(guild_id);
+                }
+                
+                if (type) {
+                    query += ' AND type = ?';
+                    params.push(type);
+                }
+                
+                if (level) {
+                    query += ' AND level = ?';
+                    params.push(level);
+                }
+                
+                query += ` ORDER BY ${orderBy} DESC LIMIT ? OFFSET ?`;
+                params.push(limit, offset);
+                
+                this.db.all(query, params, (err, rows) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        // Parse details JSON
+                        const logs = rows.map(row => ({
+                            ...row,
+                            details: row.details ? JSON.parse(row.details) : null
+                        }));
+                        resolve(logs);
+                    }
+                });
             });
         });
     }

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Diagnóstico Dashboard YSNM</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0F1419;
+            color: #FFFFFF;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #6B73FF; text-align: center; margin-bottom: 2rem; }
+        .test-section { 
+            background: #1A1F2E; 
+            border-radius: 12px; 
+            padding: 20px; 
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .test-section h3 { color: #8B5CF6; margin-bottom: 15px; }
+        .btn {
+            background: #6B73FF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .btn:hover { background: #5A63E8; }
+        .btn.success { background: #10B981; }
+        .btn.error { background: #EF4444; }
+        .result {
+            background: #252A3A;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            border-left: 4px solid #6B73FF;
+            white-space: pre-wrap;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status { 
+            display: inline-block; 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            font-size: 12px; 
+            font-weight: bold;
+        }
+        .status.success { background: #10B981; }
+        .status.error { background: #EF4444; }
+        .status.loading { background: #F59E0B; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .log { 
+            background: #0F1419; 
+            border: 1px solid #333; 
+            border-radius: 8px; 
+            padding: 15px; 
+            margin-top: 15px; 
+            height: 300px; 
+            overflow-y: auto; 
+            font-family: monospace; 
+            font-size: 11px;
+        }
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .log-entry.info { background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3B82F6; }
+        .log-entry.success { background: rgba(16, 185, 129, 0.1); border-left: 3px solid #10B981; }
+        .log-entry.error { background: rgba(239, 68, 68, 0.1); border-left: 3px solid #EF4444; }
+        .log-entry.warning { background: rgba(245, 158, 11, 0.1); border-left: 3px solid #F59E0B; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Diagnóstico Dashboard YSNM</h1>
+        <p style="text-align: center; color: #94A3B8; margin-bottom: 2rem;">
+            Teste profundo para identificar onde o dashboard falha
+        </p>
+
+        <div class="grid">
+            <!-- Teste de Autenticação -->
+            <div class="test-section">
+                <h3>🔐 Teste de Autenticação</h3>
+                <button class="btn" onclick="testAuth()">Testar Auth</button>
+                <span id="auth-status" class="status loading">Aguardando...</span>
+                <div id="auth-result" class="result" style="display: none;"></div>
+            </div>
+
+            <!-- Teste de Guilds -->
+            <div class="test-section">
+                <h3>🏠 Teste de Guilds</h3>
+                <button class="btn" onclick="testGuilds()">Testar Guilds</button>
+                <span id="guilds-status" class="status loading">Aguardando...</span>
+                <div id="guilds-result" class="result" style="display: none;"></div>
+            </div>
+
+            <!-- Teste de JavaScript -->
+            <div class="test-section">
+                <h3>⚙️ Teste JavaScript</h3>
+                <button class="btn" onclick="testJavaScript()">Testar JS</button>
+                <span id="js-status" class="status loading">Aguardando...</span>
+                <div id="js-result" class="result" style="display: none;"></div>
+            </div>
+
+            <!-- Teste de Console -->
+            <div class="test-section">
+                <h3>🐛 Console Debug</h3>
+                <button class="btn" onclick="startConsoleMonitor()">Monitorar Console</button>
+                <span id="console-status" class="status loading">Aguardando...</span>
+            </div>
+        </div>
+
+        <!-- Log em Tempo Real -->
+        <div class="test-section">
+            <h3>📊 Log de Atividades</h3>
+            <button class="btn" onclick="clearLog()">Limpar Log</button>
+            <div id="activity-log" class="log"></div>
+        </div>
+
+        <!-- Simulação do Dashboard -->
+        <div class="test-section">
+            <h3>🎮 Simulação Dashboard</h3>
+            <button class="btn" onclick="simulateDashboard()">Simular Carregamento</button>
+            <span id="sim-status" class="status loading">Aguardando...</span>
+            <div id="sim-result" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Log system
+        function addLog(message, type = 'info') {
+            const log = document.getElementById('activity-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `<span style="color: #64748B">[${timestamp}]</span> ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('activity-log').innerHTML = '';
+            addLog('Log limpo', 'info');
+        }
+
+        function updateStatus(testName, success, message = '') {
+            const statusEl = document.getElementById(`${testName}-status`);
+            const resultEl = document.getElementById(`${testName}-result`);
+            
+            statusEl.className = `status ${success ? 'success' : 'error'}`;
+            statusEl.textContent = success ? '✅ Sucesso' : '❌ Erro';
+            
+            if (message) {
+                resultEl.style.display = 'block';
+                resultEl.textContent = message;
+            }
+        }
+
+        // Teste de Autenticação
+        async function testAuth() {
+            addLog('🔐 Iniciando teste de autenticação...', 'info');
+            
+            try {
+                // Teste 1: /api/user
+                addLog('Testando /api/user...', 'info');
+                const userResponse = await fetch('/api/user');
+                const userData = await userResponse.json();
+                
+                addLog(`Status: ${userResponse.status}`, userResponse.ok ? 'success' : 'error');
+                addLog(`Resposta: ${JSON.stringify(userData, null, 2)}`, 'info');
+                
+                if (userData.success) {
+                    updateStatus('auth', true, `✅ Usuário autenticado: ${userData.user?.username || 'Developer'}`);
+                    addLog('✅ Autenticação funcionando!', 'success');
+                } else {
+                    updateStatus('auth', false, `❌ Falha na autenticação: ${userData.error || 'Erro desconhecido'}`);
+                    addLog('❌ Falha na autenticação', 'error');
+                }
+            } catch (error) {
+                updateStatus('auth', false, `❌ Erro de rede: ${error.message}`);
+                addLog(`❌ Erro de rede: ${error.message}`, 'error');
+            }
+        }
+
+        // Teste de Guilds
+        async function testGuilds() {
+            addLog('🏠 Iniciando teste de guilds...', 'info');
+            
+            try {
+                const response = await fetch('/api/guilds');
+                const data = await response.json();
+                
+                addLog(`Status: ${response.status}`, response.ok ? 'success' : 'error');
+                addLog(`Resposta: ${JSON.stringify(data, null, 2)}`, 'info');
+                
+                if (data.success) {
+                    const guilds = data.guilds || [];
+                    updateStatus('guilds', true, `✅ ${guilds.length} servidor(es) encontrado(s)\n\n${JSON.stringify(data, null, 2)}`);
+                    addLog(`✅ ${guilds.length} servidor(es) carregado(s)`, 'success');
+                } else {
+                    updateStatus('guilds', false, `❌ Erro: ${data.error || 'Falha na API'}`);
+                    addLog(`❌ Erro ao carregar guilds: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                updateStatus('guilds', false, `❌ Erro de rede: ${error.message}`);
+                addLog(`❌ Erro de rede: ${error.message}`, 'error');
+            }
+        }
+
+        // Teste de JavaScript
+        function testJavaScript() {
+            addLog('⚙️ Testando JavaScript básico...', 'info');
+            
+            try {
+                // Teste 1: Verificar se console funciona
+                console.log('🧪 Teste de console');
+                addLog('✅ Console.log funcionando', 'success');
+                
+                // Teste 2: Verificar localStorage
+                try {
+                    localStorage.setItem('test', 'value');
+                    const test = localStorage.getItem('test');
+                    localStorage.removeItem('test');
+                    addLog('✅ LocalStorage funcionando', 'success');
+                } catch (e) {
+                    addLog('❌ LocalStorage com problemas', 'error');
+                }
+                
+                // Teste 3: Verificar fetch API
+                if (typeof fetch === 'function') {
+                    addLog('✅ Fetch API disponível', 'success');
+                } else {
+                    addLog('❌ Fetch API não disponível', 'error');
+                }
+                
+                // Teste 4: Verificar DOM
+                if (document.getElementById && document.querySelector) {
+                    addLog('✅ DOM API funcionando', 'success');
+                } else {
+                    addLog('❌ DOM API com problemas', 'error');
+                }
+                
+                updateStatus('js', true, '✅ JavaScript básico funcionando corretamente');
+                addLog('✅ Todos os testes JavaScript passaram', 'success');
+                
+            } catch (error) {
+                updateStatus('js', false, `❌ Erro JavaScript: ${error.message}`);
+                addLog(`❌ Erro JavaScript: ${error.message}`, 'error');
+            }
+        }
+
+        // Monitor de Console
+        function startConsoleMonitor() {
+            addLog('🐛 Iniciando monitor de console...', 'info');
+            
+            // Capturar console.log
+            const originalLog = console.log;
+            console.log = function(...args) {
+                addLog(`[LOG] ${args.join(' ')}`, 'info');
+                originalLog.apply(console, args);
+            };
+            
+            // Capturar console.error
+            const originalError = console.error;
+            console.error = function(...args) {
+                addLog(`[ERROR] ${args.join(' ')}`, 'error');
+                originalError.apply(console, args);
+            };
+            
+            // Capturar console.warn
+            const originalWarn = console.warn;
+            console.warn = function(...args) {
+                addLog(`[WARN] ${args.join(' ')}`, 'warning');
+                originalWarn.apply(console, args);
+            };
+            
+            // Capturar erros globais
+            window.addEventListener('error', function(event) {
+                addLog(`[GLOBAL ERROR] ${event.error?.message || event.message} em ${event.filename}:${event.lineno}`, 'error');
+            });
+            
+            updateStatus('console', true, '✅ Monitor de console ativo');
+            addLog('✅ Monitor de console ativo - todas as mensagens serão capturadas', 'success');
+        }
+
+        // Simulação do Dashboard
+        async function simulateDashboard() {
+            addLog('🎮 Iniciando simulação completa do dashboard...', 'info');
+            
+            try {
+                // Passo 1: Simular loadUserData()
+                addLog('Passo 1: Simulando loadUserData()...', 'info');
+                
+                const [userResponse, guildsResponse] = await Promise.all([
+                    fetch('/api/user'),
+                    fetch('/api/guilds')
+                ]);
+                
+                const userData = await userResponse.json();
+                const guildsData = await guildsResponse.json();
+                
+                addLog(`User response: ${JSON.stringify(userData)}`, 'info');
+                addLog(`Guilds response: ${JSON.stringify(guildsData)}`, 'info');
+                
+                if (userData.success && guildsData.success) {
+                    addLog('✅ Dados do usuário e guilds carregados', 'success');
+                    
+                    // Passo 2: Simular seleção de servidor
+                    if (guildsData.guilds && guildsData.guilds.length > 0) {
+                        const firstGuild = guildsData.guilds[0];
+                        addLog(`Passo 2: Simulando seleção do servidor ${firstGuild.name}...`, 'info');
+                        
+                        // Passo 3: Simular loadServerData()
+                        addLog('Passo 3: Simulando loadServerData()...', 'info');
+                        
+                        const statsResponse = await fetch(`/api/server/${firstGuild.id}/stats`);
+                        const statsData = await statsResponse.json();
+                        
+                        addLog(`Stats response: ${JSON.stringify(statsData)}`, 'info');
+                        
+                        if (statsData.success) {
+                            addLog('✅ Estatísticas do servidor carregadas', 'success');
+                            updateStatus('sim', true, '✅ Simulação completa bem-sucedida!');
+                        } else {
+                            addLog('❌ Falha ao carregar estatísticas', 'error');
+                            updateStatus('sim', false, '❌ Falha nas estatísticas do servidor');
+                        }
+                    } else {
+                        addLog('⚠️ Nenhum servidor disponível', 'warning');
+                        updateStatus('sim', false, '⚠️ Nenhum servidor encontrado');
+                    }
+                } else {
+                    addLog('❌ Falha ao carregar dados iniciais', 'error');
+                    updateStatus('sim', false, '❌ Falha nos dados iniciais');
+                }
+                
+            } catch (error) {
+                addLog(`❌ Erro na simulação: ${error.message}`, 'error');
+                updateStatus('sim', false, `❌ Erro: ${error.message}`);
+            }
+        }
+
+        // Inicialização
+        window.addEventListener('load', function() {
+            addLog('🚀 Página de diagnóstico carregada', 'success');
+            addLog('👆 Clique nos botões acima para testar componentes específicos', 'info');
+            addLog('💡 O "Monitorar Console" captura todos os erros JavaScript', 'info');
+        });
+    </script>
+</body>
+</html>
