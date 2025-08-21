@@ -199,6 +199,20 @@ passport.deserializeUser((user, done) => {
 
 // Middleware de autenticação
 function requireAuth(req, res, next) {
+    // Modo de desenvolvimento - bypass autenticação
+    if (process.env.NODE_ENV !== 'production' && !process.env.RAILWAY_ENVIRONMENT_NAME) {
+        console.log('🔧 Modo desenvolvimento: Bypass autenticação');
+        // Simular usuário autenticado para desenvolvimento
+        req.user = {
+            id: 'dev_user',
+            username: 'Developer',
+            discriminator: '0001',
+            avatar: null,
+            guilds: ['1234567890'] // ID de teste
+        };
+        return next();
+    }
+    
     if (req.isAuthenticated()) {
         return next();
     }
@@ -208,6 +222,12 @@ function requireAuth(req, res, next) {
 // Middleware para verificar acesso ao servidor
 function requireServerAccess(req, res, next) {
     try {
+        // Modo de desenvolvimento - bypass verificação de servidor
+        if (process.env.NODE_ENV !== 'production' && !process.env.RAILWAY_ENVIRONMENT_NAME) {
+            console.log('🔧 Modo desenvolvimento: Bypass verificação de servidor');
+            return next();
+        }
+        
         console.log('🔐 Verificando acesso ao servidor para:', req.user?.username || 'Usuário desconhecido');
         
         if (!req.user) {
