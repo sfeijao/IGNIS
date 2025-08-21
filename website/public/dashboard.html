@@ -2138,9 +2138,16 @@
                 
                 console.log('📺 Resposta dos canais:', channelsResponse.status, channelsData);
                 
+                // Debug detalhado dos dados dos canais
                 if (channelsData.success && channelsData.channels) {
+                    console.log('🔍 Debug DETALHADO dos canais:');
+                    console.log('📊 Total de canais recebidos:', channelsData.channels.length);
+                    console.log('📋 Primeiros 3 canais:', channelsData.channels.slice(0, 3));
+                    console.log('🏷️ Tipos únicos encontrados:', [...new Set(channelsData.channels.map(ch => ch.type))]);
+                    
                     populateChannelDropdowns(channelsData.channels);
                 } else {
+                    console.log('⚠️ Erro na resposta dos canais, usando array vazio');
                     populateChannelDropdowns([]);
                 }
                 
@@ -2173,19 +2180,27 @@
         }
 
         function populateChannelDropdowns(channels) {
+            console.log('🔧 Iniciando populateChannelDropdowns com:', channels.length, 'canais');
+            
             const channelSelects = ['welcomeChannel', 'logChannel', 'embedChannel'];
             
             // Filter text channels only - aceita tanto número (0) quanto string ('text')
-            const textChannels = channels.filter(channel => 
-                channel.type === 0 || 
-                channel.type === 'text' || 
-                channel.type === undefined
-            );
+            const textChannels = channels.filter(channel => {
+                const isTextChannel = channel.type === 0 || 
+                                    channel.type === 'text' || 
+                                    channel.type === undefined;
+                
+                if (!isTextChannel) {
+                    console.log('🚫 Canal rejeitado:', channel.name, 'tipo:', channel.type);
+                }
+                return isTextChannel;
+            });
             
-            console.log('🔍 Debug canais:', {
+            console.log('🔍 Debug canais DETALHADO:', {
                 totalChannels: channels.length,
                 textChannels: textChannels.length,
-                sampleChannel: channels[0] // Para debug da estrutura
+                allTypes: channels.map(ch => ({ name: ch.name, type: ch.type })),
+                filteredChannels: textChannels.map(ch => ({ name: ch.name, type: ch.type }))
             });
             
             channelSelects.forEach(selectId => {
@@ -2203,6 +2218,8 @@
                     });
                     
                     console.log(`✅ ${textChannels.length} canais carregados para ${selectId}`);
+                } else {
+                    console.log(`❌ Elemento select não encontrado: ${selectId}`);
                 }
             });
         }
