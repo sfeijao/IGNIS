@@ -1958,6 +1958,7 @@
     <script>
         let currentServerId = null;
         let userGuilds = [];
+        let isTestMode = false; // Controla o estado do modo teste
 
         // Load user info and guilds
         async function loadUserData() {
@@ -3515,10 +3516,21 @@
             window.open(`tickets.html#${ticketId}`, '_blank');
         }
 
-        // Função de teste melhorada para forçar seleção de servidor
-        function forceSelectTestServer() {
+        // Função para alternar modo teste
+        function toggleTestMode() {
+            if (isTestMode) {
+                deactivateTestMode();
+            } else {
+                activateTestMode();
+            }
+        }
+
+        // Função para ativar modo teste
+        function activateTestMode() {
             console.log('🔧 === ATIVANDO MODO TESTE ===');
             console.log('🔧 Forçando seleção de servidor de teste...');
+            
+            isTestMode = true;
             currentServerId = 'test-server-123';
             console.log('✅ Server ID definido como:', currentServerId);
             
@@ -3535,8 +3547,72 @@
             // Popular dropdowns com dados de teste
             populateTestChannelsAndRoles();
             
+            // Atualizar botão
+            updateTestModeButton();
+            
             console.log('✅ === MODO TESTE ATIVADO ===');
             showSuccess('Modo Teste Ativado', 'Servidor de teste selecionado! Todos os botões agora devem funcionar para teste.');
+        }
+
+        // Função para desativar modo teste
+        function deactivateTestMode() {
+            console.log('🔧 === DESATIVANDO MODO TESTE ===');
+            
+            isTestMode = false;
+            currentServerId = null;
+            
+            // Voltar à seleção de servidor
+            document.getElementById('dashboardContent').classList.remove('active');
+            showElement('serverSelection');
+            
+            // Limpar dados de teste
+            serverChannels = [];
+            serverMembers = [];
+            
+            // Limpar dropdowns
+            clearAllDropdowns();
+            
+            // Limpar estatísticas
+            document.getElementById('memberCount').textContent = '0';
+            document.getElementById('channelCount').textContent = '0';
+            document.getElementById('roleCount').textContent = '0';
+            document.getElementById('messageCount').textContent = '0';
+            
+            // Atualizar botão
+            updateTestModeButton();
+            
+            console.log('✅ === MODO TESTE DESATIVADO ===');
+            showInfo('Modo Teste Desativado', 'Volte a selecionar um servidor real para continuar.');
+        }
+
+        // Função para atualizar o texto e estilo do botão
+        function updateTestModeButton() {
+            const testModeBtn = document.getElementById('testModeBtn');
+            if (testModeBtn) {
+                if (isTestMode) {
+                    testModeBtn.textContent = '🔴 Desativar Modo Teste';
+                    testModeBtn.className = 'btn btn-danger';
+                } else {
+                    testModeBtn.textContent = '🔧 Ativar Modo Teste';
+                    testModeBtn.className = 'btn btn-secondary';
+                }
+            }
+        }
+
+        // Função para limpar todos os dropdowns
+        function clearAllDropdowns() {
+            const dropdowns = ['welcomeChannel', 'logChannel', 'embedChannel', 'autoRole'];
+            dropdowns.forEach(id => {
+                const select = document.getElementById(id);
+                if (select) {
+                    select.innerHTML = '<option value="">Seleciona uma opção...</option>';
+                }
+            });
+        }
+
+        // Manter função legacy para compatibilidade
+        function forceSelectTestServer() {
+            activateTestMode();
         }
 
         // Popular com dados de teste
@@ -3925,7 +4001,7 @@
             if (timeoutModalBtn) timeoutModalBtn.addEventListener('click', showTimeoutModal);
             if (kickModalBtn) kickModalBtn.addEventListener('click', showKickModal);
             if (banModalBtn) banModalBtn.addEventListener('click', showBanModal);
-            if (testModeBtn) testModeBtn.addEventListener('click', forceSelectTestServer);
+            if (testModeBtn) testModeBtn.addEventListener('click', toggleTestMode);
             if (statusBtn) statusBtn.addEventListener('click', showButtonStatus);
             if (testAllBtn) testAllBtn.addEventListener('click', testAllModerationButtons);
             
