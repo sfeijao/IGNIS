@@ -15,6 +15,9 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 4000;
 
+// Trust proxy settings (needed for rate limiting behind proxies)
+app.set('trust proxy', 1);
+
 // Initialize database
 const db = new Database();
 db.initialize().then(() => {
@@ -44,7 +47,10 @@ app.use(helmet({
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 1000, // limit each IP to 1000 requests per windowMs
-    message: { error: 'Muitas requisições, tente novamente em 15 minutos' }
+    message: { error: 'Muitas requisições, tente novamente em 15 minutos' },
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    trustProxy: true // Trust proxy headers
 });
 app.use(limiter);
 
@@ -91,12 +97,11 @@ app.use(passport.session());
 const isProduction = process.env.NODE_ENV === 'production' || 
                     !!process.env.RAILWAY_ENVIRONMENT_NAME || 
                     !!process.env.RAILWAY_PROJECT_NAME ||
-                    !!process.env.RAILWAY_SERVICE_NAME ||
-                    (process.env.PORT && process.env.PORT !== '3001');
+                    !!process.env.RAILWAY_SERVICE_NAME;
                     
 const callbackURL = isProduction ? 
     (config.website.production?.redirectUri || 'https://ysnmbot-alberto.up.railway.app/auth/discord/callback') :
-    config.website.redirectUri;
+    `http://localhost:${PORT}/auth/discord/callback`;
 
 console.log('🔍 Debug OAuth2:');
 console.log('   NODE_ENV:', process.env.NODE_ENV);
