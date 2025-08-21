@@ -1776,13 +1776,13 @@
                                 <button class="btn btn-success" id="newTicketBtn">➕ Novo Ticket</button>
                             </div>
                             <div class="filters-row">
-                                <select id="statusFilter" class="form-select" onchange="filterTickets()">
+                                <select id="statusFilter" class="form-select">
                                     <option value="">Todos os Status</option>
                                     <option value="open">Abertos</option>
                                     <option value="assigned">Atribuídos</option>
                                     <option value="closed">Fechados</option>
                                 </select>
-                                <select id="priorityFilter" class="form-select" onchange="filterTickets()">
+                                <select id="priorityFilter" class="form-select">
                                     <option value="">Todas as Prioridades</option>
                                     <option value="low">Baixa</option>
                                     <option value="normal">Normal</option>
@@ -1922,7 +1922,7 @@
 
                     <div class="config-form">
                         <div class="logs-controls">
-                            <select id="logFilter" onchange="filterLogs()">
+                            <select id="logFilter">
                                 <option value="">Todos os Logs</option>
                                 <option value="moderation">Moderação</option>
                                 <option value="message">Mensagens</option>
@@ -1930,7 +1930,7 @@
                                 <option value="bot">Bot</option>
                                 <option value="error">Erros</option>
                             </select>
-                            <select id="logLevel" onchange="filterLogs()">
+                            <select id="logLevel">
                                 <option value="">Todos os Níveis</option>
                                 <option value="info">Info</option>
                                 <option value="warn">Aviso</option>
@@ -2122,6 +2122,12 @@
         async function loadChannelsAndRoles() {
             if (!currentServerId) return;
             
+            // Se estiver em modo de teste, usar dados de teste
+            if (currentServerId === 'test-server-123') {
+                populateTestChannelsAndRoles();
+                return;
+            }
+            
             try {
                 console.log('📺 Carregando canais e cargos do servidor:', currentServerId);
                 
@@ -2166,7 +2172,7 @@
         }
 
         function populateChannelDropdowns(channels) {
-            const channelSelects = ['welcomeChannel', 'logChannel'];
+            const channelSelects = ['welcomeChannel', 'logChannel', 'embedChannel'];
             
             // Filter text channels only
             const textChannels = channels.filter(channel => channel.type === 0 || channel.type === undefined);
@@ -2590,6 +2596,14 @@
         }
 
         async function loadServerMembers() {
+            // Se estiver em modo de teste, usar dados de teste
+            if (currentServerId === 'test-server-123') {
+                if (!serverMembers || serverMembers.length === 0) {
+                    populateTestChannelsAndRoles(); // Garantir que os dados de teste estão carregados
+                }
+                return;
+            }
+            
             try {
                 const response = await fetch(`/api/server/${currentServerId}/members?limit=100`);
                 const data = await response.json();
@@ -2730,6 +2744,22 @@
         async function loadServerChannels() {
             const channelSelect = document.getElementById('channelSelect');
             channelSelect.innerHTML = '<option value="">Carregando canais...</option>';
+            
+            // Se estiver em modo de teste, usar dados de teste
+            if (currentServerId === 'test-server-123') {
+                if (!serverChannels || serverChannels.length === 0) {
+                    populateTestChannelsAndRoles(); // Garantir que os dados de teste estão carregados
+                }
+                
+                channelSelect.innerHTML = '<option value="">Selecione um canal</option>';
+                serverChannels.forEach(channel => {
+                    const option = document.createElement('option');
+                    option.value = channel.id;
+                    option.textContent = `#${channel.name}`;
+                    channelSelect.appendChild(option);
+                });
+                return;
+            }
             
             try {
                 const response = await fetch(`/api/server/${currentServerId}/channels`);
@@ -3745,9 +3775,9 @@
                 return;
             }
 
-            const welcomeChannelId = document.getElementById('welcomeChannel').value;
-            const logChannelId = document.getElementById('logChannel').value;
-            const autoroleRoleId = document.getElementById('autoroleRole').value;
+            const welcomeChannelId = document.getElementById('welcomeChannel')?.value;
+            const logChannelId = document.getElementById('logChannel')?.value;
+            const autoroleRoleId = document.getElementById('autoRole')?.value;
 
             let savedCount = 0;
             let totalToSave = 0;
@@ -4035,6 +4065,28 @@
                     const resultsContainer = document.getElementById('banUserResults');
                     searchUsers(this.value, resultsContainer, 'ban');
                 });
+            }
+            
+            // Filter event listeners
+            const statusFilter = document.getElementById('statusFilter');
+            const priorityFilter = document.getElementById('priorityFilter');
+            const logFilter = document.getElementById('logFilter');
+            const logLevel = document.getElementById('logLevel');
+            
+            if (statusFilter) {
+                statusFilter.addEventListener('change', filterTickets);
+            }
+            
+            if (priorityFilter) {
+                priorityFilter.addEventListener('change', filterTickets);
+            }
+            
+            if (logFilter) {
+                logFilter.addEventListener('change', filterLogs);
+            }
+            
+            if (logLevel) {
+                logLevel.addEventListener('change', filterLogs);
             }
             
             console.log('✅ Event listeners configurados com sucesso!');
