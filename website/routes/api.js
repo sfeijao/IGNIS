@@ -186,7 +186,7 @@ router.get('/analytics/activity', requireAuth, async (req, res) => {
 // === TICKETS ROUTES ===
 
 // Get all tickets
-router.get('/tickets', requireAuth, async (req, res) => {
+router.get('/tickets', async (req, res) => {
     try {
         const { status, priority, assigned } = req.query;
         const guildId = req.currentServerId;
@@ -222,7 +222,7 @@ router.get('/tickets', requireAuth, async (req, res) => {
 });
 
 // Get ticket stats
-router.get('/tickets/stats', requireAuth, async (req, res) => {
+router.get('/tickets/stats', async (req, res) => {
     try {
         const guildId = req.currentServerId;
         
