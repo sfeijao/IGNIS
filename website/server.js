@@ -1507,7 +1507,13 @@ app.use((error, req, res, next) => {
 });
 
 // Routes - Updated to include new API routes
-app.use('/api', require('./routes/api'));
+try {
+    console.log('🔗 Carregando rotas da API...');
+    app.use('/api', require('./routes/api'));
+    console.log('✅ Rotas da API carregadas com sucesso');
+} catch (error) {
+    console.error('❌ Erro ao carregar rotas da API:', error);
+}
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

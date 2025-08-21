@@ -15,6 +15,12 @@ const apiLimiter = rateLimit({
 
 router.use(apiLimiter);
 
+// Debug middleware
+router.use((req, res, next) => {
+    console.log(`🔍 API Request: ${req.method} ${req.originalUrl}`);
+    next();
+});
+
 // Middleware para definir serverId
 router.use((req, res, next) => {
     // Get server ID from various sources
