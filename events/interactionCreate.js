@@ -435,5 +435,204 @@ module.exports = {
                 }
             }
         }
+        
+        // Handler para modais de tickets
+        if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_modal_')) {
+            const ticketCommand = interaction.client.commands.get('ticket');
+            if (ticketCommand && ticketCommand.handleModalSubmit) {
+                try {
+                    await ticketCommand.handleModalSubmit(interaction);
+                } catch (error) {
+                    console.error('❌ Erro ao processar modal de ticket:', error);
+                    if (!interaction.replied && !interaction.deferred) {
+                        await interaction.reply({
+                            content: '❌ Erro ao processar ticket. Tenta novamente.',
+                            ephemeral: true
+                        });
+                    }
+                }
+            }
+        }
+        
+        // Handler para botões de tickets
+        if (interaction.isButton() && (interaction.customId.startsWith('ticket_assign_') || interaction.customId.startsWith('ticket_close_'))) {
+            try {
+                const Database = require('../website/database/database');
+                const db = new Database();
+                
+                if (interaction.customId.startsWith('ticket_assign_')) {
+                    const ticketId = interaction.customId.split('_')[2];
+                    const userId = interaction.user.id;
+                    const username = interaction.user.username;
+                    
+                    // Verificar se o usuário tem permissão
+                    if (!interaction.member.permissions.has('ManageMessages')) {
+                        return await interaction.reply({
+                            content: '❌ Não tens permissão para atribuir tickets.',
+                            ephemeral: true
+                        });
+                    }
+                    
+                    // Atualizar ticket na base de dados
+                    await db.updateTicketStatus(ticketId, 'assigned', userId);
+                    
+                    // Criar embed de atribuição
+                    const assignEmbed = new EmbedBuilder()
+                        .setColor(0xFFAA00)
+                        .setTitle('👋 Ticket Atribuído')
+                        .setDescription(`Ticket foi atribuído para <@${userId}>`)
+                        .addFields(
+                            { name: '🎫 Ticket', value: `#${ticketId}`, inline: true },
+                            { name: '👤 Atribuído para', value: username, inline: true },
+                            { name: '🕒 Data', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+                        )
+                        .setFooter({ text: 'Sistema de Tickets YSNM' })
+                        .setTimestamp();
+                    
+                    await interaction.reply({
+                        embeds: [assignEmbed]
+                    });
+                    
+                    console.log(`✅ Ticket #${ticketId} atribuído para ${username}`);
+                    
+                } else if (interaction.customId.startsWith('ticket_close_')) {
+                    const ticketId = interaction.customId.split('_')[2];
+                    const userId = interaction.user.id;
+                    const username = interaction.user.username;
+                    
+                    // Verificar se o usuário tem permissão
+                    if (!interaction.member.permissions.has('ManageMessages')) {
+                        return await interaction.reply({
+                            content: '❌ Não tens permissão para fechar tickets.',
+                            ephemeral: true
+                        });
+                    }
+                    
+                    // Criar modal para motivo de fechamento
+                    const modal = new ModalBuilder()
+                        .setCustomId(`ticket_close_modal_${ticketId}`)
+                        .setTitle('🔒 Fechar Ticket');
+
+                    const reasonInput = new TextInputBuilder()
+                        .setCustomId('close_reason')
+                        .setLabel('Motivo do Fechamento')
+                        .setStyle(TextInputStyle.Short)
+                        .setMinLength(3)
+                        .setMaxLength(200)
+                        .setPlaceholder('Ex: Problema resolvido, duplicado, etc...')
+                        .setRequired(true);
+
+                    const actionRow = new ActionRowBuilder().addComponents(reasonInput);
+                    modal.addComponents(actionRow);
+
+                    await interaction.showModal(modal);
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro ao processar botão de ticket:', error);
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({
+                        content: '❌ Erro ao processar ação do ticket.',
+                        ephemeral: true
+                    });
+                }
+            }
+        }
+        
+        // Handler para modal de fechamento de ticket
+        if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_close_modal_')) {
+            try {
+                const ticketId = interaction.customId.split('_')[3];
+                const reason = interaction.fields.getTextInputValue('close_reason');
+                const userId = interaction.user.id;
+                const username = interaction.user.username;
+                
+                await interaction.deferReply();
+                
+                const Database = require('../website/database/database');
+                const db = new Database();
+                
+                // Atualizar ticket na base de dados
+                await db.updateTicketStatus(ticketId, 'closed', userId, reason);
+                
+                // Criar embed de fechamento
+                const closeEmbed = new EmbedBuilder()
+                    .setColor(0xFF0000)
+                    .setTitle('🔒 Ticket Fechado')
+                    .setDescription('Este ticket foi fechado e será arquivado em 10 segundos.')
+                    .addFields(
+                        { name: '🎫 Ticket', value: `#${ticketId}`, inline: true },
+                        { name: '👤 Fechado por', value: username, inline: true },
+                        { name: '📝 Motivo', value: reason, inline: true },
+                        { name: '🕒 Data', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
+                    )
+                    .setFooter({ text: 'Sistema de Tickets YSNM' })
+                    .setTimestamp();
+                
+                await interaction.editReply({
+                    embeds: [closeEmbed]
+                });
+                
+                // Arquivar canal após 10 segundos
+                setTimeout(async () => {
+                    try {
+                        // Buscar categoria de tickets arquivados
+                        let archivedCategory = interaction.guild.channels.cache.find(
+                            channel => channel.type === 4 && channel.name.toLowerCase() === 'tickets-arquivados'
+                        );
+                        
+                        if (!archivedCategory) {
+                            archivedCategory = await interaction.guild.channels.create({
+                                name: 'Tickets-Arquivados',
+                                type: 4, // Category
+                                permissionOverwrites: [
+                                    {
+                                        id: interaction.guild.roles.everyone,
+                                        deny: ['ViewChannel']
+                                    },
+                                    // Apenas moderadores podem ver
+                                    ...interaction.guild.roles.cache
+                                        .filter(role => role.permissions.has('ManageMessages'))
+                                        .map(role => ({
+                                            id: role.id,
+                                            allow: ['ViewChannel', 'ReadMessageHistory']
+                                        }))
+                                ]
+                            });
+                        }
+                        
+                        // Renomear canal para indicar que está fechado
+                        const newName = `fechado-${interaction.channel.name}`;
+                        await interaction.channel.setName(newName);
+                        await interaction.channel.setParent(archivedCategory.id);
+                        
+                        // Remover permissões do usuário original (exceto se for staff)
+                        const ticketOwnerId = interaction.channel.topic?.match(/User: (\d+)/)?.[1];
+                        if (ticketOwnerId && !interaction.guild.members.cache.get(ticketOwnerId)?.permissions.has('ManageMessages')) {
+                            await interaction.channel.permissionOverwrites.delete(ticketOwnerId);
+                        }
+                        
+                        console.log(`📁 Ticket #${ticketId} arquivado como ${newName}`);
+                    } catch (archiveError) {
+                        console.error('Erro ao arquivar ticket:', archiveError);
+                    }
+                }, 10000);
+                
+                console.log(`✅ Ticket #${ticketId} fechado com sucesso por ${username}`);
+                
+            } catch (error) {
+                console.error('❌ Erro ao fechar ticket:', error);
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({
+                        content: '❌ Erro ao fechar ticket.',
+                        ephemeral: true
+                    });
+                } else {
+                    await interaction.editReply({
+                        content: '❌ Erro ao fechar ticket.'
+                    });
+                }
+            }
+        }
     },
 };
