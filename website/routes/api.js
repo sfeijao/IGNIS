@@ -185,21 +185,6 @@ router.get('/analytics/activity', requireAuth, async (req, res) => {
 
 // === TICKETS ROUTES ===
 
-// Test endpoint for tickets (no auth)
-router.get('/tickets/test', async (req, res) => {
-    try {
-        console.log('🎫 Testando endpoint de tickets...');
-        res.json({
-            success: true,
-            message: 'Endpoint de tickets funcionando!',
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        console.error('Erro no teste de tickets:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
-    }
-});
-
 // Get all tickets
 router.get('/tickets', requireAuth, async (req, res) => {
     try {
@@ -209,11 +194,26 @@ router.get('/tickets', requireAuth, async (req, res) => {
         console.log('🎫 Buscando tickets para guild:', guildId);
         console.log('🎫 Parâmetros:', { status, priority, assigned });
         
-        const tickets = await db.getTickets(guildId, { status, priority, assigned });
+        // Criar filtros baseados nos parâmetros
+        const filters = {};
+        if (status && status !== '') filters.status = status;
+        if (priority && priority !== '') filters.priority = priority;
+        if (assigned && assigned !== '') filters.assigned_to = assigned;
+        
+        const tickets = await db.getTickets(guildId, filters.status);
+        
+        // Aplicar filtros adicionais se necessário
+        let filteredTickets = tickets;
+        if (filters.priority) {
+            filteredTickets = filteredTickets.filter(t => t.priority === filters.priority);
+        }
+        if (filters.assigned_to) {
+            filteredTickets = filteredTickets.filter(t => t.assigned_to === filters.assigned_to);
+        }
         
         res.json({
             success: true,
-            tickets
+            tickets: filteredTickets
         });
     } catch (error) {
         console.error('Erro ao buscar tickets:', error);
@@ -247,7 +247,7 @@ router.post('/tickets', requireAuth, async (req, res) => {
             subject: Joi.string().min(3).max(100).required(),
             description: Joi.string().max(1000).required(),
             priority: Joi.string().valid('low', 'normal', 'high', 'urgent').default('normal'),
-            category: Joi.string().max(50).optional()
+            category: Joi.string().max(50).optional().default('general')
         });
         
         const { error, value } = schema.validate(req.body);
@@ -257,20 +257,130 @@ router.post('/tickets', requireAuth, async (req, res) => {
         
         const guildId = req.currentServerId;
         const userId = req.user.id;
+        const username = req.user.username;
         
-        const ticketId = await db.createTicket({
+        console.log('🎫 Criando ticket para:', { guildId, userId, username, subject: value.subject });
+        
+        // Verificar se o bot está online e tem acesso ao servidor
+        if (!global.discordClient || !global.discordClient.isReady()) {
+            return res.status(503).json({ error: 'Bot do Discord não está disponível' });
+        }
+        
+        const guild = global.discordClient.guilds.cache.get(guildId);
+        if (!guild) {
+            return res.status(404).json({ error: 'Servidor não encontrado' });
+        }
+        
+        // Buscar categoria de tickets (ou criar se não existir)
+        let ticketCategory = guild.channels.cache.find(
+            channel => channel.type === 4 && channel.name.toLowerCase() === 'tickets'
+        );
+        
+        if (!ticketCategory) {
+            console.log('📁 Criando categoria de tickets...');
+            ticketCategory = await guild.channels.create({
+                name: 'Tickets',
+                type: 4, // Category
+                permissionOverwrites: [
+                    {
+                        id: guild.roles.everyone,
+                        deny: ['ViewChannel']
+                    }
+                ]
+            });
+        }
+        
+        // Criar canal do ticket
+        const ticketChannelName = `ticket-${username}-${Date.now().toString().slice(-6)}`;
+        console.log('🎫 Criando canal:', ticketChannelName);
+        
+        const ticketChannel = await guild.channels.create({
+            name: ticketChannelName,
+            type: 0, // Text channel
+            parent: ticketCategory.id,
+            permissionOverwrites: [
+                {
+                    id: guild.roles.everyone,
+                    deny: ['ViewChannel']
+                },
+                {
+                    id: userId,
+                    allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory']
+                },
+                // Permitir que moderadores vejam
+                ...guild.roles.cache
+                    .filter(role => role.permissions.has('ManageMessages'))
+                    .map(role => ({
+                        id: role.id,
+                        allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'ManageMessages']
+                    }))
+            ]
+        });
+        
+        // Criar ticket na base de dados
+        const ticketData = {
             guild_id: guildId,
+            channel_id: ticketChannel.id,
             user_id: userId,
-            username: req.user.username,
+            category: value.category,
             subject: value.subject,
             description: value.description,
-            priority: value.priority,
-            category: value.category
+            priority: value.priority
+        };
+        
+        const ticketResult = await db.createTicket(ticketData);
+        
+        // Enviar mensagem inicial no canal do ticket
+        const embed = {
+            color: 0x00FF00,
+            title: `🎫 Ticket #${ticketResult.id}`,
+            fields: [
+                { name: '📝 Assunto', value: value.subject, inline: true },
+                { name: '⚡ Prioridade', value: value.priority.toUpperCase(), inline: true },
+                { name: '📂 Categoria', value: value.category, inline: true },
+                { name: '📄 Descrição', value: value.description, inline: false },
+                { name: '👤 Criado por', value: `<@${userId}>`, inline: true },
+                { name: '🕒 Data', value: new Date().toLocaleString('pt-PT'), inline: true }
+            ],
+            footer: { text: 'Sistema de Tickets YSNM' },
+            timestamp: new Date()
+        };
+        
+        const components = [
+            {
+                type: 1,
+                components: [
+                    {
+                        type: 2,
+                        style: 3,
+                        label: 'Atribuir-me',
+                        custom_id: `ticket_assign_${ticketResult.id}`,
+                        emoji: { name: '👋' }
+                    },
+                    {
+                        type: 2,
+                        style: 4,
+                        label: 'Fechar Ticket',
+                        custom_id: `ticket_close_${ticketResult.id}`,
+                        emoji: { name: '🔒' }
+                    }
+                ]
+            }
+        ];
+        
+        await ticketChannel.send({
+            content: `<@${userId}> O seu ticket foi criado com sucesso!`,
+            embeds: [embed],
+            components: components
         });
+        
+        console.log(`✅ Ticket #${ticketResult.id} criado com sucesso no canal ${ticketChannel.name}`);
         
         res.json({
             success: true,
-            ticket_id: ticketId,
+            ticket_id: ticketResult.id,
+            channel_id: ticketChannel.id,
+            channel_name: ticketChannel.name,
             message: 'Ticket criado com sucesso'
         });
     } catch (error) {
@@ -353,12 +463,43 @@ router.post('/tickets/:id/assign', requireAuth, async (req, res) => {
         const userId = req.user.id;
         const username = req.user.username;
         
-        await db.updateTicket(ticketId, {
-            status: 'assigned',
-            assigned_to: userId,
-            assigned_name: username,
-            updated_at: new Date().toISOString()
-        });
+        console.log(`👋 Atribuindo ticket #${ticketId} para ${username} (${userId})`);
+        
+        // Buscar ticket na base de dados
+        const tickets = await db.getTickets(req.currentServerId);
+        const ticket = tickets.find(t => t.id == ticketId);
+        
+        if (!ticket) {
+            return res.status(404).json({ error: 'Ticket não encontrado' });
+        }
+        
+        // Atualizar ticket na base de dados
+        await db.updateTicketStatus(ticketId, 'assigned', userId);
+        
+        // Notificar no Discord se bot disponível
+        if (global.discordClient && global.discordClient.isReady()) {
+            const guild = global.discordClient.guilds.cache.get(req.currentServerId);
+            if (guild) {
+                const ticketChannel = guild.channels.cache.get(ticket.channel_id);
+                if (ticketChannel) {
+                    const embed = {
+                        color: 0xFFAA00,
+                        title: '👋 Ticket Atribuído',
+                        description: `Ticket foi atribuído para <@${userId}>`,
+                        fields: [
+                            { name: '🎫 Ticket', value: `#${ticketId}`, inline: true },
+                            { name: '👤 Atribuído para', value: username, inline: true },
+                            { name: '🕒 Data', value: new Date().toLocaleString('pt-PT'), inline: true }
+                        ],
+                        footer: { text: 'Sistema de Tickets YSNM' },
+                        timestamp: new Date()
+                    };
+                    
+                    await ticketChannel.send({ embeds: [embed] });
+                    console.log(`✅ Notificação de atribuição enviada no canal ${ticketChannel.name}`);
+                }
+            }
+        }
         
         res.json({
             success: true,
@@ -375,13 +516,91 @@ router.post('/tickets/:id/close', requireAuth, async (req, res) => {
     try {
         const ticketId = req.params.id;
         const { reason } = req.body;
+        const userId = req.user.id;
+        const username = req.user.username;
         
-        await db.updateTicket(ticketId, {
-            status: 'closed',
-            resolution: reason || 'Resolvido',
-            resolved_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        });
+        console.log(`🔒 Fechando ticket #${ticketId} por ${username}`);
+        
+        // Buscar ticket na base de dados
+        const tickets = await db.getTickets(req.currentServerId);
+        const ticket = tickets.find(t => t.id == ticketId);
+        
+        if (!ticket) {
+            return res.status(404).json({ error: 'Ticket não encontrado' });
+        }
+        
+        // Atualizar ticket na base de dados
+        await db.updateTicketStatus(ticketId, 'closed', null, reason || 'Resolvido');
+        
+        // Notificar no Discord e arquivar canal se bot disponível
+        if (global.discordClient && global.discordClient.isReady()) {
+            const guild = global.discordClient.guilds.cache.get(req.currentServerId);
+            if (guild) {
+                const ticketChannel = guild.channels.cache.get(ticket.channel_id);
+                if (ticketChannel) {
+                    // Enviar mensagem de fechamento
+                    const embed = {
+                        color: 0xFF0000,
+                        title: '🔒 Ticket Fechado',
+                        description: 'Este ticket foi fechado e será arquivado em 10 segundos.',
+                        fields: [
+                            { name: '🎫 Ticket', value: `#${ticketId}`, inline: true },
+                            { name: '👤 Fechado por', value: username, inline: true },
+                            { name: '📝 Motivo', value: reason || 'Resolvido', inline: true },
+                            { name: '🕒 Data', value: new Date().toLocaleString('pt-PT'), inline: false }
+                        ],
+                        footer: { text: 'Sistema de Tickets YSNM' },
+                        timestamp: new Date()
+                    };
+                    
+                    await ticketChannel.send({ embeds: [embed] });
+                    
+                    // Arquivar canal após 10 segundos
+                    setTimeout(async () => {
+                        try {
+                            // Mover para categoria de tickets arquivados
+                            let archivedCategory = guild.channels.cache.find(
+                                channel => channel.type === 4 && channel.name.toLowerCase() === 'tickets-arquivados'
+                            );
+                            
+                            if (!archivedCategory) {
+                                archivedCategory = await guild.channels.create({
+                                    name: 'Tickets-Arquivados',
+                                    type: 4, // Category
+                                    permissionOverwrites: [
+                                        {
+                                            id: guild.roles.everyone,
+                                            deny: ['ViewChannel']
+                                        },
+                                        // Apenas moderadores podem ver
+                                        ...guild.roles.cache
+                                            .filter(role => role.permissions.has('ManageMessages'))
+                                            .map(role => ({
+                                                id: role.id,
+                                                allow: ['ViewChannel', 'ReadMessageHistory']
+                                            }))
+                                    ]
+                                });
+                            }
+                            
+                            // Renomear canal para indicar que está fechado
+                            const newName = `fechado-${ticketChannel.name}`;
+                            await ticketChannel.setName(newName);
+                            await ticketChannel.setParent(archivedCategory.id);
+                            
+                            // Remover permissões do usuário original
+                            await ticketChannel.permissionOverwrites.delete(ticket.user_id);
+                            
+                            console.log(`📁 Ticket #${ticketId} arquivado como ${newName}`);
+                        } catch (archiveError) {
+                            console.error('Erro ao arquivar ticket:', archiveError);
+                        }
+                    }, 10000);
+                    
+                    console.log(`✅ Ticket #${ticketId} fechado com sucesso`);
+                }
+            }
+        }
         
         res.json({
             success: true,
