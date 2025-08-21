@@ -1235,6 +1235,103 @@
             font-size: 0.9rem;
             line-height: 1.4;
         }
+
+        /* Helper Classes para substituir inline styles */
+        .hidden {
+            display: none !important;
+        }
+
+        .bot-status-online {
+            color: var(--success);
+        }
+
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .logs-container {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .logs-loading {
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .btn-refresh {
+            margin-top: 1rem;
+        }
+
+        .warning-text {
+            color: var(--warning);
+        }
+
+        .form-group-hidden {
+            display: none;
+        }
+
+        .danger-text {
+            color: var(--danger);
+        }
+
+        .empty-state {
+            display: none;
+        }
+
+        .tickets-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .embed-preview {
+            border: 1px solid var(--border);
+            padding: 1rem;
+            border-radius: 5px;
+            background: #2f3136;
+            color: white;
+        }
+
+        .embed-border {
+            border-left: 4px solid #9932CC;
+            padding-left: 1rem;
+        }
+
+        /* Fix para elementos que mostram avisos CSS */
+        .modal {
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px); /* Safari compatibility */
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(37, 42, 58, 0.95) 100%);
+            box-shadow: 
+                0 25px 50px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+        }
+
+        /* Melhoria na estrutura base */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            overflow-x: hidden;
+        }
+
+        /* Container principal mais robusto */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
     </style>
 </head>
 <body>
@@ -1309,7 +1406,7 @@
 
                     <div class="config-form">
                         <h4>Status do Bot</h4>
-                        <p>Bot Status: <span id="botStatus" style="color: var(--success);">🟢 Online</span></p>
+                        <p>Bot Status: <span id="botStatus" class="bot-status-online">🟢 Online</span></p>
                         <p>Última atualização: <span id="lastUpdate">-</span></p>
                     </div>
                 </section>
@@ -1363,7 +1460,7 @@
 
                     <div class="config-form">
                         <h4>Ações Rápidas</h4>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                        <div class="actions-grid">
                             <button class="btn btn-primary" onclick="showClearChatModal()">🧹 Limpar Chat</button>
                             <button class="btn btn-success" onclick="massUnban()">🔓 Desbanir Todos</button>
                             <button class="btn btn-danger" onclick="toggleServerLock()">🔒 Bloquear Servidor</button>
@@ -1415,17 +1512,17 @@
                         </form>
 
                         <h4>Logs de Moderação</h4>
-                        <div class="logs-container" style="background: var(--bg-secondary); border-radius: 12px; padding: 1rem; max-height: 300px; overflow-y: auto;">
+                        <div class="logs-container">
                             <div id="moderationLogs">
-                                <p style="color: var(--text-muted); text-align: center;">Carregando logs de moderação...</p>
+                                <p class="logs-loading">Carregando logs de moderação...</p>
                             </div>
-                            <button class="btn btn-secondary" onclick="refreshModerationLogs()" style="margin-top: 1rem;">🔄 Atualizar Logs</button>
+                            <button class="btn btn-secondary btn-refresh" onclick="refreshModerationLogs()">🔄 Atualizar Logs</button>
                         </div>
                     </div>
                 </section>
 
                 <!-- Clear Chat Modal -->
-                <div id="clearChatModal" class="modal" style="display: none;">
+                <div id="clearChatModal" class="modal hidden">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>🧹 Limpar Chat</h3>
@@ -1468,7 +1565,7 @@
                 </div>
 
                 <!-- Timeout Modal -->
-                <div id="timeoutModal" class="modal" style="display: none;">
+                <div id="timeoutModal" class="modal hidden">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>⏰ Dar Timeout</h3>
@@ -1481,7 +1578,7 @@
                                 <div id="timeoutUserResults" class="user-search-results"></div>
                             </div>
                             
-                            <div class="form-group" id="timeoutSelectedUser" style="display: none;">
+                            <div class="form-group form-group-hidden" id="timeoutSelectedUser">
                                 <label>Usuário Selecionado:</label>
                                 <div class="selected-user-card" id="timeoutUserCard"></div>
                             </div>
@@ -1513,7 +1610,7 @@
                 </div>
 
                 <!-- Kick Modal -->
-                <div id="kickModal" class="modal" style="display: none;">
+                <div id="kickModal" class="modal hidden">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>👢 Expulsar Usuário</h3>
@@ -1526,7 +1623,7 @@
                                 <div id="kickUserResults" class="user-search-results"></div>
                             </div>
                             
-                            <div class="form-group" id="kickSelectedUser" style="display: none;">
+                            <div class="form-group form-group-hidden" id="kickSelectedUser">
                                 <label>Usuário Selecionado:</label>
                                 <div class="selected-user-card" id="kickUserCard"></div>
                             </div>
@@ -1540,7 +1637,7 @@
                                 <label>
                                     <input type="checkbox" id="confirmKick"> Confirmo que quero expulsar este usuário
                                 </label>
-                                <small style="color: var(--warning);">⚠️ O usuário poderá voltar com um novo convite</small>
+                                <small class="warning-text">⚠️ O usuário poderá voltar com um novo convite</small>
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -1551,7 +1648,7 @@
                 </div>
 
                 <!-- Ban Modal -->
-                <div id="banModal" class="modal" style="display: none;">
+                <div id="banModal" class="modal hidden">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>🔨 Banir Usuário</h3>
@@ -1564,7 +1661,7 @@
                                 <div id="banUserResults" class="user-search-results"></div>
                             </div>
                             
-                            <div class="form-group" id="banSelectedUser" style="display: none;">
+                            <div class="form-group form-group-hidden" id="banSelectedUser">
                                 <label>Usuário Selecionado:</label>
                                 <div class="selected-user-card" id="banUserCard"></div>
                             </div>
@@ -1600,7 +1697,7 @@
                                 <label>
                                     <input type="checkbox" id="confirmBan"> Confirmo que quero banir este usuário
                                 </label>
-                                <small style="color: var(--danger);">⚠️ Esta é uma ação permanente (a menos que seja desbanido)</small>
+                                <small class="danger-text">⚠️ Esta é uma ação permanente (a menos que seja desbanido)</small>
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -1684,7 +1781,7 @@
                                 <p>Carregando tickets...</p>
                             </div>
                             <div id="ticketsList" class="tickets-list"></div>
-                            <div id="noTickets" class="empty-state" style="display: none;">
+                            <div id="noTickets" class="empty-state hidden">
                                 <p>📭 Nenhum ticket encontrado</p>
                                 <button class="btn btn-primary" onclick="openTicketModal()">Criar Primeiro Ticket</button>
                             </div>
@@ -1693,7 +1790,7 @@
                 </section>
 
                 <!-- Modal para Novo/Editar Ticket -->
-                <div id="ticketModal" class="modal" style="display: none;">
+                <div id="ticketModal" class="modal hidden">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h4 id="ticketModalTitle">➕ Novo Ticket</h4>
@@ -1740,7 +1837,7 @@
                         <p>Cria embeds personalizados para o teu servidor</p>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <div class="tickets-grid">
                         <div class="config-form">
                             <h4>Editor de Embed</h4>
                             <form id="embedForm">
@@ -1777,8 +1874,8 @@
 
                         <div class="config-form">
                             <h4>Pré-visualização</h4>
-                            <div id="embedPreview" style="border: 1px solid var(--border); padding: 1rem; border-radius: 5px; background: #2f3136; color: white;">
-                                <div style="border-left: 4px solid #9932CC; padding-left: 1rem;">
+                            <div id="embedPreview" class="embed-preview">
+                                <div class="embed-border">
                                     <h5 id="previewTitle">Título do Embed</h5>
                                     <p id="previewDescription">Descrição do embed aparecerá aqui...</p>
                                     <small id="previewFooter" style="color: #72767d;">Rodapé</small>
@@ -2554,6 +2651,34 @@
 
         function showInfo(title, message, duration = 5000) {
             return showToast('info', title, message, duration);
+        }
+
+        // Utility functions para controlar visibilidade sem inline styles
+        function hideElement(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.classList.add('hidden');
+                element.style.display = 'none'; // Fallback para compatibilidade
+            }
+        }
+
+        function showElement(elementId, displayType = 'block') {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.classList.remove('hidden');
+                element.style.display = displayType; // Fallback para compatibilidade
+            }
+        }
+
+        function toggleElement(elementId, displayType = 'block') {
+            const element = document.getElementById(elementId);
+            if (element) {
+                if (element.classList.contains('hidden')) {
+                    showElement(elementId, displayType);
+                } else {
+                    hideElement(elementId);
+                }
+            }
         }
 
         async function loadServerChannels() {
