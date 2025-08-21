@@ -360,6 +360,10 @@ app.get('/dashboard-fixed.html', requireAuth, requireServerAccess, (req, res) =>
     }
 });
 
+// Importar e usar rotas de API
+const apiRoutes = require('./routes/api');
+app.use('/api', apiRoutes);
+
 // API para obter dados do usuário
 app.get('/api/user', requireAuth, (req, res) => {
     res.json({
@@ -1507,13 +1511,7 @@ app.use((error, req, res, next) => {
 });
 
 // Routes - Updated to include new API routes
-try {
-    console.log('🔗 Carregando rotas da API...');
-    app.use('/api', require('./routes/api'));
-    console.log('✅ Rotas da API carregadas com sucesso');
-} catch (error) {
-    console.error('❌ Erro ao carregar rotas da API:', error);
-}
+app.use('/api', require('./routes/api'));
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

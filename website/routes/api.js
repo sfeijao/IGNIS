@@ -15,12 +15,6 @@ const apiLimiter = rateLimit({
 
 router.use(apiLimiter);
 
-// Debug middleware
-router.use((req, res, next) => {
-    console.log(`🔍 API Request: ${req.method} ${req.originalUrl}`);
-    next();
-});
-
 // Middleware para definir serverId
 router.use((req, res, next) => {
     // Get server ID from various sources
@@ -192,7 +186,7 @@ router.get('/analytics/activity', requireAuth, async (req, res) => {
 // === TICKETS ROUTES ===
 
 // Get all tickets
-router.get('/tickets', async (req, res) => {
+router.get('/tickets', requireAuth, async (req, res) => {
     try {
         const { status, priority, assigned } = req.query;
         const guildId = req.currentServerId;
@@ -228,7 +222,7 @@ router.get('/tickets', async (req, res) => {
 });
 
 // Get ticket stats
-router.get('/tickets/stats', async (req, res) => {
+router.get('/tickets/stats', requireAuth, async (req, res) => {
     try {
         const guildId = req.currentServerId;
         
