@@ -1885,6 +1885,111 @@
             // Load other data
             loadModerationLogs();
             refreshTicketStats();
+            loadChannelsAndRoles();
+        }
+
+        // Load channels and roles for dropdowns
+        async function loadChannelsAndRoles() {
+            if (!currentServerId) return;
+            
+            try {
+                console.log('📺 Carregando canais e cargos do servidor:', currentServerId);
+                
+                // Load channels
+                const channelsResponse = await fetch(`/api/server/${currentServerId}/channels`);
+                const channelsData = await channelsResponse.json();
+                
+                console.log('📺 Resposta dos canais:', channelsResponse.status, channelsData);
+                
+                if (channelsData.success && channelsData.channels) {
+                    populateChannelDropdowns(channelsData.channels);
+                } else {
+                    populateChannelDropdowns([]);
+                }
+                
+                // Load roles  
+                const rolesResponse = await fetch(`/api/server/${currentServerId}/roles`);
+                const rolesData = await rolesResponse.json();
+                
+                console.log('👑 Resposta dos cargos:', rolesResponse.status, rolesData);
+                
+                if (rolesData.success && rolesData.roles) {
+                    populateRoleDropdowns(rolesData.roles);
+                } else {
+                    populateRoleDropdowns([]);
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar canais e cargos:', error);
+                // Fallback para desenvolvimento
+                populateChannelDropdowns([
+                    { id: 'general', name: '💬 general', type: 0 },
+                    { id: 'welcome', name: '👋 boas-vindas', type: 0 },
+                    { id: 'logs', name: '📋 logs', type: 0 }
+                ]);
+                populateRoleDropdowns([
+                    { id: 'member', name: '👤 Membro', color: 0 },
+                    { id: 'vip', name: '⭐ VIP', color: 16776960 },
+                    { id: 'mod', name: '🛡️ Moderador', color: 5763719 }
+                ]);
+            }
+        }
+
+        function populateChannelDropdowns(channels) {
+            const channelSelects = ['welcomeChannel', 'logChannel'];
+            
+            // Filter text channels only
+            const textChannels = channels.filter(channel => channel.type === 0 || channel.type === undefined);
+            
+            channelSelects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                if (select) {
+                    // Clear existing options except first
+                    select.innerHTML = '<option value="">Seleciona um canal...</option>';
+                    
+                    // Add channels
+                    textChannels.forEach(channel => {
+                        const option = document.createElement('option');
+                        option.value = channel.id;
+                        option.textContent = `#${channel.name}`;
+                        select.appendChild(option);
+                    });
+                    
+                    console.log(`✅ ${textChannels.length} canais carregados para ${selectId}`);
+                }
+            });
+        }
+
+        function populateRoleDropdowns(roles) {
+            const roleSelects = ['autoRole'];
+            
+            // Filter out @everyone and bot roles
+            const assignableRoles = roles.filter(role => 
+                role.name !== '@everyone' && 
+                !role.managed && 
+                role.id !== currentServerId
+            );
+            
+            roleSelects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                if (select) {
+                    // Clear existing options except first
+                    select.innerHTML = '<option value="">Seleciona um cargo...</option>';
+                    
+                    // Add roles
+                    assignableRoles.forEach(role => {
+                        const option = document.createElement('option');
+                        option.value = role.id;
+                        option.textContent = role.name;
+                        if (role.color) {
+                            option.style.color = `#${role.color.toString(16).padStart(6, '0')}`;
+                        }
+                        select.appendChild(option);
+                    });
+                    
+                    console.log(`✅ ${assignableRoles.length} cargos carregados para ${selectId}`);
+                }
+            });
         }
 
         // Menu navigation
