@@ -3055,7 +3055,8 @@
                             return;
                         }
 
-                        if (logData.type === 'log') {
+                        // Suportar múltiplos tipos de log
+                        if (logData.type === 'log' || logData.type === 'info' || logData.type === 'error' || logData.type === 'message') {
                             addLogToDisplay(logData);
                         }
                     } catch (error) {
@@ -3067,19 +3068,23 @@
                     console.error('❌ Erro no stream de logs:', e);
                     if (statusEl) statusEl.textContent = '🔴 Erro de conexão';
                     
-                    // Reconectar após 5 segundos
-                    setTimeout(() => {
-                        if (logsEventSource && logsEventSource.readyState === EventSource.CLOSED) {
+                    // Evitar reconexão infinita se o estado for aberto
+                    if (logsEventSource && logsEventSource.readyState === EventSource.CLOSED) {
+                        console.log('🔄 Stream fechado, tentando reconectar em 5 segundos...');
+                        setTimeout(() => {
                             connectLogs();
-                        }
-                    }, 5000);
+                        }, 5000);
+                    }
                 };
 
             } catch (error) {
                 console.error('Erro ao iniciar stream:', error);
                 if (statusEl) statusEl.textContent = '🔴 Erro';
-                // Fallback para polling
-                loadLogsPolling();
+                
+                // Tentar novamente em 5 segundos se houver erro
+                setTimeout(() => {
+                    connectLogs();
+                }, 5000);
             }
         }
 

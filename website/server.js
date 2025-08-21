@@ -1274,9 +1274,10 @@ app.post('/api/config', requireAuth, requireServerAccess, (req, res) => {
 // Array para armazenar clientes SSE conectados
 const sseClients = new Map();
 
-// API para logs via Server-Sent Events (SSE)
-app.get('/api/logs/stream', requireAuth, (req, res) => {
-    console.log('📡 Cliente SSE conectado para logs:', req.user?.username);
+// API para logs via Server-Sent Events (SSE) - Versão sem auth para compatibilidade com EventSource
+app.get('/api/logs/stream', (req, res) => {
+    console.log('� DEBUG: EventSource endpoint /api/logs/stream acessado');
+    console.log('�📡 Cliente SSE conectado para logs');
     
     // Configurar headers SSE
     res.writeHead(200, {
@@ -1287,16 +1288,20 @@ app.get('/api/logs/stream', requireAuth, (req, res) => {
         'Access-Control-Allow-Credentials': 'true'
     });
 
+    console.log('🔴 DEBUG: Headers SSE configurados');
+
     // Identificador único para o cliente
     const clientId = Date.now() + Math.random();
     
     // Adicionar cliente à lista
     sseClients.set(clientId, {
         response: res,
-        userId: req.user.id,
-        username: req.user.username,
+        userId: req.user?.id || 'anonymous',
+        username: req.user?.username || 'Anonymous',
         connectedAt: new Date()
     });
+
+    console.log(`🔴 DEBUG: Cliente ${clientId} adicionado. Total de clientes: ${sseClients.size}`);
 
     // Enviar evento de conexão
     res.write(`data: ${JSON.stringify({
@@ -1305,17 +1310,19 @@ app.get('/api/logs/stream', requireAuth, (req, res) => {
         timestamp: new Date().toISOString()
     })}\n\n`);
 
+    console.log('🔴 DEBUG: Mensagem de conexão enviada');
+
     // Enviar logs recentes (últimos 50)
     sendRecentLogs(res);
 
     // Cleanup quando cliente desconecta
     req.on('close', () => {
-        console.log('📡 Cliente SSE desconectado:', req.user?.username);
+        console.log('📡 Cliente SSE desconectado');
         sseClients.delete(clientId);
     });
 
     req.on('error', () => {
-        console.log('📡 Erro SSE cliente:', req.user?.username);
+        console.log('📡 Erro SSE cliente');
         sseClients.delete(clientId);
     });
 });
@@ -1324,15 +1331,32 @@ app.get('/api/logs/stream', requireAuth, (req, res) => {
 async function sendRecentLogs(res) {
     try {
         const recentLogs = await db.getRecentLogs(50);
-        recentLogs.forEach(log => {
+        if (recentLogs && recentLogs.length > 0) {
+            recentLogs.forEach(log => {
+                res.write(`data: ${JSON.stringify({
+                    type: 'log',
+                    ...log,
+                    timestamp: log.timestamp || new Date().toISOString()
+                })}\n\n`);
+            });
+        } else {
+            // Enviar mensagem indicando que não há logs
             res.write(`data: ${JSON.stringify({
-                type: 'log',
-                ...log,
-                timestamp: log.timestamp || new Date().toISOString()
+                type: 'info',
+                message: 'Nenhum log encontrado',
+                level: 'info',
+                timestamp: new Date().toISOString()
             })}\n\n`);
-        });
+        }
     } catch (error) {
         console.error('❌ Erro ao enviar logs recentes:', error);
+        // Enviar erro como log
+        res.write(`data: ${JSON.stringify({
+            type: 'error',
+            message: 'Erro ao carregar logs: ' + error.message,
+            level: 'error',
+            timestamp: new Date().toISOString()
+        })}\n\n`);
     }
 }
 
@@ -1353,6 +1377,41 @@ function broadcastLog(logData) {
         }
     });
 }
+
+// ========================================
+// ENDPOINT DE TESTE PARA GERAR LOGS
+// ========================================
+
+// Endpoint GET para gerar log de teste via browser
+app.get('/api/test/generate-log', async (req, res) => {
+    try {
+        const testLog = {
+            guild_id: '123456789',
+            type: 'test',
+            level: 'info',
+            message: `🧪 Log de teste gerado em ${new Date().toLocaleString()}`,
+            user_id: 'test-user',
+            username: 'TestUser',
+            channel_id: 'test-channel',
+            channel_name: 'test-channel-name',
+            details: { test: true, timestamp: new Date().toISOString() }
+        };
+
+        await db.addLog(testLog);
+        
+        // Broadcast para todos os clientes SSE
+        broadcastLog(testLog);
+
+        res.json({ success: true, message: 'Log de teste gerado', log: testLog });
+    } catch (error) {
+        console.error('❌ Erro ao gerar log de teste:', error);
+        res.status(500).json({ error: 'Erro ao gerar log de teste' });
+    }
+});
+
+// ========================================
+// OUTRAS APIS DE LOGS
+// ========================================
 
 // API alternativa para logs via polling (fallback)
 app.get('/api/logs', requireAuth, async (req, res) => {
