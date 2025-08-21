@@ -1326,6 +1326,26 @@
             overflow-x: hidden;
         }
 
+        .embed-footer {
+            color: #72767d;
+        }
+
+        .logs-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .logs-display {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            padding: 1rem;
+            border-radius: 5px;
+            background: var(--bg-secondary);
+            color: var(--text);
+        }
+
         /* Container principal mais robusto */
         .container {
             max-width: 1200px;
@@ -1469,6 +1489,7 @@
                             <button class="btn btn-danger" onclick="showBanModal()">🔨 Banir Usuário</button>
                             <button class="btn btn-secondary" onclick="forceSelectTestServer()">🔧 Ativar Modo Teste</button>
                             <button class="btn btn-secondary" onclick="showButtonStatus()">📊 Ver Status</button>
+                            <button class="btn btn-info" onclick="testAllModerationButtons()">🧪 Testar Todos</button>
                         </div>
 
                         <h4>Filtros Automáticos</h4>
@@ -1878,7 +1899,7 @@
                                 <div class="embed-border">
                                     <h5 id="previewTitle">Título do Embed</h5>
                                     <p id="previewDescription">Descrição do embed aparecerá aqui...</p>
-                                    <small id="previewFooter" style="color: #72767d;">Rodapé</small>
+                                    <small id="previewFooter" class="embed-footer">Rodapé</small>
                                 </div>
                             </div>
                         </div>
@@ -1893,7 +1914,7 @@
                     </div>
 
                     <div class="config-form">
-                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="logs-controls">
                             <select id="logFilter" onchange="filterLogs()">
                                 <option value="">Todos os Logs</option>
                                 <option value="moderation">Moderação</option>
@@ -1918,7 +1939,7 @@
                             <span id="logsCount">0 logs</span>
                         </div>
 
-                        <div id="logsList" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); padding: 1rem; border-radius: 5px; background: var(--bg-secondary); color: var(--text);">
+                        <div id="logsList" class="logs-display">
                             <div class="logs-placeholder">📡 Clique em "Conectar Stream" para receber logs em tempo real</div>
                         </div>
                     </div>
@@ -2870,45 +2891,6 @@
             }
         }
 
-        // Placeholder functions for additional moderation features (now implemented!)
-        function showTimeoutModal() {
-            console.log('⏰ Função showTimeoutModal() chamada. Server ID:', currentServerId);
-            
-            if (!currentServerId) {
-                alert('❌ Por favor, selecione um servidor primeiro!');
-                return;
-            }
-            
-            const modal = document.getElementById('timeoutModal');
-            modal.style.display = 'flex';
-            loadServerMembers();
-        }
-
-        function showKickModal() {
-            console.log('👢 Função showKickModal() chamada. Server ID:', currentServerId);
-            
-            if (!currentServerId) {
-                alert('❌ Por favor, selecione um servidor primeiro!');
-                return;
-            }
-            
-            const modal = document.getElementById('kickModal');
-            modal.style.display = 'flex';
-            loadServerMembers();
-        }
-
-        function showBanModal() {
-            console.log('🔨 Função showBanModal() chamada. Server ID:', currentServerId);
-            
-            if (!currentServerId) {
-                alert('❌ Por favor, selecione um servidor primeiro!');
-                return;
-            }
-            const modal = document.getElementById('banModal');
-            modal.style.display = 'flex';
-            loadServerMembers();
-        }
-
         function refreshModerationLogs() {
             const logsContainer = document.getElementById('moderationLogs');
             logsContainer.innerHTML = '<div class="loading"></div> Carregando logs...';
@@ -2996,10 +2978,6 @@
         // Mock functions for demonstration (keeping for compatibility)
         function clearChat() {
             showClearChatModal();
-        }
-
-        function massUnban() {
-            massUnban();
         }
 
         function lockServer() {
@@ -3466,14 +3444,15 @@
             window.open(`tickets.html#${ticketId}`, '_blank');
         }
 
-        // Função de teste para forçar seleção de servidor
+        // Função de teste melhorada para forçar seleção de servidor
         function forceSelectTestServer() {
+            console.log('🔧 === ATIVANDO MODO TESTE ===');
             console.log('🔧 Forçando seleção de servidor de teste...');
             currentServerId = 'test-server-123';
             console.log('✅ Server ID definido como:', currentServerId);
             
             // Simular que dashboard foi carregado
-            document.getElementById('serverSelection').style.display = 'none';
+            hideElement('serverSelection');
             document.getElementById('dashboardContent').classList.add('active');
             
             // Mostrar estatísticas de teste
@@ -3482,18 +3461,194 @@
             document.getElementById('roleCount').textContent = '8';
             document.getElementById('messageCount').textContent = '1250';
             
-            alert('✅ Servidor de teste selecionado! Server ID: test-server-123\n\nAgora teste os botões de moderação.');
+            // Popular dropdowns com dados de teste
+            populateTestChannelsAndRoles();
+            
+            console.log('✅ === MODO TESTE ATIVADO ===');
+            showSuccess('Modo Teste Ativado', 'Servidor de teste selecionado! Todos os botões agora devem funcionar para teste.');
         }
 
-        // Função para mostrar status dos botões
+        // Popular com dados de teste
+        function populateTestChannelsAndRoles() {
+            console.log('📺 Populando canais e cargos de teste...');
+            
+            // Canais de teste
+            const testChannels = [
+                { id: 'general', name: 'geral', type: 0 },
+                { id: 'welcome', name: 'boas-vindas', type: 0 },
+                { id: 'logs', name: 'logs', type: 0 },
+                { id: 'moderacao', name: 'moderação', type: 0 }
+            ];
+            
+            // Cargos de teste  
+            const testRoles = [
+                { id: 'member', name: 'Membro', color: 0 },
+                { id: 'vip', name: 'VIP', color: 16776960 },
+                { id: 'mod', name: 'Moderador', color: 5763719 },
+                { id: 'admin', name: 'Admin', color: 15158332 }
+            ];
+            
+            // Popular variáveis globais para modais
+            serverChannels = testChannels.map(ch => ({
+                ...ch,
+                type: 'text',
+                category: 'Text Channels',
+                permissionsFor: true
+            }));
+            
+            serverMembers = [
+                {
+                    id: 'test-user-1',
+                    displayName: 'TestUser1',
+                    tag: 'TestUser1#1234',
+                    avatar: null,
+                    roles: [{ name: 'Member', color: '#7289da' }],
+                    isOwner: false,
+                    moderatable: true,
+                    kickable: true,
+                    bannable: true
+                },
+                {
+                    id: 'test-user-2',
+                    displayName: 'TestUser2',
+                    tag: 'TestUser2#5678',
+                    avatar: null,
+                    roles: [{ name: 'VIP', color: '#f1c40f' }],
+                    isOwner: false,
+                    moderatable: true,
+                    kickable: true,
+                    bannable: true
+                }
+            ];
+            
+            populateChannelDropdowns(testChannels);
+            populateRoleDropdowns(testRoles);
+            
+            console.log('✅ Dados de teste carregados!');
+            console.log('📺 serverChannels:', serverChannels);
+            console.log('👥 serverMembers:', serverMembers);
+        }
+
+        // Função melhorada para mostrar status dos botões
         function showButtonStatus() {
             const status = {
                 'currentServerId': currentServerId,
                 'isServerLocked': isServerLocked,
-                'dashboardActive': document.getElementById('dashboardContent').classList.contains('active')
+                'dashboardActive': document.getElementById('dashboardContent').classList.contains('active'),
+                'serverSelectionVisible': document.getElementById('serverSelection').style.display !== 'none',
+                'functionsAvailable': {
+                    'showClearChatModal': typeof showClearChatModal === 'function',
+                    'massUnban': typeof massUnban === 'function',
+                    'toggleServerLock': typeof toggleServerLock === 'function',
+                    'showTimeoutModal': typeof showTimeoutModal === 'function',
+                    'showKickModal': typeof showKickModal === 'function',
+                    'showBanModal': typeof showBanModal === 'function'
+                }
             };
             
-            alert('Status do Dashboard:\n' + JSON.stringify(status, null, 2));
+            console.log('📊 Status completo do Dashboard:', status);
+            
+            // Criar um modal informativo
+            const statusText = Object.entries(status).map(([key, value]) => 
+                `${key}: ${typeof value === 'object' ? JSON.stringify(value, null, 2) : value}`
+            ).join('\n');
+            
+            showInfo('Status do Dashboard', `<pre style="font-family: monospace; font-size: 12px; background: var(--bg); padding: 1rem; border-radius: 8px; overflow-x: auto;">${statusText}</pre>`);
+        }
+
+        // Função de teste para todos os botões de moderação
+        function testAllModerationButtons() {
+            console.log('🧪 === TESTANDO TODOS OS BOTÕES DE MODERAÇÃO ===');
+            
+            if (!currentServerId) {
+                console.log('❌ Nenhum servidor selecionado. Ativando modo teste...');
+                forceSelectTestServer();
+                setTimeout(testAllModerationButtons, 2000);
+                return;
+            }
+            
+            let testResults = [];
+            
+            // Teste 1: Clear Chat Modal
+            console.log('🧹 Testando Clear Chat Modal...');
+            try {
+                showClearChatModal();
+                testResults.push('✅ Clear Chat Modal: Abriu com sucesso');
+                setTimeout(() => {
+                    closeClearChatModal();
+                    console.log('✅ Clear Chat Modal fechado');
+                }, 1000);
+            } catch (error) {
+                testResults.push('❌ Clear Chat Modal: Erro - ' + error.message);
+                console.error('❌ Erro no Clear Chat Modal:', error);
+            }
+            
+            // Teste 2: Timeout Modal
+            setTimeout(() => {
+                console.log('⏰ Testando Timeout Modal...');
+                try {
+                    showTimeoutModal();
+                    testResults.push('✅ Timeout Modal: Abriu com sucesso');
+                    setTimeout(() => {
+                        closeTimeoutModal();
+                        console.log('✅ Timeout Modal fechado');
+                    }, 1000);
+                } catch (error) {
+                    testResults.push('❌ Timeout Modal: Erro - ' + error.message);
+                    console.error('❌ Erro no Timeout Modal:', error);
+                }
+            }, 2000);
+            
+            // Teste 3: Kick Modal
+            setTimeout(() => {
+                console.log('👢 Testando Kick Modal...');
+                try {
+                    showKickModal();
+                    testResults.push('✅ Kick Modal: Abriu com sucesso');
+                    setTimeout(() => {
+                        closeKickModal();
+                        console.log('✅ Kick Modal fechado');
+                    }, 1000);
+                } catch (error) {
+                    testResults.push('❌ Kick Modal: Erro - ' + error.message);
+                    console.error('❌ Erro no Kick Modal:', error);
+                }
+            }, 4000);
+            
+            // Teste 4: Ban Modal
+            setTimeout(() => {
+                console.log('🔨 Testando Ban Modal...');
+                try {
+                    showBanModal();
+                    testResults.push('✅ Ban Modal: Abriu com sucesso');
+                    setTimeout(() => {
+                        closeBanModal();
+                        console.log('✅ Ban Modal fechado');
+                    }, 1000);
+                } catch (error) {
+                    testResults.push('❌ Ban Modal: Erro - ' + error.message);
+                    console.error('❌ Erro no Ban Modal:', error);
+                }
+            }, 6000);
+            
+            // Mostrar resultados finais
+            setTimeout(() => {
+                console.log('🧪 === RESULTADOS DOS TESTES ===');
+                testResults.forEach(result => console.log(result));
+                
+                const successCount = testResults.filter(r => r.startsWith('✅')).length;
+                const totalTests = testResults.length;
+                
+                if (successCount === totalTests) {
+                    showSuccess('Teste Completo', `Todos os ${totalTests} testes passaram com sucesso! 🎉\n\nTodos os botões estão a funcionar corretamente.`);
+                } else {
+                    showWarning('Teste Parcial', `${successCount}/${totalTests} testes passaram.\n\nVerifique o console para detalhes dos erros.`);
+                }
+                
+                console.log('🧪 === FIM DOS TESTES ===');
+            }, 8000);
+            
+            showInfo('Teste em Progresso', 'Testando todos os modais automaticamente. Aguarde 8 segundos para ver os resultados.');
         }
 
         // Função para guardar configurações de moderação
