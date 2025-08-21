@@ -325,25 +325,15 @@ app.get('/api/server/:serverId/channels', requireAuth, async (req, res) => {
     try {
         const serverId = req.params.serverId;
         console.log(`📺 API channels para servidor ${serverId} por:`, req.user?.username);
-        console.log('🔍 Debug global.discordClient:', {
-            exists: !!global.discordClient,
-            isReady: global.discordClient?.isReady(),
-            guildsCount: global.discordClient?.guilds?.cache?.size
-        });
         
         if (!global.discordClient || !global.discordClient.isReady()) {
-            console.log('❌ Bot Discord não está conectado');
             return res.status(503).json({ error: 'Bot Discord não está conectado' });
         }
 
         const guild = global.discordClient.guilds.cache.get(serverId);
         if (!guild) {
-            console.log('❌ Servidor não encontrado:', serverId);
-            console.log('📋 Servidores disponíveis:', [...global.discordClient.guilds.cache.keys()]);
             return res.status(404).json({ error: 'Servidor não encontrado' });
         }
-
-        console.log(`✅ Servidor encontrado: ${guild.name} (${guild.id})`);
 
         // Obter todos os canais do servidor
         const channels = guild.channels.cache

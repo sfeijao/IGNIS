@@ -15,9 +15,20 @@ const apiLimiter = rateLimit({
 
 router.use(apiLimiter);
 
+// Middleware para definir serverId
+router.use((req, res, next) => {
+    // Get server ID from various sources
+    req.currentServerId = req.params.serverId || 
+                         req.query.guildId || 
+                         req.body.guildId ||
+                         process.env.GUILD_ID || 
+                         '1404259700554768406'; // Default server ID
+    next();
+});
+
 // Middleware de autenticação
 const requireAuth = (req, res, next) => {
-    if (!req.session.user) {
+    if (!req.isAuthenticated() || !req.user) {
         return res.status(401).json({ error: 'Não autorizado' });
     }
     next();
@@ -25,7 +36,7 @@ const requireAuth = (req, res, next) => {
 
 // Middleware de validação de admin
 const requireAdmin = (req, res, next) => {
-    if (!req.session.user || !req.session.user.permissions?.includes('ADMINISTRATOR')) {
+    if (!req.isAuthenticated() || !req.user) {
         return res.status(403).json({ error: 'Permissões insuficientes' });
     }
     next();
@@ -36,10 +47,12 @@ const requireAdmin = (req, res, next) => {
 // Overview stats
 router.get('/analytics/overview', requireAuth, async (req, res) => {
     try {
-        const { period = '7d' } = req.query;
-        const guildId = req.session.guild.id;
+        const { period = '7d', guildId } = req.query;
         
-        const stats = await db.getAnalyticsOverview(guildId, period);
+        // Use guildId from query or from config
+        const targetGuildId = guildId || process.env.GUILD_ID || '1404259700554768406';
+        
+        const stats = await db.getAnalyticsOverview(targetGuildId, period);
         
         res.json({
             success: true,
@@ -176,7 +189,7 @@ router.get('/analytics/activity', requireAuth, async (req, res) => {
 router.get('/tickets', requireAuth, async (req, res) => {
     try {
         const { status, priority, assigned } = req.query;
-        const guildId = req.session.guild.id;
+        const guildId = req.currentServerId;
         
         const tickets = await db.getTickets(guildId, { status, priority, assigned });
         
@@ -193,7 +206,7 @@ router.get('/tickets', requireAuth, async (req, res) => {
 // Get ticket stats
 router.get('/tickets/stats', requireAuth, async (req, res) => {
     try {
-        const guildId = req.session.guild.id;
+        const guildId = req.currentServerId;
         const stats = await db.getTicketStats(guildId);
         
         res.json({
@@ -210,9 +223,9 @@ router.get('/tickets/stats', requireAuth, async (req, res) => {
 router.post('/tickets', requireAuth, async (req, res) => {
     try {
         const schema = Joi.object({
-            title: Joi.string().min(3).max(100).required(),
+            subject: Joi.string().min(3).max(100).required(),
             description: Joi.string().max(1000).required(),
-            priority: Joi.string().valid('low', 'medium', 'high', 'urgent').default('medium'),
+            priority: Joi.string().valid('low', 'normal', 'high', 'urgent').default('normal'),
             category: Joi.string().max(50).optional()
         });
         
@@ -221,13 +234,14 @@ router.post('/tickets', requireAuth, async (req, res) => {
             return res.status(400).json({ error: error.details[0].message });
         }
         
-        const guildId = req.session.guild.id;
-        const userId = req.session.user.id;
+        const guildId = req.currentServerId;
+        const userId = req.user.id;
         
         const ticketId = await db.createTicket({
             guild_id: guildId,
             user_id: userId,
-            title: value.title,
+            username: req.user.username,
+            subject: value.subject,
             description: value.description,
             priority: value.priority,
             category: value.category
@@ -307,6 +321,53 @@ router.post('/tickets/:id/messages', requireAuth, async (req, res) => {
         });
     } catch (error) {
         console.error('Erro ao adicionar mensagem ao ticket:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// Assign ticket to user
+router.post('/tickets/:id/assign', requireAuth, async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        const userId = req.user.id;
+        const username = req.user.username;
+        
+        await db.updateTicket(ticketId, {
+            status: 'assigned',
+            assigned_to: userId,
+            assigned_name: username,
+            updated_at: new Date().toISOString()
+        });
+        
+        res.json({
+            success: true,
+            message: 'Ticket atribuído com sucesso'
+        });
+    } catch (error) {
+        console.error('Erro ao atribuir ticket:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// Close ticket
+router.post('/tickets/:id/close', requireAuth, async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        const { reason } = req.body;
+        
+        await db.updateTicket(ticketId, {
+            status: 'closed',
+            resolution: reason || 'Resolvido',
+            resolved_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        });
+        
+        res.json({
+            success: true,
+            message: 'Ticket fechado com sucesso'
+        });
+    } catch (error) {
+        console.error('Erro ao fechar ticket:', error);
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });

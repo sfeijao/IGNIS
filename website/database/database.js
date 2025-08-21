@@ -212,6 +212,52 @@ class Database {
         });
     }
 
+    async updateTicket(ticketId, updates) {
+        return new Promise((resolve, reject) => {
+            const fields = Object.keys(updates);
+            const values = Object.values(updates);
+            const setClause = fields.map(field => `${field} = ?`).join(', ');
+            
+            const stmt = this.db.prepare(`
+                UPDATE tickets 
+                SET ${setClause}
+                WHERE id = ?
+            `);
+            
+            stmt.run([...values, ticketId], function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve({ changes: this.changes });
+                }
+            });
+            stmt.finalize();
+        });
+    }
+
+    async getTicketStats(guildId) {
+        return new Promise((resolve, reject) => {
+            const stmt = this.db.prepare(`
+                SELECT 
+                    COUNT(CASE WHEN status = 'open' THEN 1 END) as open,
+                    COUNT(CASE WHEN status = 'assigned' THEN 1 END) as assigned,
+                    COUNT(CASE WHEN status = 'closed' AND DATE(created_at) = DATE('now') THEN 1 END) as closedToday,
+                    COUNT(CASE WHEN priority = 'urgent' AND status IN ('open', 'assigned') THEN 1 END) as urgent
+                FROM tickets 
+                WHERE guild_id = ?
+            `);
+            
+            stmt.get([guildId], (err, row) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(row || { open: 0, assigned: 0, closedToday: 0, urgent: 0 });
+                }
+            });
+            stmt.finalize();
+        });
+    }
+
     // Analytics
     async recordAnalytics(guildId, type, value = 1, metadata = {}) {
         const date = new Date().toISOString().split('T')[0];
