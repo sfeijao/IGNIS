@@ -1622,6 +1622,13 @@
                                 <label for="timeoutReason">Motivo:</label>
                                 <input type="text" id="timeoutReason" class="form-control" placeholder="Motivo do timeout" value="Timeout via dashboard">
                             </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="confirmTimeout"> Confirmo que quero aplicar timeout neste usuário
+                                </label>
+                                <small class="warning-text">⚠️ O usuário ficará temporariamente impedido de enviar mensagens</small>
+                            </div>
                         </div>
                         <div class="modal-footer">
                             <button id="cancelTimeoutBtn" class="btn btn-secondary">Cancelar</button>
@@ -2387,12 +2394,16 @@
 
         // Timeout Modal Functions
         function showTimeoutModal() {
-            document.getElementById('timeoutModal').style.display = 'flex';
+            const modal = document.getElementById('timeoutModal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
             loadServerMembers();
         }
 
         function closeTimeoutModal() {
-            document.getElementById('timeoutModal').style.display = 'none';
+            const modal = document.getElementById('timeoutModal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
             resetTimeoutForm();
         }
 
@@ -2403,11 +2414,13 @@
             document.getElementById('timeoutSelectedUser').style.display = 'none';
             document.getElementById('timeoutDuration').value = '60';
             document.getElementById('timeoutReason').value = 'Timeout via dashboard';
+            const confirmTimeout = document.getElementById('confirmTimeout');
+            if (confirmTimeout) confirmTimeout.checked = false;
             document.getElementById('executeTimeoutBtn').disabled = true;
         }
 
         async function executeTimeout() {
-            if (!selectedTimeoutUser) return;
+            if (!selectedTimeoutUser || !document.getElementById('confirmTimeout').checked) return;
 
             const duration = parseInt(document.getElementById('timeoutDuration').value);
             const reason = document.getElementById('timeoutReason').value;
@@ -2447,12 +2460,16 @@
 
         // Kick Modal Functions
         function showKickModal() {
-            document.getElementById('kickModal').style.display = 'flex';
+            const modal = document.getElementById('kickModal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
             loadServerMembers();
         }
 
         function closeKickModal() {
-            document.getElementById('kickModal').style.display = 'none';
+            const modal = document.getElementById('kickModal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
             resetKickForm();
         }
 
@@ -2505,12 +2522,16 @@
 
         // Ban Modal Functions
         function showBanModal() {
-            document.getElementById('banModal').style.display = 'flex';
+            const modal = document.getElementById('banModal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
             loadServerMembers();
         }
 
         function closeBanModal() {
-            document.getElementById('banModal').style.display = 'none';
+            const modal = document.getElementById('banModal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
             resetBanForm();
         }
 
@@ -2591,6 +2612,7 @@
             }
             
             const modal = document.getElementById('clearChatModal');
+            modal.classList.remove('hidden');
             modal.style.display = 'flex';
             
             // Load channels
@@ -2599,13 +2621,16 @@
 
         function closeClearChatModal() {
             const modal = document.getElementById('clearChatModal');
+            modal.classList.add('hidden');
             modal.style.display = 'none';
             
             // Reset form
             document.getElementById('messageAmount').value = '10';
             document.getElementById('filterType').value = 'all';
-            document.getElementById('confirmClear').checked = false;
-            document.getElementById('clearChatBtn').disabled = true;
+            const confirmClear = document.getElementById('confirmClear');
+            if (confirmClear) confirmClear.checked = false;
+            const executeClearChatBtn = document.getElementById('executeClearChatBtn');
+            if (executeClearChatBtn) executeClearChatBtn.disabled = true;
         }
 
         // Sistema de Notificações Toast
@@ -2889,6 +2914,13 @@
                 console.error('❌ Erro ao bloquear/desbloquear servidor:', error);
                 alert('❌ Erro ao modificar servidor: ' + error.message);
             }
+        }
+
+        function loadModerationLogs() {
+            console.log('📋 Carregando logs de moderação...');
+            // Esta função é chamada quando o servidor é selecionado
+            // Por agora, apenas chama refreshModerationLogs
+            refreshModerationLogs();
         }
 
         function refreshModerationLogs() {
@@ -3334,6 +3366,7 @@
         function openTicketModal() {
             const modal = document.getElementById('ticketModal');
             if (modal) {
+                modal.classList.remove('hidden');
                 modal.style.display = 'flex';
                 const form = document.getElementById('ticketForm');
                 if (form) form.reset();
@@ -3342,7 +3375,10 @@
 
         function closeTicketModal() {
             const modal = document.getElementById('ticketModal');
-            if (modal) modal.style.display = 'none';
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+            }
         }
 
         async function submitTicket() {
@@ -3938,6 +3974,7 @@
             
             // Corrigir alguns IDs que podem estar duplicados
             const confirmClearCheckbox = document.getElementById('confirmClear');
+            const confirmTimeoutCheckbox = document.getElementById('confirmTimeout');
             const confirmKickCheckbox = document.getElementById('confirmKick');
             const confirmBanCheckbox = document.getElementById('confirmBan');
             
@@ -3945,6 +3982,13 @@
             if (confirmClearCheckbox && executeClearChatBtn) {
                 confirmClearCheckbox.addEventListener('change', function() {
                     executeClearChatBtn.disabled = !this.checked;
+                });
+            }
+
+            // Timeout confirmation
+            if (confirmTimeoutCheckbox && executeTimeoutBtn) {
+                confirmTimeoutCheckbox.addEventListener('change', function() {
+                    executeTimeoutBtn.disabled = !this.checked || !selectedTimeoutUser;
                 });
             }
 
