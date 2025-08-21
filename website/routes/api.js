@@ -185,11 +185,29 @@ router.get('/analytics/activity', requireAuth, async (req, res) => {
 
 // === TICKETS ROUTES ===
 
+// Test endpoint for tickets (no auth)
+router.get('/tickets/test', async (req, res) => {
+    try {
+        console.log('🎫 Testando endpoint de tickets...');
+        res.json({
+            success: true,
+            message: 'Endpoint de tickets funcionando!',
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Erro no teste de tickets:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
 // Get all tickets
 router.get('/tickets', requireAuth, async (req, res) => {
     try {
         const { status, priority, assigned } = req.query;
         const guildId = req.currentServerId;
+        
+        console.log('🎫 Buscando tickets para guild:', guildId);
+        console.log('🎫 Parâmetros:', { status, priority, assigned });
         
         const tickets = await db.getTickets(guildId, { status, priority, assigned });
         
@@ -207,6 +225,9 @@ router.get('/tickets', requireAuth, async (req, res) => {
 router.get('/tickets/stats', requireAuth, async (req, res) => {
     try {
         const guildId = req.currentServerId;
+        
+        console.log('📊 Buscando estatísticas de tickets para guild:', guildId);
+        
         const stats = await db.getTicketStats(guildId);
         
         res.json({
