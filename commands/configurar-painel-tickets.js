@@ -27,66 +27,33 @@ module.exports = {
 
             // Criar embed do painel
             const embed = new EmbedBuilder()
-                .setColor(0x00FF00)
-                .setTitle('🎫 Sistema de Tickets - YSNM')
-                .setDescription(`
-**Precisa de ajuda? Cria um ticket!**
-
-Seleciona a categoria que melhor descreve o teu problema e um ticket será criado automaticamente.
-
-📋 **Como funciona:**
-• Clica num botão abaixo
-• Preenche o formulário que aparece
-• Um canal privado será criado para ti
-• A nossa equipa irá ajudar-te o mais rápido possível
-
-⚠️ **Regras:**
-• Só podes ter 1 ticket aberto de cada vez
-• Usa a categoria correta para o teu problema
-• Sê claro e detalhado na descrição
-• Respeita a equipa de suporte
-                `)
-                .addFields(
-                    { 
-                        name: '🛠️ Suporte Técnico', 
-                        value: 'Problemas com bots, comandos ou funcionalidades', 
-                        inline: true 
-                    },
-                    { 
-                        name: '🚨 Reportar Problema', 
-                        value: 'Bugs, erros ou comportamentos inesperados', 
-                        inline: true 
-                    },
-                    { 
-                        name: '💡 Sugestão', 
-                        value: 'Ideias para melhorar o servidor', 
-                        inline: true 
-                    },
-                    { 
-                        name: '👤 Moderação', 
-                        value: 'Questões relacionadas com moderação', 
-                        inline: true 
-                    },
-                    { 
-                        name: '📝 Geral', 
-                        value: 'Outras questões ou dúvidas', 
-                        inline: true 
-                    },
-                    { 
-                        name: '📊 Status', 
-                        value: 'Sistema ativo e funcional', 
-                        inline: true 
-                    }
-                )
+                .setColor('#9932CC')
+                .setTitle('🎫 SISTEMA DE SUPORTE 🎫')
+                .setDescription(`**Bem-vindo ao sistema de suporte da YSNM Community!**\n\n` +
+                    `Precisas de ajuda? Cria um ticket e a nossa equipa irá ajudar-te rapidamente.\n\n` +
+                    `**🎯 Categorias Disponíveis:**\n` +
+                    `🛠️ **Suporte Técnico** - Problemas com bots, comandos ou funcionalidades\n` +
+                    `🚨 **Reportar Problema** - Bugs, erros ou comportamentos inesperados\n` +
+                    `💡 **Sugestão** - Ideias para melhorar o servidor\n\n` +
+                    `**📋 Como funciona:**\n` +
+                    `1️⃣ Clica no botão da categoria apropriada\n` +
+                    `2️⃣ Preenche o formulário com detalhes\n` +
+                    `3️⃣ Um canal privado será criado para ti\n` +
+                    `4️⃣ A nossa equipa irá responder rapidamente\n\n` +
+                    `**⚠️ Regras importantes:**\n` +
+                    `• Só podes ter 1 ticket aberto de cada vez\n` +
+                    `• Usa a categoria correta para o teu problema\n` +
+                    `• Sê claro e detalhado na descrição\n` +
+                    `• Respeita a equipa de suporte\n\n` +
+                    `✨ **Sistema ativo e pronto para usar!**`)
+                .setThumbnail(interaction.guild.iconURL({ dynamic: true, size: 256 }))
                 .setFooter({ 
-                    text: 'Sistema de Tickets YSNM • Clica num botão para começar',
-                    iconURL: interaction.guild.iconURL()
+                    text: 'YSNM COMMUNITY™ • Sistema de Suporte Técnico • 2025'
                 })
-                .setTimestamp()
-                .setThumbnail(interaction.guild.iconURL());
+                .setTimestamp();
 
             // Criar botões
-            const row1 = new ActionRowBuilder()
+            const row = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('ticket_create_suporte')
@@ -105,34 +72,20 @@ Seleciona a categoria que melhor descreve o teu problema e um ticket será criad
                         .setEmoji('💡')
                 );
 
-            const row2 = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('ticket_create_moderacao')
-                        .setLabel('Moderação')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setEmoji('👤'),
-                    new ButtonBuilder()
-                        .setCustomId('ticket_create_geral')
-                        .setLabel('Geral')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setEmoji('📝')
-                );
-
             // Enviar painel no canal especificado
             const message = await targetChannel.send({
                 embeds: [embed],
-                components: [row1, row2]
+                components: [row]
             });
 
             // Responder ao comando
             await interaction.editReply({
-                content: `✅ Painel de tickets criado com sucesso em ${targetChannel}!
+                content: `✅ **Painel de tickets criado com sucesso!**
                 
-**📋 Informações:**
+**📋 Detalhes:**
 • **Canal**: ${targetChannel}
 • **ID da Mensagem**: \`${message.id}\`
-• **5 categorias** de tickets disponíveis
+• **3 categorias** de suporte disponíveis
 • **Sistema ativo** e pronto para usar
 
 Os utilizadores agora podem clicar nos botões para criar tickets automaticamente!`

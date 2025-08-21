@@ -762,9 +762,7 @@ function getTipoEmoji(tipo) {
     const emojis = {
         'suporte': '🛠️',
         'problema': '🚨',
-        'sugestao': '💡',
-        'moderacao': '👤',
-        'geral': '📝'
+        'sugestao': '💡'
     };
     return emojis[tipo] || '📝';
 }
@@ -773,20 +771,16 @@ function getTipoNome(tipo) {
     const nomes = {
         'suporte': 'Suporte Técnico',
         'problema': 'Reportar Problema',
-        'sugestao': 'Sugestão',
-        'moderacao': 'Moderação',
-        'geral': 'Geral'
+        'sugestao': 'Sugestão'
     };
-    return nomes[tipo] || 'Geral';
+    return nomes[tipo] || 'Suporte';
 }
 
 function getPlaceholderByType(tipo) {
     const placeholders = {
         'suporte': 'Explica qual funcionalidade não está a funcionar, que comando usaste, que erro recebeste...',
         'problema': 'Descreve o bug encontrado, como reproduzir o problema, o que esperavas que acontecesse...',
-        'sugestao': 'Explica a tua ideia em detalhe, como melhoraria o servidor, que benefícios traria...',
-        'moderacao': 'Explica a situação que requer atenção da moderação, utilizadores envolvidos...',
-        'geral': 'Descreve a tua questão ou dúvida em detalhe...'
+        'sugestao': 'Explica a tua ideia em detalhe, como melhoraria o servidor, que benefícios traria...'
     };
     return placeholders[tipo] || 'Descreve o problema em detalhe...';
 }
