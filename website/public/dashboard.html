@@ -1334,7 +1334,7 @@
             }
 
             serverGrid.innerHTML = userGuilds.map(guild => `
-                <div class="server-card" onclick="selectServer('${guild.id}')">
+                <div class="server-card" data-server-id="${guild.id}">
                     <div class="server-icon">
                         ${guild.icon ? 
                             `<img src="https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png" alt="${guild.name}">` :
@@ -1345,14 +1345,28 @@
                     <div class="server-members">${guild.memberCount || '?'} membros ${guild.botPresent ? '🟢' : '🔴'}</div>
                 </div>
             `).join('');
+
+            // Add click listeners to server cards
+            document.querySelectorAll('.server-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const serverId = this.getAttribute('data-server-id');
+                    selectServer(serverId, this);
+                });
+            });
         }
 
-        function selectServer(serverId) {
+        function selectServer(serverId, clickedElement) {
             currentServerId = serverId;
             const serverCards = document.querySelectorAll('.server-card');
             serverCards.forEach(card => card.classList.remove('selected'));
-            event.currentTarget.classList.add('selected');
+            
+            // Select the clicked card
+            if (clickedElement) {
+                clickedElement.classList.add('selected');
+            }
 
+            console.log('🎯 Servidor selecionado:', serverId);
+            
             document.getElementById('serverSelection').style.display = 'none';
             document.getElementById('dashboardContent').classList.add('active');
 
