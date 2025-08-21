@@ -2175,8 +2175,18 @@
         function populateChannelDropdowns(channels) {
             const channelSelects = ['welcomeChannel', 'logChannel', 'embedChannel'];
             
-            // Filter text channels only
-            const textChannels = channels.filter(channel => channel.type === 0 || channel.type === undefined);
+            // Filter text channels only - aceita tanto número (0) quanto string ('text')
+            const textChannels = channels.filter(channel => 
+                channel.type === 0 || 
+                channel.type === 'text' || 
+                channel.type === undefined
+            );
+            
+            console.log('🔍 Debug canais:', {
+                totalChannels: channels.length,
+                textChannels: textChannels.length,
+                sampleChannel: channels[0] // Para debug da estrutura
+            });
             
             channelSelects.forEach(selectId => {
                 const select = document.getElementById(selectId);
