@@ -217,10 +217,127 @@ module.exports = {
                 content: '❌ Erro ao criar ticket. Tenta novamente ou contacta um administrador.'
             });
         }
+    },
+
+    // Função para criar ticket a partir do painel
+    async createTicketFromPanel(interaction, ticketData) {
+        const { tipo, subject, description, priority } = ticketData;
+        
+        // Buscar categoria de tickets (ou criar se não existir)
+        let ticketCategory = interaction.guild.channels.cache.find(
+            channel => channel.type === 4 && channel.name.toLowerCase() === 'tickets'
+        );
+        
+        if (!ticketCategory) {
+            console.log('📁 Criando categoria de tickets...');
+            ticketCategory = await interaction.guild.channels.create({
+                name: 'Tickets',
+                type: 4, // Category
+                permissionOverwrites: [
+                    {
+                        id: interaction.guild.roles.everyone,
+                        deny: ['ViewChannel']
+                    }
+                ]
+            });
+        }
+        
+        // Criar canal do ticket
+        const ticketChannelName = `ticket-${interaction.user.username}-${Date.now().toString().slice(-6)}`;
+        console.log('🎫 Criando canal:', ticketChannelName);
+        
+        const ticketChannel = await interaction.guild.channels.create({
+            name: ticketChannelName,
+            type: 0, // Text channel
+            parent: ticketCategory.id,
+            topic: `Ticket de ${interaction.user.tag} (${interaction.user.id}) - Tipo: ${tipo}`,
+            permissionOverwrites: [
+                {
+                    id: interaction.guild.roles.everyone,
+                    deny: ['ViewChannel']
+                },
+                {
+                    id: interaction.user.id,
+                    allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AttachFiles']
+                },
+                // Permitir que moderadores vejam
+                ...interaction.guild.roles.cache
+                    .filter(role => role.permissions.has('ManageMessages'))
+                    .map(role => ({
+                        id: role.id,
+                        allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'ManageMessages']
+                    }))
+            ]
+        });
+        
+        // Criar ticket na base de dados
+        const Database = require('../website/database/database');
+        const db = new Database();
+        
+        const ticketDBData = {
+            guild_id: interaction.guild.id,
+            channel_id: ticketChannel.id,
+            user_id: interaction.user.id,
+            category: tipo,
+            subject: subject,
+            description: description,
+            priority: priority
+        };
+        
+        const ticketResult = await db.createTicket(ticketDBData);
+        
+        // Criar embed informativo
+        const embed = new EmbedBuilder()
+            .setColor(getPriorityColor(priority))
+            .setTitle(`🎫 Ticket #${ticketResult.id}`)
+            .setThumbnail(interaction.user.displayAvatarURL())
+            .addFields(
+                { name: '📝 Assunto', value: subject, inline: true },
+                { name: '🏷️ Tipo', value: `${getTipoEmoji(tipo)} ${getTipoNome(tipo)}`, inline: true },
+                { name: '⚡ Prioridade', value: `${getPriorityEmoji(priority)} ${priority.toUpperCase()}`, inline: true },
+                { name: '📄 Descrição', value: description.length > 500 ? description.substring(0, 500) + '...' : description, inline: false },
+                { name: '👤 Criado por', value: `<@${interaction.user.id}>`, inline: true },
+                { name: '🕒 Data', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+            )
+            .setFooter({ text: 'Sistema de Tickets YSNM', iconURL: interaction.guild.iconURL() })
+            .setTimestamp();
+        
+        // Criar botões de ação
+        const actionRow = new ActionRowBuilder()
+            .addComponents(
+                {
+                    type: 2,
+                    style: 3,
+                    label: 'Atribuir-me',
+                    custom_id: `ticket_assign_${ticketResult.id}`,
+                    emoji: { name: '👋' }
+                },
+                {
+                    type: 2,
+                    style: 4,
+                    label: 'Fechar Ticket',
+                    custom_id: `ticket_close_${ticketResult.id}`,
+                    emoji: { name: '🔒' }
+                }
+            );
+        
+        // Enviar mensagem no canal do ticket
+        await ticketChannel.send({
+            content: `<@${interaction.user.id}> O seu ticket foi criado com sucesso!\n\n**Staff:** Use os botões abaixo para gerir este ticket.`,
+            embeds: [embed],
+            components: [actionRow]
+        });
+        
+        // Responder ao usuário
+        await interaction.editReply({
+            content: `✅ Ticket criado com sucesso!\n🎫 **Canal:** ${ticketChannel}\n📋 **ID:** #${ticketResult.id}`,
+        });
+        
+        console.log(`✅ Ticket #${ticketResult.id} criado com sucesso por ${interaction.user.tag} via painel`);
     }
 };
 
-// Funções auxiliares
+// Funções auxiliares para o sistema de tickets
 function getTipoEmoji(tipo) {
     const emojis = {
         'suporte': '🛠️',
@@ -230,6 +347,17 @@ function getTipoEmoji(tipo) {
         'geral': '📝'
     };
     return emojis[tipo] || '📝';
+}
+
+function getTipoNome(tipo) {
+    const nomes = {
+        'suporte': 'Suporte Técnico',
+        'problema': 'Reportar Problema',
+        'sugestao': 'Sugestão',
+        'moderacao': 'Moderação',
+        'geral': 'Geral'
+    };
+    return nomes[tipo] || 'Geral';
 }
 
 function getPriorityEmoji(priority) {

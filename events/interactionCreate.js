@@ -454,6 +454,126 @@ module.exports = {
             }
         }
         
+        // Handler para botões de criação de tickets do painel
+        if (interaction.isButton() && interaction.customId.startsWith('ticket_create_')) {
+            const tipo = interaction.customId.split('_')[2];
+            
+            try {
+                // Verificar se o usuário já tem um ticket aberto
+                const Database = require('../website/database/database');
+                const db = new Database();
+                
+                const userTickets = await db.getTickets(interaction.guild.id);
+                const openTicket = userTickets.find(ticket => 
+                    ticket.user_id === interaction.user.id && 
+                    (ticket.status === 'open' || ticket.status === 'assigned')
+                );
+                
+                if (openTicket) {
+                    return await interaction.reply({
+                        content: `❌ Já tens um ticket aberto: <#${openTicket.channel_id}>
+                        
+Por favor fecha o ticket atual antes de criar um novo.`,
+                        ephemeral: true
+                    });
+                }
+                
+                // Criar modal para detalhes do ticket
+                const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+                
+                const modal = new ModalBuilder()
+                    .setCustomId(`ticket_panel_modal_${tipo}_normal`)
+                    .setTitle(`🎫 ${getTipoEmoji(tipo)} ${getTipoNome(tipo)}`);
+
+                const subjectInput = new TextInputBuilder()
+                    .setCustomId('ticket_subject')
+                    .setLabel('Assunto do Ticket')
+                    .setStyle(TextInputStyle.Short)
+                    .setMinLength(5)
+                    .setMaxLength(100)
+                    .setPlaceholder(`Descreve brevemente o teu ${tipo}...`)
+                    .setRequired(true);
+
+                const descriptionInput = new TextInputBuilder()
+                    .setCustomId('ticket_description')
+                    .setLabel('Descrição Detalhada')
+                    .setStyle(TextInputStyle.Paragraph)
+                    .setMinLength(10)
+                    .setMaxLength(1000)
+                    .setPlaceholder(getPlaceholderByType(tipo))
+                    .setRequired(true);
+
+                const priorityInput = new TextInputBuilder()
+                    .setCustomId('ticket_priority')
+                    .setLabel('Prioridade (urgent/high/normal/low)')
+                    .setStyle(TextInputStyle.Short)
+                    .setMinLength(3)
+                    .setMaxLength(6)
+                    .setValue('normal')
+                    .setPlaceholder('normal')
+                    .setRequired(false);
+
+                const row1 = new ActionRowBuilder().addComponents(subjectInput);
+                const row2 = new ActionRowBuilder().addComponents(descriptionInput);
+                const row3 = new ActionRowBuilder().addComponents(priorityInput);
+
+                modal.addComponents(row1, row2, row3);
+
+                await interaction.showModal(modal);
+
+            } catch (error) {
+                console.error('❌ Erro ao processar botão do painel:', error);
+                await interaction.reply({
+                    content: '❌ Erro ao processar pedido. Tenta novamente.',
+                    ephemeral: true
+                });
+            }
+        }
+        
+        // Handler para modais do painel de tickets
+        if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_panel_modal_')) {
+            const [, , , tipo, prioridade] = interaction.customId.split('_');
+            const subject = interaction.fields.getTextInputValue('ticket_subject');
+            const description = interaction.fields.getTextInputValue('ticket_description');
+            const customPriority = interaction.fields.getTextInputValue('ticket_priority') || 'normal';
+            
+            // Validar prioridade
+            const validPriorities = ['urgent', 'high', 'normal', 'low'];
+            const finalPriority = validPriorities.includes(customPriority.toLowerCase()) ? 
+                customPriority.toLowerCase() : 'normal';
+            
+            try {
+                await interaction.deferReply({ ephemeral: true });
+                
+                // Criar ticket usando a mesma lógica do comando
+                const ticketCommand = interaction.client.commands.get('ticket');
+                if (ticketCommand && ticketCommand.createTicketFromPanel) {
+                    await ticketCommand.createTicketFromPanel(interaction, {
+                        tipo,
+                        subject,
+                        description,
+                        priority: finalPriority
+                    });
+                } else {
+                    // Implementação direta se a função não existir
+                    await createTicketDirect(interaction, tipo, subject, description, finalPriority);
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro ao processar modal do painel:', error);
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({
+                        content: '❌ Erro ao criar ticket. Tenta novamente.',
+                        ephemeral: true
+                    });
+                } else {
+                    await interaction.editReply({
+                        content: '❌ Erro ao criar ticket. Tenta novamente.'
+                    });
+                }
+            }
+        }
+        
         // Handler para botões de tickets
         if (interaction.isButton() && (interaction.customId.startsWith('ticket_assign_') || interaction.customId.startsWith('ticket_close_'))) {
             try {
@@ -636,3 +756,174 @@ module.exports = {
         }
     },
 };
+
+// Funções auxiliares para o sistema de tickets
+function getTipoEmoji(tipo) {
+    const emojis = {
+        'suporte': '🛠️',
+        'problema': '🚨',
+        'sugestao': '💡',
+        'moderacao': '👤',
+        'geral': '📝'
+    };
+    return emojis[tipo] || '📝';
+}
+
+function getTipoNome(tipo) {
+    const nomes = {
+        'suporte': 'Suporte Técnico',
+        'problema': 'Reportar Problema',
+        'sugestao': 'Sugestão',
+        'moderacao': 'Moderação',
+        'geral': 'Geral'
+    };
+    return nomes[tipo] || 'Geral';
+}
+
+function getPlaceholderByType(tipo) {
+    const placeholders = {
+        'suporte': 'Explica qual funcionalidade não está a funcionar, que comando usaste, que erro recebeste...',
+        'problema': 'Descreve o bug encontrado, como reproduzir o problema, o que esperavas que acontecesse...',
+        'sugestao': 'Explica a tua ideia em detalhe, como melhoraria o servidor, que benefícios traria...',
+        'moderacao': 'Explica a situação que requer atenção da moderação, utilizadores envolvidos...',
+        'geral': 'Descreve a tua questão ou dúvida em detalhe...'
+    };
+    return placeholders[tipo] || 'Descreve o problema em detalhe...';
+}
+
+function getPriorityColor(priority) {
+    const colors = {
+        'urgent': 0xFF0000,
+        'high': 0xFF8000,
+        'normal': 0xFFFF00,
+        'low': 0x00FF00
+    };
+    return colors[priority] || 0xFFFF00;
+}
+
+function getPriorityEmoji(priority) {
+    const emojis = {
+        'urgent': '🔴',
+        'high': '🟠',
+        'normal': '🟡',
+        'low': '🟢'
+    };
+    return emojis[priority] || '🟡';
+}
+
+// Função para criar ticket diretamente (fallback)
+async function createTicketDirect(interaction, tipo, subject, description, priority) {
+    const { EmbedBuilder, ActionRowBuilder } = require('discord.js');
+    
+    // Buscar categoria de tickets (ou criar se não existir)
+    let ticketCategory = interaction.guild.channels.cache.find(
+        channel => channel.type === 4 && channel.name.toLowerCase() === 'tickets'
+    );
+    
+    if (!ticketCategory) {
+        console.log('📁 Criando categoria de tickets...');
+        ticketCategory = await interaction.guild.channels.create({
+            name: 'Tickets',
+            type: 4, // Category
+            permissionOverwrites: [
+                {
+                    id: interaction.guild.roles.everyone,
+                    deny: ['ViewChannel']
+                }
+            ]
+        });
+    }
+    
+    // Criar canal do ticket
+    const ticketChannelName = `ticket-${interaction.user.username}-${Date.now().toString().slice(-6)}`;
+    console.log('🎫 Criando canal:', ticketChannelName);
+    
+    const ticketChannel = await interaction.guild.channels.create({
+        name: ticketChannelName,
+        type: 0, // Text channel
+        parent: ticketCategory.id,
+        topic: `Ticket de ${interaction.user.tag} (${interaction.user.id}) - Tipo: ${tipo}`,
+        permissionOverwrites: [
+            {
+                id: interaction.guild.roles.everyone,
+                deny: ['ViewChannel']
+            },
+            {
+                id: interaction.user.id,
+                allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AttachFiles']
+            },
+            // Permitir que moderadores vejam
+            ...interaction.guild.roles.cache
+                .filter(role => role.permissions.has('ManageMessages'))
+                .map(role => ({
+                    id: role.id,
+                    allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'ManageMessages']
+                }))
+        ]
+    });
+    
+    // Criar ticket na base de dados
+    const Database = require('../website/database/database');
+    const db = new Database();
+    
+    const ticketData = {
+        guild_id: interaction.guild.id,
+        channel_id: ticketChannel.id,
+        user_id: interaction.user.id,
+        category: tipo,
+        subject: subject,
+        description: description,
+        priority: priority
+    };
+    
+    const ticketResult = await db.createTicket(ticketData);
+    
+    // Criar embed informativo
+    const embed = new EmbedBuilder()
+        .setColor(getPriorityColor(priority))
+        .setTitle(`🎫 Ticket #${ticketResult.id}`)
+        .setThumbnail(interaction.user.displayAvatarURL())
+        .addFields(
+            { name: '📝 Assunto', value: subject, inline: true },
+            { name: '🏷️ Tipo', value: `${getTipoEmoji(tipo)} ${getTipoNome(tipo)}`, inline: true },
+            { name: '⚡ Prioridade', value: `${getPriorityEmoji(priority)} ${priority.toUpperCase()}`, inline: true },
+            { name: '📄 Descrição', value: description.length > 500 ? description.substring(0, 500) + '...' : description, inline: false },
+            { name: '👤 Criado por', value: `<@${interaction.user.id}>`, inline: true },
+            { name: '🕒 Data', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+        )
+        .setFooter({ text: 'Sistema de Tickets YSNM', iconURL: interaction.guild.iconURL() })
+        .setTimestamp();
+    
+    // Criar botões de ação
+    const actionRow = new ActionRowBuilder()
+        .addComponents(
+            {
+                type: 2,
+                style: 3,
+                label: 'Atribuir-me',
+                custom_id: `ticket_assign_${ticketResult.id}`,
+                emoji: { name: '👋' }
+            },
+            {
+                type: 2,
+                style: 4,
+                label: 'Fechar Ticket',
+                custom_id: `ticket_close_${ticketResult.id}`,
+                emoji: { name: '🔒' }
+            }
+        );
+    
+    // Enviar mensagem no canal do ticket
+    await ticketChannel.send({
+        content: `<@${interaction.user.id}> O seu ticket foi criado com sucesso!\n\n**Staff:** Use os botões abaixo para gerir este ticket.`,
+        embeds: [embed],
+        components: [actionRow]
+    });
+    
+    // Responder ao usuário
+    await interaction.editReply({
+        content: `✅ Ticket criado com sucesso!\n🎫 **Canal:** ${ticketChannel}\n📋 **ID:** #${ticketResult.id}`,
+    });
+    
+    console.log(`✅ Ticket #${ticketResult.id} criado com sucesso por ${interaction.user.tag} via painel`);
+}
