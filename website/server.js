@@ -7,7 +7,8 @@ const fs = require('fs');
 const http = require('http');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const { EmbedBuilder, WebhookClient } = require('discord.js');
+const cors = require('cors');
+const { EmbedBuilder, WebhookClient, REST, Routes } = require('discord.js');
 const Database = require('./database/database');
 const SocketManager = require('./socket');
 
@@ -17,6 +18,66 @@ const PORT = process.env.PORT || 4000;
 
 // Trust proxy settings (needed for rate limiting behind proxies)
 app.set('trust proxy', 1);
+
+// CORS Configuration for production
+const corsOptions = {
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        const isProduction = process.env.NODE_ENV === 'production' || 
+                            !!process.env.RAILWAY_ENVIRONMENT_NAME;
+                            
+        if (isProduction) {
+            // Production allowed origins
+            const allowedOrigins = [
+                'https://ysnmbot-alberto.up.railway.app',
+                'https://*.railway.app',
+                'https://discord.com',
+                'https://discordapp.com'
+            ];
+            
+            // Check if origin matches any allowed pattern
+            const isAllowed = allowedOrigins.some(pattern => {
+                if (pattern.includes('*')) {
+                    const regex = new RegExp(pattern.replace('*', '.*'));
+                    return regex.test(origin);
+                }
+                return pattern === origin;
+            });
+            
+            if (isAllowed) {
+                callback(null, true);
+            } else {
+                console.log('❌ CORS blocked origin:', origin);
+                callback(new Error('Not allowed by CORS'));
+            }
+        } else {
+            // Development - allow localhost
+            const allowedDev = [
+                'http://localhost:3000',
+                'http://localhost:4000',
+                'http://localhost:5000',
+                'http://127.0.0.1:3000',
+                'http://127.0.0.1:4000',
+                'http://127.0.0.1:5000'
+            ];
+            
+            if (allowedDev.includes(origin)) {
+                callback(null, true);
+            } else {
+                console.log('⚠️ Dev CORS allowing origin:', origin);
+                callback(null, true); // Allow all in development
+            }
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['X-Total-Count', 'X-Page-Count']
+};
+
+app.use(cors(corsOptions));
 
 // Initialize database
 const db = new Database();
@@ -327,12 +388,15 @@ app.get('/api/server/:serverId/channels', requireAuth, async (req, res) => {
         console.log(`📺 API channels para servidor ${serverId} por:`, req.user?.username);
         
         if (!global.discordClient || !global.discordClient.isReady()) {
-            return res.status(503).json({ error: 'Bot Discord não está conectado' });
+            // Fallback: usar Discord REST API
+            console.log('⚠️ Bot offline, usando Discord REST API');
+            return await getChannelsViaREST(serverId, req, res);
         }
 
         const guild = global.discordClient.guilds.cache.get(serverId);
         if (!guild) {
-            return res.status(404).json({ error: 'Servidor não encontrado' });
+            console.log('⚠️ Servidor não encontrado no cache, tentando REST API');
+            return await getChannelsViaREST(serverId, req, res);
         }
 
         // Obter todos os canais do servidor
@@ -348,17 +412,134 @@ app.get('/api/server/:serverId/channels', requireAuth, async (req, res) => {
             }))
             .sort((a, b) => a.position - b.position);
 
-        console.log(`✅ Enviados ${channels.length} canais`);
+        console.log(`✅ ${channels.length} canais encontrados`);
         res.json({
             success: true,
             channels: channels
         });
-
     } catch (error) {
         console.error('❌ Erro ao obter canais:', error);
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
+
+// Função para buscar canais via Discord REST API
+async function getChannelsViaREST(serverId, req, res) {
+    try {
+        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN || config.token);
+        
+        // Buscar canais via REST API
+        const channels = await rest.get(Routes.guildChannels(serverId));
+        
+        const filteredChannels = channels
+            .filter(channel => channel.type === 0 || channel.type === 2)
+            .map(channel => ({
+                id: channel.id,
+                name: channel.name,
+                type: channel.type === 0 ? 'text' : 'voice',
+                category: channel.parent_id ? 'Categoria' : 'Sem categoria',
+                position: channel.position || 0,
+                permissionsFor: true // Assumir permissões para REST API
+            }))
+            .sort((a, b) => a.position - b.position);
+
+        console.log(`✅ REST API: ${filteredChannels.length} canais encontrados`);
+        res.json({
+            success: true,
+            channels: filteredChannels
+        });
+    } catch (error) {
+        console.error('❌ Erro REST API para canais:', error);
+        res.status(500).json({ 
+            error: 'Erro ao buscar canais', 
+            details: 'Bot offline e REST API falhou',
+            fallback: true
+        });
+    }
+}
+
+// API para obter roles do servidor
+app.get('/api/server/:serverId/roles', requireAuth, async (req, res) => {
+    try {
+        const serverId = req.params.serverId;
+        console.log(`👑 API roles para servidor ${serverId} por:`, req.user?.username);
+        
+        if (!global.discordClient || !global.discordClient.isReady()) {
+            // Fallback: usar Discord REST API
+            console.log('⚠️ Bot offline, usando Discord REST API para roles');
+            return await getRolesViaREST(serverId, req, res);
+        }
+
+        const guild = global.discordClient.guilds.cache.get(serverId);
+        if (!guild) {
+            console.log('⚠️ Servidor não encontrado, tentando REST API para roles');
+            return await getRolesViaREST(serverId, req, res);
+        }
+
+        // Obter todos os roles do servidor (excluindo @everyone)
+        const roles = guild.roles.cache
+            .filter(role => role.id !== guild.id) // Excluir @everyone
+            .map(role => ({
+                id: role.id,
+                name: role.name,
+                color: role.color,
+                position: role.position,
+                permissions: role.permissions.toArray(),
+                mentionable: role.mentionable,
+                hoist: role.hoist,
+                managed: role.managed,
+                memberCount: role.members.size
+            }))
+            .sort((a, b) => b.position - a.position);
+
+        console.log(`✅ ${roles.length} roles encontrados`);
+        res.json({
+            success: true,
+            roles: roles
+        });
+    } catch (error) {
+        console.error('❌ Erro ao obter roles:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
+});
+
+// Função para buscar roles via Discord REST API
+async function getRolesViaREST(serverId, req, res) {
+    try {
+        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN || config.token);
+        
+        // Buscar roles via REST API
+        const roles = await rest.get(Routes.guildRoles(serverId));
+        
+        const filteredRoles = roles
+            .filter(role => role.id !== serverId) // Excluir @everyone
+            .map(role => ({
+                id: role.id,
+                name: role.name,
+                color: role.color || 0,
+                position: role.position || 0,
+                permissions: [], // Simplificado para REST API
+                mentionable: role.mentionable || false,
+                hoist: role.hoist || false,
+                managed: role.managed || false,
+                memberCount: 0 // Não disponível via REST API básica
+            }))
+            .sort((a, b) => b.position - a.position);
+
+        console.log(`✅ REST API: ${filteredRoles.length} roles encontrados`);
+        res.json({
+            success: true,
+            roles: filteredRoles
+        });
+    } catch (error) {
+        console.error('❌ Erro REST API para roles:', error);
+        res.status(500).json({ 
+            error: 'Erro ao buscar roles', 
+            details: 'Bot offline e REST API falhou',
+            fallback: true
+        });
+    }
+}
 
 // API para limpar mensagens de um canal
 app.post('/api/server/:serverId/channels/:channelId/clear', requireAuth, async (req, res) => {
@@ -917,6 +1098,141 @@ app.post('/api/config', requireAuth, requireServerAccess, (req, res) => {
         res.status(500).json({ error: 'Erro ao atualizar configuração' });
     }
 });
+
+// === SISTEMA DE LOGS EM TEMPO REAL ===
+
+// Array para armazenar clientes SSE conectados
+const sseClients = new Map();
+
+// API para logs via Server-Sent Events (SSE)
+app.get('/api/logs/stream', requireAuth, (req, res) => {
+    console.log('📡 Cliente SSE conectado para logs:', req.user?.username);
+    
+    // Configurar headers SSE
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': req.get('origin') || '*',
+        'Access-Control-Allow-Credentials': 'true'
+    });
+
+    // Identificador único para o cliente
+    const clientId = Date.now() + Math.random();
+    
+    // Adicionar cliente à lista
+    sseClients.set(clientId, {
+        response: res,
+        userId: req.user.id,
+        username: req.user.username,
+        connectedAt: new Date()
+    });
+
+    // Enviar evento de conexão
+    res.write(`data: ${JSON.stringify({
+        type: 'connected',
+        message: 'Conectado ao stream de logs',
+        timestamp: new Date().toISOString()
+    })}\n\n`);
+
+    // Enviar logs recentes (últimos 50)
+    sendRecentLogs(res);
+
+    // Cleanup quando cliente desconecta
+    req.on('close', () => {
+        console.log('📡 Cliente SSE desconectado:', req.user?.username);
+        sseClients.delete(clientId);
+    });
+
+    req.on('error', () => {
+        console.log('📡 Erro SSE cliente:', req.user?.username);
+        sseClients.delete(clientId);
+    });
+});
+
+// Função para enviar logs recentes
+async function sendRecentLogs(res) {
+    try {
+        const recentLogs = await db.getRecentLogs(50);
+        recentLogs.forEach(log => {
+            res.write(`data: ${JSON.stringify({
+                type: 'log',
+                ...log,
+                timestamp: log.timestamp || new Date().toISOString()
+            })}\n\n`);
+        });
+    } catch (error) {
+        console.error('❌ Erro ao enviar logs recentes:', error);
+    }
+}
+
+// Função para broadcast de logs para todos os clientes SSE
+function broadcastLog(logData) {
+    const message = JSON.stringify({
+        type: 'log',
+        ...logData,
+        timestamp: new Date().toISOString()
+    });
+
+    sseClients.forEach((client, clientId) => {
+        try {
+            client.response.write(`data: ${message}\n\n`);
+        } catch (error) {
+            console.error('❌ Erro ao enviar log para cliente SSE:', error);
+            sseClients.delete(clientId);
+        }
+    });
+}
+
+// API alternativa para logs via polling (fallback)
+app.get('/api/logs', requireAuth, async (req, res) => {
+    try {
+        const { limit = 50, offset = 0, type, level } = req.query;
+        
+        const logs = await db.getLogs({
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            type,
+            level
+        });
+
+        res.json({
+            success: true,
+            logs,
+            hasMore: logs.length === parseInt(limit)
+        });
+    } catch (error) {
+        console.error('❌ Erro ao buscar logs:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// API para limpar logs
+app.delete('/api/logs', requireAuth, async (req, res) => {
+    try {
+        const { olderThan = 7 } = req.query; // Dias
+        const deleted = await db.clearOldLogs(parseInt(olderThan));
+        
+        res.json({
+            success: true,
+            message: `${deleted} logs removidos`,
+            deletedCount: deleted
+        });
+    } catch (error) {
+        console.error('❌ Erro ao limpar logs:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// Função global para registrar logs (chamada pelo bot)
+global.logToDatabase = async (logData) => {
+    try {
+        await db.addLog(logData);
+        broadcastLog(logData);
+    } catch (error) {
+        console.error('❌ Erro ao registrar log:', error);
+    }
+};
 
 // API para enviar updates (legacy - manter para compatibilidade)
 app.post('/api/send-update', requireAuth, requireServerAccess, async (req, res) => {

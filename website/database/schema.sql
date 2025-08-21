@@ -140,19 +140,8 @@ CREATE TABLE IF NOT EXISTS guild_settings (
     UNIQUE(guild_id, category, key)
 );
 
--- Logs table
-CREATE TABLE IF NOT EXISTS logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    guild_id TEXT NOT NULL,
-    type TEXT NOT NULL, -- 'message_delete', 'message_edit', 'member_join', 'member_leave', 'role_update', etc.
-    user_id TEXT,
-    channel_id TEXT,
-    target_id TEXT,
-    data TEXT DEFAULT '{}',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (guild_id) REFERENCES guilds(discord_id),
-    FOREIGN KEY (user_id) REFERENCES users(discord_id)
-);
+-- Legacy logs table (kept for compatibility)
+-- This table is replaced by the logs table below for real-time monitoring
 
 -- Analytics table
 CREATE TABLE IF NOT EXISTS analytics (
@@ -198,12 +187,28 @@ CREATE TABLE IF NOT EXISTS command_usage (
     FOREIGN KEY (user_id) REFERENCES users(discord_id)
 );
 
+-- Logs table for real-time monitoring
+CREATE TABLE IF NOT EXISTS logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    type TEXT NOT NULL, -- 'moderation', 'message', 'member', 'channel', 'role', 'bot', 'error'
+    level TEXT DEFAULT 'info', -- 'debug', 'info', 'warn', 'error', 'critical'
+    message TEXT NOT NULL,
+    user_id TEXT,
+    username TEXT,
+    channel_id TEXT,
+    channel_name TEXT,
+    details TEXT, -- JSON string with additional data
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (guild_id) REFERENCES guilds(discord_id)
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id);
 CREATE INDEX IF NOT EXISTS idx_guilds_discord_id ON guilds(discord_id);
 CREATE INDEX IF NOT EXISTS idx_guild_members_guild_user ON guild_members(guild_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_moderation_actions_guild ON moderation_actions(guild_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_tickets_guild_status ON tickets(guild_id, status);
-CREATE INDEX IF NOT EXISTS idx_logs_guild_type ON logs(guild_id, type, created_at);
+CREATE INDEX IF NOT EXISTS idx_logs_guild_type ON logs(guild_id, type, timestamp);
 CREATE INDEX IF NOT EXISTS idx_analytics_guild_type_date ON analytics(guild_id, type, date);
 CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id, is_active);

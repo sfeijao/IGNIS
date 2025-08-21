@@ -443,6 +443,129 @@ class Database {
         });
     }
 
+    // === SISTEMA DE LOGS ===
+
+    async addLog(logData) {
+        const { 
+            guild_id, 
+            type, 
+            level = 'info', 
+            message, 
+            user_id, 
+            username, 
+            channel_id, 
+            channel_name, 
+            details 
+        } = logData;
+        
+        return new Promise((resolve, reject) => {
+            const stmt = this.db.prepare(`
+                INSERT INTO logs 
+                (guild_id, type, level, message, user_id, username, channel_id, channel_name, details, timestamp) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            `);
+            
+            stmt.run(
+                guild_id, 
+                type, 
+                level, 
+                message, 
+                user_id, 
+                username, 
+                channel_id, 
+                channel_name, 
+                typeof details === 'object' ? JSON.stringify(details) : details,
+                (err) => {
+                    if (err) {
+                        console.error('❌ Erro ao adicionar log:', err);
+                        reject(err);
+                    } else {
+                        resolve(stmt.lastID);
+                    }
+                }
+            );
+            stmt.finalize();
+        });
+    }
+
+    async getRecentLogs(limit = 50) {
+        return new Promise((resolve, reject) => {
+            this.db.all(`
+                SELECT * FROM logs 
+                ORDER BY timestamp DESC 
+                LIMIT ?
+            `, [limit], (err, rows) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    // Parse details JSON
+                    const logs = rows.map(row => ({
+                        ...row,
+                        details: row.details ? JSON.parse(row.details) : null
+                    }));
+                    resolve(logs);
+                }
+            });
+        });
+    }
+
+    async getLogs(options = {}) {
+        const { limit = 50, offset = 0, type, level, guild_id } = options;
+        
+        let query = 'SELECT * FROM logs WHERE 1=1';
+        const params = [];
+        
+        if (guild_id) {
+            query += ' AND guild_id = ?';
+            params.push(guild_id);
+        }
+        
+        if (type) {
+            query += ' AND type = ?';
+            params.push(type);
+        }
+        
+        if (level) {
+            query += ' AND level = ?';
+            params.push(level);
+        }
+        
+        query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
+        params.push(limit, offset);
+        
+        return new Promise((resolve, reject) => {
+            this.db.all(query, params, (err, rows) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    const logs = rows.map(row => ({
+                        ...row,
+                        details: row.details ? JSON.parse(row.details) : null
+                    }));
+                    resolve(logs);
+                }
+            });
+        });
+    }
+
+    async clearOldLogs(olderThanDays = 7) {
+        return new Promise((resolve, reject) => {
+            const stmt = this.db.prepare(`
+                DELETE FROM logs 
+                WHERE timestamp < datetime('now', '-' || ? || ' days')
+            `);
+            
+            stmt.run(olderThanDays, function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(this.changes);
+                }
+            });
+            stmt.finalize();
+        });
+    }
+
     close() {
         if (this.db) {
             this.db.close((err) => {

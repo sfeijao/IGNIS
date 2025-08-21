@@ -841,6 +841,297 @@
             margin-bottom: 1rem;
             opacity: 0.3;
         }
+
+        /* === TICKETS STYLES === */
+        .ticket-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid var(--border);
+            transition: transform 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary);
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .filters-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        .tickets-container {
+            min-height: 300px;
+            position: relative;
+        }
+
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        .tickets-list {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .ticket-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .ticket-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(107, 115, 255, 0.15);
+        }
+
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .ticket-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .ticket-meta {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .ticket-badges {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .ticket-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .badge-status-open { background: var(--info); color: white; }
+        .badge-status-assigned { background: var(--warning); color: white; }
+        .badge-status-closed { background: var(--success); color: white; }
+
+        .badge-priority-low { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .badge-priority-normal { background: rgba(59, 130, 246, 0.2); color: var(--info); }
+        .badge-priority-high { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .badge-priority-urgent { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+
+        .ticket-description {
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .ticket-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .ticket-actions .btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-group.half {
+            margin-bottom: 1rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .section-header {
+            margin-bottom: 2rem;
+        }
+
+        .section-header h3 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .section-header p {
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        @media (max-width: 768px) {
+            .filters-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .ticket-header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+
+        /* === LOGS SYSTEM STYLES === */
+        .logs-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            background: var(--bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .connection-status {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .logs-placeholder {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 2rem;
+            font-style: italic;
+        }
+
+        .log-entry {
+            border-left: 3px solid var(--border);
+            margin-bottom: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg);
+            border-radius: 0 8px 8px 0;
+            transition: all 0.2s ease;
+        }
+
+        .log-entry:hover {
+            background: var(--bg-card);
+            border-left-color: var(--primary);
+        }
+
+        .log-entry.log-info { border-left-color: var(--info); }
+        .log-entry.log-warn { border-left-color: var(--warning); }
+        .log-entry.log-error { border-left-color: var(--danger); }
+        .log-entry.log-critical { border-left-color: #DC2626; }
+
+        .log-header {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .log-time {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .log-type {
+            background: var(--primary);
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .log-level {
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .log-level-info { background: rgba(59, 130, 246, 0.2); color: var(--info); }
+        .log-level-warn { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .log-level-error { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+        .log-level-critical { background: rgba(220, 38, 38, 0.2); color: #DC2626; }
+
+        .log-message {
+            color: var(--text);
+            line-height: 1.4;
+            margin-bottom: 0.25rem;
+        }
+
+        .log-user, .log-channel {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
     </style>
 </head>
 <body>
@@ -876,6 +1167,7 @@
                     <li><a href="#overview" class="menu-item active" data-section="overview">📊 Visão Geral</a></li>
                     <li><a href="#config" class="menu-item" data-section="config">⚙️ Configuração</a></li>
                     <li><a href="#moderation" class="menu-item" data-section="moderation">🛡️ Moderação</a></li>
+                    <li><a href="#tickets" class="menu-item" data-section="tickets">🎫 Tickets</a></li>
                     <li><a href="#embeds" class="menu-item" data-section="embeds">🎨 Embed Builder</a></li>
                     <li><a href="#logs" class="menu-item" data-section="logs">📋 Logs</a></li>
                 </ul>
@@ -1213,6 +1505,129 @@
                     </div>
                 </div>
 
+                <!-- Tickets Section -->
+                <section id="tickets" class="content-section">
+                    <div class="section-header">
+                        <h3>Sistema de Tickets</h3>
+                        <p>Gerencie tickets de suporte dos usuários</p>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <!-- Estatísticas de Tickets -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h4>📊 Estatísticas</h4>
+                                <button class="btn btn-primary" onclick="refreshTicketStats()">🔄 Atualizar</button>
+                            </div>
+                            <div class="ticket-stats-grid">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="totalTickets">0</div>
+                                    <div class="stat-label">Total de Tickets</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-number" id="openTickets">0</div>
+                                    <div class="stat-label">Abertos</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-number" id="assignedTickets">0</div>
+                                    <div class="stat-label">Atribuídos</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-number" id="closedTickets">0</div>
+                                    <div class="stat-label">Fechados</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filtros e Ações -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h4>🔍 Filtros</h4>
+                                <button class="btn btn-success" onclick="openTicketModal()">➕ Novo Ticket</button>
+                            </div>
+                            <div class="filters-row">
+                                <select id="statusFilter" class="form-select" onchange="filterTickets()">
+                                    <option value="">Todos os Status</option>
+                                    <option value="open">Abertos</option>
+                                    <option value="assigned">Atribuídos</option>
+                                    <option value="closed">Fechados</option>
+                                </select>
+                                <select id="priorityFilter" class="form-select" onchange="filterTickets()">
+                                    <option value="">Todas as Prioridades</option>
+                                    <option value="low">Baixa</option>
+                                    <option value="normal">Normal</option>
+                                    <option value="high">Alta</option>
+                                    <option value="urgent">Urgente</option>
+                                </select>
+                                <button class="btn btn-secondary" onclick="clearFilters()">🗑️ Limpar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Tickets -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4>🎫 Lista de Tickets</h4>
+                            <div class="header-actions">
+                                <button class="btn btn-secondary" onclick="loadTickets()">🔄 Atualizar</button>
+                                <a href="tickets.html" class="btn btn-primary" target="_blank">📋 Ver Página Completa</a>
+                            </div>
+                        </div>
+                        <div class="tickets-container">
+                            <div id="ticketsLoading" class="loading-state">
+                                <div class="loading-spinner"></div>
+                                <p>Carregando tickets...</p>
+                            </div>
+                            <div id="ticketsList" class="tickets-list"></div>
+                            <div id="noTickets" class="empty-state" style="display: none;">
+                                <p>📭 Nenhum ticket encontrado</p>
+                                <button class="btn btn-primary" onclick="openTicketModal()">Criar Primeiro Ticket</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Modal para Novo/Editar Ticket -->
+                <div id="ticketModal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h4 id="ticketModalTitle">➕ Novo Ticket</h4>
+                            <span class="close" onclick="closeTicketModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <form id="ticketForm">
+                                <div class="form-group">
+                                    <label for="ticketSubject">Assunto*</label>
+                                    <input type="text" id="ticketSubject" class="form-control" required maxlength="100" placeholder="Descreva brevemente o problema">
+                                </div>
+                                <div class="form-group">
+                                    <label for="ticketDescription">Descrição*</label>
+                                    <textarea id="ticketDescription" class="form-control" required rows="4" maxlength="1000" placeholder="Descreva detalhadamente o problema ou solicitação"></textarea>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group half">
+                                        <label for="ticketPriority">Prioridade</label>
+                                        <select id="ticketPriority" class="form-select">
+                                            <option value="low">🟢 Baixa</option>
+                                            <option value="normal" selected>🟡 Normal</option>
+                                            <option value="high">🟠 Alta</option>
+                                            <option value="urgent">🔴 Urgente</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group half">
+                                        <label for="ticketCategory">Categoria</label>
+                                        <input type="text" id="ticketCategory" class="form-control" maxlength="50" placeholder="Ex: Bug, Sugestão, Suporte">
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeTicketModal()">Cancelar</button>
+                            <button class="btn btn-primary" onclick="submitTicket()" id="submitTicketBtn">Criar Ticket</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Embed Builder Section -->
                 <section id="embeds" class="content-section">
                     <div class="section-header">
@@ -1277,17 +1692,32 @@
 
                     <div class="config-form">
                         <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                            <select id="logFilter">
-                                <option value="all">Todos os Logs</option>
+                            <select id="logFilter" onchange="filterLogs()">
+                                <option value="">Todos os Logs</option>
                                 <option value="moderation">Moderação</option>
-                                <option value="commands">Comandos</option>
-                                <option value="errors">Erros</option>
+                                <option value="message">Mensagens</option>
+                                <option value="member">Membros</option>
+                                <option value="bot">Bot</option>
+                                <option value="error">Erros</option>
                             </select>
-                            <button class="btn btn-primary" onclick="refreshLogs()">Atualizar</button>
+                            <select id="logLevel" onchange="filterLogs()">
+                                <option value="">Todos os Níveis</option>
+                                <option value="info">Info</option>
+                                <option value="warn">Aviso</option>
+                                <option value="error">Erro</option>
+                                <option value="critical">Crítico</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="connectLogs()">🔄 Conectar Stream</button>
+                            <button class="btn btn-secondary" onclick="disconnectLogs()">⏹️ Parar</button>
                         </div>
 
-                        <div id="logsList" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); padding: 1rem; border-radius: 5px; background: #f8f9fa;">
-                            <div class="loading">Carregando logs...</div>
+                        <div class="logs-status">
+                            <span id="logsConnection" class="connection-status">🔴 Desconectado</span>
+                            <span id="logsCount">0 logs</span>
+                        </div>
+
+                        <div id="logsList" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); padding: 1rem; border-radius: 5px; background: var(--bg-secondary); color: var(--text);">
+                            <div class="logs-placeholder">📡 Clique em "Conectar Stream" para receber logs em tempo real</div>
                         </div>
                     </div>
                 </section>
@@ -1440,6 +1870,16 @@
                 // Show corresponding section
                 document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
                 document.getElementById(section).classList.add('active');
+                
+                // Load section-specific data
+                if (section === 'tickets') {
+                    loadTickets();
+                    refreshTicketStats();
+                } else if (section === 'logs') {
+                    loadLogsPolling();
+                    // Auto-connect to real-time logs after 1 second
+                    setTimeout(() => connectLogs(), 1000);
+                }
             }
         });
 
@@ -2092,22 +2532,459 @@
         }
 
         function refreshLogs() {
-            const logsList = document.getElementById('logsList');
-            logsList.innerHTML = '<div class="loading">Carregando logs...</div>';
+            loadLogsPolling();
+        }
+
+        // === LOGS SYSTEM WITH SSE ===
+
+        let logsEventSource = null;
+        let logsBuffer = [];
+        let logsFilters = { type: '', level: '' };
+
+        function connectLogs() {
+            if (logsEventSource) {
+                disconnectLogs();
+            }
+
+            const statusEl = document.getElementById('logsConnection');
+            if (statusEl) statusEl.textContent = '🟡 Conectando...';
+
+            try {
+                logsEventSource = new EventSource('/api/logs/stream');
+
+                logsEventSource.onopen = function(e) {
+                    console.log('📡 Conectado ao stream de logs');
+                    if (statusEl) statusEl.textContent = '🟢 Conectado (tempo real)';
+                };
+
+                logsEventSource.onmessage = function(e) {
+                    try {
+                        const logData = JSON.parse(e.data);
+                        
+                        if (logData.type === 'connected') {
+                            console.log('✅ Stream de logs inicializado');
+                            return;
+                        }
+
+                        if (logData.type === 'log') {
+                            addLogToDisplay(logData);
+                        }
+                    } catch (error) {
+                        console.error('Erro ao processar log:', error);
+                    }
+                };
+
+                logsEventSource.onerror = function(e) {
+                    console.error('❌ Erro no stream de logs:', e);
+                    if (statusEl) statusEl.textContent = '🔴 Erro de conexão';
+                    
+                    // Reconectar após 5 segundos
+                    setTimeout(() => {
+                        if (logsEventSource && logsEventSource.readyState === EventSource.CLOSED) {
+                            connectLogs();
+                        }
+                    }, 5000);
+                };
+
+            } catch (error) {
+                console.error('Erro ao iniciar stream:', error);
+                if (statusEl) statusEl.textContent = '🔴 Erro';
+                // Fallback para polling
+                loadLogsPolling();
+            }
+        }
+
+        function disconnectLogs() {
+            if (logsEventSource) {
+                logsEventSource.close();
+                logsEventSource = null;
+                
+                const statusEl = document.getElementById('logsConnection');
+                if (statusEl) statusEl.textContent = '🔴 Desconectado';
+            }
+        }
+
+        function addLogToDisplay(logData) {
+            const listEl = document.getElementById('logsList');
+            if (!listEl) return;
+
+            // Aplicar filtros
+            if (logsFilters.type && logData.type !== logsFilters.type) return;
+            if (logsFilters.level && logData.level !== logsFilters.level) return;
+
+            // Remover placeholder se existir
+            const placeholder = listEl.querySelector('.logs-placeholder');
+            if (placeholder) placeholder.remove();
+
+            // Criar elemento do log
+            const logEl = document.createElement('div');
+            logEl.className = `log-entry log-${logData.level || 'info'}`;
+            logEl.innerHTML = `
+                <div class="log-header">
+                    <span class="log-time">${new Date(logData.timestamp).toLocaleTimeString('pt-BR')}</span>
+                    <span class="log-type">${getLogTypeLabel(logData.type)}</span>
+                    <span class="log-level log-level-${logData.level || 'info'}">${getLogLevelLabel(logData.level)}</span>
+                </div>
+                <div class="log-message">${logData.message}</div>
+                ${logData.username ? `<div class="log-user">👤 ${logData.username}</div>` : ''}
+                ${logData.channel_name ? `<div class="log-channel">📺 ${logData.channel_name}</div>` : ''}
+            `;
+
+            // Adicionar no topo
+            listEl.insertBefore(logEl, listEl.firstChild);
+
+            // Limitar a 100 logs no DOM
+            const logs = listEl.querySelectorAll('.log-entry');
+            if (logs.length > 100) {
+                logs[logs.length - 1].remove();
+            }
+
+            // Atualizar contador
+            updateLogsCount();
+        }
+
+        function getLogTypeLabel(type) {
+            const labels = {
+                'moderation': '🛡️ Moderação',
+                'message': '💬 Mensagem',
+                'member': '👥 Membro',
+                'channel': '📺 Canal',
+                'role': '👑 Cargo',
+                'bot': '🤖 Bot',
+                'error': '❌ Erro'
+            };
+            return labels[type] || type;
+        }
+
+        function getLogLevelLabel(level) {
+            const labels = {
+                'debug': '🔍 Debug',
+                'info': '📝 Info',
+                'warn': '⚠️ Aviso',
+                'error': '❌ Erro',
+                'critical': '🚨 Crítico'
+            };
+            return labels[level] || 'Info';
+        }
+
+        function filterLogs() {
+            const typeEl = document.getElementById('logFilter');
+            const levelEl = document.getElementById('logLevel');
             
-            setTimeout(() => {
-                logsList.innerHTML = `
-                    <div style="margin-bottom: 1rem; padding: 0.5rem; border-left: 3px solid var(--info);">
-                        <strong>15:30</strong> - Usuário entrou no servidor
+            if (typeEl && levelEl) {
+                logsFilters = {
+                    type: typeEl.value,
+                    level: levelEl.value
+                };
+                
+                // Recarregar logs com filtros
+                const listEl = document.getElementById('logsList');
+                if (listEl) {
+                    listEl.innerHTML = '<div class="logs-placeholder">🔄 Aplicando filtros...</div>';
+                }
+                
+                // Se está conectado via SSE, apenas os novos logs serão filtrados
+                // Para aplicar filtros aos logs existentes, recarregar via polling
+                loadLogsPolling();
+            }
+        }
+
+        async function loadLogsPolling() {
+            const listEl = document.getElementById('logsList');
+            if (!listEl) return;
+
+            try {
+                const params = new URLSearchParams(logsFilters);
+                const response = await fetch(`/api/logs?limit=50&${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    listEl.innerHTML = '';
+                    
+                    if (data.logs.length === 0) {
+                        listEl.innerHTML = '<div class="logs-placeholder">📭 Nenhum log encontrado</div>';
+                        return;
+                    }
+
+                    data.logs.forEach(log => {
+                        addLogToDisplay(log);
+                    });
+                    
+                    updateLogsCount();
+                } else {
+                    listEl.innerHTML = '<div class="logs-placeholder">❌ Erro ao carregar logs</div>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar logs:', error);
+                if (listEl) {
+                    listEl.innerHTML = '<div class="logs-placeholder">❌ Erro de conexão</div>';
+                }
+            }
+        }
+
+        function updateLogsCount() {
+            const countEl = document.getElementById('logsCount');
+            if (countEl) {
+                const logs = document.querySelectorAll('.log-entry');
+                countEl.textContent = `${logs.length} logs`;
+            }
+        }
+
+        // === TICKETS SYSTEM FUNCTIONS ===
+
+        let currentTickets = [];
+        let ticketFilters = { status: '', priority: '', assigned: '' };
+
+        async function loadTickets() {
+            const loadingEl = document.getElementById('ticketsLoading');
+            const listEl = document.getElementById('ticketsList');
+            const noTicketsEl = document.getElementById('noTickets');
+            
+            if (!loadingEl || !listEl || !noTicketsEl) return;
+            
+            loadingEl.style.display = 'flex';
+            listEl.style.display = 'none';
+            noTicketsEl.style.display = 'none';
+            
+            try {
+                const params = new URLSearchParams(ticketFilters);
+                const response = await fetch(`/api/tickets?${params}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentTickets = data.tickets;
+                    renderTickets(currentTickets);
+                    
+                    if (currentTickets.length === 0) {
+                        loadingEl.style.display = 'none';
+                        noTicketsEl.style.display = 'block';
+                    } else {
+                        loadingEl.style.display = 'none';
+                        listEl.style.display = 'block';
+                    }
+                } else {
+                    console.error('Erro ao carregar tickets:', data.error);
+                    loadingEl.innerHTML = '<p>❌ Erro ao carregar tickets</p>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar tickets:', error);
+                loadingEl.innerHTML = '<p>❌ Erro de conexão</p>';
+            }
+        }
+
+        async function refreshTicketStats() {
+            try {
+                const response = await fetch('/api/tickets/stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stats = data.stats;
+                    const totalEl = document.getElementById('totalTickets');
+                    const openEl = document.getElementById('openTickets');
+                    const assignedEl = document.getElementById('assignedTickets');
+                    const closedEl = document.getElementById('closedTickets');
+                    
+                    if (totalEl) totalEl.textContent = stats.total || 0;
+                    if (openEl) openEl.textContent = stats.open || 0;
+                    if (assignedEl) assignedEl.textContent = stats.assigned || 0;
+                    if (closedEl) closedEl.textContent = stats.closed || 0;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+            }
+        }
+
+        function renderTickets(tickets) {
+            const listEl = document.getElementById('ticketsList');
+            if (!listEl) return;
+            
+            if (tickets.length === 0) {
+                listEl.innerHTML = '<div class="empty-state"><p>📭 Nenhum ticket encontrado</p></div>';
+                return;
+            }
+            
+            listEl.innerHTML = tickets.map(ticket => `
+                <div class="ticket-card" onclick="openTicketDetails(${ticket.id})">
+                    <div class="ticket-header">
+                        <div>
+                            <h4 class="ticket-title">#${ticket.id} - ${ticket.subject || 'Sem título'}</h4>
+                            <div class="ticket-meta">
+                                Por: ${ticket.username || 'Usuário desconhecido'} • 
+                                ${new Date(ticket.created_at).toLocaleDateString('pt-BR')}
+                                ${ticket.assigned_name ? ` • Atribuído a: ${ticket.assigned_name}` : ''}
+                            </div>
+                        </div>
+                        <div class="ticket-badges">
+                            <span class="ticket-badge badge-status-${ticket.status || 'open'}">${getStatusLabel(ticket.status)}</span>
+                            <span class="ticket-badge badge-priority-${ticket.priority || 'normal'}">${getPriorityLabel(ticket.priority)}</span>
+                        </div>
                     </div>
-                    <div style="margin-bottom: 1rem; padding: 0.5rem; border-left: 3px solid var(--success);">
-                        <strong>15:25</strong> - Comando /help executado
+                    <div class="ticket-description">${ticket.description || 'Sem descrição'}</div>
+                    <div class="ticket-actions">
+                        <button class="btn btn-primary" onclick="assignTicket(${ticket.id}); event.stopPropagation();" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                            👤 Atribuir a Mim
+                        </button>
+                        <button class="btn btn-success" onclick="closeTicket(${ticket.id}); event.stopPropagation();" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                            ✅ Fechar
+                        </button>
                     </div>
-                    <div style="margin-bottom: 1rem; padding: 0.5rem; border-left: 3px solid var(--warning);">
-                        <strong>15:20</strong> - Mensagem moderada
-                    </div>
-                `;
-            }, 1000);
+                </div>
+            `).join('');
+        }
+
+        function getStatusLabel(status) {
+            switch (status) {
+                case 'open': return 'Aberto';
+                case 'assigned': return 'Atribuído';
+                case 'closed': return 'Fechado';
+                default: return 'Aberto';
+            }
+        }
+
+        function getPriorityLabel(priority) {
+            switch (priority) {
+                case 'low': return 'Baixa';
+                case 'normal': return 'Normal';
+                case 'high': return 'Alta';
+                case 'urgent': return 'Urgente';
+                default: return 'Normal';
+            }
+        }
+
+        function filterTickets() {
+            const statusEl = document.getElementById('statusFilter');
+            const priorityEl = document.getElementById('priorityFilter');
+            
+            if (statusEl && priorityEl) {
+                ticketFilters = { 
+                    status: statusEl.value, 
+                    priority: priorityEl.value 
+                };
+                loadTickets();
+            }
+        }
+
+        function clearFilters() {
+            const statusEl = document.getElementById('statusFilter');
+            const priorityEl = document.getElementById('priorityFilter');
+            
+            if (statusEl) statusEl.value = '';
+            if (priorityEl) priorityEl.value = '';
+            ticketFilters = { status: '', priority: '', assigned: '' };
+            loadTickets();
+        }
+
+        function openTicketModal() {
+            const modal = document.getElementById('ticketModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                const form = document.getElementById('ticketForm');
+                if (form) form.reset();
+            }
+        }
+
+        function closeTicketModal() {
+            const modal = document.getElementById('ticketModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function submitTicket() {
+            const form = document.getElementById('ticketForm');
+            const btn = document.getElementById('submitTicketBtn');
+            
+            if (!form || !btn) return;
+            
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = 'Criando...';
+            
+            try {
+                const formData = {
+                    subject: document.getElementById('ticketSubject')?.value || '',
+                    description: document.getElementById('ticketDescription')?.value || '',
+                    priority: document.getElementById('ticketPriority')?.value || 'normal',
+                    category: document.getElementById('ticketCategory')?.value || ''
+                };
+                
+                const response = await fetch('/api/tickets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Ticket criado com sucesso!');
+                    closeTicketModal();
+                    loadTickets();
+                    refreshTicketStats();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao criar ticket:', error);
+                alert('❌ Erro ao criar ticket');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Criar Ticket';
+            }
+        }
+
+        async function assignTicket(ticketId) {
+            try {
+                const response = await fetch(`/api/tickets/${ticketId}/assign`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Ticket atribuído com sucesso!');
+                    loadTickets();
+                    refreshTicketStats();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao atribuir ticket:', error);
+                alert('❌ Erro ao atribuir ticket');
+            }
+        }
+
+        async function closeTicket(ticketId) {
+            const reason = prompt('Motivo do fechamento (opcional):');
+            
+            try {
+                const response = await fetch(`/api/tickets/${ticketId}/close`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: reason || 'Resolvido' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Ticket fechado com sucesso!');
+                    loadTickets();
+                    refreshTicketStats();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao fechar ticket:', error);
+                alert('❌ Erro ao fechar ticket');
+            }
+        }
+
+        function openTicketDetails(ticketId) {
+            // Redirect to full tickets page
+            window.open(`tickets.html#${ticketId}`, '_blank');
         }
 
         // Initialize
