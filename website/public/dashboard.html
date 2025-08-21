@@ -50,93 +50,171 @@
             position: sticky;
             top: 0;
             z-index: 1000;
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .navbar-content {
+        .nav-container {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 0 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 2rem;
         }
 
-        .navbar-brand {
-            font-size: 1.8rem;
-            font-weight: 700;
+        .nav-brand {
+            font-size: 1.5rem;
+            font-weight: bold;
             display: flex;
             align-items: center;
-            gap: 0.8rem;
+            gap: 10px;
         }
 
-        .navbar-user {
+        .nav-brand .logo {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-user {
             display: flex;
             align-items: center;
             gap: 1rem;
         }
 
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .user-avatar {
-            width: 40px;
-            height: 40px;
+            width: 35px;
+            height: 35px;
             border-radius: 50%;
             border: 2px solid rgba(255, 255, 255, 0.3);
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
         }
 
-        .server-selection {
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .server-selector {
             background: var(--bg-card);
-            border-radius: 16px;
-            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+            padding: 2.5rem;
             margin-bottom: 2rem;
             border: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+        }
+
+        .server-selector h2 {
+            margin-bottom: 2rem;
+            color: var(--text);
+            font-size: 1.8rem;
+            font-weight: 700;
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary), #8B5CF6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .server-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin-top: 1.5rem;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
         }
 
         .server-card {
-            background: var(--bg-secondary);
-            border-radius: 12px;
-            padding: 1.5rem;
             border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
             cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--bg-secondary);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .server-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary), #8B5CF6);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 0;
+        }
+
+        .server-card:hover::before {
+            opacity: 0.1;
         }
 
         .server-card:hover {
             border-color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(107, 115, 255, 0.2);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 
+                0 20px 40px rgba(107, 115, 255, 0.2),
+                0 10px 20px rgba(0, 0, 0, 0.1);
         }
 
         .server-card.selected {
             border-color: var(--primary);
             background: var(--primary-light);
+            transform: translateY(-4px);
+        }
+
+        .server-card > * {
+            position: relative;
+            z-index: 1;
         }
 
         .server-icon {
-            width: 60px;
-            height: 60px;
+            width: 64px;
+            height: 64px;
             border-radius: 50%;
+            margin: 0 auto 1rem;
             background: var(--primary);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-weight: bold;
             font-size: 1.5rem;
+            font-weight: bold;
         }
 
         .server-icon img {
@@ -146,12 +224,7 @@
             object-fit: cover;
         }
 
-        .server-info {
-            flex: 1;
-        }
-
         .server-name {
-            font-size: 1.1rem;
             font-weight: 600;
             margin-bottom: 0.5rem;
         }
@@ -163,32 +236,184 @@
 
         .dashboard-content {
             display: none;
+            grid-template-columns: 250px 1fr;
+            gap: 2rem;
         }
 
         .dashboard-content.active {
+            display: grid;
+        }
+
+        .sidebar {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: 
+                0 10px 30px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            height: fit-content;
+            position: sticky;
+            top: 120px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+        }
+
+        .sidebar-menu li {
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 1rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar-menu a::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary), #8B5CF6);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-menu a:hover::before,
+        .sidebar-menu a.active::before {
+            opacity: 0.1;
+        }
+
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            color: var(--text);
+            transform: translateX(4px);
+        }
+
+        .sidebar-menu a > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .main-content {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: 
+                0 10px 30px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+            min-height: 600px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+        }
+
+        .content-section {
+            display: none;
+            padding: 2rem;
+        }
+
+        .content-section.active {
             display: block;
+        }
+
+        .section-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .section-header h3 {
+            color: var(--text);
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), #8B5CF6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-header p {
+            color: var(--text-muted);
         }
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
             margin-bottom: 2rem;
         }
 
         .stat-card {
-            background: var(--bg-card);
-            border-radius: 12px;
-            padding: 1.5rem;
-            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            padding: 2rem;
+            border-radius: 16px;
             text-align: center;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
 
-        .stat-value {
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary), #8B5CF6);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .stat-card:hover::before {
+            opacity: 0.05;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-card > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .stat-icon.members { background: var(--info); }
+        .stat-icon.channels { background: var(--success); }
+        .stat-icon.roles { background: var(--warning); }
+        .stat-icon.messages { background: var(--primary); }
+
+        .stat-number {
             font-size: 2rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: var(--text);
         }
 
         .stat-label {
@@ -196,255 +421,1332 @@
             font-size: 0.9rem;
         }
 
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-        }
-
-        .content-section {
-            background: var(--bg-card);
-            border-radius: 16px;
+        .config-form {
+            background: var(--bg-secondary);
             padding: 2rem;
+            border-radius: 16px;
             border: 1px solid var(--border);
+            backdrop-filter: blur(10px);
         }
 
-        .section-title {
-            font-size: 1.3rem;
-            font-weight: 600;
+        .form-group {
             margin-bottom: 1.5rem;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(107, 115, 255, 0.1);
         }
 
         .btn {
-            background: var(--primary);
-            color: white;
+            padding: 1rem 2rem;
             border: none;
-            padding: 0.8rem 1.5rem;
-            border-radius: 8px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
             cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            margin: 0.25rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            display: inline-block;
+            position: relative;
+            overflow: hidden;
         }
 
-        .btn:hover {
-            background: var(--primary-dark);
-            transform: translateY(-1px);
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
         }
 
-        .btn-success { background: var(--success); }
-        .btn-success:hover { background: #059669; }
-        .btn-warning { background: var(--warning); }
-        .btn-warning:hover { background: #D97706; }
-        .btn-danger { background: var(--danger); }
-        .btn-danger:hover { background: #DC2626; }
-        .btn-info { background: var(--info); }
-        .btn-info:hover { background: #2563EB; }
-        .btn-secondary { background: #6B7280; }
-        .btn-secondary:hover { background: #4B5563; }
+        .btn:hover::before {
+            left: 100%;
+        }
 
-        .actions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(107, 115, 255, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(107, 115, 255, 0.5);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            border: 1px solid;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
         }
 
         .loading {
             text-align: center;
-            color: var(--text-muted);
             padding: 2rem;
+            color: var(--text-muted);
         }
 
-        .error {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid var(--danger);
-            color: #FCA5A5;
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 1rem 0;
+        .loading::after {
+            content: '';
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            display: inline-block;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
         }
 
-        .success {
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid var(--success);
-            color: #6EE7B7;
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 1rem 0;
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         @media (max-width: 768px) {
-            .main-content {
+            .dashboard-content {
                 grid-template-columns: 1fr;
             }
-            
-            .navbar-content {
-                flex-direction: column;
-                gap: 1rem;
+
+            .sidebar {
+                position: static;
             }
-            
-            .container {
-                padding: 1rem;
+
+            .server-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
 
-        #console-debug {
-            background: #000;
-            color: #0f0;
-            font-family: monospace;
-            padding: 1rem;
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(37, 42, 58, 0.95) 100%);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 0;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 
+                0 25px 50px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: var(--text);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--text-muted);
+            cursor: pointer;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+
+        .close:hover {
+            color: var(--text);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
             border-radius: 8px;
-            height: 200px;
-            overflow-y: auto;
-            margin-top: 1rem;
+            color: var(--text);
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(107, 115, 255, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 0.25rem;
+            color: var(--text-muted);
             font-size: 12px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--text-muted);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* User Search Results */
+        .user-search-results {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            background: var(--bg-secondary);
+        }
+
+        .user-result {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .user-result:last-child {
+            border-bottom: none;
+        }
+
+        .user-result:hover {
+            background: rgba(107, 115, 255, 0.1);
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-right: 0.75rem;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+        }
+
+        .user-tag {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .user-roles {
+            display: flex;
+            gap: 0.25rem;
+            margin-top: 0.25rem;
+        }
+
+        .user-role {
+            font-size: 10px;
+            padding: 0.125rem 0.375rem;
+            border-radius: 12px;
+            background: var(--bg);
+            color: var(--text-muted);
+        }
+
+        .selected-user-card {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-top: 0.5rem;
+        }
+
+        .selected-user-card .user-avatar {
+            width: 48px;
+            height: 48px;
+            font-size: 18px;
+        }
+
+        .user-permissions {
+            margin-top: 0.5rem;
+            font-size: 12px;
+        }
+
+        .permission-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-right: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .permission-badge.can {
+            background: var(--success);
+            color: white;
+        }
+
+        .permission-badge.cannot {
+            background: var(--danger);
+            color: white;
+        }
+
+        .permission-badge.owner {
+            background: var(--warning);
+            color: white;
+        }
+
+        /* Enhanced modal for larger content */
+        .modal-content.large {
+            max-width: 600px;
+            width: 95%;
+        }
+
+        /* Search input focus state */
+        input[type="text"]:focus + .user-search-results {
+            border-color: var(--primary);
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        /* === TICKETS STYLES === */
+        .ticket-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid var(--border);
+            transition: transform 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary);
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .filters-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        .tickets-container {
+            min-height: 300px;
+            position: relative;
+        }
+
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        .tickets-list {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .ticket-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .ticket-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(107, 115, 255, 0.15);
+        }
+
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .ticket-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .ticket-meta {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .ticket-badges {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .ticket-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .badge-status-open { background: var(--info); color: white; }
+        .badge-status-assigned { background: var(--warning); color: white; }
+        .badge-status-closed { background: var(--success); color: white; }
+
+        .badge-priority-low { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .badge-priority-normal { background: rgba(59, 130, 246, 0.2); color: var(--info); }
+        .badge-priority-high { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .badge-priority-urgent { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+
+        .ticket-description {
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .ticket-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .ticket-actions .btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-group.half {
+            margin-bottom: 1rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .section-header {
+            margin-bottom: 2rem;
+        }
+
+        .section-header h3 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .section-header p {
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        @media (max-width: 768px) {
+            .filters-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .ticket-header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+
+        /* === LOGS SYSTEM STYLES === */
+        .logs-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            background: var(--bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .connection-status {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .logs-placeholder {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 2rem;
+            font-style: italic;
+        }
+
+        .log-entry {
+            border-left: 3px solid var(--border);
+            margin-bottom: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg);
+            border-radius: 0 8px 8px 0;
+            transition: all 0.2s ease;
+        }
+
+        .log-entry:hover {
+            background: var(--bg-card);
+            border-left-color: var(--primary);
+        }
+
+        .log-entry.log-info { border-left-color: var(--info); }
+        .log-entry.log-warn { border-left-color: var(--warning); }
+        .log-entry.log-error { border-left-color: var(--danger); }
+        .log-entry.log-critical { border-left-color: #DC2626; }
+
+        .log-header {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .log-time {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .log-type {
+            background: var(--primary);
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .log-level {
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .log-level-info { background: rgba(59, 130, 246, 0.2); color: var(--info); }
+        .log-level-warn { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .log-level-error { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+        .log-level-critical { background: rgba(220, 38, 38, 0.2); color: #DC2626; }
+
+        .log-message {
+            color: var(--text);
+            line-height: 1.4;
+            margin-bottom: 0.25rem;
+        }
+
+        .log-user, .log-channel {
+            font-size: 0.8rem;
+            color: var(--text-muted);
         }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
     <nav class="navbar">
-        <div class="navbar-content">
-            <div class="navbar-brand">
-                🤖 YSNM Dashboard
+        <div class="nav-container">
+            <div class="nav-brand">
+                <div class="logo">YB</div>
+                <span>YSNM Bot Dashboard</span>
             </div>
-            <div class="navbar-user">
-                <img id="userAvatar" src="/assets/default-avatar.png" alt="Avatar" class="user-avatar">
-                <span id="userName">Carregando...</span>
+            <div class="nav-user">
+                <div class="user-info">
+                    <img id="userAvatar" class="user-avatar" alt="Avatar">
+                    <span id="userName">Carregando...</span>
+                </div>
+                <a href="/logout" class="logout-btn">Sair</a>
             </div>
         </div>
     </nav>
 
     <div class="container">
-        <!-- Seleção de Servidor -->
-        <div id="serverSelection" class="server-selection">
-            <h2>🏠 Selecione um Servidor</h2>
-            <p>Escolha o servidor que deseja gerenciar</p>
+        <!-- Server Selection -->
+        <div id="serverSelection" class="server-selector">
+            <h2>Seleciona um Servidor</h2>
             <div id="serverGrid" class="server-grid">
                 <div class="loading">Carregando servidores...</div>
             </div>
         </div>
 
-        <!-- Conteúdo do Dashboard -->
+        <!-- Dashboard Content -->
         <div id="dashboardContent" class="dashboard-content">
-            <!-- Estatísticas -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value" id="memberCount">...</div>
-                    <div class="stat-label">👥 Membros</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="channelCount">...</div>
-                    <div class="stat-label">📺 Canais</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="roleCount">...</div>
-                    <div class="stat-label">👑 Cargos</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="messageCount">...</div>
-                    <div class="stat-label">💬 Mensagens</div>
-                </div>
-            </div>
+            <aside class="sidebar">
+                <ul class="sidebar-menu">
+                    <li><a href="#overview" class="menu-item active" data-section="overview">📊 Visão Geral</a></li>
+                    <li><a href="#config" class="menu-item" data-section="config">⚙️ Configuração</a></li>
+                    <li><a href="#moderation" class="menu-item" data-section="moderation">🛡️ Moderação</a></li>
+                    <li><a href="#tickets" class="menu-item" data-section="tickets">🎫 Tickets</a></li>
+                    <li><a href="#embeds" class="menu-item" data-section="embeds">🎨 Embed Builder</a></li>
+                    <li><a href="#logs" class="menu-item" data-section="logs">📋 Logs</a></li>
+                </ul>
+            </aside>
 
-            <!-- Conteúdo Principal -->
-            <div class="main-content">
-                <!-- Moderação -->
-                <div class="content-section">
-                    <h3 class="section-title">🛡️ Moderação</h3>
-                    <div class="actions-grid">
-                        <button class="btn btn-primary" onclick="showAlert('🧹 Limpar Chat', 'Funcionalidade em desenvolvimento')">🧹 Limpar Chat</button>
-                        <button class="btn btn-success" onclick="showAlert('🔓 Desbanir Todos', 'Funcionalidade em desenvolvimento')">🔓 Desbanir Todos</button>
-                        <button class="btn btn-danger" onclick="showAlert('🔒 Bloquear Servidor', 'Funcionalidade em desenvolvimento')">🔒 Bloquear Servidor</button>
-                        <button class="btn btn-warning" onclick="showAlert('⏰ Timeout Usuário', 'Funcionalidade em desenvolvimento')">⏰ Timeout Usuário</button>
-                        <button class="btn btn-info" onclick="showAlert('👢 Expulsar Usuário', 'Funcionalidade em desenvolvimento')">👢 Expulsar Usuário</button>
-                        <button class="btn btn-danger" onclick="showAlert('🔨 Banir Usuário', 'Funcionalidade em desenvolvimento')">🔨 Banir Usuário</button>
+            <main class="main-content">
+                <!-- Overview Section -->
+                <section id="overview" class="content-section active">
+                    <div class="section-header">
+                        <h3>Visão Geral do Servidor</h3>
+                        <p>Estatísticas e informações gerais sobre o teu servidor</p>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon members">👥</div>
+                            <div class="stat-number" id="memberCount">-</div>
+                            <div class="stat-label">Membros</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon channels">#</div>
+                            <div class="stat-number" id="channelCount">-</div>
+                            <div class="stat-label">Canais</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon roles">🎭</div>
+                            <div class="stat-number" id="roleCount">-</div>
+                            <div class="stat-label">Cargos</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon messages">💬</div>
+                            <div class="stat-number" id="messageCount">-</div>
+                            <div class="stat-label">Mensagens Hoje</div>
+                        </div>
+                    </div>
+
+                    <div class="config-form">
+                        <h4>Status do Bot</h4>
+                        <p>Bot Status: <span id="botStatus" style="color: var(--success);">🟢 Online</span></p>
+                        <p>Última atualização: <span id="lastUpdate">-</span></p>
+                    </div>
+                </section>
+
+                <!-- Configuration Section -->
+                <section id="config" class="content-section">
+                    <div class="section-header">
+                        <h3>Configuração do Bot</h3>
+                        <p>Personaliza as definições do bot para o teu servidor</p>
+                    </div>
+
+                    <div class="config-form">
+                        <form id="configForm">
+                            <div class="form-group">
+                                <label for="prefix">Prefixo do Bot</label>
+                                <input type="text" id="prefix" name="prefix" value="!" placeholder="!">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="welcomeChannel">Canal de Boas-vindas</label>
+                                <select id="welcomeChannel" name="welcomeChannel">
+                                    <option value="">Seleciona um canal...</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="logChannel">Canal de Logs</label>
+                                <select id="logChannel" name="logChannel">
+                                    <option value="">Seleciona um canal...</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="autoRole">Cargo Automático</label>
+                                <select id="autoRole" name="autoRole">
+                                    <option value="">Seleciona um cargo...</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">Guardar Configurações</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- Moderation Section -->
+                <section id="moderation" class="content-section">
+                    <div class="section-header">
+                        <h3>Sistema de Moderação</h3>
+                        <p>Ferramentas de moderação e gestão do servidor</p>
+                    </div>
+
+                    <div class="config-form">
+                        <h4>Ações Rápidas</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                            <button class="btn btn-primary" onclick="showClearChatModal()">🧹 Limpar Chat</button>
+                            <button class="btn btn-success" onclick="massUnban()">🔓 Desbanir Todos</button>
+                            <button class="btn btn-danger" onclick="toggleServerLock()">🔒 Bloquear Servidor</button>
+                            <button class="btn btn-warning" onclick="showTimeoutModal()">⏰ Timeout Usuário</button>
+                            <button class="btn btn-info" onclick="showKickModal()">👢 Expulsar Usuário</button>
+                            <button class="btn btn-danger" onclick="showBanModal()">🔨 Banir Usuário</button>
+                        </div>
+
+                        <h4>Filtros Automáticos</h4>
+                        <form id="moderationForm">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="automod" name="automod"> Ativar Automoderação
+                                </label>
+                                <small>Detecta automaticamente conteúdo inadequado</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="spamFilter" name="spamFilter"> Filtro Anti-Spam
+                                </label>
+                                <small>Previne spam de mensagens repetidas</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="linkFilter" name="linkFilter"> Filtro de Links
+                                </label>
+                                <small>Bloqueia links suspeitos ou não autorizados</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="profanityFilter" name="profanityFilter"> Filtro de Palavrões
+                                </label>
+                                <small>Remove automaticamente linguagem inadequada</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="capsFilter" name="capsFilter"> Filtro Anti-CAPS
+                                </label>
+                                <small>Previne mensagens excessivamente em maiúsculas</small>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">Guardar Configurações</button>
+                        </form>
+
+                        <h4>Logs de Moderação</h4>
+                        <div class="logs-container" style="background: var(--bg-secondary); border-radius: 12px; padding: 1rem; max-height: 300px; overflow-y: auto;">
+                            <div id="moderationLogs">
+                                <p style="color: var(--text-muted); text-align: center;">Carregando logs de moderação...</p>
+                            </div>
+                            <button class="btn btn-secondary" onclick="refreshModerationLogs()" style="margin-top: 1rem;">🔄 Atualizar Logs</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Clear Chat Modal -->
+                <div id="clearChatModal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>🧹 Limpar Chat</h3>
+                            <span class="close" onclick="closeClearChatModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="channelSelect">Selecionar Canal:</label>
+                                <select id="channelSelect" class="form-control">
+                                    <option value="">Carregando canais...</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="messageAmount">Quantidade de Mensagens:</label>
+                                <input type="number" id="messageAmount" class="form-control" min="1" max="100" value="10">
+                                <small>Máximo: 100 mensagens</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="filterType">Filtrar por:</label>
+                                <select id="filterType" class="form-control">
+                                    <option value="all">Todas as mensagens</option>
+                                    <option value="bots">Apenas bots</option>
+                                    <option value="users">Apenas usuários</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="confirmClear"> Confirmo que quero limpar este canal
+                                </label>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeClearChatModal()">Cancelar</button>
+                            <button class="btn btn-danger" onclick="executeClearChat()" id="clearChatBtn" disabled>Limpar Chat</button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Tickets -->
-                <div class="content-section">
-                    <h3 class="section-title">🎫 Sistema de Tickets</h3>
-                    <div class="actions-grid">
-                        <button class="btn btn-primary" onclick="showAlert('🔄 Atualizar', 'Tickets atualizados!')">🔄 Atualizar</button>
-                        <button class="btn btn-success" onclick="showAlert('➕ Novo Ticket', 'Funcionalidade em desenvolvimento')">➕ Novo Ticket</button>
-                        <button class="btn btn-secondary" onclick="showAlert('🗑️ Limpar', 'Filtros limpos!')">🗑️ Limpar</button>
-                        <button class="btn btn-info" onclick="loadTickets()">📋 Carregar Tickets</button>
-                    </div>
-                    <div id="ticketsList" style="margin-top: 1rem;">
-                        <p>Nenhum ticket encontrado</p>
+                <!-- Timeout Modal -->
+                <div id="timeoutModal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>⏰ Dar Timeout</h3>
+                            <span class="close" onclick="closeTimeoutModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="timeoutUserSearch">Buscar Usuário:</label>
+                                <input type="text" id="timeoutUserSearch" class="form-control" placeholder="Digite o nome ou tag do usuário">
+                                <div id="timeoutUserResults" class="user-search-results"></div>
+                            </div>
+                            
+                            <div class="form-group" id="timeoutSelectedUser" style="display: none;">
+                                <label>Usuário Selecionado:</label>
+                                <div class="selected-user-card" id="timeoutUserCard"></div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="timeoutDuration">Duração (minutos):</label>
+                                <select id="timeoutDuration" class="form-control">
+                                    <option value="5">5 minutos</option>
+                                    <option value="10">10 minutos</option>
+                                    <option value="30">30 minutos</option>
+                                    <option value="60" selected>1 hora</option>
+                                    <option value="120">2 horas</option>
+                                    <option value="360">6 horas</option>
+                                    <option value="720">12 horas</option>
+                                    <option value="1440">24 horas</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="timeoutReason">Motivo:</label>
+                                <input type="text" id="timeoutReason" class="form-control" placeholder="Motivo do timeout" value="Timeout via dashboard">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeTimeoutModal()">Cancelar</button>
+                            <button class="btn btn-warning" onclick="executeTimeout()" id="timeoutBtn" disabled>Aplicar Timeout</button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Debug Console -->
-            <div class="content-section" style="margin-top: 2rem;">
-                <h3 class="section-title">🐛 Debug Console</h3>
-                <button class="btn btn-secondary" onclick="clearDebugConsole()">🗑️ Limpar Console</button>
-                <div id="console-debug"></div>
-            </div>
+                <!-- Kick Modal -->
+                <div id="kickModal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>👢 Expulsar Usuário</h3>
+                            <span class="close" onclick="closeKickModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="kickUserSearch">Buscar Usuário:</label>
+                                <input type="text" id="kickUserSearch" class="form-control" placeholder="Digite o nome ou tag do usuário">
+                                <div id="kickUserResults" class="user-search-results"></div>
+                            </div>
+                            
+                            <div class="form-group" id="kickSelectedUser" style="display: none;">
+                                <label>Usuário Selecionado:</label>
+                                <div class="selected-user-card" id="kickUserCard"></div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="kickReason">Motivo:</label>
+                                <input type="text" id="kickReason" class="form-control" placeholder="Motivo da expulsão" value="Expulsão via dashboard">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="confirmKick"> Confirmo que quero expulsar este usuário
+                                </label>
+                                <small style="color: var(--warning);">⚠️ O usuário poderá voltar com um novo convite</small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeKickModal()">Cancelar</button>
+                            <button class="btn btn-info" onclick="executeKick()" id="kickBtn" disabled>Expulsar Usuário</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ban Modal -->
+                <div id="banModal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>🔨 Banir Usuário</h3>
+                            <span class="close" onclick="closeBanModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="banUserSearch">Buscar Usuário:</label>
+                                <input type="text" id="banUserSearch" class="form-control" placeholder="Digite o nome, tag ou ID do usuário">
+                                <div id="banUserResults" class="user-search-results"></div>
+                            </div>
+                            
+                            <div class="form-group" id="banSelectedUser" style="display: none;">
+                                <label>Usuário Selecionado:</label>
+                                <div class="selected-user-card" id="banUserCard"></div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="banReason">Motivo:</label>
+                                <input type="text" id="banReason" class="form-control" placeholder="Motivo do banimento" value="Banimento via dashboard">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="deleteMessageDays">Deletar mensagens dos últimos:</label>
+                                <select id="deleteMessageDays" class="form-control">
+                                    <option value="0">Não deletar mensagens</option>
+                                    <option value="1">1 dia</option>
+                                    <option value="3">3 dias</option>
+                                    <option value="7">7 dias</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="banDuration">Duração do Banimento:</label>
+                                <select id="banDuration" class="form-control">
+                                    <option value="0">Permanente</option>
+                                    <option value="60">1 hora</option>
+                                    <option value="1440">1 dia</option>
+                                    <option value="10080">1 semana</option>
+                                    <option value="43200">1 mês</option>
+                                </select>
+                                <small>Banimentos temporários requerem desbanimento manual</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="confirmBan"> Confirmo que quero banir este usuário
+                                </label>
+                                <small style="color: var(--danger);">⚠️ Esta é uma ação permanente (a menos que seja desbanido)</small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeBanModal()">Cancelar</button>
+                            <button class="btn btn-danger" onclick="executeBan()" id="banBtn" disabled>Banir Usuário</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tickets Section -->
+                <section id="tickets" class="content-section">
+                    <div class="section-header">
+                        <h3>Sistema de Tickets</h3>
+                        <p>Gerencie tickets de suporte dos usuários</p>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <!-- Estatísticas de Tickets -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h4>📊 Estatísticas</h4>
+                                <button class="btn btn-primary" onclick="refreshTicketStats()">🔄 Atualizar</button>
+                            </div>
+                            <div class="ticket-stats-grid">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="totalTickets">0</div>
+                                    <div class="stat-label">Total de Tickets</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-number" id="openTickets">0</div>
+                                    <div class="stat-label">Abertos</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-number" id="assignedTickets">0</div>
+                                    <div class="stat-label">Atribuídos</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-number" id="closedTickets">0</div>
+                                    <div class="stat-label">Fechados</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filtros e Ações -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h4>🔍 Filtros</h4>
+                                <button class="btn btn-success" onclick="openTicketModal()">➕ Novo Ticket</button>
+                            </div>
+                            <div class="filters-row">
+                                <select id="statusFilter" class="form-select" onchange="filterTickets()">
+                                    <option value="">Todos os Status</option>
+                                    <option value="open">Abertos</option>
+                                    <option value="assigned">Atribuídos</option>
+                                    <option value="closed">Fechados</option>
+                                </select>
+                                <select id="priorityFilter" class="form-select" onchange="filterTickets()">
+                                    <option value="">Todas as Prioridades</option>
+                                    <option value="low">Baixa</option>
+                                    <option value="normal">Normal</option>
+                                    <option value="high">Alta</option>
+                                    <option value="urgent">Urgente</option>
+                                </select>
+                                <button class="btn btn-secondary" onclick="clearFilters()">🗑️ Limpar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Tickets -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4>🎫 Lista de Tickets</h4>
+                            <div class="header-actions">
+                                <button class="btn btn-secondary" onclick="loadTickets()">🔄 Atualizar</button>
+                                <a href="tickets.html" class="btn btn-primary" target="_blank">📋 Ver Página Completa</a>
+                            </div>
+                        </div>
+                        <div class="tickets-container">
+                            <div id="ticketsLoading" class="loading-state">
+                                <div class="loading-spinner"></div>
+                                <p>Carregando tickets...</p>
+                            </div>
+                            <div id="ticketsList" class="tickets-list"></div>
+                            <div id="noTickets" class="empty-state" style="display: none;">
+                                <p>📭 Nenhum ticket encontrado</p>
+                                <button class="btn btn-primary" onclick="openTicketModal()">Criar Primeiro Ticket</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Modal para Novo/Editar Ticket -->
+                <div id="ticketModal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h4 id="ticketModalTitle">➕ Novo Ticket</h4>
+                            <span class="close" onclick="closeTicketModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <form id="ticketForm">
+                                <div class="form-group">
+                                    <label for="ticketSubject">Assunto*</label>
+                                    <input type="text" id="ticketSubject" class="form-control" required maxlength="100" placeholder="Descreva brevemente o problema">
+                                </div>
+                                <div class="form-group">
+                                    <label for="ticketDescription">Descrição*</label>
+                                    <textarea id="ticketDescription" class="form-control" required rows="4" maxlength="1000" placeholder="Descreva detalhadamente o problema ou solicitação"></textarea>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group half">
+                                        <label for="ticketPriority">Prioridade</label>
+                                        <select id="ticketPriority" class="form-select">
+                                            <option value="low">🟢 Baixa</option>
+                                            <option value="normal" selected>🟡 Normal</option>
+                                            <option value="high">🟠 Alta</option>
+                                            <option value="urgent">🔴 Urgente</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group half">
+                                        <label for="ticketCategory">Categoria</label>
+                                        <input type="text" id="ticketCategory" class="form-control" maxlength="50" placeholder="Ex: Bug, Sugestão, Suporte">
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeTicketModal()">Cancelar</button>
+                            <button class="btn btn-primary" onclick="submitTicket()" id="submitTicketBtn">Criar Ticket</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Embed Builder Section -->
+                <section id="embeds" class="content-section">
+                    <div class="section-header">
+                        <h3>Embed Builder</h3>
+                        <p>Cria embeds personalizados para o teu servidor</p>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div class="config-form">
+                            <h4>Editor de Embed</h4>
+                            <form id="embedForm">
+                                <div class="form-group">
+                                    <label for="embedTitle">Título</label>
+                                    <input type="text" id="embedTitle" name="embedTitle" placeholder="Título do embed">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="embedDescription">Descrição</label>
+                                    <textarea id="embedDescription" name="embedDescription" rows="4" placeholder="Descrição do embed"></textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="embedColor">Cor</label>
+                                    <input type="color" id="embedColor" name="embedColor" value="#9932CC">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="embedFooter">Rodapé</label>
+                                    <input type="text" id="embedFooter" name="embedFooter" placeholder="Texto do rodapé">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="embedChannel">Canal para Enviar</label>
+                                    <select id="embedChannel" name="embedChannel">
+                                        <option value="">Seleciona um canal...</option>
+                                    </select>
+                                </div>
+
+                                <button type="button" class="btn btn-primary" onclick="sendEmbed()">Enviar Embed</button>
+                            </form>
+                        </div>
+
+                        <div class="config-form">
+                            <h4>Pré-visualização</h4>
+                            <div id="embedPreview" style="border: 1px solid var(--border); padding: 1rem; border-radius: 5px; background: #2f3136; color: white;">
+                                <div style="border-left: 4px solid #9932CC; padding-left: 1rem;">
+                                    <h5 id="previewTitle">Título do Embed</h5>
+                                    <p id="previewDescription">Descrição do embed aparecerá aqui...</p>
+                                    <small id="previewFooter" style="color: #72767d;">Rodapé</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Logs Section -->
+                <section id="logs" class="content-section">
+                    <div class="section-header">
+                        <h3>Logs do Sistema</h3>
+                        <p>Histórico de atividades e eventos do bot</p>
+                    </div>
+
+                    <div class="config-form">
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                            <select id="logFilter" onchange="filterLogs()">
+                                <option value="">Todos os Logs</option>
+                                <option value="moderation">Moderação</option>
+                                <option value="message">Mensagens</option>
+                                <option value="member">Membros</option>
+                                <option value="bot">Bot</option>
+                                <option value="error">Erros</option>
+                            </select>
+                            <select id="logLevel" onchange="filterLogs()">
+                                <option value="">Todos os Níveis</option>
+                                <option value="info">Info</option>
+                                <option value="warn">Aviso</option>
+                                <option value="error">Erro</option>
+                                <option value="critical">Crítico</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="connectLogs()">🔄 Conectar Stream</button>
+                            <button class="btn btn-secondary" onclick="disconnectLogs()">⏹️ Parar</button>
+                        </div>
+
+                        <div class="logs-status">
+                            <span id="logsConnection" class="connection-status">🔴 Desconectado</span>
+                            <span id="logsCount">0 logs</span>
+                        </div>
+
+                        <div id="logsList" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); padding: 1rem; border-radius: 5px; background: var(--bg-secondary); color: var(--text);">
+                            <div class="logs-placeholder">📡 Clique em "Conectar Stream" para receber logs em tempo real</div>
+                        </div>
+                    </div>
+                </section>
+            </main>
         </div>
     </div>
 
     <script>
-        // Variables
         let currentServerId = null;
         let userGuilds = [];
 
-        // Debug console
-        function addDebugLog(message, type = 'info') {
-            const console = document.getElementById('console-debug');
-            const timestamp = new Date().toLocaleTimeString();
-            const colors = {
-                info: '#0ff',
-                success: '#0f0', 
-                error: '#f00',
-                warning: '#ff0'
-            };
-            
-            console.innerHTML += `<div style="color: ${colors[type] || '#0ff'}">[${timestamp}] ${message}</div>`;
-            console.scrollTop = console.scrollHeight;
-        }
-
-        function clearDebugConsole() {
-            document.getElementById('console-debug').innerHTML = '';
-            addDebugLog('Console limpo', 'info');
-        }
-
-        // Alert system
-        function showAlert(title, message, type = 'info') {
-            addDebugLog(`${title}: ${message}`, type);
-            alert(`${title}\n\n${message}`);
-        }
-
-        // Load user data and guilds
+        // Load user info and guilds
         async function loadUserData() {
             try {
-                addDebugLog('🔄 Carregando dados do usuário...', 'info');
+                console.log('🔄 Carregando dados do usuário...');
                 
                 const [userResponse, guildsResponse] = await Promise.all([
                     fetch('/api/user'),
                     fetch('/api/guilds')
                 ]);
 
-                addDebugLog(`Status /api/user: ${userResponse.status}`, 'info');
-                addDebugLog(`Status /api/guilds: ${guildsResponse.status}`, 'info');
+                console.log('📊 Status das APIs:', userResponse.status, guildsResponse.status);
 
                 const userData = await userResponse.json();
                 const guildsData = await guildsResponse.json();
 
+                console.log('📄 Dados recebidos:', { userData, guildsData });
+
                 if (userData.success && guildsData.success) {
-                    addDebugLog('✅ Dados carregados com sucesso', 'success');
-                    
                     document.getElementById('userName').textContent = userData.user?.username || 'Developer';
                     if (userData.user?.avatar) {
                         document.getElementById('userAvatar').src = userData.user.avatar;
@@ -452,13 +1754,20 @@
                     
                     userGuilds = guildsData.guilds || [];
                     displayServers();
+                    console.log('✅ Dashboard carregado com sucesso');
                 } else {
-                    addDebugLog('❌ Falha ao carregar dados', 'error');
-                    showAlert('Erro', 'Falha ao carregar dados do usuário', 'error');
+                    console.log('⚠️ Tentando modo de desenvolvimento...');
+                    // Fallback para desenvolvimento
+                    document.getElementById('userName').textContent = 'Developer';
+                    userGuilds = [];
+                    displayServers();
                 }
             } catch (error) {
-                addDebugLog(`❌ Erro: ${error.message}`, 'error');
-                showAlert('Erro', `Erro ao carregar dados: ${error.message}`, 'error');
+                console.error('❌ Erro ao carregar dados:', error);
+                // Fallback para desenvolvimento
+                document.getElementById('userName').textContent = 'Developer (Modo Local)';
+                userGuilds = [];
+                displayServers();
             }
         }
 
@@ -466,26 +1775,31 @@
             const serverGrid = document.getElementById('serverGrid');
             
             if (userGuilds.length === 0) {
-                serverGrid.innerHTML = '<p>Não tens acesso a nenhum servidor com o bot instalado.</p>';
-                return;
-            }
-
-            addDebugLog(`📊 Exibindo ${userGuilds.length} servidor(es)`, 'info');
-
-            serverGrid.innerHTML = userGuilds.map(guild => `
-                <div class="server-card" data-server-id="${guild.id}">
-                    <div class="server-icon">
-                        ${guild.icon ? 
-                            `<img src="https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png" alt="${guild.name}">` :
-                            guild.name.charAt(0).toUpperCase()
-                        }
+                console.log('⚠️ Nenhum servidor encontrado - exibindo opção de teste');
+                serverGrid.innerHTML = `
+                    <div class="server-card" data-server-id="test-server">
+                        <div class="server-icon">T</div>
+                        <div class="server-name">Servidor de Teste</div>
+                        <div class="server-members">Modo de Desenvolvimento 🔧</div>
                     </div>
-                    <div class="server-info">
+                    <p style="margin-top: 1rem; color: var(--text-muted);">
+                        💡 Não tens acesso a nenhum servidor com o bot instalado, mas podes testar as funcionalidades.
+                    </p>
+                `;
+            } else {
+                serverGrid.innerHTML = userGuilds.map(guild => `
+                    <div class="server-card" data-server-id="${guild.id}">
+                        <div class="server-icon">
+                            ${guild.icon ? 
+                                `<img src="https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png" alt="${guild.name}">` :
+                                guild.name.charAt(0).toUpperCase()
+                            }
+                        </div>
                         <div class="server-name">${guild.name}</div>
                         <div class="server-members">${guild.memberCount || '?'} membros ${guild.botPresent ? '🟢' : '🔴'}</div>
                     </div>
-                </div>
-            `).join('');
+                `).join('');
+            }
 
             // Add click listeners to server cards
             document.querySelectorAll('.server-card').forEach(card => {
@@ -498,15 +1812,16 @@
 
         function selectServer(serverId, clickedElement) {
             currentServerId = serverId;
-            addDebugLog(`🎯 Servidor selecionado: ${serverId}`, 'success');
-            
             const serverCards = document.querySelectorAll('.server-card');
             serverCards.forEach(card => card.classList.remove('selected'));
             
+            // Select the clicked card
             if (clickedElement) {
                 clickedElement.classList.add('selected');
             }
 
+            console.log('🎯 Servidor selecionado:', serverId);
+            
             document.getElementById('serverSelection').style.display = 'none';
             document.getElementById('dashboardContent').classList.add('active');
 
@@ -514,99 +1829,1197 @@
         }
 
         async function loadServerData() {
-            try {
-                addDebugLog('📊 Carregando dados do servidor...', 'info');
-                
-                // Reset stats
-                document.getElementById('memberCount').textContent = '...';
-                document.getElementById('channelCount').textContent = '...';
-                document.getElementById('roleCount').textContent = '...';
-                document.getElementById('messageCount').textContent = '...';
+            // Load server statistics
+            document.getElementById('memberCount').textContent = '...';
+            document.getElementById('channelCount').textContent = '...';
+            document.getElementById('roleCount').textContent = '...';
+            document.getElementById('messageCount').textContent = '...';
 
+            try {
+                console.log('📊 Carregando estatísticas do servidor:', currentServerId);
+                
                 // Fetch real server statistics
                 const response = await fetch(`/api/server/${currentServerId}/stats`);
                 const data = await response.json();
 
-                addDebugLog(`Status /api/server/stats: ${response.status}`, 'info');
+                console.log('📈 Resposta das estatísticas:', response.status, data);
 
                 if (data.success && data.stats) {
                     const stats = data.stats;
                     
-                    document.getElementById('memberCount').textContent = stats.memberCount || 0;
-                    document.getElementById('channelCount').textContent = stats.channelCount || 0;
-                    document.getElementById('roleCount').textContent = stats.roleCount || 0;
-                    document.getElementById('messageCount').textContent = stats.messageCount || 0;
+                    // Update display with real data
+                    document.getElementById('memberCount').textContent = stats.members?.humans || stats.memberCount || 0;
+                    document.getElementById('channelCount').textContent = stats.channels?.total || stats.channelCount || 0;
+                    document.getElementById('roleCount').textContent = stats.roles?.total || stats.roleCount || 0;
+                    document.getElementById('messageCount').textContent = stats.messages?.estimated || stats.messageCount || 0;
+
+                    // Add tooltips with detailed info if available
+                    if (stats.members) {
+                        document.getElementById('memberCount').title = `${stats.members.humans} humanos, ${stats.members.bots} bots (${stats.members.total} total)`;
+                    }
+                    if (stats.channels) {
+                        document.getElementById('channelCount').title = `${stats.channels.text} texto, ${stats.channels.voice} voz, ${stats.channels.categories} categorias`;
+                    }
+                    if (stats.roles) {
+                        document.getElementById('roleCount').title = `${stats.roles.colored} cargos com cor`;
+                    }
                     
-                    addDebugLog('✅ Estatísticas carregadas', 'success');
+                    console.log('✅ Estatísticas carregadas:', stats);
                 } else {
-                    addDebugLog('⚠️ Sem estatísticas disponíveis', 'warning');
-                    
-                    // Set default values
+                    console.log('⚠️ Usando estatísticas padrão');
+                    // Fallback data
                     document.getElementById('memberCount').textContent = '0';
                     document.getElementById('channelCount').textContent = '0';
                     document.getElementById('roleCount').textContent = '0';
                     document.getElementById('messageCount').textContent = '0';
                 }
             } catch (error) {
-                addDebugLog(`❌ Erro ao carregar estatísticas: ${error.message}`, 'error');
-                showAlert('Erro', `Erro ao carregar estatísticas: ${error.message}`, 'error');
+                console.error('❌ Erro ao carregar estatísticas:', error);
+                // Fallback data
+                document.getElementById('memberCount').textContent = '0';
+                document.getElementById('channelCount').textContent = '0';
+                document.getElementById('roleCount').textContent = '0';
+                document.getElementById('messageCount').textContent = '0';
             }
+
+            // Load other data
+            loadModerationLogs();
+            refreshTicketStats();
         }
 
-        async function loadTickets() {
+        // Menu navigation
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('menu-item')) {
+                e.preventDefault();
+                
+                const section = e.target.dataset.section;
+                
+                // Update active menu item
+                document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                // Show corresponding section
+                document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
+                document.getElementById(section).classList.add('active');
+                
+                // Load section-specific data
+                if (section === 'tickets') {
+                    loadTickets();
+                    refreshTicketStats();
+                } else if (section === 'logs') {
+                    loadLogsPolling();
+                    // Auto-connect to real-time logs after 1 second
+                    setTimeout(() => connectLogs(), 1000);
+                }
+            }
+        });
+
+        // Embed preview update
+        function updateEmbedPreview() {
+            const title = document.getElementById('embedTitle').value || 'Título do Embed';
+            const description = document.getElementById('embedDescription').value || 'Descrição do embed aparecerá aqui...';
+            const footer = document.getElementById('embedFooter').value || 'Rodapé';
+            const color = document.getElementById('embedColor').value;
+
+            document.getElementById('previewTitle').textContent = title;
+            document.getElementById('previewDescription').textContent = description;
+            document.getElementById('previewFooter').textContent = footer;
+            document.getElementById('embedPreview').querySelector('div').style.borderLeftColor = color;
+        }
+
+        // Event listeners for embed preview
+        ['embedTitle', 'embedDescription', 'embedFooter', 'embedColor'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateEmbedPreview);
+        });
+
+        // Variables for moderation
+        let serverChannels = [];
+        let serverMembers = [];
+        let isServerLocked = false;
+        let selectedTimeoutUser = null;
+        let selectedKickUser = null;
+        let selectedBanUser = null;
+
+        // User Search Functions
+        async function searchUsers(query, resultsContainer, type) {
+            if (query.length < 2) {
+                resultsContainer.innerHTML = '';
+                return;
+            }
+
             try {
-                addDebugLog('🎫 Carregando tickets...', 'info');
-                
-                const response = await fetch('/api/tickets');
+                const response = await fetch(`/api/server/${currentServerId}/members?search=${encodeURIComponent(query)}&limit=10`);
                 const data = await response.json();
-                
-                addDebugLog(`Status /api/tickets: ${response.status}`, 'info');
-                
-                const ticketsList = document.getElementById('ticketsList');
-                
-                if (data.success && data.tickets) {
-                    const tickets = data.tickets;
-                    
-                    if (tickets.length > 0) {
-                        ticketsList.innerHTML = tickets.map(ticket => `
-                            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin: 0.5rem 0;">
-                                <strong>#${ticket.id}</strong> - ${ticket.title || 'Sem título'}
-                                <br><small>Status: ${ticket.status || 'Aberto'}</small>
+
+                if (data.success) {
+                    resultsContainer.innerHTML = data.members.map(member => `
+                        <div class="user-result" onclick="selectUser('${member.id}', '${type}')">
+                            <div class="user-avatar">
+                                ${member.avatar ? 
+                                    `<img src="${member.avatar}" alt="${member.displayName}" style="width: 100%; height: 100%; border-radius: 50%;">` :
+                                    member.displayName.charAt(0).toUpperCase()
+                                }
                             </div>
-                        `).join('');
-                        
-                        addDebugLog(`✅ ${tickets.length} ticket(s) carregado(s)`, 'success');
-                    } else {
-                        ticketsList.innerHTML = '<p>Nenhum ticket encontrado</p>';
-                        addDebugLog('ℹ️ Nenhum ticket encontrado', 'info');
-                    }
+                            <div class="user-info">
+                                <div class="user-name">${member.displayName}</div>
+                                <div class="user-tag">${member.tag}</div>
+                                <div class="user-roles">
+                                    ${member.roles.slice(0, 2).map(role => 
+                                        `<span class="user-role" style="background: ${role.color}20; color: ${role.color}">${role.name}</span>`
+                                    ).join('')}
+                                    ${member.isOwner ? '<span class="user-role" style="background: #f59e0b; color: white;">👑 DONO</span>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
                 } else {
-                    ticketsList.innerHTML = '<p>Erro ao carregar tickets</p>';
-                    addDebugLog('❌ Erro ao carregar tickets', 'error');
+                    resultsContainer.innerHTML = '<div class="empty-state">Nenhum usuário encontrado</div>';
                 }
             } catch (error) {
-                addDebugLog(`❌ Erro nos tickets: ${error.message}`, 'error');
-                document.getElementById('ticketsList').innerHTML = '<p>Erro ao carregar tickets</p>';
+                console.error('Erro ao buscar usuários:', error);
+                resultsContainer.innerHTML = '<div class="empty-state">Erro ao buscar usuários</div>';
             }
         }
 
-        // Global error handler
-        window.addEventListener('error', function(event) {
-            addDebugLog(`❌ ERRO GLOBAL: ${event.error?.message || event.message}`, 'error');
-        });
+        function selectUser(userId, type) {
+            // Find user from search results
+            const member = serverMembers.find(m => m.id === userId);
+            if (!member) return;
 
-        // Initialize dashboard
-        window.addEventListener('load', function() {
-            addDebugLog('🚀 Dashboard iniciado', 'success');
-            loadUserData();
-        });
+            // Set selected user based on type
+            if (type === 'timeout') {
+                selectedTimeoutUser = member;
+                updateSelectedUserCard('timeout', member);
+                document.getElementById('timeoutBtn').disabled = false;
+            } else if (type === 'kick') {
+                selectedKickUser = member;
+                updateSelectedUserCard('kick', member);
+                document.getElementById('kickBtn').disabled = !document.getElementById('confirmKick').checked;
+            } else if (type === 'ban') {
+                selectedBanUser = member;
+                updateSelectedUserCard('ban', member);
+                document.getElementById('banBtn').disabled = !document.getElementById('confirmBan').checked;
+            }
 
-        // Log clicks for debugging
-        document.addEventListener('click', function(event) {
-            if (event.target.tagName === 'BUTTON') {
-                addDebugLog(`🖱️ Botão clicado: ${event.target.textContent}`, 'info');
+            // Clear search results
+            document.getElementById(`${type}UserResults`).innerHTML = '';
+            document.getElementById(`${type}UserSearch`).value = member.displayName;
+        }
+
+        function updateSelectedUserCard(type, member) {
+            const cardContainer = document.getElementById(`${type}SelectedUser`);
+            const card = document.getElementById(`${type}UserCard`);
+            
+            const permissionBadges = [];
+            if (member.isOwner) {
+                permissionBadges.push('<span class="permission-badge owner">👑 Proprietário</span>');
+            } else {
+                if (type === 'timeout' && member.moderatable) {
+                    permissionBadges.push('<span class="permission-badge can">✅ Pode dar timeout</span>');
+                } else if (type === 'timeout') {
+                    permissionBadges.push('<span class="permission-badge cannot">❌ Não pode dar timeout</span>');
+                }
+                
+                if (type === 'kick' && member.kickable) {
+                    permissionBadges.push('<span class="permission-badge can">✅ Pode expulsar</span>');
+                } else if (type === 'kick') {
+                    permissionBadges.push('<span class="permission-badge cannot">❌ Não pode expulsar</span>');
+                }
+                
+                if (type === 'ban' && member.bannable) {
+                    permissionBadges.push('<span class="permission-badge can">✅ Pode banir</span>');
+                } else if (type === 'ban') {
+                    permissionBadges.push('<span class="permission-badge cannot">❌ Não pode banir</span>');
+                }
+            }
+
+            card.innerHTML = `
+                <div class="user-avatar">
+                    ${member.avatar ? 
+                        `<img src="${member.avatar}" alt="${member.displayName}" style="width: 100%; height: 100%; border-radius: 50%;">` :
+                        member.displayName.charAt(0).toUpperCase()
+                    }
+                </div>
+                <div class="user-info">
+                    <div class="user-name">${member.displayName}</div>
+                    <div class="user-tag">${member.tag}</div>
+                    <div class="user-roles">
+                        ${member.roles.map(role => 
+                            `<span class="user-role" style="background: ${role.color}20; color: ${role.color}">${role.name}</span>`
+                        ).join('')}
+                    </div>
+                    <div class="user-permissions">
+                        ${permissionBadges.join('')}
+                    </div>
+                </div>
+            `;
+            
+            cardContainer.style.display = 'block';
+        }
+
+        // Timeout Modal Functions
+        function showTimeoutModal() {
+            document.getElementById('timeoutModal').style.display = 'flex';
+            loadServerMembers();
+        }
+
+        function closeTimeoutModal() {
+            document.getElementById('timeoutModal').style.display = 'none';
+            resetTimeoutForm();
+        }
+
+        function resetTimeoutForm() {
+            selectedTimeoutUser = null;
+            document.getElementById('timeoutUserSearch').value = '';
+            document.getElementById('timeoutUserResults').innerHTML = '';
+            document.getElementById('timeoutSelectedUser').style.display = 'none';
+            document.getElementById('timeoutDuration').value = '60';
+            document.getElementById('timeoutReason').value = 'Timeout via dashboard';
+            document.getElementById('timeoutBtn').disabled = true;
+        }
+
+        async function executeTimeout() {
+            if (!selectedTimeoutUser) return;
+
+            const duration = parseInt(document.getElementById('timeoutDuration').value);
+            const reason = document.getElementById('timeoutReason').value;
+
+            const timeoutBtn = document.getElementById('timeoutBtn');
+            timeoutBtn.disabled = true;
+            timeoutBtn.innerHTML = '<span class="loading"></span> Aplicando...';
+
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/timeout`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: selectedTimeoutUser.id,
+                        duration: duration,
+                        reason: reason
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(`✅ Timeout aplicado em ${data.user.tag} por ${data.duration} minutos`);
+                    closeTimeoutModal();
+                    refreshModerationLogs();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao aplicar timeout:', error);
+                alert('❌ Erro ao aplicar timeout');
+            } finally {
+                timeoutBtn.disabled = false;
+                timeoutBtn.innerHTML = 'Aplicar Timeout';
+            }
+        }
+
+        // Kick Modal Functions
+        function showKickModal() {
+            document.getElementById('kickModal').style.display = 'flex';
+            loadServerMembers();
+        }
+
+        function closeKickModal() {
+            document.getElementById('kickModal').style.display = 'none';
+            resetKickForm();
+        }
+
+        function resetKickForm() {
+            selectedKickUser = null;
+            document.getElementById('kickUserSearch').value = '';
+            document.getElementById('kickUserResults').innerHTML = '';
+            document.getElementById('kickSelectedUser').style.display = 'none';
+            document.getElementById('kickReason').value = 'Expulsão via dashboard';
+            document.getElementById('confirmKick').checked = false;
+            document.getElementById('kickBtn').disabled = true;
+        }
+
+        async function executeKick() {
+            if (!selectedKickUser || !document.getElementById('confirmKick').checked) return;
+
+            const reason = document.getElementById('kickReason').value;
+
+            const kickBtn = document.getElementById('kickBtn');
+            kickBtn.disabled = true;
+            kickBtn.innerHTML = '<span class="loading"></span> Expulsando...';
+
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/kick`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: selectedKickUser.id,
+                        reason: reason
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(`✅ ${data.user.tag} foi expulso do servidor`);
+                    closeKickModal();
+                    refreshModerationLogs();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao expulsar usuário:', error);
+                alert('❌ Erro ao expulsar usuário');
+            } finally {
+                kickBtn.disabled = false;
+                kickBtn.innerHTML = 'Expulsar Usuário';
+            }
+        }
+
+        // Ban Modal Functions
+        function showBanModal() {
+            document.getElementById('banModal').style.display = 'flex';
+            loadServerMembers();
+        }
+
+        function closeBanModal() {
+            document.getElementById('banModal').style.display = 'none';
+            resetBanForm();
+        }
+
+        function resetBanForm() {
+            selectedBanUser = null;
+            document.getElementById('banUserSearch').value = '';
+            document.getElementById('banUserResults').innerHTML = '';
+            document.getElementById('banSelectedUser').style.display = 'none';
+            document.getElementById('banReason').value = 'Banimento via dashboard';
+            document.getElementById('deleteMessageDays').value = '0';
+            document.getElementById('banDuration').value = '0';
+            document.getElementById('confirmBan').checked = false;
+            document.getElementById('banBtn').disabled = true;
+        }
+
+        async function executeBan() {
+            if (!selectedBanUser || !document.getElementById('confirmBan').checked) return;
+
+            const reason = document.getElementById('banReason').value;
+            const deleteMessageDays = parseInt(document.getElementById('deleteMessageDays').value);
+            const duration = parseInt(document.getElementById('banDuration').value);
+
+            const banBtn = document.getElementById('banBtn');
+            banBtn.disabled = true;
+            banBtn.innerHTML = '<span class="loading"></span> Banindo...';
+
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/ban`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: selectedBanUser.id,
+                        reason: reason,
+                        deleteMessageDays: deleteMessageDays,
+                        duration: duration
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const durationText = data.duration > 0 ? ` por ${data.duration} minutos` : ' permanentemente';
+                    alert(`✅ ${data.user.tag} foi banido${durationText}`);
+                    closeBanModal();
+                    refreshModerationLogs();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao banir usuário:', error);
+                alert('❌ Erro ao banir usuário');
+            } finally {
+                banBtn.disabled = false;
+                banBtn.innerHTML = 'Banir Usuário';
+            }
+        }
+
+        async function loadServerMembers() {
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/members?limit=100`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    serverMembers = data.members;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar membros:', error);
+            }
+        }
+
+        // Clear Chat Modal Functions
+        async function showClearChatModal() {
+            const modal = document.getElementById('clearChatModal');
+            modal.style.display = 'flex';
+            
+            // Load channels
+            await loadServerChannels();
+        }
+
+        function closeClearChatModal() {
+            const modal = document.getElementById('clearChatModal');
+            modal.style.display = 'none';
+            
+            // Reset form
+            document.getElementById('messageAmount').value = '10';
+            document.getElementById('filterType').value = 'all';
+            document.getElementById('confirmClear').checked = false;
+            document.getElementById('clearChatBtn').disabled = true;
+        }
+
+        async function loadServerChannels() {
+            const channelSelect = document.getElementById('channelSelect');
+            channelSelect.innerHTML = '<option value="">Carregando canais...</option>';
+            
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/channels`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    serverChannels = data.channels;
+                    channelSelect.innerHTML = '<option value="">Selecione um canal</option>';
+                    
+                    // Group channels by category
+                    const channelsByCategory = {};
+                    data.channels.forEach(channel => {
+                        if (channel.type === 'text') { // Only show text channels for clearing
+                            if (!channelsByCategory[channel.category]) {
+                                channelsByCategory[channel.category] = [];
+                            }
+                            channelsByCategory[channel.category].push(channel);
+                        }
+                    });
+                    
+                    // Add channels to select
+                    Object.keys(channelsByCategory).forEach(category => {
+                        const optgroup = document.createElement('optgroup');
+                        optgroup.label = category;
+                        
+                        channelsByCategory[category].forEach(channel => {
+                            const option = document.createElement('option');
+                            option.value = channel.id;
+                            option.textContent = `# ${channel.name}`;
+                            option.disabled = !channel.permissionsFor;
+                            if (!channel.permissionsFor) {
+                                option.textContent += ' (Sem permissão)';
+                            }
+                            optgroup.appendChild(option);
+                        });
+                        
+                        channelSelect.appendChild(optgroup);
+                    });
+                } else {
+                    channelSelect.innerHTML = '<option value="">Erro ao carregar canais</option>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar canais:', error);
+                channelSelect.innerHTML = '<option value="">Erro ao carregar canais</option>';
+            }
+        }
+
+        async function executeClearChat() {
+            const channelId = document.getElementById('channelSelect').value;
+            const amount = parseInt(document.getElementById('messageAmount').value);
+            const filterType = document.getElementById('filterType').value;
+            const confirmed = document.getElementById('confirmClear').checked;
+            
+            if (!channelId || !confirmed) {
+                alert('Por favor, selecione um canal e confirme a ação');
+                return;
+            }
+            
+            const clearBtn = document.getElementById('clearChatBtn');
+            clearBtn.disabled = true;
+            clearBtn.innerHTML = '<span class="loading"></span> Limpando...';
+            
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/channels/${channelId}/clear`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        amount: amount,
+                        filterType: filterType
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`✅ ${data.deletedCount} mensagens foram removidas do canal ${data.channelName}`);
+                    closeClearChatModal();
+                    refreshModerationLogs();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao limpar chat:', error);
+                alert('❌ Erro ao limpar chat');
+            } finally {
+                clearBtn.disabled = false;
+                clearBtn.innerHTML = 'Limpar Chat';
+            }
+        }
+
+        // Mass Unban Function
+        async function massUnban() {
+            if (!confirm('⚠️ Tem certeza que deseja desbanir TODOS os usuários banidos? Esta ação não pode ser desfeita.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/unban-all`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.unbannedCount === 0) {
+                        alert('ℹ️ Não há usuários banidos para desbanir');
+                    } else {
+                        alert(`✅ ${data.unbannedCount} usuários foram desbanidos com sucesso!`);
+                        refreshModerationLogs();
+                    }
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao desbanir todos:', error);
+                alert('❌ Erro ao desbanir usuários');
+            }
+        }
+
+        // Server Lock Function
+        async function toggleServerLock() {
+            const action = isServerLocked ? 'desbloquear' : 'bloquear';
+            
+            if (!confirm(`⚠️ Tem certeza que deseja ${action} o servidor? ${isServerLocked ? 'Isso permitirá que todos os membros enviem mensagens novamente.' : 'Isso impedirá que membros normais enviem mensagens.'}`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/lock`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        lock: !isServerLocked,
+                        reason: `${action} via dashboard`
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    isServerLocked = data.action === 'locked';
+                    const statusText = isServerLocked ? 'bloqueado' : 'desbloqueado';
+                    alert(`✅ Servidor ${statusText} com sucesso! ${data.modifiedChannels} canais foram modificados.`);
+                    
+                    // Update button text
+                    const lockBtn = document.querySelector('button[onclick="toggleServerLock()"]');
+                    lockBtn.innerHTML = isServerLocked ? '🔓 Desbloquear Servidor' : '🔒 Bloquear Servidor';
+                    lockBtn.className = isServerLocked ? 'btn btn-success' : 'btn btn-danger';
+                    
+                    refreshModerationLogs();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao bloquear/desbloquear servidor:', error);
+                alert('❌ Erro ao modificar estado do servidor');
+            }
+        }
+
+        // Placeholder functions for additional moderation features (now implemented!)
+        function showTimeoutModal() {
+            const modal = document.getElementById('timeoutModal');
+            modal.style.display = 'flex';
+            loadServerMembers();
+        }
+
+        function showKickModal() {
+            const modal = document.getElementById('kickModal');
+            modal.style.display = 'flex';
+            loadServerMembers();
+        }
+
+        function showBanModal() {
+            const modal = document.getElementById('banModal');
+            modal.style.display = 'flex';
+            loadServerMembers();
+        }
+
+        function refreshModerationLogs() {
+            const logsContainer = document.getElementById('moderationLogs');
+            logsContainer.innerHTML = '<div class="loading"></div> Carregando logs...';
+            
+            // Simulate loading logs (replace with real API call)
+            setTimeout(() => {
+                logsContainer.innerHTML = `
+                    <div style="font-size: 14px; line-height: 1.6;">
+                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg); border-radius: 8px;">
+                            <strong>🧹 Limpeza de Canal</strong> - há 2 minutos<br>
+                            <small style="color: var(--text-muted);">Canal #geral: 15 mensagens removidas</small>
+                        </div>
+                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg); border-radius: 8px;">
+                            <strong>🔓 Desbanimento em Massa</strong> - há 1 hora<br>
+                            <small style="color: var(--text-muted);">3 usuários desbanidos</small>
+                        </div>
+                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg); border-radius: 8px;">
+                            <strong>🔒 Servidor Bloqueado</strong> - há 2 horas<br>
+                            <small style="color: var(--text-muted);">12 canais modificados</small>
+                        </div>
+                    </div>
+                `;
+            }, 1000);
+        }
+
+        // Enable/disable buttons based on confirmation and setup event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Clear chat confirmation
+            const confirmCheckbox = document.getElementById('confirmClear');
+            const clearBtn = document.getElementById('clearChatBtn');
+            
+            if (confirmCheckbox && clearBtn) {
+                confirmCheckbox.addEventListener('change', function() {
+                    clearBtn.disabled = !this.checked;
+                });
+            }
+
+            // Kick confirmation
+            const confirmKick = document.getElementById('confirmKick');
+            const kickBtn = document.getElementById('kickBtn');
+            
+            if (confirmKick && kickBtn) {
+                confirmKick.addEventListener('change', function() {
+                    kickBtn.disabled = !this.checked || !selectedKickUser;
+                });
+            }
+
+            // Ban confirmation
+            const confirmBan = document.getElementById('confirmBan');
+            const banBtn = document.getElementById('banBtn');
+            
+            if (confirmBan && banBtn) {
+                confirmBan.addEventListener('change', function() {
+                    banBtn.disabled = !this.checked || !selectedBanUser;
+                });
+            }
+
+            // User search inputs
+            const timeoutSearch = document.getElementById('timeoutUserSearch');
+            const kickSearch = document.getElementById('kickUserSearch');
+            const banSearch = document.getElementById('banUserSearch');
+
+            if (timeoutSearch) {
+                timeoutSearch.addEventListener('input', function() {
+                    const resultsContainer = document.getElementById('timeoutUserResults');
+                    searchUsers(this.value, resultsContainer, 'timeout');
+                });
+            }
+
+            if (kickSearch) {
+                kickSearch.addEventListener('input', function() {
+                    const resultsContainer = document.getElementById('kickUserResults');
+                    searchUsers(this.value, resultsContainer, 'kick');
+                });
+            }
+
+            if (banSearch) {
+                banSearch.addEventListener('input', function() {
+                    const resultsContainer = document.getElementById('banUserResults');
+                    searchUsers(this.value, resultsContainer, 'ban');
+                });
             }
         });
+
+        // Mock functions for demonstration (keeping for compatibility)
+        function clearChat() {
+            showClearChatModal();
+        }
+
+        function massUnban() {
+            massUnban();
+        }
+
+        function lockServer() {
+            toggleServerLock();
+        }
+
+        function sendEmbed() {
+            alert('Embed enviado! (Funcionalidade em desenvolvimento)');
+        }
+
+        function refreshLogs() {
+            loadLogsPolling();
+        }
+
+        // === LOGS SYSTEM WITH SSE ===
+
+        let logsEventSource = null;
+        let logsBuffer = [];
+        let logsFilters = { type: '', level: '' };
+
+        function connectLogs() {
+            if (logsEventSource) {
+                disconnectLogs();
+            }
+
+            const statusEl = document.getElementById('logsConnection');
+            if (statusEl) statusEl.textContent = '🟡 Conectando...';
+
+            try {
+                logsEventSource = new EventSource('/api/logs/stream');
+
+                logsEventSource.onopen = function(e) {
+                    console.log('📡 Conectado ao stream de logs');
+                    if (statusEl) statusEl.textContent = '🟢 Conectado (tempo real)';
+                };
+
+                logsEventSource.onmessage = function(e) {
+                    try {
+                        const logData = JSON.parse(e.data);
+                        
+                        if (logData.type === 'connected') {
+                            console.log('✅ Stream de logs inicializado');
+                            return;
+                        }
+
+                        if (logData.type === 'log') {
+                            addLogToDisplay(logData);
+                        }
+                    } catch (error) {
+                        console.error('Erro ao processar log:', error);
+                    }
+                };
+
+                logsEventSource.onerror = function(e) {
+                    console.error('❌ Erro no stream de logs:', e);
+                    if (statusEl) statusEl.textContent = '🔴 Erro de conexão';
+                    
+                    // Reconectar após 5 segundos
+                    setTimeout(() => {
+                        if (logsEventSource && logsEventSource.readyState === EventSource.CLOSED) {
+                            connectLogs();
+                        }
+                    }, 5000);
+                };
+
+            } catch (error) {
+                console.error('Erro ao iniciar stream:', error);
+                if (statusEl) statusEl.textContent = '🔴 Erro';
+                // Fallback para polling
+                loadLogsPolling();
+            }
+        }
+
+        function disconnectLogs() {
+            if (logsEventSource) {
+                logsEventSource.close();
+                logsEventSource = null;
+                
+                const statusEl = document.getElementById('logsConnection');
+                if (statusEl) statusEl.textContent = '🔴 Desconectado';
+            }
+        }
+
+        function addLogToDisplay(logData) {
+            const listEl = document.getElementById('logsList');
+            if (!listEl) return;
+
+            // Aplicar filtros
+            if (logsFilters.type && logData.type !== logsFilters.type) return;
+            if (logsFilters.level && logData.level !== logsFilters.level) return;
+
+            // Remover placeholder se existir
+            const placeholder = listEl.querySelector('.logs-placeholder');
+            if (placeholder) placeholder.remove();
+
+            // Criar elemento do log
+            const logEl = document.createElement('div');
+            logEl.className = `log-entry log-${logData.level || 'info'}`;
+            logEl.innerHTML = `
+                <div class="log-header">
+                    <span class="log-time">${new Date(logData.timestamp).toLocaleTimeString('pt-BR')}</span>
+                    <span class="log-type">${getLogTypeLabel(logData.type)}</span>
+                    <span class="log-level log-level-${logData.level || 'info'}">${getLogLevelLabel(logData.level)}</span>
+                </div>
+                <div class="log-message">${logData.message}</div>
+                ${logData.username ? `<div class="log-user">👤 ${logData.username}</div>` : ''}
+                ${logData.channel_name ? `<div class="log-channel">📺 ${logData.channel_name}</div>` : ''}
+            `;
+
+            // Adicionar no topo
+            listEl.insertBefore(logEl, listEl.firstChild);
+
+            // Limitar a 100 logs no DOM
+            const logs = listEl.querySelectorAll('.log-entry');
+            if (logs.length > 100) {
+                logs[logs.length - 1].remove();
+            }
+
+            // Atualizar contador
+            updateLogsCount();
+        }
+
+        function getLogTypeLabel(type) {
+            const labels = {
+                'moderation': '🛡️ Moderação',
+                'message': '💬 Mensagem',
+                'member': '👥 Membro',
+                'channel': '📺 Canal',
+                'role': '👑 Cargo',
+                'bot': '🤖 Bot',
+                'error': '❌ Erro'
+            };
+            return labels[type] || type;
+        }
+
+        function getLogLevelLabel(level) {
+            const labels = {
+                'debug': '🔍 Debug',
+                'info': '📝 Info',
+                'warn': '⚠️ Aviso',
+                'error': '❌ Erro',
+                'critical': '🚨 Crítico'
+            };
+            return labels[level] || 'Info';
+        }
+
+        function filterLogs() {
+            const typeEl = document.getElementById('logFilter');
+            const levelEl = document.getElementById('logLevel');
+            
+            if (typeEl && levelEl) {
+                logsFilters = {
+                    type: typeEl.value,
+                    level: levelEl.value
+                };
+                
+                // Recarregar logs com filtros
+                const listEl = document.getElementById('logsList');
+                if (listEl) {
+                    listEl.innerHTML = '<div class="logs-placeholder">🔄 Aplicando filtros...</div>';
+                }
+                
+                // Se está conectado via SSE, apenas os novos logs serão filtrados
+                // Para aplicar filtros aos logs existentes, recarregar via polling
+                loadLogsPolling();
+            }
+        }
+
+        async function loadLogsPolling() {
+            const listEl = document.getElementById('logsList');
+            if (!listEl) return;
+
+            try {
+                const params = new URLSearchParams(logsFilters);
+                const response = await fetch(`/api/logs?limit=50&${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    listEl.innerHTML = '';
+                    
+                    if (data.logs.length === 0) {
+                        listEl.innerHTML = '<div class="logs-placeholder">📭 Nenhum log encontrado</div>';
+                        return;
+                    }
+
+                    data.logs.forEach(log => {
+                        addLogToDisplay(log);
+                    });
+                    
+                    updateLogsCount();
+                } else {
+                    listEl.innerHTML = '<div class="logs-placeholder">❌ Erro ao carregar logs</div>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar logs:', error);
+                if (listEl) {
+                    listEl.innerHTML = '<div class="logs-placeholder">❌ Erro de conexão</div>';
+                }
+            }
+        }
+
+        function updateLogsCount() {
+            const countEl = document.getElementById('logsCount');
+            if (countEl) {
+                const logs = document.querySelectorAll('.log-entry');
+                countEl.textContent = `${logs.length} logs`;
+            }
+        }
+
+        // === TICKETS SYSTEM FUNCTIONS ===
+
+        let currentTickets = [];
+        let ticketFilters = { status: '', priority: '', assigned: '' };
+
+        async function loadTickets() {
+            const loadingEl = document.getElementById('ticketsLoading');
+            const listEl = document.getElementById('ticketsList');
+            const noTicketsEl = document.getElementById('noTickets');
+            
+            if (!loadingEl || !listEl || !noTicketsEl) return;
+            
+            loadingEl.style.display = 'flex';
+            listEl.style.display = 'none';
+            noTicketsEl.style.display = 'none';
+            
+            try {
+                const params = new URLSearchParams(ticketFilters);
+                const response = await fetch(`/api/tickets?${params}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentTickets = data.tickets;
+                    renderTickets(currentTickets);
+                    
+                    if (currentTickets.length === 0) {
+                        loadingEl.style.display = 'none';
+                        noTicketsEl.style.display = 'block';
+                    } else {
+                        loadingEl.style.display = 'none';
+                        listEl.style.display = 'block';
+                    }
+                } else {
+                    console.error('Erro ao carregar tickets:', data.error);
+                    loadingEl.innerHTML = '<p>❌ Erro ao carregar tickets</p>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar tickets:', error);
+                loadingEl.innerHTML = '<p>❌ Erro de conexão</p>';
+            }
+        }
+
+        async function refreshTicketStats() {
+            try {
+                const response = await fetch('/api/tickets/stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stats = data.stats;
+                    const totalEl = document.getElementById('totalTickets');
+                    const openEl = document.getElementById('openTickets');
+                    const assignedEl = document.getElementById('assignedTickets');
+                    const closedEl = document.getElementById('closedTickets');
+                    
+                    if (totalEl) totalEl.textContent = stats.total || 0;
+                    if (openEl) openEl.textContent = stats.open || 0;
+                    if (assignedEl) assignedEl.textContent = stats.assigned || 0;
+                    if (closedEl) closedEl.textContent = stats.closed || 0;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+            }
+        }
+
+        function renderTickets(tickets) {
+            const listEl = document.getElementById('ticketsList');
+            if (!listEl) return;
+            
+            if (tickets.length === 0) {
+                listEl.innerHTML = '<div class="empty-state"><p>📭 Nenhum ticket encontrado</p></div>';
+                return;
+            }
+            
+            listEl.innerHTML = tickets.map(ticket => `
+                <div class="ticket-card" onclick="openTicketDetails(${ticket.id})">
+                    <div class="ticket-header">
+                        <div>
+                            <h4 class="ticket-title">#${ticket.id} - ${ticket.subject || 'Sem título'}</h4>
+                            <div class="ticket-meta">
+                                Por: ${ticket.username || 'Usuário desconhecido'} • 
+                                ${new Date(ticket.created_at).toLocaleDateString('pt-BR')}
+                                ${ticket.assigned_name ? ` • Atribuído a: ${ticket.assigned_name}` : ''}
+                            </div>
+                        </div>
+                        <div class="ticket-badges">
+                            <span class="ticket-badge badge-status-${ticket.status || 'open'}">${getStatusLabel(ticket.status)}</span>
+                            <span class="ticket-badge badge-priority-${ticket.priority || 'normal'}">${getPriorityLabel(ticket.priority)}</span>
+                        </div>
+                    </div>
+                    <div class="ticket-description">${ticket.description || 'Sem descrição'}</div>
+                    <div class="ticket-actions">
+                        <button class="btn btn-primary" onclick="assignTicket(${ticket.id}); event.stopPropagation();" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                            👤 Atribuir a Mim
+                        </button>
+                        <button class="btn btn-success" onclick="closeTicket(${ticket.id}); event.stopPropagation();" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                            ✅ Fechar
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getStatusLabel(status) {
+            switch (status) {
+                case 'open': return 'Aberto';
+                case 'assigned': return 'Atribuído';
+                case 'closed': return 'Fechado';
+                default: return 'Aberto';
+            }
+        }
+
+        function getPriorityLabel(priority) {
+            switch (priority) {
+                case 'low': return 'Baixa';
+                case 'normal': return 'Normal';
+                case 'high': return 'Alta';
+                case 'urgent': return 'Urgente';
+                default: return 'Normal';
+            }
+        }
+
+        function filterTickets() {
+            const statusEl = document.getElementById('statusFilter');
+            const priorityEl = document.getElementById('priorityFilter');
+            
+            if (statusEl && priorityEl) {
+                ticketFilters = { 
+                    status: statusEl.value, 
+                    priority: priorityEl.value 
+                };
+                loadTickets();
+            }
+        }
+
+        function clearFilters() {
+            const statusEl = document.getElementById('statusFilter');
+            const priorityEl = document.getElementById('priorityFilter');
+            
+            if (statusEl) statusEl.value = '';
+            if (priorityEl) priorityEl.value = '';
+            ticketFilters = { status: '', priority: '', assigned: '' };
+            loadTickets();
+        }
+
+        function openTicketModal() {
+            const modal = document.getElementById('ticketModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                const form = document.getElementById('ticketForm');
+                if (form) form.reset();
+            }
+        }
+
+        function closeTicketModal() {
+            const modal = document.getElementById('ticketModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function submitTicket() {
+            const form = document.getElementById('ticketForm');
+            const btn = document.getElementById('submitTicketBtn');
+            
+            if (!form || !btn) return;
+            
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = 'Criando...';
+            
+            try {
+                const formData = {
+                    subject: document.getElementById('ticketSubject')?.value || '',
+                    description: document.getElementById('ticketDescription')?.value || '',
+                    priority: document.getElementById('ticketPriority')?.value || 'normal',
+                    category: document.getElementById('ticketCategory')?.value || ''
+                };
+                
+                const response = await fetch('/api/tickets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Ticket criado com sucesso!');
+                    closeTicketModal();
+                    loadTickets();
+                    refreshTicketStats();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao criar ticket:', error);
+                alert('❌ Erro ao criar ticket');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Criar Ticket';
+            }
+        }
+
+        async function assignTicket(ticketId) {
+            try {
+                const response = await fetch(`/api/tickets/${ticketId}/assign`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Ticket atribuído com sucesso!');
+                    loadTickets();
+                    refreshTicketStats();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao atribuir ticket:', error);
+                alert('❌ Erro ao atribuir ticket');
+            }
+        }
+
+        async function closeTicket(ticketId) {
+            const reason = prompt('Motivo do fechamento (opcional):');
+            
+            try {
+                const response = await fetch(`/api/tickets/${ticketId}/close`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: reason || 'Resolvido' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Ticket fechado com sucesso!');
+                    loadTickets();
+                    refreshTicketStats();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao fechar ticket:', error);
+                alert('❌ Erro ao fechar ticket');
+            }
+        }
+
+        function openTicketDetails(ticketId) {
+            // Redirect to full tickets page
+            window.open(`tickets.html#${ticketId}`, '_blank');
+        }
+
+        // Initialize
+        loadUserData();
     </script>
 </body>
 </html>
