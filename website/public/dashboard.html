@@ -1806,9 +1806,14 @@
             const channelSelect = document.getElementById('channelSelect');
             channelSelect.innerHTML = '<option value="">Carregando canais...</option>';
             
+            console.log('📺 Carregando canais para servidor:', currentServerId);
+            
             try {
                 const response = await fetch(`/api/server/${currentServerId}/channels`);
+                console.log('📡 Response status:', response.status, response.statusText);
+                
                 const data = await response.json();
+                console.log('📄 Response data:', data);
                 
                 if (data.success) {
                     serverChannels = data.channels;
@@ -1824,6 +1829,8 @@
                             channelsByCategory[channel.category].push(channel);
                         }
                     });
+                    
+                    console.log('📂 Canais por categoria:', channelsByCategory);
                     
                     // Add channels to select
                     Object.keys(channelsByCategory).forEach(category => {
@@ -1843,11 +1850,14 @@
                         
                         channelSelect.appendChild(optgroup);
                     });
+                    
+                    console.log('✅ Canais carregados com sucesso');
                 } else {
+                    console.error('❌ Erro na resposta:', data.error);
                     channelSelect.innerHTML = '<option value="">Erro ao carregar canais</option>';
                 }
             } catch (error) {
-                console.error('Erro ao carregar canais:', error);
+                console.error('❌ Erro ao carregar canais:', error);
                 channelSelect.innerHTML = '<option value="">Erro ao carregar canais</option>';
             }
         }
