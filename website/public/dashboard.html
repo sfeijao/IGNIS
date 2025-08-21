@@ -1267,6 +1267,8 @@
                             <button class="btn btn-warning" onclick="showTimeoutModal()">⏰ Timeout Usuário</button>
                             <button class="btn btn-info" onclick="showKickModal()">👢 Expulsar Usuário</button>
                             <button class="btn btn-danger" onclick="showBanModal()">🔨 Banir Usuário</button>
+                            <button class="btn btn-secondary" onclick="forceSelectTestServer()">🔧 Ativar Modo Teste</button>
+                            <button class="btn btn-secondary" onclick="showButtonStatus()">📊 Ver Status</button>
                         </div>
 
                         <h4>Filtros Automáticos</h4>
@@ -3169,6 +3171,39 @@
             // Redirect to full tickets page
             window.open(`tickets.html#${ticketId}`, '_blank');
         }
+
+        // Função de teste para forçar seleção de servidor
+        function forceSelectTestServer() {
+            console.log('🔧 Forçando seleção de servidor de teste...');
+            currentServerId = 'test-server-123';
+            console.log('✅ Server ID definido como:', currentServerId);
+            
+            // Simular que dashboard foi carregado
+            document.getElementById('serverSelection').style.display = 'none';
+            document.getElementById('dashboardContent').classList.add('active');
+            
+            // Mostrar estatísticas de teste
+            document.getElementById('memberCount').textContent = '23';
+            document.getElementById('channelCount').textContent = '5';
+            document.getElementById('roleCount').textContent = '8';
+            document.getElementById('messageCount').textContent = '1250';
+            
+            alert('✅ Servidor de teste selecionado! Server ID: test-server-123\n\nAgora teste os botões de moderação.');
+        }
+
+        // Função para mostrar status dos botões
+        function showButtonStatus() {
+            const status = {
+                'currentServerId': currentServerId,
+                'isServerLocked': isServerLocked,
+                'dashboardActive': document.getElementById('dashboardContent').classList.contains('active')
+            };
+            
+            alert('Status do Dashboard:\n' + JSON.stringify(status, null, 2));
+        }
+
+        // Adicionar botão de teste no console
+        console.log('🔧 Para testar sem servidor, execute no console: forceSelectTestServer()');
 
         // Initialize
         loadUserData();
