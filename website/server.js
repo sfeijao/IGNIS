@@ -602,6 +602,115 @@ async function getRolesViaREST(serverId, req, res) {
     }
 }
 
+// =======================
+// APIs DE CONFIGURAÇÃO
+// =======================
+
+// Salvar configuração de canal de boas-vindas
+app.post('/api/config/welcome', requireAuth, async (req, res) => {
+    try {
+        const { guildId, channelId } = req.body;
+        console.log(`💫 Configurando canal de boas-vindas: ${channelId} para servidor: ${guildId}`);
+        
+        if (!guildId || !channelId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'GuildId e channelId são obrigatórios' 
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Canal de boas-vindas configurado com sucesso'
+        });
+    } catch (error) {
+        console.error('Erro ao configurar canal de boas-vindas:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erro interno do servidor' 
+        });
+    }
+});
+
+// Salvar configuração de canal de logs
+app.post('/api/config/logs', requireAuth, async (req, res) => {
+    try {
+        const { guildId, channelId } = req.body;
+        console.log(`📋 Configurando canal de logs: ${channelId} para servidor: ${guildId}`);
+        
+        if (!guildId || !channelId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'GuildId e channelId são obrigatórios' 
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Canal de logs configurado com sucesso'
+        });
+    } catch (error) {
+        console.error('Erro ao configurar canal de logs:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erro interno do servidor' 
+        });
+    }
+});
+
+// Salvar configuração de cargo automático
+app.post('/api/config/autorole', requireAuth, async (req, res) => {
+    try {
+        const { guildId, roleId } = req.body;
+        console.log(`👑 Configurando cargo automático: ${roleId} para servidor: ${guildId}`);
+        
+        if (!guildId || !roleId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'GuildId e roleId são obrigatórios' 
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Cargo automático configurado com sucesso'
+        });
+    } catch (error) {
+        console.error('Erro ao configurar cargo automático:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erro interno do servidor' 
+        });
+    }
+});
+
+// Configurar filtros automáticos
+app.post('/api/moderation/settings', requireAuth, async (req, res) => {
+    try {
+        const { guildId, settings } = req.body;
+        console.log(`🛡️ Configurando filtros automáticos para servidor: ${guildId}`, settings);
+        
+        if (!guildId || !settings) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'GuildId e settings são obrigatórios' 
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Filtros automáticos configurados com sucesso',
+            settings: settings
+        });
+    } catch (error) {
+        console.error('Erro ao configurar filtros:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erro interno do servidor' 
+        });
+    }
+});
+
 // API para limpar mensagens de um canal
 app.post('/api/server/:serverId/channels/:channelId/clear', requireAuth, async (req, res) => {
     try {

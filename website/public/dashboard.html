@@ -1132,6 +1132,109 @@
             font-size: 0.8rem;
             color: var(--text-muted);
         }
+
+        /* Toast Notification System */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(37, 42, 58, 0.95) 100%);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 10px;
+            min-width: 300px;
+            box-shadow: 
+                0 10px 30px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+            backdrop-filter: blur(20px);
+            pointer-events: auto;
+            animation: toastSlideIn 0.3s ease-out;
+            transition: all 0.3s ease;
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--danger);
+        }
+
+        .toast.warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        .toast.info {
+            border-left: 4px solid var(--info);
+        }
+
+        .toast.removing {
+            animation: toastSlideOut 0.3s ease-in forwards;
+        }
+
+        @keyframes toastSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes toastSlideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+
+        .toast-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .toast-title {
+            font-weight: 600;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+
+        .toast-close:hover {
+            color: var(--text);
+        }
+
+        .toast-message {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
@@ -1246,7 +1349,7 @@
                                 </select>
                             </div>
 
-                            <button type="submit" class="btn btn-primary">Guardar Configurações</button>
+                            <button type="button" class="btn btn-primary" onclick="saveConfiguration()">Guardar Configurações</button>
                         </form>
                     </div>
                 </section>
@@ -1308,7 +1411,7 @@
                                 <small>Previne mensagens excessivamente em maiúsculas</small>
                             </div>
 
-                            <button type="submit" class="btn btn-primary">Guardar Configurações</button>
+                            <button type="button" class="btn btn-primary" onclick="saveModerationSettings()">Guardar Configurações</button>
                         </form>
 
                         <h4>Logs de Moderação</h4>
@@ -2387,6 +2490,72 @@
             document.getElementById('clearChatBtn').disabled = true;
         }
 
+        // Sistema de Notificações Toast
+        function showToast(type, title, message, duration = 5000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const toastId = 'toast_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            toast.id = toastId;
+            
+            const icons = {
+                success: '✅',
+                error: '❌',
+                warning: '⚠️',
+                info: 'ℹ️'
+            };
+            
+            toast.innerHTML = `
+                <div class="toast-header">
+                    <div class="toast-title">
+                        <span>${icons[type] || 'ℹ️'}</span>
+                        ${title}
+                    </div>
+                    <button class="toast-close" onclick="removeToast('${toastId}')">&times;</button>
+                </div>
+                <div class="toast-message">${message}</div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Auto remove after duration
+            if (duration > 0) {
+                setTimeout(() => removeToast(toastId), duration);
+            }
+            
+            return toastId;
+        }
+
+        function removeToast(toastId) {
+            const toast = document.getElementById(toastId);
+            if (toast) {
+                toast.classList.add('removing');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }
+        }
+
+        // Funções de conveniência para diferentes tipos de toast
+        function showSuccess(title, message, duration = 5000) {
+            return showToast('success', title, message, duration);
+        }
+
+        function showError(title, message, duration = 7000) {
+            return showToast('error', title, message, duration);
+        }
+
+        function showWarning(title, message, duration = 6000) {
+            return showToast('warning', title, message, duration);
+        }
+
+        function showInfo(title, message, duration = 5000) {
+            return showToast('info', title, message, duration);
+        }
+
         async function loadServerChannels() {
             const channelSelect = document.getElementById('channelSelect');
             channelSelect.innerHTML = '<option value="">Carregando canais...</option>';
@@ -3202,11 +3371,143 @@
             alert('Status do Dashboard:\n' + JSON.stringify(status, null, 2));
         }
 
+        // Função para guardar configurações de moderação
+        async function saveModerationSettings() {
+            console.log('💾 Guardando configurações de moderação...');
+            
+            if (!currentServerId) {
+                showError('Erro de Servidor', 'Nenhum servidor selecionado! Selecione um servidor primeiro.');
+                return;
+            }
+
+            const settings = {
+                guildId: currentServerId,
+                autoModeration: document.getElementById('automod').checked,
+                spamFilter: document.getElementById('spamFilter').checked,
+                linkFilter: document.getElementById('linkFilter').checked,
+                profanityFilter: document.getElementById('profanityFilter').checked,
+                capsFilter: document.getElementById('capsFilter').checked
+            };
+
+            console.log('🔧 Configurações a guardar:', settings);
+            showInfo('Guardando...', 'A guardar configurações de moderação...');
+
+            try {
+                const response = await fetch('/api/moderation/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(settings)
+                });
+
+                const result = await response.json();
+                console.log('📨 Resposta do servidor:', result);
+
+                if (response.ok) {
+                    showSuccess('Configurações Guardadas', 'As configurações de moderação foram guardadas com sucesso!');
+                } else {
+                    showError('Erro ao Guardar', `Falha ao guardar configurações: ${result.error || 'Erro desconhecido'}`);
+                }
+            } catch (error) {
+                console.error('🚨 Erro na requisição:', error);
+                showError('Erro de Conexão', 'Não foi possível conectar ao servidor. Verifique a sua ligação à internet.');
+            }
+        }
+
+        // Função para guardar configurações gerais
+        async function saveConfiguration() {
+            console.log('💾 Guardando configurações gerais...');
+            
+            if (!currentServerId) {
+                showError('Erro de Servidor', 'Nenhum servidor selecionado! Selecione um servidor primeiro.');
+                return;
+            }
+
+            const welcomeChannelId = document.getElementById('welcomeChannel').value;
+            const logChannelId = document.getElementById('logChannel').value;
+            const autoroleRoleId = document.getElementById('autoroleRole').value;
+
+            let savedCount = 0;
+            let totalToSave = 0;
+
+            showInfo('Guardando...', 'A guardar configurações do servidor...');
+
+            // Guardar welcome channel se selecionado
+            if (welcomeChannelId) {
+                totalToSave++;
+                try {
+                    const response = await fetch('/api/config/welcome', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ guildId: currentServerId, channelId: welcomeChannelId })
+                    });
+                    
+                    if (response.ok) {
+                        savedCount++;
+                        console.log('✅ Welcome channel configurado');
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao configurar welcome channel:', error);
+                }
+            }
+
+            // Guardar log channel se selecionado
+            if (logChannelId) {
+                totalToSave++;
+                try {
+                    const response = await fetch('/api/config/logs', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ guildId: currentServerId, channelId: logChannelId })
+                    });
+                    
+                    if (response.ok) {
+                        savedCount++;
+                        console.log('✅ Log channel configurado');
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao configurar log channel:', error);
+                }
+            }
+
+            // Guardar autorole se selecionado
+            if (autoroleRoleId) {
+                totalToSave++;
+                try {
+                    const response = await fetch('/api/config/autorole', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ guildId: currentServerId, roleId: autoroleRoleId })
+                    });
+                    
+                    if (response.ok) {
+                        savedCount++;
+                        console.log('✅ Autorole configurado');
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao configurar autorole:', error);
+                }
+            }
+
+            // Mostrar resultado
+            if (totalToSave === 0) {
+                showWarning('Nenhuma Seleção', 'Nenhuma configuração foi selecionada para guardar! Selecione pelo menos um canal ou cargo.');
+            } else if (savedCount === totalToSave) {
+                showSuccess('Configurações Guardadas', `Todas as configurações foram guardadas com sucesso! (${savedCount}/${totalToSave})`);
+            } else {
+                showWarning('Parcialmente Guardado', `Algumas configurações falharam. Guardadas: ${savedCount}/${totalToSave}`);
+            }
+        }
+
         // Adicionar botão de teste no console
         console.log('🔧 Para testar sem servidor, execute no console: forceSelectTestServer()');
 
         // Initialize
         loadUserData();
     </script>
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
 </body>
 </html>
