@@ -1466,7 +1466,7 @@
                                 </select>
                             </div>
 
-                            <button type="button" class="btn btn-primary" onclick="saveConfiguration()">Guardar Configurações</button>
+                            <button id="saveConfigBtn" type="button" class="btn btn-primary">Guardar Configurações</button>
                         </form>
                     </div>
                 </section>
@@ -1481,15 +1481,15 @@
                     <div class="config-form">
                         <h4>Ações Rápidas</h4>
                         <div class="actions-grid">
-                            <button class="btn btn-primary" onclick="showClearChatModal()">🧹 Limpar Chat</button>
-                            <button class="btn btn-success" onclick="massUnban()">🔓 Desbanir Todos</button>
-                            <button class="btn btn-danger" onclick="toggleServerLock()">🔒 Bloquear Servidor</button>
-                            <button class="btn btn-warning" onclick="showTimeoutModal()">⏰ Timeout Usuário</button>
-                            <button class="btn btn-info" onclick="showKickModal()">👢 Expulsar Usuário</button>
-                            <button class="btn btn-danger" onclick="showBanModal()">🔨 Banir Usuário</button>
-                            <button class="btn btn-secondary" onclick="forceSelectTestServer()">🔧 Ativar Modo Teste</button>
-                            <button class="btn btn-secondary" onclick="showButtonStatus()">📊 Ver Status</button>
-                            <button class="btn btn-info" onclick="testAllModerationButtons()">🧪 Testar Todos</button>
+                            <button id="clearChatBtn" class="btn btn-primary">🧹 Limpar Chat</button>
+                            <button id="massUnbanBtn" class="btn btn-success">🔓 Desbanir Todos</button>
+                            <button id="toggleServerLockBtn" class="btn btn-danger">🔒 Bloquear Servidor</button>
+                            <button id="timeoutModalBtn" class="btn btn-warning">⏰ Timeout Usuário</button>
+                            <button id="kickModalBtn" class="btn btn-info">👢 Expulsar Usuário</button>
+                            <button id="banModalBtn" class="btn btn-danger">🔨 Banir Usuário</button>
+                            <button id="testModeBtn" class="btn btn-secondary">🔧 Ativar Modo Teste</button>
+                            <button id="statusBtn" class="btn btn-secondary">📊 Ver Status</button>
+                            <button id="testAllBtn" class="btn btn-info">🧪 Testar Todos</button>
                         </div>
 
                         <h4>Filtros Automáticos</h4>
@@ -1529,7 +1529,7 @@
                                 <small>Previne mensagens excessivamente em maiúsculas</small>
                             </div>
 
-                            <button type="button" class="btn btn-primary" onclick="saveModerationSettings()">Guardar Configurações</button>
+                            <button id="saveModerationBtn" type="button" class="btn btn-primary">Guardar Configurações</button>
                         </form>
 
                         <h4>Logs de Moderação</h4>
@@ -1537,7 +1537,7 @@
                             <div id="moderationLogs">
                                 <p class="logs-loading">Carregando logs de moderação...</p>
                             </div>
-                            <button class="btn btn-secondary btn-refresh" onclick="refreshModerationLogs()">🔄 Atualizar Logs</button>
+                            <button id="refreshLogsBtn" class="btn btn-secondary btn-refresh">🔄 Atualizar Logs</button>
                         </div>
                     </div>
                 </section>
@@ -1547,7 +1547,7 @@
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>🧹 Limpar Chat</h3>
-                            <span class="close" onclick="closeClearChatModal()">&times;</span>
+                            <span class="close" id="closeClearChatBtn">&times;</span>
                         </div>
                         <div class="modal-body">
                             <div class="form-group">
@@ -1579,8 +1579,8 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button class="btn btn-secondary" onclick="closeClearChatModal()">Cancelar</button>
-                            <button class="btn btn-danger" onclick="executeClearChat()" id="clearChatBtn" disabled>Limpar Chat</button>
+                            <button id="cancelClearChatBtn" class="btn btn-secondary">Cancelar</button>
+                            <button class="btn btn-danger" id="executeClearChatBtn" disabled>Limpar Chat</button>
                         </div>
                     </div>
                 </div>
@@ -1590,7 +1590,7 @@
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>⏰ Dar Timeout</h3>
-                            <span class="close" onclick="closeTimeoutModal()">&times;</span>
+                            <span class="close" id="closeTimeoutBtn">&times;</span>
                         </div>
                         <div class="modal-body">
                             <div class="form-group">
@@ -1624,8 +1624,8 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button class="btn btn-secondary" onclick="closeTimeoutModal()">Cancelar</button>
-                            <button class="btn btn-warning" onclick="executeTimeout()" id="timeoutBtn" disabled>Aplicar Timeout</button>
+                            <button id="cancelTimeoutBtn" class="btn btn-secondary">Cancelar</button>
+                            <button class="btn btn-warning" id="executeTimeoutBtn" disabled>Aplicar Timeout</button>
                         </div>
                     </div>
                 </div>
@@ -1635,7 +1635,7 @@
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>👢 Expulsar Usuário</h3>
-                            <span class="close" onclick="closeKickModal()">&times;</span>
+                            <span class="close" id="closeKickBtn">&times;</span>
                         </div>
                         <div class="modal-body">
                             <div class="form-group">
@@ -1662,8 +1662,8 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button class="btn btn-secondary" onclick="closeKickModal()">Cancelar</button>
-                            <button class="btn btn-info" onclick="executeKick()" id="kickBtn" disabled>Expulsar Usuário</button>
+                            <button id="cancelKickBtn" class="btn btn-secondary">Cancelar</button>
+                            <button class="btn btn-info" id="executeKickBtn" disabled>Expulsar Usuário</button>
                         </div>
                     </div>
                 </div>
@@ -1673,7 +1673,7 @@
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>🔨 Banir Usuário</h3>
-                            <span class="close" onclick="closeBanModal()">&times;</span>
+                            <span class="close" id="closeBanBtn">&times;</span>
                         </div>
                         <div class="modal-body">
                             <div class="form-group">
@@ -1722,8 +1722,8 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button class="btn btn-secondary" onclick="closeBanModal()">Cancelar</button>
-                            <button class="btn btn-danger" onclick="executeBan()" id="banBtn" disabled>Banir Usuário</button>
+                            <button id="cancelBanBtn" class="btn btn-secondary">Cancelar</button>
+                            <button class="btn btn-danger" id="executeBanBtn" disabled>Banir Usuário</button>
                         </div>
                     </div>
                 </div>
@@ -1740,7 +1740,7 @@
                         <div class="card">
                             <div class="card-header">
                                 <h4>📊 Estatísticas</h4>
-                                <button class="btn btn-primary" onclick="refreshTicketStats()">🔄 Atualizar</button>
+                                <button class="btn btn-primary" id="refreshTicketStatsBtn">🔄 Atualizar</button>
                             </div>
                             <div class="ticket-stats-grid">
                                 <div class="stat-card">
@@ -1766,7 +1766,7 @@
                         <div class="card">
                             <div class="card-header">
                                 <h4>🔍 Filtros</h4>
-                                <button class="btn btn-success" onclick="openTicketModal()">➕ Novo Ticket</button>
+                                <button class="btn btn-success" id="newTicketBtn">➕ Novo Ticket</button>
                             </div>
                             <div class="filters-row">
                                 <select id="statusFilter" class="form-select" onchange="filterTickets()">
@@ -1782,7 +1782,7 @@
                                     <option value="high">Alta</option>
                                     <option value="urgent">Urgente</option>
                                 </select>
-                                <button class="btn btn-secondary" onclick="clearFilters()">🗑️ Limpar</button>
+                                <button class="btn btn-secondary" id="clearFiltersBtn">🗑️ Limpar</button>
                             </div>
                         </div>
                     </div>
@@ -1792,7 +1792,7 @@
                         <div class="card-header">
                             <h4>🎫 Lista de Tickets</h4>
                             <div class="header-actions">
-                                <button class="btn btn-secondary" onclick="loadTickets()">🔄 Atualizar</button>
+                                <button class="btn btn-secondary" id="updateTicketsBtn">🔄 Atualizar</button>
                                 <a href="tickets.html" class="btn btn-primary" target="_blank">📋 Ver Página Completa</a>
                             </div>
                         </div>
@@ -1804,7 +1804,7 @@
                             <div id="ticketsList" class="tickets-list"></div>
                             <div id="noTickets" class="empty-state hidden">
                                 <p>📭 Nenhum ticket encontrado</p>
-                                <button class="btn btn-primary" onclick="openTicketModal()">Criar Primeiro Ticket</button>
+                                <button class="btn btn-primary" id="createFirstTicketBtn">Criar Primeiro Ticket</button>
                             </div>
                         </div>
                     </div>
@@ -1815,7 +1815,7 @@
                     <div class="modal-content">
                         <div class="modal-header">
                             <h4 id="ticketModalTitle">➕ Novo Ticket</h4>
-                            <span class="close" onclick="closeTicketModal()">&times;</span>
+                            <span class="close" id="closeTicketModalBtn">&times;</span>
                         </div>
                         <div class="modal-body">
                             <form id="ticketForm">
@@ -1845,8 +1845,8 @@
                             </form>
                         </div>
                         <div class="modal-footer">
-                            <button class="btn btn-secondary" onclick="closeTicketModal()">Cancelar</button>
-                            <button class="btn btn-primary" onclick="submitTicket()" id="submitTicketBtn">Criar Ticket</button>
+                            <button class="btn btn-secondary" id="cancelTicketBtn">Cancelar</button>
+                            <button class="btn btn-primary" id="submitTicketBtn">Criar Ticket</button>
                         </div>
                     </div>
                 </div>
@@ -1889,7 +1889,7 @@
                                     </select>
                                 </div>
 
-                                <button type="button" class="btn btn-primary" onclick="sendEmbed()">Enviar Embed</button>
+                                <button id="sendEmbedBtn" type="button" class="btn btn-primary">Enviar Embed</button>
                             </form>
                         </div>
 
@@ -1930,8 +1930,8 @@
                                 <option value="error">Erro</option>
                                 <option value="critical">Crítico</option>
                             </select>
-                            <button class="btn btn-primary" onclick="connectLogs()">🔄 Conectar Stream</button>
-                            <button class="btn btn-secondary" onclick="disconnectLogs()">⏹️ Parar</button>
+                            <button id="connectLogsBtn" class="btn btn-primary">🔄 Conectar Stream</button>
+                            <button id="disconnectLogsBtn" class="btn btn-secondary">⏹️ Parar</button>
                         </div>
 
                         <div class="logs-status">
@@ -2281,7 +2281,7 @@
 
                 if (data.success) {
                     resultsContainer.innerHTML = data.members.map(member => `
-                        <div class="user-result" onclick="selectUser('${member.id}', '${type}')">
+                        <div class="user-result" data-user-id="${member.id}" data-type="${type}">>
                             <div class="user-avatar">
                                 ${member.avatar ? 
                                     `<img src="${member.avatar}" alt="${member.displayName}" style="width: 100%; height: 100%; border-radius: 50%;">` :
@@ -2318,15 +2318,15 @@
             if (type === 'timeout') {
                 selectedTimeoutUser = member;
                 updateSelectedUserCard('timeout', member);
-                document.getElementById('timeoutBtn').disabled = false;
+                document.getElementById('executeTimeoutBtn').disabled = false;
             } else if (type === 'kick') {
                 selectedKickUser = member;
                 updateSelectedUserCard('kick', member);
-                document.getElementById('kickBtn').disabled = !document.getElementById('confirmKick').checked;
+                document.getElementById('executeKickBtn').disabled = !document.getElementById('confirmKick').checked;
             } else if (type === 'ban') {
                 selectedBanUser = member;
                 updateSelectedUserCard('ban', member);
-                document.getElementById('banBtn').disabled = !document.getElementById('confirmBan').checked;
+                document.getElementById('executeBanBtn').disabled = !document.getElementById('confirmBan').checked;
             }
 
             // Clear search results
@@ -2403,7 +2403,7 @@
             document.getElementById('timeoutSelectedUser').style.display = 'none';
             document.getElementById('timeoutDuration').value = '60';
             document.getElementById('timeoutReason').value = 'Timeout via dashboard';
-            document.getElementById('timeoutBtn').disabled = true;
+            document.getElementById('executeTimeoutBtn').disabled = true;
         }
 
         async function executeTimeout() {
@@ -2412,7 +2412,7 @@
             const duration = parseInt(document.getElementById('timeoutDuration').value);
             const reason = document.getElementById('timeoutReason').value;
 
-            const timeoutBtn = document.getElementById('timeoutBtn');
+            const timeoutBtn = document.getElementById('executeTimeoutBtn');
             timeoutBtn.disabled = true;
             timeoutBtn.innerHTML = '<span class="loading"></span> Aplicando...';
 
@@ -2463,7 +2463,7 @@
             document.getElementById('kickSelectedUser').style.display = 'none';
             document.getElementById('kickReason').value = 'Expulsão via dashboard';
             document.getElementById('confirmKick').checked = false;
-            document.getElementById('kickBtn').disabled = true;
+            document.getElementById('executeKickBtn').disabled = true;
         }
 
         async function executeKick() {
@@ -2471,9 +2471,9 @@
 
             const reason = document.getElementById('kickReason').value;
 
-            const kickBtn = document.getElementById('kickBtn');
-            kickBtn.disabled = true;
-            kickBtn.innerHTML = '<span class="loading"></span> Expulsando...';
+            const executeKickBtn = document.getElementById('executeKickBtn');
+            executeKickBtn.disabled = true;
+            executeKickBtn.innerHTML = '<span class="loading"></span> Expulsando...';
 
             try {
                 const response = await fetch(`/api/server/${currentServerId}/kick`, {
@@ -2498,8 +2498,8 @@
                 console.error('Erro ao expulsar usuário:', error);
                 alert('❌ Erro ao expulsar usuário');
             } finally {
-                kickBtn.disabled = false;
-                kickBtn.innerHTML = 'Expulsar Usuário';
+                executeKickBtn.disabled = false;
+                executeKickBtn.innerHTML = 'Expulsar Usuário';
             }
         }
 
@@ -2523,7 +2523,7 @@
             document.getElementById('deleteMessageDays').value = '0';
             document.getElementById('banDuration').value = '0';
             document.getElementById('confirmBan').checked = false;
-            document.getElementById('banBtn').disabled = true;
+            document.getElementById('executeBanBtn').disabled = true;
         }
 
         async function executeBan() {
@@ -2533,9 +2533,9 @@
             const deleteMessageDays = parseInt(document.getElementById('deleteMessageDays').value);
             const duration = parseInt(document.getElementById('banDuration').value);
 
-            const banBtn = document.getElementById('banBtn');
-            banBtn.disabled = true;
-            banBtn.innerHTML = '<span class="loading"></span> Banindo...';
+            const executeBanBtn = document.getElementById('executeBanBtn');
+            executeBanBtn.disabled = true;
+            executeBanBtn.innerHTML = '<span class="loading"></span> Banindo...';
 
             try {
                 const response = await fetch(`/api/server/${currentServerId}/ban`, {
@@ -2563,8 +2563,8 @@
                 console.error('Erro ao banir usuário:', error);
                 alert('❌ Erro ao banir usuário');
             } finally {
-                banBtn.disabled = false;
-                banBtn.innerHTML = 'Banir Usuário';
+                executeBanBtn.disabled = false;
+                executeBanBtn.innerHTML = 'Banir Usuário';
             }
         }
 
@@ -2630,7 +2630,7 @@
                         <span>${icons[type] || 'ℹ️'}</span>
                         ${title}
                     </div>
-                    <button class="toast-close" onclick="removeToast('${toastId}')">&times;</button>
+                    <button class="toast-close" data-toast-id="${toastId}">&times;</button>
                 </div>
                 <div class="toast-message">${message}</div>
             `;
@@ -2877,7 +2877,7 @@
                     alert(`✅ Servidor ${statusText} com sucesso! ${data.modifiedChannels} canais foram modificados.`);
                     
                     // Update button text
-                    const lockBtn = document.querySelector('button[onclick="toggleServerLock()"]');
+                    const lockBtn = document.getElementById('toggleServerLockBtn');
                     lockBtn.innerHTML = isServerLocked ? '🔓 Desbloquear Servidor' : '🔒 Bloquear Servidor';
                     lockBtn.className = isServerLocked ? 'btn btn-success' : 'btn btn-danger';
                     
@@ -2930,21 +2930,21 @@
 
             // Kick confirmation
             const confirmKick = document.getElementById('confirmKick');
-            const kickBtn = document.getElementById('kickBtn');
+            const executeKickBtn = document.getElementById('executeKickBtn');
             
-            if (confirmKick && kickBtn) {
+            if (confirmKick && executeKickBtn) {
                 confirmKick.addEventListener('change', function() {
-                    kickBtn.disabled = !this.checked || !selectedKickUser;
+                    executeKickBtn.disabled = !this.checked || !selectedKickUser;
                 });
             }
 
             // Ban confirmation
             const confirmBan = document.getElementById('confirmBan');
-            const banBtn = document.getElementById('banBtn');
+            const executeBanBtn = document.getElementById('executeBanBtn');
             
-            if (confirmBan && banBtn) {
+            if (confirmBan && executeBanBtn) {
                 confirmBan.addEventListener('change', function() {
-                    banBtn.disabled = !this.checked || !selectedBanUser;
+                    executeBanBtn.disabled = !this.checked || !selectedBanUser;
                 });
             }
 
@@ -3261,7 +3261,7 @@
             }
             
             listEl.innerHTML = tickets.map(ticket => `
-                <div class="ticket-card" onclick="openTicketDetails(${ticket.id})">
+                <div class="ticket-card" data-ticket-id="${ticket.id}">>
                     <div class="ticket-header">
                         <div>
                             <h4 class="ticket-title">#${ticket.id} - ${ticket.subject || 'Sem título'}</h4>
@@ -3278,10 +3278,10 @@
                     </div>
                     <div class="ticket-description">${ticket.description || 'Sem descrição'}</div>
                     <div class="ticket-actions">
-                        <button class="btn btn-primary" onclick="assignTicket(${ticket.id}); event.stopPropagation();" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                        <button class="btn btn-primary assign-ticket-btn" data-ticket-id="${ticket.id}" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
                             👤 Atribuir a Mim
                         </button>
-                        <button class="btn btn-success" onclick="closeTicket(${ticket.id}); event.stopPropagation();" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                        <button class="btn btn-success close-ticket-btn" data-ticket-id="${ticket.id}" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
                             ✅ Fechar
                         </button>
                     </div>
@@ -3783,7 +3783,216 @@
         // Adicionar botão de teste no console
         console.log('🔧 Para testar sem servidor, execute no console: forceSelectTestServer()');
 
+        // ========================================
+        // EVENT LISTENERS (sem onclick inline)
+        // ========================================
+        
+        function setupEventListeners() {
+            console.log('🔗 Configurando event listeners...');
+            
+            // Botões de moderação principais
+            const clearChatBtn = document.getElementById('clearChatBtn');
+            const massUnbanBtn = document.getElementById('massUnbanBtn');
+            const toggleServerLockBtn = document.getElementById('toggleServerLockBtn');
+            const timeoutModalBtn = document.getElementById('timeoutModalBtn');
+            const kickModalBtn = document.getElementById('kickModalBtn');
+            const banModalBtn = document.getElementById('banModalBtn');
+            const testModeBtn = document.getElementById('testModeBtn');
+            const statusBtn = document.getElementById('statusBtn');
+            const testAllBtn = document.getElementById('testAllBtn');
+            
+            // Botões de configuração
+            const saveConfigBtn = document.getElementById('saveConfigBtn');
+            const saveModerationBtn = document.getElementById('saveModerationBtn');
+            const refreshLogsBtn = document.getElementById('refreshLogsBtn');
+            
+            // Botões dos modais - Clear Chat
+            const closeClearChatBtn = document.getElementById('closeClearChatBtn');
+            const cancelClearChatBtn = document.getElementById('cancelClearChatBtn');
+            const executeClearChatBtn = document.getElementById('executeClearChatBtn');
+            
+            // Botões dos modais - Timeout
+            const closeTimeoutBtn = document.getElementById('closeTimeoutBtn');
+            const cancelTimeoutBtn = document.getElementById('cancelTimeoutBtn');
+            const executeTimeoutBtn = document.getElementById('executeTimeoutBtn');
+            
+            // Botões dos modais - Kick
+            const closeKickBtn = document.getElementById('closeKickBtn');
+            const cancelKickBtn = document.getElementById('cancelKickBtn');
+            const executeKickBtn = document.getElementById('executeKickBtn');
+            
+            // Botões dos modais - Ban
+            const closeBanBtn = document.getElementById('closeBanBtn');
+            const cancelBanBtn = document.getElementById('cancelBanBtn');
+            const executeBanBtn = document.getElementById('executeBanBtn');
+            
+            // Botões de logs
+            const connectLogsBtn = document.getElementById('connectLogsBtn');
+            const disconnectLogsBtn = document.getElementById('disconnectLogsBtn');
+            
+            // Botão de embed
+            const sendEmbedBtn = document.getElementById('sendEmbedBtn');
+            
+            // Ticket System
+            const refreshTicketStatsBtn = document.getElementById('refreshTicketStatsBtn');
+            const newTicketBtn = document.getElementById('newTicketBtn');
+            const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+            const updateTicketsBtn = document.getElementById('updateTicketsBtn');
+            const createFirstTicketBtn = document.getElementById('createFirstTicketBtn');
+            const closeTicketModalBtn = document.getElementById('closeTicketModalBtn');
+            const cancelTicketBtn = document.getElementById('cancelTicketBtn');
+            const submitTicketBtn = document.getElementById('submitTicketBtn');
+            
+            // ========================================
+            // ADICIONAR OS EVENT LISTENERS
+            // ========================================
+            
+            // Moderação principal
+            if (clearChatBtn) clearChatBtn.addEventListener('click', showClearChatModal);
+            if (massUnbanBtn) massUnbanBtn.addEventListener('click', massUnban);
+            if (toggleServerLockBtn) toggleServerLockBtn.addEventListener('click', toggleServerLock);
+            if (timeoutModalBtn) timeoutModalBtn.addEventListener('click', showTimeoutModal);
+            if (kickModalBtn) kickModalBtn.addEventListener('click', showKickModal);
+            if (banModalBtn) banModalBtn.addEventListener('click', showBanModal);
+            if (testModeBtn) testModeBtn.addEventListener('click', forceSelectTestServer);
+            if (statusBtn) statusBtn.addEventListener('click', showButtonStatus);
+            if (testAllBtn) testAllBtn.addEventListener('click', testAllModerationButtons);
+            
+            // Configuração
+            if (saveConfigBtn) saveConfigBtn.addEventListener('click', saveConfiguration);
+            if (saveModerationBtn) saveModerationBtn.addEventListener('click', saveModerationSettings);
+            if (refreshLogsBtn) refreshLogsBtn.addEventListener('click', refreshModerationLogs);
+            
+            // Clear Chat Modal
+            if (closeClearChatBtn) closeClearChatBtn.addEventListener('click', closeClearChatModal);
+            if (cancelClearChatBtn) cancelClearChatBtn.addEventListener('click', closeClearChatModal);
+            if (executeClearChatBtn) executeClearChatBtn.addEventListener('click', executeClearChat);
+            
+            // Timeout Modal
+            if (closeTimeoutBtn) closeTimeoutBtn.addEventListener('click', closeTimeoutModal);
+            if (cancelTimeoutBtn) cancelTimeoutBtn.addEventListener('click', closeTimeoutModal);
+            if (executeTimeoutBtn) executeTimeoutBtn.addEventListener('click', executeTimeout);
+            
+            // Kick Modal
+            if (closeKickBtn) closeKickBtn.addEventListener('click', closeKickModal);
+            if (cancelKickBtn) cancelKickBtn.addEventListener('click', closeKickModal);
+            if (executeKickBtn) executeKickBtn.addEventListener('click', executeKick);
+            
+            // Ban Modal
+            if (closeBanBtn) closeBanBtn.addEventListener('click', closeBanModal);
+            if (cancelBanBtn) cancelBanBtn.addEventListener('click', closeBanModal);
+            if (executeBanBtn) executeBanBtn.addEventListener('click', executeBan);
+            
+            // Logs
+            if (connectLogsBtn) connectLogsBtn.addEventListener('click', connectLogs);
+            if (disconnectLogsBtn) disconnectLogsBtn.addEventListener('click', disconnectLogs);
+            
+            // Embed
+            if (sendEmbedBtn) sendEmbedBtn.addEventListener('click', sendEmbed);
+            
+            // Ticket System
+            if (refreshTicketStatsBtn) refreshTicketStatsBtn.addEventListener('click', refreshTicketStats);
+            if (newTicketBtn) newTicketBtn.addEventListener('click', openTicketModal);
+            if (clearFiltersBtn) clearFiltersBtn.addEventListener('click', clearFilters);
+            if (updateTicketsBtn) updateTicketsBtn.addEventListener('click', loadTickets);
+            if (createFirstTicketBtn) createFirstTicketBtn.addEventListener('click', openTicketModal);
+            if (closeTicketModalBtn) closeTicketModalBtn.addEventListener('click', closeTicketModal);
+            if (cancelTicketBtn) cancelTicketBtn.addEventListener('click', closeTicketModal);
+            if (submitTicketBtn) submitTicketBtn.addEventListener('click', submitTicket);
+            
+            // Event delegation para toast close buttons (dinâmicos)
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('toast-close')) {
+                    const toastId = e.target.getAttribute('data-toast-id');
+                    if (toastId) removeToast(toastId);
+                }
+                
+                // User selection results
+                if (e.target.closest('.user-result')) {
+                    const userResult = e.target.closest('.user-result');
+                    const userId = userResult.getAttribute('data-user-id');
+                    const type = userResult.getAttribute('data-type');
+                    if (userId && type) selectUser(userId, type);
+                }
+                
+                // Ticket cards
+                if (e.target.closest('.ticket-card') && !e.target.closest('.ticket-actions')) {
+                    const ticketCard = e.target.closest('.ticket-card');
+                    const ticketId = ticketCard.getAttribute('data-ticket-id');
+                    if (ticketId) openTicketDetails(parseInt(ticketId));
+                }
+                
+                // Ticket action buttons
+                if (e.target.classList.contains('assign-ticket-btn')) {
+                    e.stopPropagation();
+                    const ticketId = e.target.getAttribute('data-ticket-id');
+                    if (ticketId) assignTicket(parseInt(ticketId));
+                }
+                
+                if (e.target.classList.contains('close-ticket-btn')) {
+                    e.stopPropagation();
+                    const ticketId = e.target.getAttribute('data-ticket-id');
+                    if (ticketId) closeTicket(parseInt(ticketId));
+                }
+            });
+            
+            // Corrigir alguns IDs que podem estar duplicados
+            const confirmClearCheckbox = document.getElementById('confirmClear');
+            const confirmKickCheckbox = document.getElementById('confirmKick');
+            const confirmBanCheckbox = document.getElementById('confirmBan');
+            
+            // Clear chat confirmation
+            if (confirmClearCheckbox && executeClearChatBtn) {
+                confirmClearCheckbox.addEventListener('change', function() {
+                    executeClearChatBtn.disabled = !this.checked;
+                });
+            }
+
+            // Kick confirmation
+            if (confirmKickCheckbox && executeKickBtn) {
+                confirmKickCheckbox.addEventListener('change', function() {
+                    executeKickBtn.disabled = !this.checked || !selectedKickUser;
+                });
+            }
+
+            // Ban confirmation
+            if (confirmBanCheckbox && executeBanBtn) {
+                confirmBanCheckbox.addEventListener('change', function() {
+                    executeBanBtn.disabled = !this.checked || !selectedBanUser;
+                });
+            }
+
+            // User search inputs
+            const timeoutSearch = document.getElementById('timeoutUserSearch');
+            const kickSearch = document.getElementById('kickUserSearch');
+            const banSearch = document.getElementById('banUserSearch');
+
+            if (timeoutSearch) {
+                timeoutSearch.addEventListener('input', function() {
+                    const resultsContainer = document.getElementById('timeoutUserResults');
+                    searchUsers(this.value, resultsContainer, 'timeout');
+                });
+            }
+
+            if (kickSearch) {
+                kickSearch.addEventListener('input', function() {
+                    const resultsContainer = document.getElementById('kickUserResults');
+                    searchUsers(this.value, resultsContainer, 'kick');
+                });
+            }
+
+            if (banSearch) {
+                banSearch.addEventListener('input', function() {
+                    const resultsContainer = document.getElementById('banUserResults');
+                    searchUsers(this.value, resultsContainer, 'ban');
+                });
+            }
+            
+            console.log('✅ Event listeners configurados com sucesso!');
+        }
+
         // Initialize
+        setupEventListeners();
         loadUserData();
     </script>
     <!-- Toast Notification Container -->
