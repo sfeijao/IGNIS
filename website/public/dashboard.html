@@ -702,6 +702,145 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* User Search Results */
+        .user-search-results {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            background: var(--bg-secondary);
+        }
+
+        .user-result {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .user-result:last-child {
+            border-bottom: none;
+        }
+
+        .user-result:hover {
+            background: rgba(107, 115, 255, 0.1);
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-right: 0.75rem;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+        }
+
+        .user-tag {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .user-roles {
+            display: flex;
+            gap: 0.25rem;
+            margin-top: 0.25rem;
+        }
+
+        .user-role {
+            font-size: 10px;
+            padding: 0.125rem 0.375rem;
+            border-radius: 12px;
+            background: var(--bg);
+            color: var(--text-muted);
+        }
+
+        .selected-user-card {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-top: 0.5rem;
+        }
+
+        .selected-user-card .user-avatar {
+            width: 48px;
+            height: 48px;
+            font-size: 18px;
+        }
+
+        .user-permissions {
+            margin-top: 0.5rem;
+            font-size: 12px;
+        }
+
+        .permission-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-right: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .permission-badge.can {
+            background: var(--success);
+            color: white;
+        }
+
+        .permission-badge.cannot {
+            background: var(--danger);
+            color: white;
+        }
+
+        .permission-badge.owner {
+            background: var(--warning);
+            color: white;
+        }
+
+        /* Enhanced modal for larger content */
+        .modal-content.large {
+            max-width: 600px;
+            width: 95%;
+        }
+
+        /* Search input focus state */
+        input[type="text"]:focus + .user-search-results {
+            border-color: var(--primary);
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
     </style>
 </head>
 <body>
@@ -927,6 +1066,149 @@
                         <div class="modal-footer">
                             <button class="btn btn-secondary" onclick="closeClearChatModal()">Cancelar</button>
                             <button class="btn btn-danger" onclick="executeClearChat()" id="clearChatBtn" disabled>Limpar Chat</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeout Modal -->
+                <div id="timeoutModal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>⏰ Dar Timeout</h3>
+                            <span class="close" onclick="closeTimeoutModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="timeoutUserSearch">Buscar Usuário:</label>
+                                <input type="text" id="timeoutUserSearch" class="form-control" placeholder="Digite o nome ou tag do usuário">
+                                <div id="timeoutUserResults" class="user-search-results"></div>
+                            </div>
+                            
+                            <div class="form-group" id="timeoutSelectedUser" style="display: none;">
+                                <label>Usuário Selecionado:</label>
+                                <div class="selected-user-card" id="timeoutUserCard"></div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="timeoutDuration">Duração (minutos):</label>
+                                <select id="timeoutDuration" class="form-control">
+                                    <option value="5">5 minutos</option>
+                                    <option value="10">10 minutos</option>
+                                    <option value="30">30 minutos</option>
+                                    <option value="60" selected>1 hora</option>
+                                    <option value="120">2 horas</option>
+                                    <option value="360">6 horas</option>
+                                    <option value="720">12 horas</option>
+                                    <option value="1440">24 horas</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="timeoutReason">Motivo:</label>
+                                <input type="text" id="timeoutReason" class="form-control" placeholder="Motivo do timeout" value="Timeout via dashboard">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeTimeoutModal()">Cancelar</button>
+                            <button class="btn btn-warning" onclick="executeTimeout()" id="timeoutBtn" disabled>Aplicar Timeout</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kick Modal -->
+                <div id="kickModal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>👢 Expulsar Usuário</h3>
+                            <span class="close" onclick="closeKickModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="kickUserSearch">Buscar Usuário:</label>
+                                <input type="text" id="kickUserSearch" class="form-control" placeholder="Digite o nome ou tag do usuário">
+                                <div id="kickUserResults" class="user-search-results"></div>
+                            </div>
+                            
+                            <div class="form-group" id="kickSelectedUser" style="display: none;">
+                                <label>Usuário Selecionado:</label>
+                                <div class="selected-user-card" id="kickUserCard"></div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="kickReason">Motivo:</label>
+                                <input type="text" id="kickReason" class="form-control" placeholder="Motivo da expulsão" value="Expulsão via dashboard">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="confirmKick"> Confirmo que quero expulsar este usuário
+                                </label>
+                                <small style="color: var(--warning);">⚠️ O usuário poderá voltar com um novo convite</small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeKickModal()">Cancelar</button>
+                            <button class="btn btn-info" onclick="executeKick()" id="kickBtn" disabled>Expulsar Usuário</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ban Modal -->
+                <div id="banModal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>🔨 Banir Usuário</h3>
+                            <span class="close" onclick="closeBanModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="banUserSearch">Buscar Usuário:</label>
+                                <input type="text" id="banUserSearch" class="form-control" placeholder="Digite o nome, tag ou ID do usuário">
+                                <div id="banUserResults" class="user-search-results"></div>
+                            </div>
+                            
+                            <div class="form-group" id="banSelectedUser" style="display: none;">
+                                <label>Usuário Selecionado:</label>
+                                <div class="selected-user-card" id="banUserCard"></div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="banReason">Motivo:</label>
+                                <input type="text" id="banReason" class="form-control" placeholder="Motivo do banimento" value="Banimento via dashboard">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="deleteMessageDays">Deletar mensagens dos últimos:</label>
+                                <select id="deleteMessageDays" class="form-control">
+                                    <option value="0">Não deletar mensagens</option>
+                                    <option value="1">1 dia</option>
+                                    <option value="3">3 dias</option>
+                                    <option value="7">7 dias</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="banDuration">Duração do Banimento:</label>
+                                <select id="banDuration" class="form-control">
+                                    <option value="0">Permanente</option>
+                                    <option value="60">1 hora</option>
+                                    <option value="1440">1 dia</option>
+                                    <option value="10080">1 semana</option>
+                                    <option value="43200">1 mês</option>
+                                </select>
+                                <small>Banimentos temporários requerem desbanimento manual</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="confirmBan"> Confirmo que quero banir este usuário
+                                </label>
+                                <small style="color: var(--danger);">⚠️ Esta é uma ação permanente (a menos que seja desbanido)</small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeBanModal()">Cancelar</button>
+                            <button class="btn btn-danger" onclick="executeBan()" id="banBtn" disabled>Banir Usuário</button>
                         </div>
                     </div>
                 </div>
@@ -1167,7 +1449,324 @@
 
         // Variables for moderation
         let serverChannels = [];
+        let serverMembers = [];
         let isServerLocked = false;
+        let selectedTimeoutUser = null;
+        let selectedKickUser = null;
+        let selectedBanUser = null;
+
+        // User Search Functions
+        async function searchUsers(query, resultsContainer, type) {
+            if (query.length < 2) {
+                resultsContainer.innerHTML = '';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/members?search=${encodeURIComponent(query)}&limit=10`);
+                const data = await response.json();
+
+                if (data.success) {
+                    resultsContainer.innerHTML = data.members.map(member => `
+                        <div class="user-result" onclick="selectUser('${member.id}', '${type}')">
+                            <div class="user-avatar">
+                                ${member.avatar ? 
+                                    `<img src="${member.avatar}" alt="${member.displayName}" style="width: 100%; height: 100%; border-radius: 50%;">` :
+                                    member.displayName.charAt(0).toUpperCase()
+                                }
+                            </div>
+                            <div class="user-info">
+                                <div class="user-name">${member.displayName}</div>
+                                <div class="user-tag">${member.tag}</div>
+                                <div class="user-roles">
+                                    ${member.roles.slice(0, 2).map(role => 
+                                        `<span class="user-role" style="background: ${role.color}20; color: ${role.color}">${role.name}</span>`
+                                    ).join('')}
+                                    ${member.isOwner ? '<span class="user-role" style="background: #f59e0b; color: white;">👑 DONO</span>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    resultsContainer.innerHTML = '<div class="empty-state">Nenhum usuário encontrado</div>';
+                }
+            } catch (error) {
+                console.error('Erro ao buscar usuários:', error);
+                resultsContainer.innerHTML = '<div class="empty-state">Erro ao buscar usuários</div>';
+            }
+        }
+
+        function selectUser(userId, type) {
+            // Find user from search results
+            const member = serverMembers.find(m => m.id === userId);
+            if (!member) return;
+
+            // Set selected user based on type
+            if (type === 'timeout') {
+                selectedTimeoutUser = member;
+                updateSelectedUserCard('timeout', member);
+                document.getElementById('timeoutBtn').disabled = false;
+            } else if (type === 'kick') {
+                selectedKickUser = member;
+                updateSelectedUserCard('kick', member);
+                document.getElementById('kickBtn').disabled = !document.getElementById('confirmKick').checked;
+            } else if (type === 'ban') {
+                selectedBanUser = member;
+                updateSelectedUserCard('ban', member);
+                document.getElementById('banBtn').disabled = !document.getElementById('confirmBan').checked;
+            }
+
+            // Clear search results
+            document.getElementById(`${type}UserResults`).innerHTML = '';
+            document.getElementById(`${type}UserSearch`).value = member.displayName;
+        }
+
+        function updateSelectedUserCard(type, member) {
+            const cardContainer = document.getElementById(`${type}SelectedUser`);
+            const card = document.getElementById(`${type}UserCard`);
+            
+            const permissionBadges = [];
+            if (member.isOwner) {
+                permissionBadges.push('<span class="permission-badge owner">👑 Proprietário</span>');
+            } else {
+                if (type === 'timeout' && member.moderatable) {
+                    permissionBadges.push('<span class="permission-badge can">✅ Pode dar timeout</span>');
+                } else if (type === 'timeout') {
+                    permissionBadges.push('<span class="permission-badge cannot">❌ Não pode dar timeout</span>');
+                }
+                
+                if (type === 'kick' && member.kickable) {
+                    permissionBadges.push('<span class="permission-badge can">✅ Pode expulsar</span>');
+                } else if (type === 'kick') {
+                    permissionBadges.push('<span class="permission-badge cannot">❌ Não pode expulsar</span>');
+                }
+                
+                if (type === 'ban' && member.bannable) {
+                    permissionBadges.push('<span class="permission-badge can">✅ Pode banir</span>');
+                } else if (type === 'ban') {
+                    permissionBadges.push('<span class="permission-badge cannot">❌ Não pode banir</span>');
+                }
+            }
+
+            card.innerHTML = `
+                <div class="user-avatar">
+                    ${member.avatar ? 
+                        `<img src="${member.avatar}" alt="${member.displayName}" style="width: 100%; height: 100%; border-radius: 50%;">` :
+                        member.displayName.charAt(0).toUpperCase()
+                    }
+                </div>
+                <div class="user-info">
+                    <div class="user-name">${member.displayName}</div>
+                    <div class="user-tag">${member.tag}</div>
+                    <div class="user-roles">
+                        ${member.roles.map(role => 
+                            `<span class="user-role" style="background: ${role.color}20; color: ${role.color}">${role.name}</span>`
+                        ).join('')}
+                    </div>
+                    <div class="user-permissions">
+                        ${permissionBadges.join('')}
+                    </div>
+                </div>
+            `;
+            
+            cardContainer.style.display = 'block';
+        }
+
+        // Timeout Modal Functions
+        function showTimeoutModal() {
+            document.getElementById('timeoutModal').style.display = 'flex';
+            loadServerMembers();
+        }
+
+        function closeTimeoutModal() {
+            document.getElementById('timeoutModal').style.display = 'none';
+            resetTimeoutForm();
+        }
+
+        function resetTimeoutForm() {
+            selectedTimeoutUser = null;
+            document.getElementById('timeoutUserSearch').value = '';
+            document.getElementById('timeoutUserResults').innerHTML = '';
+            document.getElementById('timeoutSelectedUser').style.display = 'none';
+            document.getElementById('timeoutDuration').value = '60';
+            document.getElementById('timeoutReason').value = 'Timeout via dashboard';
+            document.getElementById('timeoutBtn').disabled = true;
+        }
+
+        async function executeTimeout() {
+            if (!selectedTimeoutUser) return;
+
+            const duration = parseInt(document.getElementById('timeoutDuration').value);
+            const reason = document.getElementById('timeoutReason').value;
+
+            const timeoutBtn = document.getElementById('timeoutBtn');
+            timeoutBtn.disabled = true;
+            timeoutBtn.innerHTML = '<span class="loading"></span> Aplicando...';
+
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/timeout`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: selectedTimeoutUser.id,
+                        duration: duration,
+                        reason: reason
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(`✅ Timeout aplicado em ${data.user.tag} por ${data.duration} minutos`);
+                    closeTimeoutModal();
+                    refreshModerationLogs();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao aplicar timeout:', error);
+                alert('❌ Erro ao aplicar timeout');
+            } finally {
+                timeoutBtn.disabled = false;
+                timeoutBtn.innerHTML = 'Aplicar Timeout';
+            }
+        }
+
+        // Kick Modal Functions
+        function showKickModal() {
+            document.getElementById('kickModal').style.display = 'flex';
+            loadServerMembers();
+        }
+
+        function closeKickModal() {
+            document.getElementById('kickModal').style.display = 'none';
+            resetKickForm();
+        }
+
+        function resetKickForm() {
+            selectedKickUser = null;
+            document.getElementById('kickUserSearch').value = '';
+            document.getElementById('kickUserResults').innerHTML = '';
+            document.getElementById('kickSelectedUser').style.display = 'none';
+            document.getElementById('kickReason').value = 'Expulsão via dashboard';
+            document.getElementById('confirmKick').checked = false;
+            document.getElementById('kickBtn').disabled = true;
+        }
+
+        async function executeKick() {
+            if (!selectedKickUser || !document.getElementById('confirmKick').checked) return;
+
+            const reason = document.getElementById('kickReason').value;
+
+            const kickBtn = document.getElementById('kickBtn');
+            kickBtn.disabled = true;
+            kickBtn.innerHTML = '<span class="loading"></span> Expulsando...';
+
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/kick`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: selectedKickUser.id,
+                        reason: reason
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(`✅ ${data.user.tag} foi expulso do servidor`);
+                    closeKickModal();
+                    refreshModerationLogs();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao expulsar usuário:', error);
+                alert('❌ Erro ao expulsar usuário');
+            } finally {
+                kickBtn.disabled = false;
+                kickBtn.innerHTML = 'Expulsar Usuário';
+            }
+        }
+
+        // Ban Modal Functions
+        function showBanModal() {
+            document.getElementById('banModal').style.display = 'flex';
+            loadServerMembers();
+        }
+
+        function closeBanModal() {
+            document.getElementById('banModal').style.display = 'none';
+            resetBanForm();
+        }
+
+        function resetBanForm() {
+            selectedBanUser = null;
+            document.getElementById('banUserSearch').value = '';
+            document.getElementById('banUserResults').innerHTML = '';
+            document.getElementById('banSelectedUser').style.display = 'none';
+            document.getElementById('banReason').value = 'Banimento via dashboard';
+            document.getElementById('deleteMessageDays').value = '0';
+            document.getElementById('banDuration').value = '0';
+            document.getElementById('confirmBan').checked = false;
+            document.getElementById('banBtn').disabled = true;
+        }
+
+        async function executeBan() {
+            if (!selectedBanUser || !document.getElementById('confirmBan').checked) return;
+
+            const reason = document.getElementById('banReason').value;
+            const deleteMessageDays = parseInt(document.getElementById('deleteMessageDays').value);
+            const duration = parseInt(document.getElementById('banDuration').value);
+
+            const banBtn = document.getElementById('banBtn');
+            banBtn.disabled = true;
+            banBtn.innerHTML = '<span class="loading"></span> Banindo...';
+
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/ban`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: selectedBanUser.id,
+                        reason: reason,
+                        deleteMessageDays: deleteMessageDays,
+                        duration: duration
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const durationText = data.duration > 0 ? ` por ${data.duration} minutos` : ' permanentemente';
+                    alert(`✅ ${data.user.tag} foi banido${durationText}`);
+                    closeBanModal();
+                    refreshModerationLogs();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao banir usuário:', error);
+                alert('❌ Erro ao banir usuário');
+            } finally {
+                banBtn.disabled = false;
+                banBtn.innerHTML = 'Banir Usuário';
+            }
+        }
+
+        async function loadServerMembers() {
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/members?limit=100`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    serverMembers = data.members;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar membros:', error);
+            }
+        }
 
         // Clear Chat Modal Functions
         async function showClearChatModal() {
@@ -1358,17 +1957,23 @@
             }
         }
 
-        // Placeholder functions for additional moderation features
+        // Placeholder functions for additional moderation features (now implemented!)
         function showTimeoutModal() {
-            alert('🚧 Funcionalidade de Timeout em desenvolvimento\n\nEm breve você poderá:\n• Dar timeout em usuários específicos\n• Definir duração personalizada\n• Adicionar motivo para o timeout');
+            const modal = document.getElementById('timeoutModal');
+            modal.style.display = 'flex';
+            loadServerMembers();
         }
 
         function showKickModal() {
-            alert('🚧 Funcionalidade de Expulsar em desenvolvimento\n\nEm breve você poderá:\n• Expulsar usuários específicos\n• Adicionar motivo para a expulsão\n• Ver histórico de expulsões');
+            const modal = document.getElementById('kickModal');
+            modal.style.display = 'flex';
+            loadServerMembers();
         }
 
         function showBanModal() {
-            alert('🚧 Funcionalidade de Banir em desenvolvimento\n\nEm breve você poderá:\n• Banir usuários específicos\n• Definir duração do banimento\n• Adicionar motivo para o banimento');
+            const modal = document.getElementById('banModal');
+            modal.style.display = 'flex';
+            loadServerMembers();
         }
 
         function refreshModerationLogs() {
@@ -1396,14 +2001,61 @@
             }, 1000);
         }
 
-        // Enable/disable clear chat button based on confirmation
+        // Enable/disable buttons based on confirmation and setup event listeners
         document.addEventListener('DOMContentLoaded', function() {
+            // Clear chat confirmation
             const confirmCheckbox = document.getElementById('confirmClear');
             const clearBtn = document.getElementById('clearChatBtn');
             
             if (confirmCheckbox && clearBtn) {
                 confirmCheckbox.addEventListener('change', function() {
                     clearBtn.disabled = !this.checked;
+                });
+            }
+
+            // Kick confirmation
+            const confirmKick = document.getElementById('confirmKick');
+            const kickBtn = document.getElementById('kickBtn');
+            
+            if (confirmKick && kickBtn) {
+                confirmKick.addEventListener('change', function() {
+                    kickBtn.disabled = !this.checked || !selectedKickUser;
+                });
+            }
+
+            // Ban confirmation
+            const confirmBan = document.getElementById('confirmBan');
+            const banBtn = document.getElementById('banBtn');
+            
+            if (confirmBan && banBtn) {
+                confirmBan.addEventListener('change', function() {
+                    banBtn.disabled = !this.checked || !selectedBanUser;
+                });
+            }
+
+            // User search inputs
+            const timeoutSearch = document.getElementById('timeoutUserSearch');
+            const kickSearch = document.getElementById('kickUserSearch');
+            const banSearch = document.getElementById('banUserSearch');
+
+            if (timeoutSearch) {
+                timeoutSearch.addEventListener('input', function() {
+                    const resultsContainer = document.getElementById('timeoutUserResults');
+                    searchUsers(this.value, resultsContainer, 'timeout');
+                });
+            }
+
+            if (kickSearch) {
+                kickSearch.addEventListener('input', function() {
+                    const resultsContainer = document.getElementById('kickUserResults');
+                    searchUsers(this.value, resultsContainer, 'kick');
+                });
+            }
+
+            if (banSearch) {
+                banSearch.addEventListener('input', function() {
+                    const resultsContainer = document.getElementById('banUserResults');
+                    searchUsers(this.value, resultsContainer, 'ban');
                 });
             }
         });

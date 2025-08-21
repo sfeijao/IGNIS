@@ -3,6 +3,10 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
+// Importar sistema do dashboard
+const { server, socketManager } = require('./website/server');
+const Database = require('./website/database/database');
+
 // Carregar configuração com fallback
 let config;
 try {
@@ -24,7 +28,9 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.DirectMessages
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.GuildPresences
     ],
     partials: [
         Partials.Message,
@@ -36,6 +42,15 @@ const client = new Client({
 });
 
 client.commands = new Collection();
+client.socketManager = socketManager;
+client.database = new Database();
+
+// Initialize database for bot
+client.database.initialize().then(() => {
+    console.log('✅ Bot database connection established');
+}).catch(error => {
+    console.error('❌ Bot database connection failed:', error);
+});
 
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -105,6 +120,140 @@ async function registerCommands() {
     }
 }
 
+// Setup event handlers for dashboard integration
+function setupDashboardIntegration() {
+    // Message events for analytics
+    client.on('messageCreate', async (message) => {
+        if (message.author.bot) return;
+        
+        try {
+            await client.database.incrementMessageCount(
+                message.guild.id, 
+                message.channel.id, 
+                message.author.id
+            );
+            
+            // Send real-time update to dashboard
+            if (socketManager) {
+                socketManager.onDiscordEvent('messageCreate', message.guild.id, {
+                    channelId: message.channel.id,
+                    authorId: message.author.id,
+                    content: message.content
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao processar mensagem para analytics:', error);
+        }
+    });
+    
+    // Member join/leave events
+    client.on('guildMemberAdd', async (member) => {
+        try {
+            await client.database.logActivity({
+                guild_id: member.guild.id,
+                user_id: member.id,
+                type: 'member_join',
+                description: `${member.user.username} entrou no servidor`
+            });
+            
+            if (socketManager) {
+                socketManager.onDiscordEvent('guildMemberAdd', member.guild.id, {
+                    userId: member.id,
+                    username: member.user.username
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao processar entrada de membro:', error);
+        }
+    });
+    
+    client.on('guildMemberRemove', async (member) => {
+        try {
+            await client.database.logActivity({
+                guild_id: member.guild.id,
+                user_id: member.id,
+                type: 'member_leave',
+                description: `${member.user.username} saiu do servidor`
+            });
+            
+            if (socketManager) {
+                socketManager.onDiscordEvent('guildMemberRemove', member.guild.id, {
+                    userId: member.id,
+                    username: member.user.username
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao processar saída de membro:', error);
+        }
+    });
+    
+    // Voice state updates
+    client.on('voiceStateUpdate', async (oldState, newState) => {
+        try {
+            const guildId = newState.guild.id;
+            const userId = newState.id;
+            
+            if (oldState.channelId === null && newState.channelId !== null) {
+                // User joined voice channel
+                if (socketManager) {
+                    socketManager.onDiscordEvent('voiceStateUpdate', guildId, {
+                        userId,
+                        channelId: newState.channelId,
+                        channelName: newState.channel.name,
+                        joined: true
+                    });
+                }
+            } else if (oldState.channelId !== null && newState.channelId === null) {
+                // User left voice channel
+                if (socketManager) {
+                    socketManager.onDiscordEvent('voiceStateUpdate', guildId, {
+                        userId,
+                        channelId: oldState.channelId,
+                        channelName: oldState.channel.name,
+                        left: true
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Erro ao processar mudança de voz:', error);
+        }
+    });
+    
+    // Message delete events
+    client.on('messageDelete', async (message) => {
+        if (!message.guild || message.author?.bot) return;
+        
+        try {
+            if (socketManager) {
+                socketManager.onDiscordEvent('messageDelete', message.guild.id, {
+                    channelId: message.channel.id,
+                    channelName: message.channel.name,
+                    authorId: message.author?.id,
+                    messageId: message.id,
+                    content: message.content
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao processar mensagem deletada:', error);
+        }
+    });
+    
+    console.log('✅ Integração com dashboard configurada');
+}
+
+// Enhanced ready event
+client.once('ready', () => {
+    console.log(`✅ Bot logado como ${client.user.tag}`);
+    console.log(`🏠 Servidores: ${client.guilds.cache.size}`);
+    console.log(`👥 Usuários: ${client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0)}`);
+    
+    // Setup dashboard integration
+    setupDashboardIntegration();
+    
+    // Update bot status
+    client.user.setActivity('🛡️ Dashboard ativo | /help', { type: 'WATCHING' });
+});
+
 // Registrar comandos e fazer login
 (async () => {
     await registerCommands();
@@ -114,6 +263,19 @@ async function registerCommands() {
         process.exit(1);
     });
 })();
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('🛑 SIGTERM received, shutting down bot gracefully');
+    client.destroy();
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    console.log('🛑 SIGINT received, shutting down bot gracefully');
+    client.destroy();
+    process.exit(0);
+});
 
 // Inicializar website de updates
 client.once('ready', () => {

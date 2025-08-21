@@ -4,14 +4,53 @@ const passport = require('passport');
 const DiscordStrategy = require('passport-discord').Strategy;
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { EmbedBuilder, WebhookClient } = require('discord.js');
+const Database = require('./database/database');
+const SocketManager = require('./socket');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const server = http.createServer(app);
+const PORT = process.env.PORT || 4000;
+
+// Initialize database
+const db = new Database();
+db.initialize().then(() => {
+    console.log('✅ Database initialized successfully');
+}).catch(error => {
+    console.error('❌ Database initialization failed:', error);
+});
+
+// Initialize Socket.IO
+const socketManager = new SocketManager(server);
+
+// Security middleware
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+            imgSrc: ["'self'", "data:", "https:", "http:"],
+            connectSrc: ["'self'", "ws:", "wss:"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net"]
+        }
+    }
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // limit each IP to 1000 requests per windowMs
+    message: { error: 'Muitas requisições, tente novamente em 15 minutos' }
+});
+app.use(limiter);
 
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Carregar configuração
 let config;
@@ -501,6 +540,272 @@ app.post('/api/server/:serverId/lock', requireAuth, async (req, res) => {
     }
 });
 
+// API para dar timeout em usuário
+app.post('/api/server/:serverId/timeout', requireAuth, async (req, res) => {
+    try {
+        const serverId = req.params.serverId;
+        const { userId, duration = 60, reason = 'Timeout via dashboard' } = req.body;
+        
+        console.log(`⏰ Timeout usuário ${userId} no servidor ${serverId} por:`, req.user?.username);
+        
+        if (!global.discordClient || !global.discordClient.isReady()) {
+            return res.status(503).json({ error: 'Bot Discord não está conectado' });
+        }
+
+        const guild = global.discordClient.guilds.cache.get(serverId);
+        if (!guild) {
+            return res.status(404).json({ error: 'Servidor não encontrado' });
+        }
+
+        // Verificar permissões
+        const botPermissions = guild.members.me.permissions;
+        if (!botPermissions.has('ModerateMembers')) {
+            return res.status(403).json({ error: 'Bot não tem permissão para dar timeout em membros' });
+        }
+
+        // Buscar membro
+        const member = await guild.members.fetch(userId).catch(() => null);
+        if (!member) {
+            return res.status(404).json({ error: 'Usuário não encontrado no servidor' });
+        }
+
+        // Verificar se o bot pode dar timeout neste membro
+        if (!member.moderatable) {
+            return res.status(403).json({ error: 'Não é possível dar timeout neste usuário (cargo superior ao bot)' });
+        }
+
+        // Calcular duração em milissegundos
+        const durationMs = duration * 60 * 1000; // converter minutos para ms
+        const timeoutUntil = new Date(Date.now() + durationMs);
+
+        // Aplicar timeout
+        await member.timeout(durationMs, `${reason} - por ${req.user?.username}`);
+
+        console.log(`✅ Timeout aplicado em ${member.user.tag} por ${duration} minutos`);
+        res.json({
+            success: true,
+            user: {
+                id: member.user.id,
+                tag: member.user.tag,
+                avatar: member.user.displayAvatarURL()
+            },
+            duration: duration,
+            timeoutUntil: timeoutUntil,
+            reason: reason
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao dar timeout:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
+});
+
+// API para expulsar usuário
+app.post('/api/server/:serverId/kick', requireAuth, async (req, res) => {
+    try {
+        const serverId = req.params.serverId;
+        const { userId, reason = 'Expulsão via dashboard' } = req.body;
+        
+        console.log(`👢 Expulsar usuário ${userId} do servidor ${serverId} por:`, req.user?.username);
+        
+        if (!global.discordClient || !global.discordClient.isReady()) {
+            return res.status(503).json({ error: 'Bot Discord não está conectado' });
+        }
+
+        const guild = global.discordClient.guilds.cache.get(serverId);
+        if (!guild) {
+            return res.status(404).json({ error: 'Servidor não encontrado' });
+        }
+
+        // Verificar permissões
+        const botPermissions = guild.members.me.permissions;
+        if (!botPermissions.has('KickMembers')) {
+            return res.status(403).json({ error: 'Bot não tem permissão para expulsar membros' });
+        }
+
+        // Buscar membro
+        const member = await guild.members.fetch(userId).catch(() => null);
+        if (!member) {
+            return res.status(404).json({ error: 'Usuário não encontrado no servidor' });
+        }
+
+        // Verificar se o bot pode expulsar este membro
+        if (!member.kickable) {
+            return res.status(403).json({ error: 'Não é possível expulsar este usuário (cargo superior ao bot)' });
+        }
+
+        // Salvar informações antes da expulsão
+        const userInfo = {
+            id: member.user.id,
+            tag: member.user.tag,
+            avatar: member.user.displayAvatarURL(),
+            joinedAt: member.joinedAt
+        };
+
+        // Expulsar membro
+        await member.kick(`${reason} - por ${req.user?.username}`);
+
+        console.log(`✅ ${userInfo.tag} foi expulso do servidor`);
+        res.json({
+            success: true,
+            user: userInfo,
+            reason: reason
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao expulsar usuário:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
+});
+
+// API para banir usuário
+app.post('/api/server/:serverId/ban', requireAuth, async (req, res) => {
+    try {
+        const serverId = req.params.serverId;
+        const { userId, reason = 'Banimento via dashboard', deleteMessageDays = 0, duration = 0 } = req.body;
+        
+        console.log(`🔨 Banir usuário ${userId} do servidor ${serverId} por:`, req.user?.username);
+        
+        if (!global.discordClient || !global.discordClient.isReady()) {
+            return res.status(503).json({ error: 'Bot Discord não está conectado' });
+        }
+
+        const guild = global.discordClient.guilds.cache.get(serverId);
+        if (!guild) {
+            return res.status(404).json({ error: 'Servidor não encontrado' });
+        }
+
+        // Verificar permissões
+        const botPermissions = guild.members.me.permissions;
+        if (!botPermissions.has('BanMembers')) {
+            return res.status(403).json({ error: 'Bot não tem permissão para banir membros' });
+        }
+
+        // Buscar membro (pode não estar no servidor)
+        const member = await guild.members.fetch(userId).catch(() => null);
+        let userInfo;
+
+        if (member) {
+            // Verificar se o bot pode banir este membro
+            if (!member.bannable) {
+                return res.status(403).json({ error: 'Não é possível banir este usuário (cargo superior ao bot)' });
+            }
+            
+            userInfo = {
+                id: member.user.id,
+                tag: member.user.tag,
+                avatar: member.user.displayAvatarURL(),
+                joinedAt: member.joinedAt
+            };
+        } else {
+            // Tentar buscar usuário pelo ID (pode não estar no servidor)
+            try {
+                const user = await global.discordClient.users.fetch(userId);
+                userInfo = {
+                    id: user.id,
+                    tag: user.tag,
+                    avatar: user.displayAvatarURL(),
+                    joinedAt: null
+                };
+            } catch {
+                return res.status(404).json({ error: 'Usuário não encontrado' });
+            }
+        }
+
+        // Banir usuário
+        await guild.members.ban(userId, {
+            reason: `${reason} - por ${req.user?.username}`,
+            deleteMessageDays: Math.min(deleteMessageDays, 7) // Max 7 days
+        });
+
+        // Se for banimento temporário, agendar desbanimento (seria melhor usar um sistema de jobs)
+        let unbanAt = null;
+        if (duration > 0) {
+            unbanAt = new Date(Date.now() + duration * 60 * 1000);
+            // TODO: Implementar sistema de agendamento para desbanimento automático
+        }
+
+        console.log(`✅ ${userInfo.tag} foi banido do servidor`);
+        res.json({
+            success: true,
+            user: userInfo,
+            reason: reason,
+            deleteMessageDays: deleteMessageDays,
+            duration: duration,
+            unbanAt: unbanAt
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao banir usuário:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
+});
+
+// API para buscar membros do servidor
+app.get('/api/server/:serverId/members', requireAuth, async (req, res) => {
+    try {
+        const serverId = req.params.serverId;
+        const { search = '', limit = 50 } = req.query;
+        
+        console.log(`👥 Buscar membros no servidor ${serverId} por:`, req.user?.username);
+        
+        if (!global.discordClient || !global.discordClient.isReady()) {
+            return res.status(503).json({ error: 'Bot Discord não está conectado' });
+        }
+
+        const guild = global.discordClient.guilds.cache.get(serverId);
+        if (!guild) {
+            return res.status(404).json({ error: 'Servidor não encontrado' });
+        }
+
+        // Buscar todos os membros se o cache não estiver completo
+        if (guild.members.cache.size < guild.memberCount) {
+            await guild.members.fetch();
+        }
+
+        let members = guild.members.cache
+            .filter(member => !member.user.bot) // Filtrar bots
+            .map(member => ({
+                id: member.user.id,
+                tag: member.user.tag,
+                displayName: member.displayName,
+                avatar: member.user.displayAvatarURL({ size: 64 }),
+                joinedAt: member.joinedAt,
+                roles: member.roles.cache
+                    .filter(role => role.id !== guild.id) // Remover @everyone
+                    .map(role => ({ id: role.id, name: role.name, color: role.hexColor }))
+                    .slice(0, 3), // Limitar a 3 cargos principais
+                isOwner: member.id === guild.ownerId,
+                kickable: member.kickable,
+                bannable: member.bannable,
+                moderatable: member.moderatable
+            }));
+
+        // Filtrar por busca se especificado
+        if (search) {
+            const searchLower = search.toLowerCase();
+            members = members.filter(member => 
+                member.tag.toLowerCase().includes(searchLower) ||
+                member.displayName.toLowerCase().includes(searchLower)
+            );
+        }
+
+        // Limitar resultados
+        members = members.slice(0, parseInt(limit));
+
+        console.log(`✅ Enviados ${members.length} membros`);
+        res.json({
+            success: true,
+            members: members,
+            total: guild.memberCount
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao buscar membros:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
+});
+
 // API para obter estatísticas detalhadas do servidor
 app.get('/api/server/:serverId/stats', requireAuth, async (req, res) => {
     try {
@@ -640,11 +945,47 @@ app.post('/api/send-update', requireAuth, requireServerAccess, async (req, res) 
     }
 });
 
-// Iniciar servidor
-app.listen(PORT, () => {
-    console.log(`🌐 Website de Updates rodando em http://localhost:${PORT}`);
-    console.log(`🔑 OAuth2 Discord configurado para: ${callbackURL}`);
-    console.log(`🏷️ Ambiente: ${isProduction ? 'Produção' : 'Desenvolvimento'}`);
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({ error: 'Página não encontrada' });
 });
 
-module.exports = app;
+// Error handler
+app.use((error, req, res, next) => {
+    console.error('Server error:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+});
+
+// Routes - Updated to include new API routes
+app.use('/api', require('./routes/api'));
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('🛑 SIGTERM received, shutting down gracefully');
+    server.close(() => {
+        console.log('✅ Server closed');
+        db.close();
+        process.exit(0);
+    });
+});
+
+process.on('SIGINT', () => {
+    console.log('🛑 SIGINT received, shutting down gracefully');
+    server.close(() => {
+        console.log('✅ Server closed');
+        db.close();
+        process.exit(0);
+    });
+});
+
+// Iniciar servidor
+server.listen(PORT, () => {
+    console.log(`🌐 YSNM Dashboard rodando em http://localhost:${PORT}`);
+    console.log(`🔑 OAuth2 Discord configurado para: ${callbackURL}`);
+    console.log(`🏷️ Ambiente: ${isProduction ? 'Produção' : 'Desenvolvimento'}`);
+    console.log(`🔌 Socket.IO habilitado`);
+    console.log(`📊 Sistema completo: Dashboard, Tickets, Analytics, Admin`);
+    console.log(`🛡️ Sistema de segurança ativo`);
+});
+
+module.exports = { app, server, socketManager };

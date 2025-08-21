@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administração - YSNM Bot</title>
+    <style>
+        :root {
+            --primary: #6B73FF;
+            --primary-dark: #5A63E8;
+            --primary-light: rgba(107, 115, 255, 0.1);
+            --bg: #0F1419;
+            --bg-secondary: #1A1F2E;
+            --bg-card: #252A3A;
+            --text: #FFFFFF;
+            --text-muted: #94A3B8;
+            --border: rgba(255, 255, 255, 0.1);
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --info: #3B82F6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(107, 115, 255, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary) 0%, #8B5CF6 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .admin-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .admin-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .admin-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.875rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.875rem;
+        }
+
+        .form-textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.875rem;
+            resize: vertical;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+
+        .setting-info {
+            flex: 1;
+        }
+
+        .setting-title {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .setting-description {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background: var(--bg);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: var(--primary);
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(24px);
+        }
+
+        .member-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .member-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .member-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .member-info {
+            flex: 1;
+        }
+
+        .member-name {
+            font-weight: 500;
+        }
+
+        .member-role {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .log-item {
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--info);
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 0.5rem;
+        }
+
+        .log-item.warning {
+            border-left-color: var(--warning);
+        }
+
+        .log-item.error {
+            border-left-color: var(--danger);
+        }
+
+        .log-item.success {
+            border-left-color: var(--success);
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+
+        .log-type {
+            font-weight: 500;
+        }
+
+        .log-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .log-message {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            margin: 0 auto 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 2.5rem 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.875rem;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--warning);
+            color: var(--warning);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--text-muted);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .admin-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .btn-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ Administração</h1>
+            <p>Painel de controle completo do servidor</p>
+        </div>
+
+        <div class="admin-tabs">
+            <button class="tab-btn active" onclick="switchTab('overview')">📊 Visão Geral</button>
+            <button class="tab-btn" onclick="switchTab('settings')">⚙️ Configurações</button>
+            <button class="tab-btn" onclick="switchTab('members')">👥 Membros</button>
+            <button class="tab-btn" onclick="switchTab('channels')">📝 Canais</button>
+            <button class="tab-btn" onclick="switchTab('roles')">🎭 Cargos</button>
+            <button class="tab-btn" onclick="switchTab('logs')">📋 Logs</button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: var(--success);">👥</div>
+                    <div class="stat-value" id="totalMembers">-</div>
+                    <div class="stat-label">Total de Membros</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: var(--info);">🟢</div>
+                    <div class="stat-value" id="onlineMembers">-</div>
+                    <div class="stat-label">Membros Online</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: var(--warning);">📝</div>
+                    <div class="stat-value" id="totalChannels">-</div>
+                    <div class="stat-label">Canais</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: var(--primary);">🎭</div>
+                    <div class="stat-value" id="totalRoles">-</div>
+                    <div class="stat-label">Cargos</div>
+                </div>
+            </div>
+
+            <div class="admin-grid">
+                <div class="admin-card">
+                    <div class="card-title">🚀 Ações Rápidas</div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="lockServer()">🔒 Trancar Servidor</button>
+                        <button class="btn btn-warning" onclick="unlockServer()">🔓 Destrancar Servidor</button>
+                        <button class="btn btn-danger" onclick="purgeInactiveMembers()">🧹 Limpar Inativos</button>
+                    </div>
+                </div>
+
+                <div class="admin-card">
+                    <div class="card-title">📊 Status do Bot</div>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <div class="setting-title">Bot Online</div>
+                            <div class="setting-description">Status atual do bot</div>
+                        </div>
+                        <div id="botStatus" style="color: var(--success);">🟢 Online</div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <div class="setting-title">Uptime</div>
+                            <div class="setting-description">Tempo ativo</div>
+                        </div>
+                        <div id="botUptime">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content">
+            <div class="admin-grid">
+                <div class="admin-card">
+                    <div class="card-title">⚙️ Configurações Gerais</div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <div class="setting-title">Sistema de Welcome</div>
+                            <div class="setting-description">Mensagem automática para novos membros</div>
+                        </div>
+                        <div class="toggle-switch" onclick="toggleSetting('welcome')">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <div class="setting-title">Auto Moderação</div>
+                            <div class="setting-description">Moderação automática de conteúdo</div>
+                        </div>
+                        <div class="toggle-switch" onclick="toggleSetting('automod')">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <div class="setting-title">Logs de Auditoria</div>
+                            <div class="setting-description">Registrar ações dos membros</div>
+                        </div>
+                        <div class="toggle-switch active" onclick="toggleSetting('audit')">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="admin-card">
+                    <div class="card-title">📝 Canais de Sistema</div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Canal de Welcome</label>
+                        <select class="form-select" id="welcomeChannel">
+                            <option value="">Selecionar canal...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Canal de Logs</label>
+                        <select class="form-select" id="logChannel">
+                            <option value="">Selecionar canal...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Canal de Moderação</label>
+                        <select class="form-select" id="modChannel">
+                            <option value="">Selecionar canal...</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="saveChannelSettings()">💾 Salvar Configurações</button>
+                </div>
+
+                <div class="admin-card">
+                    <div class="card-title">🛡️ Configurações de Moderação</div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Filtro de Palavrões</label>
+                        <textarea class="form-textarea" id="bannedWords" placeholder="Digite palavras separadas por vírgula..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Limite de Menções</label>
+                        <input type="number" class="form-input" id="mentionLimit" value="5">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Auto Timeout (minutos)</label>
+                        <input type="number" class="form-input" id="autoTimeout" value="10">
+                    </div>
+
+                    <button class="btn btn-primary" onclick="saveModerationSettings()">💾 Salvar Moderação</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Members Tab -->
+        <div id="members" class="tab-content">
+            <div class="admin-grid">
+                <div class="admin-card">
+                    <div class="card-title">👥 Gerenciar Membros</div>
+                    
+                    <div class="search-box">
+                        <input type="text" class="search-input" id="memberSearch" placeholder="Buscar membro..." onkeyup="searchMembers()">
+                        <div class="search-icon">🔍</div>
+                    </div>
+
+                    <div class="member-list" id="memberList">
+                        <div style="text-align: center; padding: 2rem;">
+                            <div class="loading"></div>
+                            <p style="margin-top: 1rem;">Carregando membros...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="admin-card">
+                    <div class="card-title">🎭 Ações de Membro</div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Membro Selecionado</label>
+                        <input type="text" class="form-input" id="selectedMember" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Ação</label>
+                        <select class="form-select" id="memberAction">
+                            <option value="timeout">Timeout</option>
+                            <option value="kick">Expulsar</option>
+                            <option value="ban">Banir</option>
+                            <option value="unban">Desbanir</option>
+                            <option value="role">Gerenciar Cargos</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Motivo</label>
+                        <textarea class="form-textarea" id="actionReason" placeholder="Motivo da ação..."></textarea>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="executeMemberAction()">✅ Executar</button>
+                        <button class="btn btn-secondary" onclick="clearMemberAction()">🗑️ Limpar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Channels Tab -->
+        <div id="channels" class="tab-content">
+            <div class="admin-grid">
+                <div class="admin-card">
+                    <div class="card-title">📝 Criar Canal</div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nome do Canal</label>
+                        <input type="text" class="form-input" id="channelName" placeholder="nome-do-canal">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Tipo de Canal</label>
+                        <select class="form-select" id="channelType">
+                            <option value="GUILD_TEXT">Texto</option>
+                            <option value="GUILD_VOICE">Voz</option>
+                            <option value="GUILD_CATEGORY">Categoria</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Categoria Pai</label>
+                        <select class="form-select" id="channelCategory">
+                            <option value="">Nenhuma categoria</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Descrição</label>
+                        <textarea class="form-textarea" id="channelDescription" placeholder="Descrição do canal..."></textarea>
+                    </div>
+
+                    <button class="btn btn-success" onclick="createChannel()">➕ Criar Canal</button>
+                </div>
+
+                <div class="admin-card">
+                    <div class="card-title">🗂️ Canais Existentes</div>
+                    
+                    <div id="channelsList">
+                        <div style="text-align: center; padding: 2rem;">
+                            <div class="loading"></div>
+                            <p style="margin-top: 1rem;">Carregando canais...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Roles Tab -->
+        <div id="roles" class="tab-content">
+            <div class="admin-grid">
+                <div class="admin-card">
+                    <div class="card-title">🎭 Criar Cargo</div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nome do Cargo</label>
+                        <input type="text" class="form-input" id="roleName" placeholder="Nome do cargo">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Cor do Cargo</label>
+                        <input type="color" class="form-input" id="roleColor" value="#6B73FF">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Permissões</label>
+                        <div style="max-height: 200px; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 1rem;">
+                            <div class="setting-item" style="margin-bottom: 0.5rem;">
+                                <span>Administrador</span>
+                                <input type="checkbox" id="perm_administrator">
+                            </div>
+                            <div class="setting-item" style="margin-bottom: 0.5rem;">
+                                <span>Gerenciar Servidor</span>
+                                <input type="checkbox" id="perm_manage_guild">
+                            </div>
+                            <div class="setting-item" style="margin-bottom: 0.5rem;">
+                                <span>Gerenciar Canais</span>
+                                <input type="checkbox" id="perm_manage_channels">
+                            </div>
+                            <div class="setting-item" style="margin-bottom: 0.5rem;">
+                                <span>Gerenciar Cargos</span>
+                                <input type="checkbox" id="perm_manage_roles">
+                            </div>
+                            <div class="setting-item" style="margin-bottom: 0.5rem;">
+                                <span>Expulsar Membros</span>
+                                <input type="checkbox" id="perm_kick_members">
+                            </div>
+                            <div class="setting-item" style="margin-bottom: 0.5rem;">
+                                <span>Banir Membros</span>
+                                <input type="checkbox" id="perm_ban_members">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-success" onclick="createRole()">➕ Criar Cargo</button>
+                </div>
+
+                <div class="admin-card">
+                    <div class="card-title">📋 Cargos Existentes</div>
+                    
+                    <div id="rolesList">
+                        <div style="text-align: center; padding: 2rem;">
+                            <div class="loading"></div>
+                            <p style="margin-top: 1rem;">Carregando cargos...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Tab -->
+        <div id="logs" class="tab-content">
+            <div class="admin-card">
+                <div class="card-title">📋 Logs do Sistema</div>
+                
+                <div class="btn-group" style="margin-bottom: 1rem;">
+                    <button class="btn btn-secondary" onclick="filterLogs('all')">Todos</button>
+                    <button class="btn btn-secondary" onclick="filterLogs('info')">Info</button>
+                    <button class="btn btn-secondary" onclick="filterLogs('warning')">Avisos</button>
+                    <button class="btn btn-secondary" onclick="filterLogs('error')">Erros</button>
+                </div>
+
+                <div id="logsList" style="max-height: 500px; overflow-y: auto;">
+                    <div style="text-align: center; padding: 2rem;">
+                        <div class="loading"></div>
+                        <p style="margin-top: 1rem;">Carregando logs...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirmar Ação</h3>
+                <button class="close-btn" onclick="closeModal('confirmModal')">&times;</button>
+            </div>
+            <p id="confirmMessage">Tem certeza que deseja executar esta ação?</p>
+            <div class="btn-group">
+                <button class="btn btn-danger" id="confirmBtn">Confirmar</button>
+                <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'overview';
+        let selectedMember = null;
+
+        // Initialize admin panel
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOverviewData();
+            loadChannels();
+            loadRoles();
+            loadMembers();
+            loadLogs();
+        });
+
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            currentTab = tabName;
+        }
+
+        async function loadOverviewData() {
+            try {
+                const response = await fetch('/api/admin/overview');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('totalMembers').textContent = data.stats.totalMembers;
+                    document.getElementById('onlineMembers').textContent = data.stats.onlineMembers;
+                    document.getElementById('totalChannels').textContent = data.stats.totalChannels;
+                    document.getElementById('totalRoles').textContent = data.stats.totalRoles;
+                    document.getElementById('botUptime').textContent = data.stats.uptime;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados gerais:', error);
+            }
+        }
+
+        async function loadMembers() {
+            try {
+                const response = await fetch('/api/admin/members');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const memberList = document.getElementById('memberList');
+                    
+                    if (data.members.length === 0) {
+                        memberList.innerHTML = '<div style="text-align: center; color: var(--text-muted);">Nenhum membro encontrado</div>';
+                        return;
+                    }
+                    
+                    memberList.innerHTML = data.members.map(member => `
+                        <div class="member-item" onclick="selectMember('${member.id}', '${member.username}')">
+                            <div class="member-avatar">
+                                ${member.avatar ? 
+                                    `<img src="${member.avatar}" style="width: 100%; height: 100%; border-radius: 50%;">` :
+                                    member.username.charAt(0).toUpperCase()
+                                }
+                            </div>
+                            <div class="member-info">
+                                <div class="member-name">${member.username}</div>
+                                <div class="member-role">${member.roles.join(', ') || 'Sem cargos'}</div>
+                            </div>
+                            <div style="color: ${member.status === 'online' ? 'var(--success)' : 'var(--text-muted)'};">
+                                ${member.status === 'online' ? '🟢' : '⚫'}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar membros:', error);
+            }
+        }
+
+        async function loadChannels() {
+            try {
+                const response = await fetch('/api/admin/channels');
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update channel selects
+                    const selects = ['welcomeChannel', 'logChannel', 'modChannel', 'channelCategory'];
+                    selects.forEach(selectId => {
+                        const select = document.getElementById(selectId);
+                        select.innerHTML = '<option value="">Selecionar canal...</option>';
+                        
+                        data.channels.forEach(channel => {
+                            if (selectId === 'channelCategory' && channel.type !== 'GUILD_CATEGORY') return;
+                            if (selectId !== 'channelCategory' && channel.type === 'GUILD_CATEGORY') return;
+                            
+                            select.innerHTML += `<option value="${channel.id}">${channel.name}</option>`;
+                        });
+                    });
+                    
+                    // Update channels list
+                    const channelsList = document.getElementById('channelsList');
+                    channelsList.innerHTML = data.channels.map(channel => `
+                        <div class="member-item">
+                            <div style="font-size: 1.2rem;">
+                                ${channel.type === 'GUILD_TEXT' ? '📝' : 
+                                  channel.type === 'GUILD_VOICE' ? '🎤' : '📁'}
+                            </div>
+                            <div class="member-info">
+                                <div class="member-name">${channel.name}</div>
+                                <div class="member-role">${channel.type}</div>
+                            </div>
+                            <button class="btn btn-danger" onclick="deleteChannel('${channel.id}')">🗑️</button>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar canais:', error);
+            }
+        }
+
+        async function loadRoles() {
+            try {
+                const response = await fetch('/api/admin/roles');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const rolesList = document.getElementById('rolesList');
+                    rolesList.innerHTML = data.roles.map(role => `
+                        <div class="member-item">
+                            <div style="width: 20px; height: 20px; border-radius: 50%; background: ${role.color};"></div>
+                            <div class="member-info">
+                                <div class="member-name">${role.name}</div>
+                                <div class="member-role">${role.members} membros</div>
+                            </div>
+                            <button class="btn btn-danger" onclick="deleteRole('${role.id}')">🗑️</button>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar cargos:', error);
+            }
+        }
+
+        async function loadLogs() {
+            try {
+                const response = await fetch('/api/admin/logs');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const logsList = document.getElementById('logsList');
+                    logsList.innerHTML = data.logs.map(log => `
+                        <div class="log-item ${log.level}">
+                            <div class="log-header">
+                                <div class="log-type">${log.type}</div>
+                                <div class="log-time">${formatDate(log.timestamp)}</div>
+                            </div>
+                            <div class="log-message">${log.message}</div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar logs:', error);
+            }
+        }
+
+        function selectMember(memberId, username) {
+            selectedMember = { id: memberId, username: username };
+            document.getElementById('selectedMember').value = username;
+        }
+
+        function searchMembers() {
+            const search = document.getElementById('memberSearch').value.toLowerCase();
+            const members = document.querySelectorAll('.member-item');
+            
+            members.forEach(member => {
+                const name = member.querySelector('.member-name').textContent.toLowerCase();
+                member.style.display = name.includes(search) ? 'flex' : 'none';
+            });
+        }
+
+        async function executeMemberAction() {
+            if (!selectedMember) {
+                showAlert('danger', 'Selecione um membro primeiro');
+                return;
+            }
+            
+            const action = document.getElementById('memberAction').value;
+            const reason = document.getElementById('actionReason').value;
+            
+            showConfirmModal(
+                `Executar ${action} em ${selectedMember.username}?`,
+                () => performMemberAction(action, selectedMember.id, reason)
+            );
+        }
+
+        async function performMemberAction(action, memberId, reason) {
+            try {
+                const response = await fetch('/api/admin/members/action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, memberId, reason })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('success', `Ação ${action} executada com sucesso`);
+                    clearMemberAction();
+                    loadMembers();
+                } else {
+                    showAlert('danger', data.message || 'Erro ao executar ação');
+                }
+            } catch (error) {
+                showAlert('danger', 'Erro ao executar ação');
+            }
+        }
+
+        function clearMemberAction() {
+            selectedMember = null;
+            document.getElementById('selectedMember').value = '';
+            document.getElementById('actionReason').value = '';
+        }
+
+        async function createChannel() {
+            const name = document.getElementById('channelName').value;
+            const type = document.getElementById('channelType').value;
+            const category = document.getElementById('channelCategory').value;
+            const description = document.getElementById('channelDescription').value;
+            
+            if (!name) {
+                showAlert('danger', 'Nome do canal é obrigatório');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/channels', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, type, category, description })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('success', 'Canal criado com sucesso');
+                    document.getElementById('channelName').value = '';
+                    document.getElementById('channelDescription').value = '';
+                    loadChannels();
+                } else {
+                    showAlert('danger', data.message || 'Erro ao criar canal');
+                }
+            } catch (error) {
+                showAlert('danger', 'Erro ao criar canal');
+            }
+        }
+
+        async function createRole() {
+            const name = document.getElementById('roleName').value;
+            const color = document.getElementById('roleColor').value;
+            
+            if (!name) {
+                showAlert('danger', 'Nome do cargo é obrigatório');
+                return;
+            }
+            
+            const permissions = [];
+            document.querySelectorAll('[id^="perm_"]:checked').forEach(checkbox => {
+                permissions.push(checkbox.id.replace('perm_', ''));
+            });
+            
+            try {
+                const response = await fetch('/api/admin/roles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, color, permissions })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('success', 'Cargo criado com sucesso');
+                    document.getElementById('roleName').value = '';
+                    loadRoles();
+                } else {
+                    showAlert('danger', data.message || 'Erro ao criar cargo');
+                }
+            } catch (error) {
+                showAlert('danger', 'Erro ao criar cargo');
+            }
+        }
+
+        function toggleSetting(setting) {
+            const toggle = event.target.closest('.toggle-switch');
+            toggle.classList.toggle('active');
+            
+            // Save setting to server
+            saveSetting(setting, toggle.classList.contains('active'));
+        }
+
+        async function saveSetting(setting, value) {
+            try {
+                const response = await fetch('/api/admin/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ [setting]: value })
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    showAlert('danger', 'Erro ao salvar configuração');
+                }
+            } catch (error) {
+                showAlert('danger', 'Erro ao salvar configuração');
+            }
+        }
+
+        async function lockServer() {
+            showConfirmModal(
+                'Trancar o servidor irá impedir que membros sem permissões especiais enviem mensagens. Continuar?',
+                async () => {
+                    try {
+                        const response = await fetch('/api/admin/server/lock', { method: 'POST' });
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showAlert('success', 'Servidor trancado com sucesso');
+                        } else {
+                            showAlert('danger', data.message || 'Erro ao trancar servidor');
+                        }
+                    } catch (error) {
+                        showAlert('danger', 'Erro ao trancar servidor');
+                    }
+                }
+            );
+        }
+
+        async function unlockServer() {
+            try {
+                const response = await fetch('/api/admin/server/unlock', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('success', 'Servidor destrancado com sucesso');
+                } else {
+                    showAlert('danger', data.message || 'Erro ao destrancar servidor');
+                }
+            } catch (error) {
+                showAlert('danger', 'Erro ao destrancar servidor');
+            }
+        }
+
+        function showConfirmModal(message, onConfirm) {
+            document.getElementById('confirmMessage').textContent = message;
+            document.getElementById('confirmBtn').onclick = () => {
+                onConfirm();
+                closeModal('confirmModal');
+            };
+            document.getElementById('confirmModal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function showAlert(type, message) {
+            // Create alert element
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            // Insert at top of container
+            const container = document.querySelector('.container');
+            container.insertBefore(alert, container.firstChild);
+            
+            // Remove after 5 seconds
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('pt-BR');
+        }
+    </script>
+</body>
+</html>
