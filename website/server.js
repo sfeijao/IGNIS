@@ -276,6 +276,231 @@ app.get('/api/guilds', requireAuth, async (req, res) => {
     }
 });
 
+// API para obter canais do servidor
+app.get('/api/server/:serverId/channels', requireAuth, async (req, res) => {
+    try {
+        const serverId = req.params.serverId;
+        console.log(`📺 API channels para servidor ${serverId} por:`, req.user?.username);
+        
+        if (!global.discordClient || !global.discordClient.isReady()) {
+            return res.status(503).json({ error: 'Bot Discord não está conectado' });
+        }
+
+        const guild = global.discordClient.guilds.cache.get(serverId);
+        if (!guild) {
+            return res.status(404).json({ error: 'Servidor não encontrado' });
+        }
+
+        // Obter todos os canais do servidor
+        const channels = guild.channels.cache
+            .filter(channel => channel.type === 0 || channel.type === 2) // Text e Voice channels
+            .map(channel => ({
+                id: channel.id,
+                name: channel.name,
+                type: channel.type === 0 ? 'text' : 'voice',
+                category: channel.parent ? channel.parent.name : 'Sem categoria',
+                position: channel.position,
+                permissionsFor: channel.permissionsFor(guild.members.me)?.has('ManageMessages') || false
+            }))
+            .sort((a, b) => a.position - b.position);
+
+        console.log(`✅ Enviados ${channels.length} canais`);
+        res.json({
+            success: true,
+            channels: channels
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao obter canais:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
+});
+
+// API para limpar mensagens de um canal
+app.post('/api/server/:serverId/channels/:channelId/clear', requireAuth, async (req, res) => {
+    try {
+        const { serverId, channelId } = req.params;
+        const { amount = 10, filterType = 'all' } = req.body;
+        
+        console.log(`🧹 Limpeza de canal ${channelId} no servidor ${serverId} por:`, req.user?.username);
+        
+        if (!global.discordClient || !global.discordClient.isReady()) {
+            return res.status(503).json({ error: 'Bot Discord não está conectado' });
+        }
+
+        const guild = global.discordClient.guilds.cache.get(serverId);
+        if (!guild) {
+            return res.status(404).json({ error: 'Servidor não encontrado' });
+        }
+
+        const channel = guild.channels.cache.get(channelId);
+        if (!channel) {
+            return res.status(404).json({ error: 'Canal não encontrado' });
+        }
+
+        if (channel.type !== 0) {
+            return res.status(400).json({ error: 'Só é possível limpar canais de texto' });
+        }
+
+        // Verificar permissões
+        const botPermissions = channel.permissionsFor(guild.members.me);
+        if (!botPermissions?.has('ManageMessages')) {
+            return res.status(403).json({ error: 'Bot não tem permissão para gerenciar mensagens neste canal' });
+        }
+
+        // Limitar quantidade
+        const maxAmount = Math.min(amount, 100);
+        
+        // Buscar mensagens
+        const messages = await channel.messages.fetch({ limit: maxAmount });
+        
+        // Filtrar mensagens se necessário
+        let messagesToDelete = messages;
+        if (filterType === 'bots') {
+            messagesToDelete = messages.filter(msg => msg.author.bot);
+        } else if (filterType === 'users') {
+            messagesToDelete = messages.filter(msg => !msg.author.bot);
+        }
+
+        // Deletar mensagens (Discord permite bulk delete apenas para mensagens com menos de 14 dias)
+        const deletedCount = await channel.bulkDelete(messagesToDelete, true);
+
+        console.log(`✅ ${deletedCount.size} mensagens deletadas do canal ${channel.name}`);
+        res.json({
+            success: true,
+            deletedCount: deletedCount.size,
+            channelName: channel.name,
+            filterType: filterType
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao limpar canal:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
+});
+
+// API para desbanir todos os usuários
+app.post('/api/server/:serverId/unban-all', requireAuth, async (req, res) => {
+    try {
+        const serverId = req.params.serverId;
+        console.log(`🔓 Desbanir todos no servidor ${serverId} por:`, req.user?.username);
+        
+        if (!global.discordClient || !global.discordClient.isReady()) {
+            return res.status(503).json({ error: 'Bot Discord não está conectado' });
+        }
+
+        const guild = global.discordClient.guilds.cache.get(serverId);
+        if (!guild) {
+            return res.status(404).json({ error: 'Servidor não encontrado' });
+        }
+
+        // Verificar permissões
+        const botPermissions = guild.members.me.permissions;
+        if (!botPermissions.has('BanMembers')) {
+            return res.status(403).json({ error: 'Bot não tem permissão para gerenciar banimentos' });
+        }
+
+        // Obter lista de banimentos
+        const bans = await guild.bans.fetch();
+        
+        if (bans.size === 0) {
+            return res.json({
+                success: true,
+                message: 'Não há usuários banidos para desbanir',
+                unbannedCount: 0
+            });
+        }
+
+        let unbannedCount = 0;
+        const errors = [];
+
+        // Desbanir todos os usuários
+        for (const ban of bans.values()) {
+            try {
+                await guild.members.unban(ban.user.id, `Desbanimento em massa via dashboard por ${req.user?.username}`);
+                unbannedCount++;
+            } catch (error) {
+                errors.push(`Erro ao desbanir ${ban.user.tag}: ${error.message}`);
+            }
+        }
+
+        console.log(`✅ ${unbannedCount} usuários desbanidos`);
+        res.json({
+            success: true,
+            unbannedCount: unbannedCount,
+            totalBans: bans.size,
+            errors: errors
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao desbanir todos:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
+});
+
+// API para bloquear/desbloquear servidor
+app.post('/api/server/:serverId/lock', requireAuth, async (req, res) => {
+    try {
+        const serverId = req.params.serverId;
+        const { lock = true, reason = 'Bloqueio via dashboard' } = req.body;
+        
+        console.log(`🔒 ${lock ? 'Bloquear' : 'Desbloquear'} servidor ${serverId} por:`, req.user?.username);
+        
+        if (!global.discordClient || !global.discordClient.isReady()) {
+            return res.status(503).json({ error: 'Bot Discord não está conectado' });
+        }
+
+        const guild = global.discordClient.guilds.cache.get(serverId);
+        if (!guild) {
+            return res.status(404).json({ error: 'Servidor não encontrado' });
+        }
+
+        // Verificar permissões
+        const botPermissions = guild.members.me.permissions;
+        if (!botPermissions.has('ManageRoles') || !botPermissions.has('ManageChannels')) {
+            return res.status(403).json({ error: 'Bot não tem permissões suficientes para bloquear o servidor' });
+        }
+
+        const everyoneRole = guild.roles.everyone;
+        let modifiedChannels = 0;
+        const errors = [];
+
+        // Modificar permissões de todos os canais de texto
+        const textChannels = guild.channels.cache.filter(channel => channel.type === 0);
+        
+        for (const channel of textChannels.values()) {
+            try {
+                if (lock) {
+                    // Remover permissão de enviar mensagens do @everyone
+                    await channel.permissionOverwrites.edit(everyoneRole, {
+                        SendMessages: false,
+                        AddReactions: false
+                    }, { reason: `${reason} - por ${req.user?.username}` });
+                } else {
+                    // Restaurar permissões (remover override)
+                    await channel.permissionOverwrites.delete(everyoneRole, { reason: `Desbloqueio via dashboard - por ${req.user?.username}` });
+                }
+                modifiedChannels++;
+            } catch (error) {
+                errors.push(`Erro no canal ${channel.name}: ${error.message}`);
+            }
+        }
+
+        console.log(`✅ Servidor ${lock ? 'bloqueado' : 'desbloqueado'}: ${modifiedChannels} canais modificados`);
+        res.json({
+            success: true,
+            action: lock ? 'locked' : 'unlocked',
+            modifiedChannels: modifiedChannels,
+            totalChannels: textChannels.size,
+            errors: errors
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao bloquear/desbloquear servidor:', error);
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
+});
+
 // API para obter estatísticas detalhadas do servidor
 app.get('/api/server/:serverId/stats', requireAuth, async (req, res) => {
     try {

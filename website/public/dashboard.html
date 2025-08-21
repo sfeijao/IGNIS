@@ -571,6 +571,137 @@
                 grid-template-columns: repeat(2, 1fr);
             }
         }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(37, 42, 58, 0.95) 100%);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 0;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 
+                0 25px 50px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: var(--text);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--text-muted);
+            cursor: pointer;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+
+        .close:hover {
+            color: var(--text);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(107, 115, 255, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 0.25rem;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--text-muted);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -698,10 +829,13 @@
 
                     <div class="config-form">
                         <h4>Ações Rápidas</h4>
-                        <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
-                            <button class="btn btn-primary" onclick="clearChat()">Limpar Chat</button>
-                            <button class="btn btn-success" onclick="massUnban()">Desbanir Todos</button>
-                            <button class="btn btn-danger" onclick="lockServer()">Bloquear Servidor</button>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                            <button class="btn btn-primary" onclick="showClearChatModal()">🧹 Limpar Chat</button>
+                            <button class="btn btn-success" onclick="massUnban()">🔓 Desbanir Todos</button>
+                            <button class="btn btn-danger" onclick="toggleServerLock()">🔒 Bloquear Servidor</button>
+                            <button class="btn btn-warning" onclick="showTimeoutModal()">⏰ Timeout Usuário</button>
+                            <button class="btn btn-info" onclick="showKickModal()">👢 Expulsar Usuário</button>
+                            <button class="btn btn-danger" onclick="showBanModal()">🔨 Banir Usuário</button>
                         </div>
 
                         <h4>Filtros Automáticos</h4>
@@ -710,24 +844,92 @@
                                 <label>
                                     <input type="checkbox" id="automod" name="automod"> Ativar Automoderação
                                 </label>
+                                <small>Detecta automaticamente conteúdo inadequado</small>
                             </div>
 
                             <div class="form-group">
                                 <label>
                                     <input type="checkbox" id="spamFilter" name="spamFilter"> Filtro Anti-Spam
                                 </label>
+                                <small>Previne spam de mensagens repetidas</small>
                             </div>
 
                             <div class="form-group">
                                 <label>
                                     <input type="checkbox" id="linkFilter" name="linkFilter"> Filtro de Links
                                 </label>
+                                <small>Bloqueia links suspeitos ou não autorizados</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="profanityFilter" name="profanityFilter"> Filtro de Palavrões
+                                </label>
+                                <small>Remove automaticamente linguagem inadequada</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="capsFilter" name="capsFilter"> Filtro Anti-CAPS
+                                </label>
+                                <small>Previne mensagens excessivamente em maiúsculas</small>
                             </div>
 
                             <button type="submit" class="btn btn-primary">Guardar Configurações</button>
                         </form>
+
+                        <h4>Logs de Moderação</h4>
+                        <div class="logs-container" style="background: var(--bg-secondary); border-radius: 12px; padding: 1rem; max-height: 300px; overflow-y: auto;">
+                            <div id="moderationLogs">
+                                <p style="color: var(--text-muted); text-align: center;">Carregando logs de moderação...</p>
+                            </div>
+                            <button class="btn btn-secondary" onclick="refreshModerationLogs()" style="margin-top: 1rem;">🔄 Atualizar Logs</button>
+                        </div>
                     </div>
                 </section>
+
+                <!-- Clear Chat Modal -->
+                <div id="clearChatModal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>🧹 Limpar Chat</h3>
+                            <span class="close" onclick="closeClearChatModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="channelSelect">Selecionar Canal:</label>
+                                <select id="channelSelect" class="form-control">
+                                    <option value="">Carregando canais...</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="messageAmount">Quantidade de Mensagens:</label>
+                                <input type="number" id="messageAmount" class="form-control" min="1" max="100" value="10">
+                                <small>Máximo: 100 mensagens</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="filterType">Filtrar por:</label>
+                                <select id="filterType" class="form-control">
+                                    <option value="all">Todas as mensagens</option>
+                                    <option value="bots">Apenas bots</option>
+                                    <option value="users">Apenas usuários</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="confirmClear"> Confirmo que quero limpar este canal
+                                </label>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" onclick="closeClearChatModal()">Cancelar</button>
+                            <button class="btn btn-danger" onclick="executeClearChat()" id="clearChatBtn" disabled>Limpar Chat</button>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Embed Builder Section -->
                 <section id="embeds" class="content-section">
@@ -923,6 +1125,9 @@
                     document.getElementById('messageCount').textContent = '❌';
                 }
             }
+
+            // Load moderation logs
+            refreshModerationLogs();
         }
 
         // Menu navigation
@@ -960,17 +1165,260 @@
             document.getElementById(id).addEventListener('input', updateEmbedPreview);
         });
 
-        // Mock functions for demonstration
+        // Variables for moderation
+        let serverChannels = [];
+        let isServerLocked = false;
+
+        // Clear Chat Modal Functions
+        async function showClearChatModal() {
+            const modal = document.getElementById('clearChatModal');
+            modal.style.display = 'flex';
+            
+            // Load channels
+            await loadServerChannels();
+        }
+
+        function closeClearChatModal() {
+            const modal = document.getElementById('clearChatModal');
+            modal.style.display = 'none';
+            
+            // Reset form
+            document.getElementById('messageAmount').value = '10';
+            document.getElementById('filterType').value = 'all';
+            document.getElementById('confirmClear').checked = false;
+            document.getElementById('clearChatBtn').disabled = true;
+        }
+
+        async function loadServerChannels() {
+            const channelSelect = document.getElementById('channelSelect');
+            channelSelect.innerHTML = '<option value="">Carregando canais...</option>';
+            
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/channels`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    serverChannels = data.channels;
+                    channelSelect.innerHTML = '<option value="">Selecione um canal</option>';
+                    
+                    // Group channels by category
+                    const channelsByCategory = {};
+                    data.channels.forEach(channel => {
+                        if (channel.type === 'text') { // Only show text channels for clearing
+                            if (!channelsByCategory[channel.category]) {
+                                channelsByCategory[channel.category] = [];
+                            }
+                            channelsByCategory[channel.category].push(channel);
+                        }
+                    });
+                    
+                    // Add channels to select
+                    Object.keys(channelsByCategory).forEach(category => {
+                        const optgroup = document.createElement('optgroup');
+                        optgroup.label = category;
+                        
+                        channelsByCategory[category].forEach(channel => {
+                            const option = document.createElement('option');
+                            option.value = channel.id;
+                            option.textContent = `# ${channel.name}`;
+                            option.disabled = !channel.permissionsFor;
+                            if (!channel.permissionsFor) {
+                                option.textContent += ' (Sem permissão)';
+                            }
+                            optgroup.appendChild(option);
+                        });
+                        
+                        channelSelect.appendChild(optgroup);
+                    });
+                } else {
+                    channelSelect.innerHTML = '<option value="">Erro ao carregar canais</option>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar canais:', error);
+                channelSelect.innerHTML = '<option value="">Erro ao carregar canais</option>';
+            }
+        }
+
+        async function executeClearChat() {
+            const channelId = document.getElementById('channelSelect').value;
+            const amount = parseInt(document.getElementById('messageAmount').value);
+            const filterType = document.getElementById('filterType').value;
+            const confirmed = document.getElementById('confirmClear').checked;
+            
+            if (!channelId || !confirmed) {
+                alert('Por favor, selecione um canal e confirme a ação');
+                return;
+            }
+            
+            const clearBtn = document.getElementById('clearChatBtn');
+            clearBtn.disabled = true;
+            clearBtn.innerHTML = '<span class="loading"></span> Limpando...';
+            
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/channels/${channelId}/clear`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        amount: amount,
+                        filterType: filterType
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`✅ ${data.deletedCount} mensagens foram removidas do canal ${data.channelName}`);
+                    closeClearChatModal();
+                    refreshModerationLogs();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao limpar chat:', error);
+                alert('❌ Erro ao limpar chat');
+            } finally {
+                clearBtn.disabled = false;
+                clearBtn.innerHTML = 'Limpar Chat';
+            }
+        }
+
+        // Mass Unban Function
+        async function massUnban() {
+            if (!confirm('⚠️ Tem certeza que deseja desbanir TODOS os usuários banidos? Esta ação não pode ser desfeita.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/unban-all`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.unbannedCount === 0) {
+                        alert('ℹ️ Não há usuários banidos para desbanir');
+                    } else {
+                        alert(`✅ ${data.unbannedCount} usuários foram desbanidos com sucesso!`);
+                        refreshModerationLogs();
+                    }
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao desbanir todos:', error);
+                alert('❌ Erro ao desbanir usuários');
+            }
+        }
+
+        // Server Lock Function
+        async function toggleServerLock() {
+            const action = isServerLocked ? 'desbloquear' : 'bloquear';
+            
+            if (!confirm(`⚠️ Tem certeza que deseja ${action} o servidor? ${isServerLocked ? 'Isso permitirá que todos os membros enviem mensagens novamente.' : 'Isso impedirá que membros normais enviem mensagens.'}`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/server/${currentServerId}/lock`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        lock: !isServerLocked,
+                        reason: `${action} via dashboard`
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    isServerLocked = data.action === 'locked';
+                    const statusText = isServerLocked ? 'bloqueado' : 'desbloqueado';
+                    alert(`✅ Servidor ${statusText} com sucesso! ${data.modifiedChannels} canais foram modificados.`);
+                    
+                    // Update button text
+                    const lockBtn = document.querySelector('button[onclick="toggleServerLock()"]');
+                    lockBtn.innerHTML = isServerLocked ? '🔓 Desbloquear Servidor' : '🔒 Bloquear Servidor';
+                    lockBtn.className = isServerLocked ? 'btn btn-success' : 'btn btn-danger';
+                    
+                    refreshModerationLogs();
+                } else {
+                    alert(`❌ Erro: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Erro ao bloquear/desbloquear servidor:', error);
+                alert('❌ Erro ao modificar estado do servidor');
+            }
+        }
+
+        // Placeholder functions for additional moderation features
+        function showTimeoutModal() {
+            alert('🚧 Funcionalidade de Timeout em desenvolvimento\n\nEm breve você poderá:\n• Dar timeout em usuários específicos\n• Definir duração personalizada\n• Adicionar motivo para o timeout');
+        }
+
+        function showKickModal() {
+            alert('🚧 Funcionalidade de Expulsar em desenvolvimento\n\nEm breve você poderá:\n• Expulsar usuários específicos\n• Adicionar motivo para a expulsão\n• Ver histórico de expulsões');
+        }
+
+        function showBanModal() {
+            alert('🚧 Funcionalidade de Banir em desenvolvimento\n\nEm breve você poderá:\n• Banir usuários específicos\n• Definir duração do banimento\n• Adicionar motivo para o banimento');
+        }
+
+        function refreshModerationLogs() {
+            const logsContainer = document.getElementById('moderationLogs');
+            logsContainer.innerHTML = '<div class="loading"></div> Carregando logs...';
+            
+            // Simulate loading logs (replace with real API call)
+            setTimeout(() => {
+                logsContainer.innerHTML = `
+                    <div style="font-size: 14px; line-height: 1.6;">
+                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg); border-radius: 8px;">
+                            <strong>🧹 Limpeza de Canal</strong> - há 2 minutos<br>
+                            <small style="color: var(--text-muted);">Canal #geral: 15 mensagens removidas</small>
+                        </div>
+                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg); border-radius: 8px;">
+                            <strong>🔓 Desbanimento em Massa</strong> - há 1 hora<br>
+                            <small style="color: var(--text-muted);">3 usuários desbanidos</small>
+                        </div>
+                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg); border-radius: 8px;">
+                            <strong>🔒 Servidor Bloqueado</strong> - há 2 horas<br>
+                            <small style="color: var(--text-muted);">12 canais modificados</small>
+                        </div>
+                    </div>
+                `;
+            }, 1000);
+        }
+
+        // Enable/disable clear chat button based on confirmation
+        document.addEventListener('DOMContentLoaded', function() {
+            const confirmCheckbox = document.getElementById('confirmClear');
+            const clearBtn = document.getElementById('clearChatBtn');
+            
+            if (confirmCheckbox && clearBtn) {
+                confirmCheckbox.addEventListener('change', function() {
+                    clearBtn.disabled = !this.checked;
+                });
+            }
+        });
+
+        // Mock functions for demonstration (keeping for compatibility)
         function clearChat() {
-            alert('Funcionalidade em desenvolvimento');
+            showClearChatModal();
         }
 
         function massUnban() {
-            alert('Funcionalidade em desenvolvimento');
+            massUnban();
         }
 
         function lockServer() {
-            alert('Funcionalidade em desenvolvimento');
+            toggleServerLock();
         }
 
         function sendEmbed() {
