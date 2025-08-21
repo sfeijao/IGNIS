@@ -2360,6 +2360,13 @@
 
         // Clear Chat Modal Functions
         async function showClearChatModal() {
+            console.log('🧹 Função showClearChatModal() chamada. Server ID:', currentServerId);
+            
+            if (!currentServerId) {
+                alert('❌ Por favor, selecione um servidor primeiro!');
+                return;
+            }
+            
             const modal = document.getElementById('clearChatModal');
             modal.style.display = 'flex';
             
@@ -2475,11 +2482,19 @@
 
         // Mass Unban Function
         async function massUnban() {
+            console.log('🔓 Função massUnban() chamada. Server ID:', currentServerId);
+            
+            if (!currentServerId) {
+                alert('❌ Por favor, selecione um servidor primeiro!');
+                return;
+            }
+            
             if (!confirm('⚠️ Tem certeza que deseja desbanir TODOS os usuários banidos? Esta ação não pode ser desfeita.')) {
                 return;
             }
             
             try {
+                console.log('📤 Enviando pedido para /api/server/' + currentServerId + '/unban-all');
                 const response = await fetch(`/api/server/${currentServerId}/unban-all`, {
                     method: 'POST',
                     headers: {
@@ -2487,7 +2502,9 @@
                     }
                 });
                 
+                console.log('📥 Resposta recebida:', response.status, response.statusText);
                 const data = await response.json();
+                console.log('📄 Dados da resposta:', data);
                 
                 if (data.success) {
                     if (data.unbannedCount === 0) {
@@ -2500,13 +2517,20 @@
                     alert(`❌ Erro: ${data.error}`);
                 }
             } catch (error) {
-                console.error('Erro ao desbanir todos:', error);
-                alert('❌ Erro ao desbanir usuários');
+                console.error('❌ Erro ao desbanir todos:', error);
+                alert('❌ Erro ao desbanir usuários: ' + error.message);
             }
         }
 
         // Server Lock Function
         async function toggleServerLock() {
+            console.log('🔒 Função toggleServerLock() chamada. Server ID:', currentServerId);
+            
+            if (!currentServerId) {
+                alert('❌ Por favor, selecione um servidor primeiro!');
+                return;
+            }
+            
             const action = isServerLocked ? 'desbloquear' : 'bloquear';
             
             if (!confirm(`⚠️ Tem certeza que deseja ${action} o servidor? ${isServerLocked ? 'Isso permitirá que todos os membros enviem mensagens novamente.' : 'Isso impedirá que membros normais enviem mensagens.'}`)) {
@@ -2514,6 +2538,7 @@
             }
             
             try {
+                console.log(`📤 Enviando pedido para ${action} servidor:`, currentServerId);
                 const response = await fetch(`/api/server/${currentServerId}/lock`, {
                     method: 'POST',
                     headers: {
@@ -2525,7 +2550,9 @@
                     })
                 });
                 
+                console.log('📥 Resposta recebida:', response.status, response.statusText);
                 const data = await response.json();
+                console.log('📄 Dados da resposta:', data);
                 
                 if (data.success) {
                     isServerLocked = data.action === 'locked';
@@ -2542,25 +2569,45 @@
                     alert(`❌ Erro: ${data.error}`);
                 }
             } catch (error) {
-                console.error('Erro ao bloquear/desbloquear servidor:', error);
-                alert('❌ Erro ao modificar estado do servidor');
+                console.error('❌ Erro ao bloquear/desbloquear servidor:', error);
+                alert('❌ Erro ao modificar servidor: ' + error.message);
             }
         }
 
         // Placeholder functions for additional moderation features (now implemented!)
         function showTimeoutModal() {
+            console.log('⏰ Função showTimeoutModal() chamada. Server ID:', currentServerId);
+            
+            if (!currentServerId) {
+                alert('❌ Por favor, selecione um servidor primeiro!');
+                return;
+            }
+            
             const modal = document.getElementById('timeoutModal');
             modal.style.display = 'flex';
             loadServerMembers();
         }
 
         function showKickModal() {
+            console.log('👢 Função showKickModal() chamada. Server ID:', currentServerId);
+            
+            if (!currentServerId) {
+                alert('❌ Por favor, selecione um servidor primeiro!');
+                return;
+            }
+            
             const modal = document.getElementById('kickModal');
             modal.style.display = 'flex';
             loadServerMembers();
         }
 
         function showBanModal() {
+            console.log('🔨 Função showBanModal() chamada. Server ID:', currentServerId);
+            
+            if (!currentServerId) {
+                alert('❌ Por favor, selecione um servidor primeiro!');
+                return;
+            }
             const modal = document.getElementById('banModal');
             modal.style.display = 'flex';
             loadServerMembers();
