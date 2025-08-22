@@ -241,7 +241,17 @@ function setupDashboardIntegration() {
     console.log('✅ Integração com dashboard configurada');
 }
 
-// Enhanced ready event
+// Registrar comandos e fazer login
+(async () => {
+    await registerCommands();
+    
+    client.login(process.env.DISCORD_TOKEN || config.token).catch(error => {
+        console.error('❌ Erro ao fazer login:', error);
+        process.exit(1);
+    });
+})();
+
+// Enhanced ready event (único)
 client.once('ready', () => {
     console.log(`✅ Bot logado como ${client.user.tag}`);
     console.log(`🏠 Servidores: ${client.guilds.cache.size}`);
@@ -252,17 +262,17 @@ client.once('ready', () => {
     
     // Update bot status
     client.user.setActivity('🛡️ Dashboard ativo | /help', { type: 'WATCHING' });
-});
-
-// Registrar comandos e fazer login
-(async () => {
-    await registerCommands();
     
-    client.login(process.env.DISCORD_TOKEN || config.token).catch(error => {
-        console.error('❌ Erro ao fazer login:', error);
-        process.exit(1);
-    });
-})();
+    // Tornar cliente disponível globalmente para o website
+    global.discordClient = client;
+    
+    // Iniciar servidor web
+    try {
+        require('./website/server.js');
+    } catch (error) {
+        console.error('⚠️ Erro ao iniciar website de updates:', error);
+    }
+});
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
@@ -275,19 +285,6 @@ process.on('SIGINT', () => {
     console.log('🛑 SIGINT received, shutting down bot gracefully');
     client.destroy();
     process.exit(0);
-});
-
-// Inicializar website de updates
-client.once('ready', () => {
-    // Tornar cliente disponível globalmente para o website
-    global.discordClient = client;
-    
-    // Iniciar servidor web
-    try {
-        require('./website/server.js');
-    } catch (error) {
-        console.error('⚠️ Erro ao iniciar website de updates:', error);
-    }
 });
 
 module.exports = client;
