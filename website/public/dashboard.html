@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; script-src-attr 'none'; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net fonts.googleapis.com; font-src 'self' cdn.jsdelivr.net fonts.gstatic.com; img-src 'self' data: cdn.discordapp.com; connect-src 'self';">
     <title>YSNM Bot - Modern Dashboard</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
@@ -860,37 +861,37 @@
                         </div>
 
                         <div class="moderation-grid">
-                            <div class="moderation-card" onclick="showModerationAction('warn')">
+                            <div class="moderation-card" data-action="warn">
                                 <div class="icon">⚠️</div>
                                 <h4>Avisar Utilizador</h4>
                                 <p>Enviar um aviso oficial a um membro</p>
                             </div>
 
-                            <div class="moderation-card" onclick="showModerationAction('mute')">
+                            <div class="moderation-card" data-action="mute">
                                 <div class="icon">🔇</div>
                                 <h4>Silenciar</h4>
                                 <p>Remover permissões de fala temporariamente</p>
                             </div>
 
-                            <div class="moderation-card" onclick="showModerationAction('kick')">
+                            <div class="moderation-card" data-action="kick">
                                 <div class="icon">👢</div>
                                 <h4>Expulsar</h4>
                                 <p>Remover membro do servidor</p>
                             </div>
 
-                            <div class="moderation-card" onclick="showModerationAction('ban')">
+                            <div class="moderation-card" data-action="ban">
                                 <div class="icon">🔨</div>
                                 <h4>Banir</h4>
                                 <p>Banir permanentemente do servidor</p>
                             </div>
 
-                            <div class="moderation-card" onclick="showModerationAction('timeout')">
+                            <div class="moderation-card" data-action="timeout">
                                 <div class="icon">⏰</div>
                                 <h4>Timeout</h4>
                                 <p>Silenciar temporariamente um membro</p>
                             </div>
 
-                            <div class="moderation-card" onclick="showModerationAction('history')">
+                            <div class="moderation-card" data-action="history">
                                 <div class="icon">📋</div>
                                 <h4>Histórico</h4>
                                 <p>Ver histórico de moderação</p>
@@ -917,8 +918,8 @@
                                     <option value="604800">1 semana</option>
                                 </select>
                             </div>
-                            <button class="btn btn-primary" onclick="executeModerationAction()">Executar Ação</button>
-                            <button class="btn btn-secondary" onclick="hideModerationAction()">Cancelar</button>
+                            <button class="btn btn-primary" id="execute-moderation-btn">Executar Ação</button>
+                            <button class="btn btn-secondary" id="cancel-moderation-btn">Cancelar</button>
                         </div>
                     </div>
 
@@ -1037,8 +1038,8 @@
                                     <input type="text" class="form-control" id="embed-footer" placeholder="Texto do footer">
                                 </div>
 
-                                <button class="btn btn-primary" onclick="updateEmbedPreview()">Atualizar Preview</button>
-                                <button class="btn btn-secondary" onclick="sendEmbed()">Enviar Embed</button>
+                                <button class="btn btn-primary" id="update-embed-btn">Atualizar Preview</button>
+                                <button class="btn btn-secondary" id="send-embed-btn">Enviar Embed</button>
                             </div>
 
                             <div class="embed-preview">
@@ -1075,8 +1076,8 @@
                                 <option value="system">Sistema</option>
                             </select>
 
-                            <button class="btn btn-primary" onclick="refreshLogs()">Atualizar</button>
-                            <button class="btn btn-secondary" onclick="clearLogs()">Limpar</button>
+                            <button class="btn btn-primary" id="refresh-logs-btn">Atualizar</button>
+                            <button class="btn btn-secondary" id="clear-logs-btn">Limpar</button>
                         </div>
 
                         <div class="content-area">
@@ -1145,6 +1146,48 @@
                         e.target.closest('.nav-item').classList.add('active');
                     });
                 });
+
+                // Moderation cards
+                const moderationCards = document.querySelectorAll('.moderation-card[data-action]');
+                moderationCards.forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        const action = e.currentTarget.getAttribute('data-action');
+                        showModerationAction(action);
+                    });
+                });
+
+                // Moderation buttons
+                const executeModerationBtn = document.getElementById('execute-moderation-btn');
+                if (executeModerationBtn) {
+                    executeModerationBtn.addEventListener('click', executeModerationAction);
+                }
+
+                const cancelModerationBtn = document.getElementById('cancel-moderation-btn');
+                if (cancelModerationBtn) {
+                    cancelModerationBtn.addEventListener('click', hideModerationAction);
+                }
+
+                // Embed buttons
+                const updateEmbedBtn = document.getElementById('update-embed-btn');
+                if (updateEmbedBtn) {
+                    updateEmbedBtn.addEventListener('click', updateEmbedPreview);
+                }
+
+                const sendEmbedBtn = document.getElementById('send-embed-btn');
+                if (sendEmbedBtn) {
+                    sendEmbedBtn.addEventListener('click', sendEmbed);
+                }
+
+                // Logs buttons
+                const refreshLogsBtn = document.getElementById('refresh-logs-btn');
+                if (refreshLogsBtn) {
+                    refreshLogsBtn.addEventListener('click', refreshLogs);
+                }
+
+                const clearLogsBtn = document.getElementById('clear-logs-btn');
+                if (clearLogsBtn) {
+                    clearLogsBtn.addEventListener('click', clearLogs);
+                }
             }
 
             showSection(sectionName) {
