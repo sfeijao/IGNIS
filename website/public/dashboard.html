@@ -3,51 +3,582 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - YSNM Bot</title>
+    <title>YSNM Bot - Modern Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" href="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" type="image/gif">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        /* Dashboard specific styles */
+        .dashboard-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: var(--space-xl);
         }
-
-        :root {
-            --primary: #6B73FF;
-            --primary-dark: #5A63E8;
-            --primary-light: rgba(107, 115, 255, 0.1);
-            --bg: #0F1419;
-            --bg-secondary: #1A1F2E;
-            --bg-card: #252A3A;
-            --text: #FFFFFF;
-            --text-muted: #94A3B8;
-            --border: rgba(255, 255, 255, 0.1);
-            --success: #10B981;
-            --warning: #F59E0B;
-            --danger: #EF4444;
-            --info: #3B82F6;
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: var(--space-2xl);
+            min-height: calc(100vh - 200px);
         }
-
-        body {
-            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            background-image: 
-                radial-gradient(circle at 20% 80%, rgba(107, 115, 255, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
-        }
-
-        .navbar {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            padding: 1.2rem 0;
-            box-shadow: 
-                0 8px 32px rgba(107, 115, 255, 0.3),
-                0 2px 8px rgba(0, 0, 0, 0.1);
+        
+        .sidebar {
+            background: rgba(17, 28, 68, 0.6);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            height: fit-content;
             position: sticky;
+            top: 100px;
+        }
+        
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            margin-bottom: var(--space-2xl);
+            padding-bottom: var(--space-lg);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid rgba(67, 24, 255, 0.3);
+        }
+        
+        .sidebar-logo h3 {
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+        
+        .nav-menu {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+        }
+        
+        .nav-item {
+            border-radius: var(--radius-md);
+            transition: all 0.3s ease;
+        }
+        
+        .nav-item a {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md) var(--space-lg);
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        .nav-item a:hover, .nav-item.active a {
+            background: var(--gradient-main);
+            color: var(--text-white);
+            transform: translateX(4px);
+        }
+        
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xl);
+        }
+        
+        .page-header {
+            background: rgba(17, 28, 68, 0.4);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-xl);
+            padding: var(--space-2xl);
+            text-align: center;
+        }
+        
+        .page-header h1 {
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: var(--space-md);
+        }
+        
+        .page-header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--space-xl);
+            margin-bottom: var(--space-xl);
+        }
+        
+        .stat-card {
+            background: rgba(17, 28, 68, 0.6);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--gradient-main);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-hover);
+            border-color: rgba(67, 24, 255, 0.3);
+        }
+        
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--space-lg);
+            font-size: 1.5rem;
+            color: var(--text-white);
+        }
+        
+        .stat-icon.members { background: var(--gradient-main); }
+        .stat-icon.channels { background: var(--gradient-secondary); }
+        .stat-icon.roles { background: var(--gradient-warning); }
+        .stat-icon.messages { background: var(--gradient-danger); }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-white);
+            margin-bottom: var(--space-sm);
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        
+        .content-area {
+            background: rgba(17, 28, 68, 0.4);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-xl);
+            padding: var(--space-2xl);
+            min-height: 400px;
+        }
+        
+        .bot-status {
+            background: rgba(1, 181, 116, 0.1);
+            border: 1px solid rgba(1, 181, 116, 0.3);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            display: flex;
+            align-items: center;
+            gap: var(--space-lg);
+            margin-top: var(--space-xl);
+        }
+        
+        .status-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--brand-green);
+            box-shadow: 0 0 20px rgba(1, 181, 116, 0.5);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .status-text {
+            flex: 1;
+        }
+        
+        .status-text h3 {
+            color: var(--brand-green);
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+        
+        .status-text p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        .feature-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--space-xl);
+            margin-top: var(--space-xl);
+        }
+        
+        .feature-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(67, 24, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .feature-card h4 {
+            color: var(--text-white);
+            font-weight: 600;
+            margin-bottom: var(--space-md);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+        
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                gap: var(--space-xl);
+            }
+            
+            .sidebar {
+                position: static;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: var(--space-lg);
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .feature-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .page-header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <img src="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" alt="YSNM Logo" class="logo">
+                <div class="header-text">
+                    <h1><i class="fas fa-rocket"></i> YSNM Modern Dashboard</h1>
+                    <p>Sistema avançado de gestão para Discord bot</p>
+                </div>
+                <button id="logoutBtn" class="logout-btn" title="Terminar sessão">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Sair</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="dashboard-container">
+            <div class="dashboard-grid">
+                <aside class="sidebar">
+                    <div class="sidebar-logo">
+                        <img src="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" alt="YB">
+                        <h3>YSNM Bot</h3>
+                    </div>
+                    
+                    <nav>
+                        <ul class="nav-menu">
+                            <li class="nav-item active">
+                                <a href="/dashboard">
+                                    <i class="fas fa-tachometer-alt"></i>
+                                    <span>Visão Geral</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="/dashboard#config">
+                                    <i class="fas fa-cog"></i>
+                                    <span>Configuração</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="/dashboard#moderation">
+                                    <i class="fas fa-shield-alt"></i>
+                                    <span>Moderação</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="/tickets">
+                                    <i class="fas fa-ticket-alt"></i>
+                                    <span>Tickets</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="/">
+                                    <i class="fas fa-edit"></i>
+                                    <span>Embed Builder</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="/logs">
+                                    <i class="fas fa-file-alt"></i>
+                                    <span>Logs</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                </aside>
+
+                <main class="main-content">
+                    <div class="page-header">
+                        <h1>Visão Geral do Servidor</h1>
+                        <p>Estatísticas e informações gerais sobre o teu servidor</p>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon members">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-number" id="memberCount">15</div>
+                            <div class="stat-label">Membros</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon channels">
+                                <i class="fas fa-hashtag"></i>
+                            </div>
+                            <div class="stat-number" id="channelCount">60</div>
+                            <div class="stat-label">Canais</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon roles">
+                                <i class="fas fa-user-tag"></i>
+                            </div>
+                            <div class="stat-number" id="roleCount">46</div>
+                            <div class="stat-label">Cargos</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon messages">
+                                <i class="fas fa-comments"></i>
+                            </div>
+                            <div class="stat-number" id="messageCount">804</div>
+                            <div class="stat-label">Mensagens Hoje</div>
+                        </div>
+                    </div>
+
+                    <div class="content-area">
+                        <div class="bot-status">
+                            <div class="status-indicator"></div>
+                            <div class="status-text">
+                                <h3>Bot Status: Online</h3>
+                                <p>Última atualização: agora</p>
+                            </div>
+                        </div>
+
+                        <div class="feature-cards">
+                            <div class="feature-card">
+                                <h4>
+                                    <i class="fas fa-cog"></i>
+                                    Configuração completa do bot
+                                </h4>
+                                <p>Configure todas as funcionalidades do bot de forma simples e intuitiva.</p>
+                            </div>
+                            
+                            <div class="feature-card">
+                                <h4>
+                                    <i class="fas fa-chart-line"></i>
+                                    Monitorização em tempo real
+                                </h4>
+                                <p>Acompanhe as estatísticas do servidor e atividade dos membros em tempo real.</p>
+                            </div>
+                            
+                            <div class="feature-card">
+                                <h4>
+                                    <i class="fas fa-paint-brush"></i>
+                                    Embed Builder visual
+                                </h4>
+                                <p>Crie embeds personalizados com preview em tempo real para as tuas mensagens.</p>
+                            </div>
+                            
+                            <div class="feature-card">
+                                <h4>
+                                    <i class="fas fa-shield-alt"></i>
+                                    Sistema de moderação
+                                </h4>
+                                <p>Ferramentas avançadas de moderação para manter o servidor seguro e organizado.</p>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Modern dashboard JavaScript
+        class YSNMDashboard {
+            constructor() {
+                this.init();
+            }
+
+            async init() {
+                console.log('🚀 Inicializando YSNM Dashboard...');
+                this.setupEventListeners();
+                await this.loadStats();
+                this.startRealTimeUpdates();
+            }
+
+            setupEventListeners() {
+                // Logout
+                document.getElementById('logoutBtn')?.addEventListener('click', this.handleLogout);
+                
+                // Navigation
+                document.querySelectorAll('.nav-item a').forEach(link => {
+                    link.addEventListener('click', this.handleNavigation.bind(this));
+                });
+            }
+
+            async loadStats() {
+                try {
+                    // Load member count
+                    const guildsResponse = await fetch('/api/guilds', { credentials: 'include' });
+                    if (guildsResponse.ok) {
+                        const guilds = await guildsResponse.json();
+                        if (guilds.length > 0) {
+                            document.getElementById('memberCount').textContent = guilds[0].memberCount || '15';
+                        }
+                    }
+
+                    // Load channels
+                    const channelsResponse = await fetch('/api/channels', { credentials: 'include' });
+                    if (channelsResponse.ok) {
+                        const channels = await channelsResponse.json();
+                        document.getElementById('channelCount').textContent = channels.length || '60';
+                    }
+
+                    // Load roles
+                    const rolesResponse = await fetch('/api/roles', { credentials: 'include' });
+                    if (rolesResponse.ok) {
+                        const roles = await rolesResponse.json();
+                        document.getElementById('roleCount').textContent = roles.length || '46';
+                    }
+
+                } catch (error) {
+                    console.error('Erro carregando estatísticas:', error);
+                }
+            }
+
+            startRealTimeUpdates() {
+                // Update stats every 30 seconds
+                setInterval(() => {
+                    this.loadStats();
+                }, 30000);
+                
+                // Animate numbers
+                this.animateCounters();
+            }
+
+            animateCounters() {
+                document.querySelectorAll('.stat-number').forEach(counter => {
+                    const target = parseInt(counter.textContent);
+                    let current = 0;
+                    const increment = target / 50;
+                    
+                    const updateCounter = () => {
+                        if (current < target) {
+                            current += increment;
+                            counter.textContent = Math.ceil(current);
+                            requestAnimationFrame(updateCounter);
+                        } else {
+                            counter.textContent = target;
+                        }
+                    };
+                    
+                    updateCounter();
+                });
+            }
+
+            handleNavigation(event) {
+                // Update active state
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                event.target.closest('.nav-item').classList.add('active');
+            }
+
+            handleLogout() {
+                if (confirm('🚀 Tens a certeza que queres fazer logout?')) {
+                    localStorage.clear();
+                    document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                    window.location.href = '/login';
+                }
+            }
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new YSNMDashboard();
+        });
+    </script>
+</body>
+</html>
             top: 0;
             z-index: 1000;
             backdrop-filter: blur(20px);

@@ -4,49 +4,734 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Tickets - YSNM Bot</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" href="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" type="image/gif">
     <style>
-        :root {
-            --primary: #6B73FF;
-            --primary-dark: #5A63E8;
-            --primary-light: rgba(107, 115, 255, 0.1);
-            --bg: #0F1419;
-            --bg-secondary: #1A1F2E;
-            --bg-card: #252A3A;
-            --text: #FFFFFF;
-            --text-muted: #94A3B8;
-            --border: rgba(255, 255, 255, 0.1);
-            --success: #10B981;
-            --warning: #F59E0B;
-            --danger: #EF4444;
-            --info: #3B82F6;
+        .tickets-dashboard {
+            padding: var(--space-xl);
+            background: var(--bg-primary);
+            min-height: 100vh;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        .tickets-header {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: var(--space-2xl);
+            border-radius: var(--radius-xl);
+            margin-bottom: var(--space-2xl);
+            position: relative;
+            overflow: hidden;
         }
 
-        body {
-            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-            background-image: 
-                radial-gradient(circle at 20% 80%, rgba(107, 115, 255, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
+        .tickets-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient-main);
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: var(--space-lg);
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 3rem;
+        .header-info h1 {
+            background: var(--gradient-main);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: var(--space-sm);
         }
+
+        .header-info p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-xl);
+            margin-bottom: var(--space-2xl);
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: var(--space-xl);
+            border-radius: var(--radius-lg);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--gradient-main);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: var(--space-lg);
+            font-size: 1.5rem;
+        }
+
+        .stat-icon.pending {
+            background: rgba(251, 191, 36, 0.2);
+            color: var(--warning);
+        }
+
+        .stat-icon.open {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--info);
+        }
+
+        .stat-icon.closed {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .stat-icon.total {
+            background: rgba(67, 24, 255, 0.2);
+            color: var(--brand-purple);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--text-white);
+            margin-bottom: var(--space-xs);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.9rem;
+        }
+
+        .tickets-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: var(--space-2xl);
+        }
+
+        .tickets-list {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+        }
+
+        .list-header {
+            background: var(--bg-secondary);
+            padding: var(--space-xl);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .list-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-white);
+            margin-bottom: var(--space-sm);
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            padding: var(--space-md) var(--space-md) var(--space-md) 40px;
+            border-radius: var(--radius-md);
+            color: var(--text-white);
+            font-size: 1rem;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: var(--space-md);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+
+        .ticket-item {
+            padding: var(--space-lg);
+            border-bottom: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .ticket-item:hover {
+            background: var(--hover-bg);
+        }
+
+        .ticket-item:last-child {
+            border-bottom: none;
+        }
+
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: var(--space-md);
+        }
+
+        .ticket-id {
+            font-weight: 700;
+            color: var(--brand-purple);
+            font-size: 1.1rem;
+        }
+
+        .ticket-status {
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-open {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--info);
+        }
+
+        .status-pending {
+            background: rgba(251, 191, 36, 0.2);
+            color: var(--warning);
+        }
+
+        .status-closed {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .ticket-title {
+            font-weight: 600;
+            color: var(--text-white);
+            margin-bottom: var(--space-sm);
+            line-height: 1.4;
+        }
+
+        .ticket-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .ticket-user {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .user-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid var(--border-color);
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-lg);
+        }
+
+        .quick-actions {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+        }
+
+        .sidebar-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-white);
+            margin-bottom: var(--space-lg);
+        }
+
+        .action-btn {
+            width: 100%;
+            background: var(--gradient-main);
+            color: var(--text-white);
+            border: none;
+            padding: var(--space-md);
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: var(--space-md);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            justify-content: center;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .filters {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+        }
+
+        .filter-group {
+            margin-bottom: var(--space-lg);
+        }
+
+        .filter-label {
+            display: block;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: var(--space-sm);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-select {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            padding: var(--space-md);
+            border-radius: var(--radius-md);
+            color: var(--text-white);
+            font-size: 1rem;
+        }
+
+        @media (max-width: 1024px) {
+            .tickets-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                grid-row: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .tickets-dashboard {
+                padding: var(--space-lg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="tickets-dashboard">
+        <!-- Header -->
+        <div class="tickets-header">
+            <div class="header-content">
+                <div class="header-info">
+                    <h1><i class="fas fa-ticket-alt"></i> Sistema de Tickets</h1>
+                    <p>Gerencie todos os tickets de suporte do seu servidor Discord</p>
+                </div>
+                <a href="/dashboard" class="btn btn-outline">
+                    <i class="fas fa-arrow-left"></i>
+                    Voltar ao Dashboard
+                </a>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon total">
+                    <i class="fas fa-tickets"></i>
+                </div>
+                <div class="stat-number" id="totalTickets">0</div>
+                <div class="stat-label">Total de Tickets</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon open">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <div class="stat-number" id="openTickets">0</div>
+                <div class="stat-label">Tickets Abertos</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon pending">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-number" id="pendingTickets">0</div>
+                <div class="stat-label">Tickets Pendentes</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon closed">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-number" id="closedTickets">0</div>
+                <div class="stat-label">Tickets Fechados</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="tickets-content">
+            <div class="tickets-list">
+                <div class="list-header">
+                    <h2 class="list-title">Lista de Tickets</h2>
+                    <div class="search-box">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" class="search-input" placeholder="Pesquisar tickets..." id="searchInput">
+                    </div>
+                </div>
+                
+                <div class="tickets-container" id="ticketsContainer">
+                    <!-- Tickets will be loaded here -->
+                    <div class="ticket-item">
+                        <div class="ticket-header">
+                            <span class="ticket-id">#TICKET-001</span>
+                            <span class="ticket-status status-open">Aberto</span>
+                        </div>
+                        <div class="ticket-title">Problema com comandos de moderação</div>
+                        <div class="ticket-meta">
+                            <div class="ticket-user">
+                                <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="User" class="user-avatar">
+                                <span>Usuario#1234</span>
+                            </div>
+                            <span>Há 2 horas</span>
+                        </div>
+                    </div>
+                    
+                    <div class="ticket-item">
+                        <div class="ticket-header">
+                            <span class="ticket-id">#TICKET-002</span>
+                            <span class="ticket-status status-pending">Pendente</span>
+                        </div>
+                        <div class="ticket-title">Configuração de automod não funciona</div>
+                        <div class="ticket-meta">
+                            <div class="ticket-user">
+                                <img src="https://cdn.discordapp.com/embed/avatars/1.png" alt="User" class="user-avatar">
+                                <span>Moderador#5678</span>
+                            </div>
+                            <span>Há 5 horas</span>
+                        </div>
+                    </div>
+                    
+                    <div class="ticket-item">
+                        <div class="ticket-header">
+                            <span class="ticket-id">#TICKET-003</span>
+                            <span class="ticket-status status-closed">Fechado</span>
+                        </div>
+                        <div class="ticket-title">Bot não responde aos comandos</div>
+                        <div class="ticket-meta">
+                            <div class="ticket-user">
+                                <img src="https://cdn.discordapp.com/embed/avatars/2.png" alt="User" class="user-avatar">
+                                <span>Admin#9999</span>
+                            </div>
+                            <span>Há 1 dia</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="quick-actions">
+                    <h3 class="sidebar-title">Ações Rápidas</h3>
+                    <button class="action-btn" onclick="createTicket()">
+                        <i class="fas fa-plus"></i>
+                        Criar Novo Ticket
+                    </button>
+                    <button class="action-btn" onclick="exportTickets()">
+                        <i class="fas fa-download"></i>
+                        Exportar Tickets
+                    </button>
+                    <button class="action-btn" onclick="ticketSettings()">
+                        <i class="fas fa-cog"></i>
+                        Configurações
+                    </button>
+                </div>
+
+                <div class="filters">
+                    <h3 class="sidebar-title">Filtros</h3>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">Status</label>
+                        <select class="filter-select" id="statusFilter">
+                            <option value="">Todos os Status</option>
+                            <option value="open">Abertos</option>
+                            <option value="pending">Pendentes</option>
+                            <option value="closed">Fechados</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">Categoria</label>
+                        <select class="filter-select" id="categoryFilter">
+                            <option value="">Todas as Categorias</option>
+                            <option value="bug">Bug Report</option>
+                            <option value="feature">Feature Request</option>
+                            <option value="support">Suporte</option>
+                            <option value="other">Outros</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">Período</label>
+                        <select class="filter-select" id="timeFilter">
+                            <option value="">Todos os Períodos</option>
+                            <option value="today">Hoje</option>
+                            <option value="week">Esta Semana</option>
+                            <option value="month">Este Mês</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Modern Tickets Dashboard
+        class TicketsManager {
+            constructor() {
+                this.tickets = [];
+                this.filteredTickets = [];
+                this.init();
+            }
+
+            init() {
+                this.loadTickets();
+                this.setupEventListeners();
+                this.updateStats();
+            }
+
+            setupEventListeners() {
+                const searchInput = document.getElementById('searchInput');
+                const statusFilter = document.getElementById('statusFilter');
+                const categoryFilter = document.getElementById('categoryFilter');
+                const timeFilter = document.getElementById('timeFilter');
+
+                searchInput.addEventListener('input', () => this.filterTickets());
+                statusFilter.addEventListener('change', () => this.filterTickets());
+                categoryFilter.addEventListener('change', () => this.filterTickets());
+                timeFilter.addEventListener('change', () => this.filterTickets());
+            }
+
+            loadTickets() {
+                // Simulate loading tickets
+                this.tickets = [
+                    {
+                        id: 'TICKET-001',
+                        title: 'Problema com comandos de moderação',
+                        status: 'open',
+                        category: 'bug',
+                        user: 'Usuario#1234',
+                        avatar: 'https://cdn.discordapp.com/embed/avatars/0.png',
+                        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
+                    },
+                    {
+                        id: 'TICKET-002',
+                        title: 'Configuração de automod não funciona',
+                        status: 'pending',
+                        category: 'support',
+                        user: 'Moderador#5678',
+                        avatar: 'https://cdn.discordapp.com/embed/avatars/1.png',
+                        createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000)
+                    },
+                    {
+                        id: 'TICKET-003',
+                        title: 'Bot não responde aos comandos',
+                        status: 'closed',
+                        category: 'bug',
+                        user: 'Admin#9999',
+                        avatar: 'https://cdn.discordapp.com/embed/avatars/2.png',
+                        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000)
+                    }
+                ];
+
+                this.filteredTickets = [...this.tickets];
+                this.renderTickets();
+            }
+
+            filterTickets() {
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                const statusFilter = document.getElementById('statusFilter').value;
+                const categoryFilter = document.getElementById('categoryFilter').value;
+                const timeFilter = document.getElementById('timeFilter').value;
+
+                this.filteredTickets = this.tickets.filter(ticket => {
+                    const matchesSearch = ticket.title.toLowerCase().includes(searchTerm) ||
+                                        ticket.id.toLowerCase().includes(searchTerm) ||
+                                        ticket.user.toLowerCase().includes(searchTerm);
+                    
+                    const matchesStatus = !statusFilter || ticket.status === statusFilter;
+                    const matchesCategory = !categoryFilter || ticket.category === categoryFilter;
+                    
+                    let matchesTime = true;
+                    if (timeFilter) {
+                        const now = new Date();
+                        const ticketDate = ticket.createdAt;
+                        
+                        switch (timeFilter) {
+                            case 'today':
+                                matchesTime = ticketDate.toDateString() === now.toDateString();
+                                break;
+                            case 'week':
+                                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                                matchesTime = ticketDate >= weekAgo;
+                                break;
+                            case 'month':
+                                const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                                matchesTime = ticketDate >= monthAgo;
+                                break;
+                        }
+                    }
+
+                    return matchesSearch && matchesStatus && matchesCategory && matchesTime;
+                });
+
+                this.renderTickets();
+                this.updateStats();
+            }
+
+            renderTickets() {
+                const container = document.getElementById('ticketsContainer');
+                
+                if (this.filteredTickets.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                            <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <p>Nenhum ticket encontrado</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = this.filteredTickets.map(ticket => `
+                    <div class="ticket-item" onclick="openTicket('${ticket.id}')">
+                        <div class="ticket-header">
+                            <span class="ticket-id">#${ticket.id}</span>
+                            <span class="ticket-status status-${ticket.status}">
+                                ${this.getStatusLabel(ticket.status)}
+                            </span>
+                        </div>
+                        <div class="ticket-title">${ticket.title}</div>
+                        <div class="ticket-meta">
+                            <div class="ticket-user">
+                                <img src="${ticket.avatar}" alt="User" class="user-avatar">
+                                <span>${ticket.user}</span>
+                            </div>
+                            <span>${this.getTimeAgo(ticket.createdAt)}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            getStatusLabel(status) {
+                const labels = {
+                    open: 'Aberto',
+                    pending: 'Pendente',
+                    closed: 'Fechado'
+                };
+                return labels[status] || status;
+            }
+
+            getTimeAgo(date) {
+                const now = new Date();
+                const diff = now - date;
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const days = Math.floor(hours / 24);
+
+                if (days > 0) return `Há ${days} dia${days > 1 ? 's' : ''}`;
+                if (hours > 0) return `Há ${hours} hora${hours > 1 ? 's' : ''}`;
+                return 'Agora mesmo';
+            }
+
+            updateStats() {
+                const total = this.tickets.length;
+                const open = this.tickets.filter(t => t.status === 'open').length;
+                const pending = this.tickets.filter(t => t.status === 'pending').length;
+                const closed = this.tickets.filter(t => t.status === 'closed').length;
+
+                document.getElementById('totalTickets').textContent = total;
+                document.getElementById('openTickets').textContent = open;
+                document.getElementById('pendingTickets').textContent = pending;
+                document.getElementById('closedTickets').textContent = closed;
+            }
+        }
+
+        // Action Functions
+        function createTicket() {
+            alert('Funcionalidade de criação de tickets será implementada em breve!');
+        }
+
+        function exportTickets() {
+            alert('Funcionalidade de exportação será implementada em breve!');
+        }
+
+        function ticketSettings() {
+            alert('Configurações de tickets será implementada em breve!');
+        }
+
+        function openTicket(ticketId) {
+            alert(`Abrindo ticket: ${ticketId}`);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            new TicketsManager();
+        });
+    </script>
+</body>
+</html>
 
         .header h1 {
             font-size: 2.5rem;
