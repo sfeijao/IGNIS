@@ -456,21 +456,27 @@ module.exports = {
         
         // Handler para botões de criação de tickets do painel
         else if (interaction.isButton() && interaction.customId.startsWith('ticket_create_')) {
+            console.log(`🎫 Handler de ticket ativado: ${interaction.customId}`);
             const tipo = interaction.customId.split('_')[2];
+            console.log(`🎫 Tipo de ticket: ${tipo}`);
             
             try {
+                console.log(`🎫 Inicializando verificação de tickets existentes...`);
                 // Verificar se o usuário já tem um ticket aberto
                 const Database = require('../website/database/database');
                 const db = new Database();
                 await db.initialize();
+                console.log(`🎫 Database inicializada`);
                 
                 const userTickets = await db.getTickets(interaction.guild.id);
+                console.log(`🎫 Tickets do usuário verificados: ${userTickets.length} encontrados`);
                 const openTicket = userTickets.find(ticket => 
                     ticket.user_id === interaction.user.id && 
                     (ticket.status === 'open' || ticket.status === 'assigned')
                 );
                 
                 if (openTicket) {
+                    console.log(`🎫 Usuário já tem ticket aberto: ${openTicket.channel_id}`);
                     return await interaction.reply({
                         content: `❌ Já tens um ticket aberto: <#${openTicket.channel_id}>
                         
@@ -479,6 +485,7 @@ Por favor fecha o ticket atual antes de criar um novo.`,
                     });
                 }
                 
+                console.log(`🎫 Criando modal para tipo: ${tipo}`);
                 // Criar modal para detalhes do ticket
                 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
                 
@@ -509,7 +516,9 @@ Por favor fecha o ticket atual antes de criar um novo.`,
 
                 modal.addComponents(row1, row2);
 
+                console.log(`🎫 Modal criado, mostrando para usuário...`);
                 await interaction.showModal(modal);
+                console.log(`🎫 Modal mostrado com sucesso!`);
 
             } catch (error) {
                 console.error('❌ Erro ao processar botão do painel:', error);
