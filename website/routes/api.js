@@ -6,6 +6,33 @@ const Database = require('../database/database');
 const router = express.Router();
 const db = new Database();
 
+// Variável para controlar se a database foi inicializada
+let dbInitialized = false;
+
+// Inicializar database
+db.initialize()
+    .then(() => {
+        dbInitialized = true;
+        console.log('✅ Database API routes inicializada');
+    })
+    .catch(error => {
+        console.error('❌ Erro ao inicializar database API routes:', error);
+    });
+
+// Middleware para verificar se database está pronta
+const ensureDbReady = async (req, res, next) => {
+    if (!dbInitialized || !db.db) {
+        try {
+            await db.initialize();
+            dbInitialized = true;
+        } catch (error) {
+            console.error('❌ Erro ao inicializar database:', error);
+            return res.status(500).json({ error: 'Database não disponível' });
+        }
+    }
+    next();
+};
+
 // Rate limiting
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -186,13 +213,19 @@ router.get('/analytics/activity', requireAuth, async (req, res) => {
 // === TICKETS ROUTES ===
 
 // Get all tickets
-router.get('/tickets', requireAuth, async (req, res) => {
+router.get('/tickets', requireAuth, ensureDbReady, async (req, res) => {
     try {
         const { status, priority, assigned } = req.query;
         const guildId = req.currentServerId;
         
         console.log('🎫 Buscando tickets para guild:', guildId);
         console.log('🎫 Parâmetros:', { status, priority, assigned });
+        
+        // Verificar se a database está inicializada
+        if (!db.db) {
+            console.error('❌ Database não inicializada');
+            return res.status(500).json({ error: 'Database não inicializada' });
+        }
         
         // Criar filtros baseados nos parâmetros
         const filters = {};
@@ -217,12 +250,16 @@ router.get('/tickets', requireAuth, async (req, res) => {
         });
     } catch (error) {
         console.error('Erro ao buscar tickets:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        console.error('Stack trace:', error.stack);
+        res.status(500).json({ 
+            error: 'Erro interno do servidor',
+            details: error.message
+        });
     }
 });
 
 // Get ticket stats
-router.get('/tickets/stats', requireAuth, async (req, res) => {
+router.get('/tickets/stats', requireAuth, ensureDbReady, async (req, res) => {
     try {
         const guildId = req.currentServerId;
         
@@ -236,12 +273,16 @@ router.get('/tickets/stats', requireAuth, async (req, res) => {
         });
     } catch (error) {
         console.error('Erro ao buscar estatísticas de tickets:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        console.error('Stack trace:', error.stack);
+        res.status(500).json({ 
+            error: 'Erro interno do servidor',
+            details: error.message
+        });
     }
 });
 
 // Create ticket
-router.post('/tickets', requireAuth, async (req, res) => {
+router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
     try {
         const schema = Joi.object({
             subject: Joi.string().min(3).max(100).required(),
@@ -390,7 +431,7 @@ router.post('/tickets', requireAuth, async (req, res) => {
 });
 
 // Update ticket
-router.put('/tickets/:id', requireAuth, async (req, res) => {
+router.put('/tickets/:id', requireAuth, ensureDbReady, async (req, res) => {
     try {
         const schema = Joi.object({
             status: Joi.string().valid('open', 'in_progress', 'resolved', 'closed').optional(),
@@ -423,7 +464,7 @@ router.put('/tickets/:id', requireAuth, async (req, res) => {
 });
 
 // Add ticket message
-router.post('/tickets/:id/messages', requireAuth, async (req, res) => {
+router.post('/tickets/:id/messages', requireAuth, ensureDbReady, async (req, res) => {
     try {
         const schema = Joi.object({
             message: Joi.string().min(1).max(1000).required(),
@@ -457,7 +498,7 @@ router.post('/tickets/:id/messages', requireAuth, async (req, res) => {
 });
 
 // Assign ticket to user
-router.post('/tickets/:id/assign', requireAuth, async (req, res) => {
+router.post('/tickets/:id/assign', requireAuth, ensureDbReady, async (req, res) => {
     try {
         const ticketId = req.params.id;
         const userId = req.user.id;
@@ -512,7 +553,7 @@ router.post('/tickets/:id/assign', requireAuth, async (req, res) => {
 });
 
 // Close ticket
-router.post('/tickets/:id/close', requireAuth, async (req, res) => {
+router.post('/tickets/:id/close', requireAuth, ensureDbReady, async (req, res) => {
     try {
         const ticketId = req.params.id;
         const { reason } = req.body;
