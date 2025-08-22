@@ -157,15 +157,57 @@ body {
     box-shadow: var(--shadow-card);
     position: relative;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    text-decoration: none;
+}
+
+.logout-btn i {
+    font-size: 1rem;
 }
 
 .logout-btn:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-hover);
+    text-decoration: none;
+    color: var(--text-white);
 }
 
 .logout-btn:active {
     transform: translateY(0);
+}
+
+/* Improved logo styling */
+.logo {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    box-shadow: 0 8px 32px rgba(67, 24, 255, 0.3);
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    object-fit: cover;
+}
+
+.logo:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 40px rgba(67, 24, 255, 0.5);
+    border-color: rgba(67, 24, 255, 0.5);
+}
+
+/* Better icon styling */
+.sidebar-logo img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid rgba(67, 24, 255, 0.3);
+    object-fit: cover;
+    transition: all 0.3s ease;
+}
+
+.sidebar-logo img:hover {
+    border-color: rgba(67, 24, 255, 0.6);
+    transform: scale(1.05);
 }
 
 /* Modern Container System */
@@ -1428,4 +1470,22 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #8b2cb8;
+}
+
+/* Success text color */
+.text-success {
+    color: var(--brand-green) !important;
+}
+
+/* Additional utility classes */
+.text-primary {
+    color: var(--brand-purple) !important;
+}
+
+.text-warning {
+    color: var(--brand-orange) !important;
+}
+
+.text-danger {
+    color: var(--brand-red) !important;
 }
