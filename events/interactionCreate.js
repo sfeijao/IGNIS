@@ -58,7 +58,7 @@ module.exports = {
         }
 
         // Sistema de Status - Botões interativos
-        if (interaction.isButton()) {
+        else if (interaction.isButton()) {
             const { customId } = interaction;
             
             // Botão de verificação
@@ -252,7 +252,7 @@ module.exports = {
         }
 
         // Select menu para pedidos de tags
-        if (interaction.isStringSelectMenu()) {
+        else if (interaction.isStringSelectMenu()) {
             if (interaction.customId === 'solicitar_tag_menu') {
                 const selectedTag = interaction.values[0].replace('tag_', ''); // remove 'tag_' prefix
                 
@@ -297,7 +297,7 @@ module.exports = {
         }
 
         // Processamento de modais
-        if (interaction.isModalSubmit()) {
+        else if (interaction.isModalSubmit()) {
             if (interaction.customId.startsWith('tag_modal_')) {
                 const tagType = interaction.customId.replace('tag_modal_', '');
                 const reason = interaction.fields.getTextInputValue('tag_reason');
@@ -362,7 +362,7 @@ module.exports = {
         }
 
         // Sistema de Verificação - Modal
-        if (interaction.isModalSubmit()) {
+        else if (interaction.isModalSubmit()) {
             if (interaction.customId === 'verification_modal') {
                 const nickname = interaction.fields.getTextInputValue('nickname_input');
                 const age = interaction.fields.getTextInputValue('age_input');
@@ -437,7 +437,7 @@ module.exports = {
         }
         
         // Handler para modais de tickets
-        if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_modal_')) {
+        else if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_modal_')) {
             const ticketCommand = interaction.client.commands.get('ticket');
             if (ticketCommand && ticketCommand.handleModalSubmit) {
                 try {
@@ -455,7 +455,7 @@ module.exports = {
         }
         
         // Handler para botões de criação de tickets do painel
-        if (interaction.isButton() && interaction.customId.startsWith('ticket_create_')) {
+        else if (interaction.isButton() && interaction.customId.startsWith('ticket_create_')) {
             const tipo = interaction.customId.split('_')[2];
             
             try {
@@ -513,15 +513,23 @@ Por favor fecha o ticket atual antes de criar um novo.`,
 
             } catch (error) {
                 console.error('❌ Erro ao processar botão do painel:', error);
-                await interaction.reply({
-                    content: '❌ Erro ao processar pedido. Tenta novamente.',
-                    ephemeral: true
-                });
+                
+                // Apenas responder se a interação ainda não foi processada
+                if (!interaction.replied && !interaction.deferred) {
+                    try {
+                        await interaction.reply({
+                            content: '❌ Erro ao processar pedido. Tenta novamente.',
+                            ephemeral: true
+                        });
+                    } catch (replyError) {
+                        console.error('❌ Erro ao responder:', replyError);
+                    }
+                }
             }
         }
         
         // Handler para modais do painel de tickets
-        if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_panel_modal_')) {
+        else if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_panel_modal_')) {
             console.log('🎫 Processando modal de ticket:', interaction.customId);
             
             const [, , , tipo] = interaction.customId.split('_');
@@ -557,7 +565,7 @@ Por favor fecha o ticket atual antes de criar um novo.`,
         }
         
         // Handler para botões de tickets
-        if (interaction.isButton() && (interaction.customId.startsWith('ticket_assign_') || interaction.customId.startsWith('ticket_close_'))) {
+        else if (interaction.isButton() && (interaction.customId.startsWith('ticket_assign_') || interaction.customId.startsWith('ticket_close_'))) {
             try {
                 const Database = require('../website/database/database');
                 const db = new Database();
@@ -611,7 +619,7 @@ Por favor fecha o ticket atual antes de criar um novo.`,
                         });
                     }
                     
-                    // Criar modal para motivo de fechamento
+                    // Criar modal para motivo de fechamento e opção de arquivar
                     const modal = new ModalBuilder()
                         .setCustomId(`ticket_close_modal_${ticketId}`)
                         .setTitle('🔒 Fechar Ticket');
@@ -619,14 +627,24 @@ Por favor fecha o ticket atual antes de criar um novo.`,
                     const reasonInput = new TextInputBuilder()
                         .setCustomId('close_reason')
                         .setLabel('Motivo do Fechamento')
-                        .setStyle(TextInputStyle.Short)
+                        .setStyle(TextInputStyle.Paragraph)
                         .setMinLength(3)
-                        .setMaxLength(200)
-                        .setPlaceholder('Ex: Problema resolvido, duplicado, etc...')
+                        .setMaxLength(500)
+                        .setPlaceholder('Explique o motivo do fechamento do ticket...')
                         .setRequired(true);
 
-                    const actionRow = new ActionRowBuilder().addComponents(reasonInput);
-                    modal.addComponents(actionRow);
+                    const archiveInput = new TextInputBuilder()
+                        .setCustomId('archive_option')
+                        .setLabel('Arquivar ticket? (sim/não)')
+                        .setStyle(TextInputStyle.Short)
+                        .setPlaceholder('Digite "sim" para arquivar ou "não" para apenas fechar')
+                        .setRequired(true)
+                        .setMaxLength(3)
+                        .setMinLength(2);
+
+                    const row1 = new ActionRowBuilder().addComponents(reasonInput);
+                    const row2 = new ActionRowBuilder().addComponents(archiveInput);
+                    modal.addComponents(row1, row2);
 
                     await interaction.showModal(modal);
                 }
@@ -643,10 +661,11 @@ Por favor fecha o ticket atual antes de criar um novo.`,
         }
         
         // Handler para modal de fechamento de ticket
-        if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_close_modal_')) {
+        else if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_close_modal_')) {
             try {
                 const ticketId = interaction.customId.split('_')[3];
                 const reason = interaction.fields.getTextInputValue('close_reason');
+                const archiveOption = interaction.fields.getTextInputValue('archive_option').toLowerCase();
                 const userId = interaction.user.id;
                 const username = interaction.user.username;
                 
@@ -659,15 +678,21 @@ Por favor fecha o ticket atual antes de criar um novo.`,
                 // Atualizar ticket na base de dados
                 await db.updateTicketStatus(ticketId, 'closed', userId, reason);
                 
+                // Verificar se deve arquivar
+                const shouldArchive = archiveOption === 'sim' || archiveOption === 's' || archiveOption === 'yes' || archiveOption === 'y';
+                
                 // Criar embed de fechamento
                 const closeEmbed = new EmbedBuilder()
                     .setColor(0xFF0000)
                     .setTitle('🔒 Ticket Fechado')
-                    .setDescription('Este ticket foi fechado e será arquivado em 10 segundos.')
+                    .setDescription(shouldArchive ? 
+                        'Este ticket será arquivado no servidor de logs em 10 segundos.' : 
+                        'Este ticket será **eliminado permanentemente** em 10 segundos.')
                     .addFields(
                         { name: '🎫 Ticket', value: `#${ticketId}`, inline: true },
                         { name: '👤 Fechado por', value: username, inline: true },
-                        { name: '📝 Motivo', value: reason, inline: true },
+                        { name: '� Arquivar', value: shouldArchive ? '✅ Sim' : '❌ Não', inline: true },
+                        { name: '�📝 Motivo', value: reason, inline: false },
                         { name: '🕒 Data', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
                     )
                     .setFooter({ text: 'Sistema de Tickets YSNM' })
@@ -677,52 +702,37 @@ Por favor fecha o ticket atual antes de criar um novo.`,
                     embeds: [closeEmbed]
                 });
                 
-                // Arquivar canal após 10 segundos
-                setTimeout(async () => {
-                    try {
-                        // Buscar categoria de tickets arquivados
-                        let archivedCategory = interaction.guild.channels.cache.find(
-                            channel => channel.type === 4 && channel.name.toLowerCase() === 'tickets-arquivados'
-                        );
-                        
-                        if (!archivedCategory) {
-                            archivedCategory = await interaction.guild.channels.create({
-                                name: 'Tickets-Arquivados',
-                                type: 4, // Category
-                                permissionOverwrites: [
-                                    {
-                                        id: interaction.guild.roles.everyone,
-                                        deny: ['ViewChannel']
-                                    },
-                                    // Apenas moderadores podem ver
-                                    ...interaction.guild.roles.cache
-                                        .filter(role => role.permissions.has('ManageMessages'))
-                                        .map(role => ({
-                                            id: role.id,
-                                            allow: ['ViewChannel', 'ReadMessageHistory']
-                                        }))
-                                ]
-                            });
+                if (shouldArchive) {
+                    // Arquivar canal após 5 segundos
+                    setTimeout(async () => {
+                        try {
+                            await archiveTicket(interaction, ticketId);
+                        } catch (archiveError) {
+                            console.error('Erro ao arquivar ticket:', archiveError);
                         }
-                        
-                        // Renomear canal para indicar que está fechado
-                        const newName = `fechado-${interaction.channel.name}`;
+                    }, 5000);
+                } else {
+                    // Apenas renomear o canal para indicar que está fechado
+                    try {
+                        const newName = `fechado-${interaction.channel.name.replace('ticket-', '')}`;
                         await interaction.channel.setName(newName);
-                        await interaction.channel.setParent(archivedCategory.id);
                         
                         // Remover permissões do usuário original (exceto se for staff)
                         const ticketOwnerId = interaction.channel.topic?.match(/User: (\d+)/)?.[1];
-                        if (ticketOwnerId && !interaction.guild.members.cache.get(ticketOwnerId)?.permissions.has('ManageMessages')) {
-                            await interaction.channel.permissionOverwrites.delete(ticketOwnerId);
+                        if (ticketOwnerId) {
+                            const member = interaction.guild.members.cache.get(ticketOwnerId);
+                            if (member && !member.permissions.has('ManageMessages')) {
+                                await interaction.channel.permissionOverwrites.delete(ticketOwnerId);
+                            }
                         }
                         
-                        console.log(`📁 Ticket #${ticketId} arquivado como ${newName}`);
-                    } catch (archiveError) {
-                        console.error('Erro ao arquivar ticket:', archiveError);
+                        console.log(`� Ticket #${ticketId} fechado (não arquivado) como ${newName}`);
+                    } catch (error) {
+                        console.error('Erro ao renomear ticket fechado:', error);
                     }
-                }, 10000);
+                }
                 
-                console.log(`✅ Ticket #${ticketId} fechado com sucesso por ${username}`);
+                console.log(`✅ Ticket #${ticketId} fechado por ${username} (${shouldArchive ? 'Arquivar' : 'Deletar'})`);
                 
             } catch (error) {
                 console.error('❌ Erro ao fechar ticket:', error);
@@ -796,21 +806,28 @@ async function createTicketDirect(interaction, tipo, subject, description, prior
     const { EmbedBuilder, ActionRowBuilder } = require('discord.js');
     
     try {
-        // Buscar categoria de tickets (ou criar se não existir)
+        // Buscar ou criar categoria de tickets ativos
         let ticketCategory = interaction.guild.channels.cache.find(
-            channel => channel.type === 4 && channel.name.toLowerCase() === 'tickets'
+            channel => channel.type === 4 && channel.name.toLowerCase() === 'tickets-ativos'
         );
         
         if (!ticketCategory) {
-            console.log('📁 Criando categoria de tickets...');
+            console.log('📁 Criando categoria de tickets ativos...');
             ticketCategory = await interaction.guild.channels.create({
-                name: 'Tickets',
+                name: '📋 Tickets Ativos',
                 type: 4, // Category
                 permissionOverwrites: [
                     {
                         id: interaction.guild.roles.everyone,
                         deny: ['ViewChannel']
-                    }
+                    },
+                    // Staff pode ver tickets ativos
+                    ...interaction.guild.roles.cache
+                        .filter(role => role.permissions.has('ManageMessages'))
+                        .map(role => ({
+                            id: role.id,
+                            allow: ['ViewChannel', 'ReadMessageHistory', 'SendMessages']
+                        }))
                 ]
             });
         }
@@ -920,5 +937,281 @@ Contacta um administrador se o problema persistir.`,
         }
         
         throw error; // Re-lançar para o handler principal
+    }
+}
+
+// Função para arquivar tickets com permissões corretas
+async function archiveTicket(interaction, ticketId) {
+    try {
+        // Carregar config com fallback
+        let config;
+        try {
+            config = require('../config.json');
+        } catch (error) {
+            console.log('⚠️ Config.json não encontrado no archiveTicket, usando IDs padrão');
+            config = {
+                roles: {
+                    admin: '1333820000892616724',
+                    owner: '381762006329589760'
+                }
+            };
+        }
+
+        // Buscar ou criar categoria de tickets ativos
+        let activeCategory = interaction.guild.channels.cache.find(
+            channel => channel.type === 4 && channel.name.toLowerCase() === 'tickets-ativos'
+        );
+        
+        if (!activeCategory) {
+            activeCategory = await interaction.guild.channels.create({
+                name: '📋 Tickets Ativos',
+                type: 4, // Category
+                permissionOverwrites: [
+                    {
+                        id: interaction.guild.roles.everyone,
+                        deny: ['ViewChannel']
+                    },
+                    // Staff pode ver tickets ativos
+                    ...interaction.guild.roles.cache
+                        .filter(role => role.permissions.has('ManageMessages'))
+                        .map(role => ({
+                            id: role.id,
+                            allow: ['ViewChannel', 'ReadMessageHistory', 'SendMessages']
+                        }))
+                ]
+            });
+        }
+
+        // Buscar ou criar categoria de tickets arquivados (apenas ADMIN+)
+        let archivedCategory = interaction.guild.channels.cache.find(
+            channel => channel.type === 4 && channel.name.toLowerCase() === 'tickets-arquivados'
+        );
+        
+        if (!archivedCategory) {
+            const adminRole = interaction.guild.roles.cache.get(config.roles.admin);
+            const ownerRole = interaction.guild.roles.cache.get(config.roles.owner);
+            
+            const permissionOverwrites = [
+                {
+                    id: interaction.guild.roles.everyone,
+                    deny: ['ViewChannel']
+                }
+            ];
+
+            // Adicionar permissões apenas para ADMIN e OWNER
+            if (adminRole) {
+                permissionOverwrites.push({
+                    id: adminRole.id,
+                    allow: ['ViewChannel', 'ReadMessageHistory', 'SendMessages', 'ManageMessages']
+                });
+            }
+            
+            if (ownerRole) {
+                permissionOverwrites.push({
+                    id: ownerRole.id,
+                    allow: ['ViewChannel', 'ReadMessageHistory', 'SendMessages', 'ManageMessages']
+                });
+            }
+
+            archivedCategory = await interaction.guild.channels.create({
+                name: '📁 Tickets Arquivados',
+                type: 4, // Category
+                permissionOverwrites
+            });
+        }
+        
+        // Renomear canal para indicar que está arquivado
+        const currentName = interaction.channel.name.replace('ticket-', '').replace('fechado-', '');
+        const newName = `arquivado-${currentName}`;
+        await interaction.channel.setName(newName);
+        await interaction.channel.setParent(archivedCategory.id);
+        
+        // Remover permissões do usuário original e outros não-staff
+        const ticketOwnerId = interaction.channel.topic?.match(/User: (\d+)/)?.[1];
+        if (ticketOwnerId) {
+            const member = interaction.guild.members.cache.get(ticketOwnerId);
+            if (member && !member.permissions.has('ManageMessages')) {
+                await interaction.channel.permissionOverwrites.delete(ticketOwnerId);
+            }
+        }
+
+        // Remover permissões de todos os roles que não sejam ADMIN+
+        const adminRole = interaction.guild.roles.cache.get(config.roles.admin);
+        const ownerRole = interaction.guild.roles.cache.get(config.roles.owner);
+        
+        for (const [id, overwrite] of interaction.channel.permissionOverwrites.cache) {
+            if (overwrite.type === 1) continue; // Skip users
+            
+            const role = interaction.guild.roles.cache.get(id);
+            if (role && role.id !== adminRole?.id && role.id !== ownerRole?.id && role.id !== interaction.guild.roles.everyone.id) {
+                // Remover permissões de roles que não sejam ADMIN ou OWNER
+                if (!role.permissions.has('Administrator')) {
+                    await interaction.channel.permissionOverwrites.delete(id);
+                }
+            }
+        }
+        
+        // Adicionar embed informativo no canal arquivado
+        const archiveEmbed = new EmbedBuilder()
+            .setColor(0x808080)
+            .setTitle('📁 Ticket Arquivado')
+            .setDescription('Este ticket foi arquivado e apenas administradores podem visualizá-lo.')
+            .addFields(
+                { name: '🎫 ID do Ticket', value: `#${ticketId}`, inline: true },
+                { name: '📅 Data de Arquivo', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true },
+                { name: '👁️ Visibilidade', value: 'Apenas Administradores', inline: true }
+            )
+            .setFooter({ text: 'Sistema de Tickets YSNM - Arquivo' })
+            .setTimestamp();
+
+        await interaction.channel.send({ embeds: [archiveEmbed] });
+        
+        console.log(`📁 Ticket #${ticketId} arquivado como ${newName} (visível apenas para ADMIN+)`);
+        
+    } catch (error) {
+        console.error('❌ Erro ao arquivar ticket:', error);
+        throw error;
+    }
+}
+
+// Função para arquivar tickets no servidor de logs
+async function archiveTicketToLogServer(interaction, ticketId, reason) {
+    try {
+        // Carregar config com fallback
+        let config;
+        try {
+            config = require('../config.json');
+        } catch (error) {
+            console.log('⚠️ Config.json não encontrado no archiveTicketToLogServer');
+            config = { ticketSystem: { logServerId: null } };
+        }
+
+        // Obter informações do ticket antes de arquivar
+        const ticketInfo = {
+            id: ticketId,
+            name: interaction.channel.name,
+            topic: interaction.channel.topic,
+            createdAt: interaction.channel.createdAt,
+            closedAt: new Date(),
+            closedBy: interaction.user,
+            reason: reason,
+            guild: interaction.guild.name
+        };
+
+        // Se não há servidor de logs configurado, arquivar localmente
+        if (!config.ticketSystem?.logServerId) {
+            console.log('⚠️ Servidor de logs não configurado, arquivando localmente...');
+            await archiveTicket(interaction, ticketId);
+            return;
+        }
+
+        // Buscar servidor de logs
+        const logServer = interaction.client.guilds.cache.get(config.ticketSystem.logServerId);
+        if (!logServer) {
+            console.log('⚠️ Servidor de logs não encontrado, arquivando localmente...');
+            await archiveTicket(interaction, ticketId);
+            return;
+        }
+
+        // Buscar ou criar canal de logs no servidor
+        let logChannel = logServer.channels.cache.get(config.ticketSystem.logChannelId);
+        if (!logChannel) {
+            // Criar canal de logs
+            logChannel = await logServer.channels.create({
+                name: '📋-tickets-arquivados',
+                type: 0, // Text channel
+                topic: 'Arquivo de tickets do servidor YSNM Community'
+            });
+            console.log(`📋 Canal de logs criado: ${logChannel.name}`);
+        }
+
+        // Coletar últimas 50 mensagens do ticket
+        const messages = await interaction.channel.messages.fetch({ limit: 50 });
+        const messageHistory = messages.reverse().map(msg => {
+            return `[${msg.createdAt.toLocaleString('pt-PT')}] ${msg.author.tag}: ${msg.content}`;
+        }).join('\n');
+
+        // Criar embed com informações do ticket
+        const archiveEmbed = new EmbedBuilder()
+            .setColor(0x3498DB)
+            .setTitle(`📋 Ticket Arquivado #${ticketId}`)
+            .setDescription(`Ticket do servidor **${ticketInfo.guild}**`)
+            .addFields(
+                { name: '🎫 Canal Original', value: ticketInfo.name, inline: true },
+                { name: '👤 Fechado por', value: ticketInfo.closedBy.tag, inline: true },
+                { name: '📅 Criado em', value: `<t:${Math.floor(ticketInfo.createdAt.getTime() / 1000)}:F>`, inline: false },
+                { name: '🔒 Fechado em', value: `<t:${Math.floor(ticketInfo.closedAt.getTime() / 1000)}:F>`, inline: false },
+                { name: '📝 Motivo', value: reason, inline: false },
+                { name: '📄 Tópico', value: ticketInfo.topic || 'Sem tópico', inline: false }
+            )
+            .setFooter({ text: 'Sistema de Tickets YSNM - Arquivo' })
+            .setTimestamp();
+
+        // Enviar embed de arquivo
+        await logChannel.send({ embeds: [archiveEmbed] });
+
+        // Enviar histórico de mensagens se existir
+        if (messageHistory.length > 0) {
+            const historyText = `**Histórico de Mensagens do Ticket #${ticketId}:**\n\`\`\`\n${messageHistory.substring(0, 1900)}\n\`\`\``;
+            await logChannel.send(historyText);
+        }
+
+        // Deletar o canal original
+        await interaction.channel.delete(`Ticket #${ticketId} arquivado no servidor de logs`);
+        
+        console.log(`📋 Ticket #${ticketId} arquivado no servidor de logs (${logServer.name})`);
+        
+    } catch (error) {
+        console.error('❌ Erro ao arquivar no servidor de logs:', error);
+        // Fallback para arquivo local
+        await archiveTicket(interaction, ticketId);
+    }
+}
+
+// Função para deletar tickets permanentemente
+async function deleteTicketPermanently(interaction, ticketId, reason) {
+    try {
+        // Obter informações do ticket antes de deletar
+        const ticketInfo = {
+            id: ticketId,
+            name: interaction.channel.name,
+            deletedBy: interaction.user,
+            reason: reason,
+            deletedAt: new Date()
+        };
+
+        // Log da deleção
+        console.log(`🗑️ Deletando permanentemente ticket #${ticketId} (${ticketInfo.name}) por ${ticketInfo.deletedBy.tag}`);
+
+        // Criar embed de confirmação antes de deletar
+        const deleteEmbed = new EmbedBuilder()
+            .setColor(0xFF0000)
+            .setTitle('🗑️ Ticket Eliminado')
+            .setDescription('Este ticket foi **eliminado permanentemente**.')
+            .addFields(
+                { name: '🎫 Ticket', value: `#${ticketId}`, inline: true },
+                { name: '👤 Eliminado por', value: ticketInfo.deletedBy.tag, inline: true },
+                { name: '📝 Motivo', value: reason, inline: false },
+                { name: '⚠️ Aviso', value: 'Esta ação é irreversível.', inline: false }
+            )
+            .setFooter({ text: 'Sistema de Tickets YSNM - Deleção' })
+            .setTimestamp();
+
+        // Enviar confirmação final no canal
+        await interaction.channel.send({ embeds: [deleteEmbed] });
+
+        // Aguardar 5 segundos e deletar
+        setTimeout(async () => {
+            try {
+                await interaction.channel.delete(`Ticket #${ticketId} eliminado permanentemente por ${ticketInfo.deletedBy.tag}`);
+                console.log(`🗑️ Ticket #${ticketId} eliminado permanentemente com sucesso`);
+            } catch (deleteError) {
+                console.error('❌ Erro ao deletar canal:', deleteError);
+            }
+        }, 5000);
+        
+    } catch (error) {
+        console.error('❌ Erro ao deletar ticket permanentemente:', error);
+        throw error;
     }
 }

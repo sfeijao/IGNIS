@@ -5,7 +5,7 @@
   "guildId": "1333820000791691284",
   "channels": {
     "verification": "1333820001282560020",
-    "logs": "1407237814617116692", 
+    "logs": "1407237814617116692",
     "status": "1404307994421760040",
     "solicitarTag": "1404308410832392332",
     "comandosAdm": "1404310493480489031",
@@ -23,6 +23,11 @@
     "mod": "1333820000846483485",
     "support": "1334157459161612288",
     "supTickets": "1404306109723836476"
+  },
+  "ticketSystem": {
+    "logServerId": "1408278468822565075",
+    "logChannelId": null,
+    "deleteInsteadOfArchive": true
   },
   "serverName": "YSNM COMMUNITY",
   "embedColor": "#8B5FBF",
