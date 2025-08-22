@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YSNM Bot - Sistema de Updates</title>
+    <title>YSNM Bot - Modern Dashboard</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.css">
     <link rel="icon" href="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" type="image/gif">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
 <body>
     <div class="container">
@@ -15,11 +17,12 @@
             <div class="header-content">
                 <img src="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" alt="YSNM Logo" class="logo">
                 <div class="header-text">
-                    <h1><i class="fas fa-broadcast-tower"></i> YSNM Updates System</h1>
-                    <p>Painel de administração para updates do bot e servidor</p>
+                    <h1><i class="fas fa-rocket"></i> YSNM Modern Dashboard</h1>
+                    <p>Sistema avançado de gestão e updates para Discord bot</p>
                 </div>
                 <button id="logoutBtn" class="logout-btn" title="Terminar sessão">
                     <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
                 </button>
             </div>
         </header>
@@ -33,7 +36,7 @@
                         <label for="title">
                             <i class="fas fa-heading"></i> Título do Update
                         </label>
-                        <input type="text" id="title" name="title" placeholder="🚀 YSNM Bot - Nova Atualização" maxlength="256" required>
+                        <input type="text" id="title" name="title" placeholder="🚀 YSNM Bot - Nova Atualização Incrível" maxlength="256" required>
                     </div>
 
                     <div class="form-group">
@@ -41,16 +44,16 @@
                             <i class="fas fa-hashtag"></i> Canal de Destino
                         </label>
                         <select id="channelSelect" name="channelId" required>
-                            <option value="">Carregando canais...</option>
+                            <option value="">🔄 Carregando canais...</option>
                         </select>
                         <div class="channel-info">
-                            <small><i class="fas fa-info-circle"></i> Selecione o canal onde o update será enviado</small>
+                            <small><i class="fas fa-info-circle"></i> Selecione o canal onde o update será publicado</small>
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label for="description">
-                            <i class="fas fa-align-left"></i> Descrição
+                            <i class="fas fa-align-left"></i> Descrição Detalhada
                         </label>
                         <div id="description-editor" class="editor-container"></div>
                         <input type="hidden" id="description" name="description">
@@ -61,27 +64,27 @@
                             <label for="color">
                                 <i class="fas fa-palette"></i> Cor do Embed
                             </label>
-                            <input type="color" id="color" name="color" value="#9932CC">
+                            <input type="color" id="color" name="color" value="#4318FF">
                         </div>
 
                         <div class="form-group">
                             <label for="icon">
                                 <i class="fas fa-image"></i> Ícone (URL)
                             </label>
-                            <input type="url" id="icon" name="icon" placeholder="https://exemplo.com/icon.png">
+                            <input type="url" id="icon" name="icon" placeholder="https://exemplo.com/icone-incrivel.png">
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label for="banner">
-                            <i class="fas fa-panorama"></i> Banner (URL)
+                            <i class="fas fa-panorama"></i> Banner Principal (URL)
                         </label>
-                        <input type="url" id="banner" name="banner" placeholder="https://exemplo.com/banner.png">
+                        <input type="url" id="banner" name="banner" placeholder="https://exemplo.com/banner-espetacular.png">
                     </div>
 
                     <div class="fields-section">
                         <div class="fields-header">
-                            <h3><i class="fas fa-list"></i> Campos Personalizados</h3>
+                            <h3><i class="fas fa-list-ul"></i> Campos Personalizados</h3>
                             <button type="button" id="addField" class="btn btn-secondary">
                                 <i class="fas fa-plus"></i> Adicionar Campo
                             </button>
@@ -90,14 +93,31 @@
                     </div>
 
                     <div class="emoji-picker-section">
-                        <h3><i class="fas fa-smile"></i> Emojis Rápidos</h3>
+                        <h3><i class="fas fa-smile-beam"></i> Emojis Rápidos</h3>
                         <div class="emoji-grid">
-                            <span class="emoji-btn" data-emoji="🚀">🚀</span>
-                            <span class="emoji-btn" data-emoji="⚡">⚡</span>
-                            <span class="emoji-btn" data-emoji="🎉">🎉</span>
-                            <span class="emoji-btn" data-emoji="✅">✅</span>
-                            <span class="emoji-btn" data-emoji="🔧">🔧</span>
-                            <span class="emoji-btn" data-emoji="🆕">🆕</span>
+                            <span class="emoji-btn" data-emoji="🚀" title="Lançamento">🚀</span>
+                            <span class="emoji-btn" data-emoji="⚡" title="Performance">⚡</span>
+                            <span class="emoji-btn" data-emoji="🎉" title="Celebração">🎉</span>
+                            <span class="emoji-btn" data-emoji="✅" title="Completado">✅</span>
+                            <span class="emoji-btn" data-emoji="🔧" title="Correção">🔧</span>
+                            <span class="emoji-btn" data-emoji="🆕" title="Novo">🆕</span>
+                            <span class="emoji-btn" data-emoji="💎" title="Premium">💎</span>
+                            <span class="emoji-btn" data-emoji="🔥" title="Hot">🔥</span>
+                            <span class="emoji-btn" data-emoji="⭐" title="Destaque">⭐</span>
+                            <span class="emoji-btn" data-emoji="🎯" title="Objetivo">🎯</span>
+                            <span class="emoji-btn" data-emoji="💫" title="Magia">💫</span>
+                            <span class="emoji-btn" data-emoji="🌟" title="Especial">🌟</span>
+                        </div>
+                    </div>
+
+                    <div class="submit-section">
+                        <button type="submit" id="submitBtn" class="submit-btn">
+                            <i class="fas fa-paper-plane"></i>
+                            Enviar Update
+                        </button>
+                    </div>
+                </form>
+            </div>
                             <span class="emoji-btn" data-emoji="🔄">🔄</span>
                             <span class="emoji-btn" data-emoji="📢">📢</span>
                             <span class="emoji-btn" data-emoji="🎯">🎯</span>
@@ -121,21 +141,95 @@
                 </form>
             </div>
 
-            <div class="preview-container" id="previewContainer">
-                <h3><i class="fas fa-eye"></i> Preview do Embed</h3>
-                <div id="embedPreview" class="embed-preview"></div>
-            </div>
+            <div class="preview-container">
+                <h2><i class="fas fa-eye"></i> Preview em Tempo Real</h2>
+                
+                <div class="preview-embed" id="previewEmbed">
+                    <div class="embed-author" id="previewAuthor" style="display: none;">
+                        <img id="previewAuthorIcon" src="" alt="Author Icon">
+                        <span id="previewAuthorName"></span>
+                    </div>
+                    
+                    <div class="embed-title" id="previewTitle">
+                        🚀 Título do Update Aparece Aqui
+                    </div>
+                    
+                    <div class="embed-description" id="previewDescription">
+                        <p>A descrição do teu update será mostrada aqui em tempo real enquanto escreves...</p>
+                        <p>✨ <strong>Dica:</strong> Usa formatação Markdown para deixar o texto mais atrativo!</p>
+                    </div>
+                    
+                    <div class="embed-fields" id="previewFields">
+                        <!-- Campos dinâmicos aparecerão aqui -->
+                    </div>
+                    
+                    <div class="embed-image" id="previewBanner" style="display: none;">
+                        <img src="" alt="Banner" style="width: 100%; border-radius: 8px; margin-top: 16px;">
+                    </div>
+                    
+                    <div class="embed-footer" id="previewFooter">
+                        <img src="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" alt="Bot Icon">
+                        <span>YSNM Bot • Agora</span>
+                    </div>
+                </div>
 
-            <div class="history-container">
-                <h3><i class="fas fa-history"></i> Histórico de Updates</h3>
-                <div id="historyList" class="history-list"></div>
+                <div class="preview-stats">
+                    <div class="stat-item">
+                        <i class="fas fa-font"></i>
+                        <span>Título: <span id="titleCount">0</span>/256</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-align-left"></i>
+                        <span>Descrição: <span id="descCount">0</span>/4096</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-list"></i>
+                        <span>Campos: <span id="fieldsCount">0</span>/25</span>
+                    </div>
+                </div>
+
+                <div class="preview-tips">
+                    <h3><i class="fas fa-lightbulb"></i> Dicas Rápidas</h3>
+                    <ul>
+                        <li>Use **texto** para negrito</li>
+                        <li>Use *texto* para itálico</li>
+                        <li>Use `código` para highlight</li>
+                        <li>Use emojis para tornar mais atrativo 🚀</li>
+                        <li>Máximo 25 campos personalizados</li>
+                    </ul>
+                </div>
             </div>
         </main>
     </div>
 
-    <div id="notification" class="notification"></div>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <i class="fas fa-rocket"></i>
+            <span>Enviando update...</span>
+        </div>
+    </div>
 
+    <!-- Success Modal -->
+    <div id="successModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-check-circle"></i> Update Enviado!</h3>
+            </div>
+            <div class="modal-body">
+                <p>O teu update foi enviado com sucesso para o canal selecionado! 🎉</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeModal()">
+                    <i class="fas fa-thumbs-up"></i> Awesome!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
-    <script src="js/app.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/script.js"></script>
 </body>
 </html>
