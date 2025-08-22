@@ -880,20 +880,16 @@ async function createTicketDirect(interaction, tipo, subject, description, prior
     // Criar botões de ação
     const actionRow = new ActionRowBuilder()
         .addComponents(
-            {
-                type: 2,
-                style: 3,
-                label: 'Atribuir-me',
-                custom_id: `ticket_assign_${ticketResult.id}`,
-                emoji: { name: '👋' }
-            },
-            {
-                type: 2,
-                style: 4,
-                label: 'Fechar Ticket',
-                custom_id: `ticket_close_${ticketResult.id}`,
-                emoji: { name: '🔒' }
-            }
+            new ButtonBuilder()
+                .setStyle(ButtonStyle.Success)
+                .setLabel('Atribuir-me')
+                .setCustomId(`ticket_assign_${ticketResult.id}`)
+                .setEmoji('👋'),
+            new ButtonBuilder()
+                .setStyle(ButtonStyle.Danger)
+                .setLabel('Fechar Ticket')
+                .setCustomId(`ticket_close_${ticketResult.id}`)
+                .setEmoji('🔒')
         );
     
     // Enviar mensagem no canal do ticket
