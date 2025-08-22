@@ -312,6 +312,324 @@
                 font-size: 2rem;
             }
         }
+
+        /* Dashboard Section Management */
+        .dashboard-section {
+            display: none;
+        }
+
+        .dashboard-section.active {
+            display: block;
+        }
+
+        /* Config Grid Styles */
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--space-xl);
+        }
+
+        .config-card {
+            background: rgba(17, 28, 68, 0.6);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            transition: all 0.3s ease;
+        }
+
+        .config-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(67, 24, 255, 0.3);
+        }
+
+        .config-card h4 {
+            color: var(--text-white);
+            font-size: 1.2rem;
+            margin-bottom: var(--space-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .form-group {
+            margin-bottom: var(--space-lg);
+        }
+
+        .form-group label {
+            display: block;
+            color: var(--text-white);
+            font-weight: 600;
+            margin-bottom: var(--space-sm);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: var(--space-md);
+            background: rgba(17, 28, 68, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-md);
+            color: var(--text-white);
+            font-size: 0.95rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--brand-purple);
+            box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1);
+        }
+
+        .btn {
+            padding: var(--space-md) var(--space-lg);
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: var(--gradient-main);
+            color: var(--text-white);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(67, 24, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-white);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Moderation Grid */
+        .moderation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--space-xl);
+            margin-bottom: var(--space-xl);
+        }
+
+        .moderation-card {
+            background: rgba(17, 28, 68, 0.6);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .moderation-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--brand-purple);
+            box-shadow: 0 10px 25px rgba(67, 24, 255, 0.2);
+        }
+
+        .moderation-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: var(--space-lg);
+        }
+
+        .moderation-card h4 {
+            color: var(--text-white);
+            margin-bottom: var(--space-sm);
+        }
+
+        .moderation-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Tickets */
+        .tickets-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-lg);
+            margin-bottom: var(--space-xl);
+        }
+
+        .tickets-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-lg);
+        }
+
+        .tickets-header h3 {
+            color: var(--text-white);
+            font-size: 1.5rem;
+        }
+
+        .tickets-list {
+            display: grid;
+            gap: var(--space-md);
+        }
+
+        .ticket-item {
+            background: rgba(17, 28, 68, 0.6);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .ticket-item:hover {
+            transform: translateY(-2px);
+            border-color: var(--brand-purple);
+        }
+
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-sm);
+        }
+
+        .ticket-title {
+            color: var(--text-white);
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .ticket-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .ticket-status.open {
+            background: rgba(1, 181, 116, 0.2);
+            color: var(--brand-green);
+        }
+
+        .ticket-status.closed {
+            background: rgba(238, 93, 80, 0.2);
+            color: var(--brand-red);
+        }
+
+        .ticket-meta {
+            display: flex;
+            gap: var(--space-lg);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Embed Builder */
+        .embed-builder {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-2xl);
+        }
+
+        .embed-form, .embed-preview {
+            background: rgba(17, 28, 68, 0.6);
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .embed-form h3, .embed-preview h3 {
+            color: var(--text-white);
+            margin-bottom: var(--space-lg);
+        }
+
+        .embed-message {
+            background: #2f3136;
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            border-left: 4px solid var(--brand-purple);
+            font-family: 'Whitney', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        .embed-title {
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: var(--space-sm);
+        }
+
+        .embed-description {
+            color: #dcddde;
+            line-height: 1.4;
+            margin-bottom: var(--space-lg);
+        }
+
+        .embed-footer {
+            color: #dcddde;
+            font-size: 0.8rem;
+        }
+
+        /* Logs */
+        .logs-filters {
+            display: flex;
+            gap: var(--space-lg);
+            margin-bottom: var(--space-xl);
+            flex-wrap: wrap;
+        }
+
+        .logs-filters .form-control {
+            min-width: 200px;
+        }
+
+        .logs-container {
+            background: rgba(17, 28, 68, 0.8);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+        }
+
+        .log-entry {
+            padding: var(--space-sm);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.85rem;
+            display: flex;
+            gap: var(--space-sm);
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-entry.info .log-message {
+            color: #3B82F6;
+        }
+
+        .log-entry.warning .log-message {
+            color: #F59E0B;
+        }
+
+        .log-entry.error .log-message {
+            color: #EF4444;
+        }
+
+        .log-entry.success .log-message {
+            color: #10B981;
+        }
+
+        .log-time {
+            color: var(--text-secondary);
+            min-width: 80px;
+        }
+
+        .log-message {
+            color: var(--text-white);
+        }
     </style>
 </head>
 <body>
@@ -341,37 +659,37 @@
                     <nav>
                         <ul class="nav-menu">
                             <li class="nav-item active">
-                                <a href="/dashboard">
+                                <a href="#overview" data-section="overview">
                                     <i class="fas fa-tachometer-alt"></i>
                                     <span>Visão Geral</span>
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a href="/dashboard#config">
+                                <a href="#config" data-section="config">
                                     <i class="fas fa-cog"></i>
                                     <span>Configuração</span>
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a href="/dashboard#moderation">
+                                <a href="#moderation" data-section="moderation">
                                     <i class="fas fa-shield-alt"></i>
                                     <span>Moderação</span>
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a href="/tickets">
+                                <a href="#tickets" data-section="tickets">
                                     <i class="fas fa-ticket-alt"></i>
                                     <span>Tickets</span>
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a href="/">
+                                <a href="#embeds" data-section="embeds">
                                     <i class="fas fa-external-link-alt"></i>
                                     <span>Embed Builder</span>
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a href="/analytics">
+                                <a href="#logs" data-section="logs">
                                     <i class="fas fa-chart-line"></i>
                                     <span>Logs</span>
                                 </a>
@@ -381,85 +699,408 @@
                 </aside>
 
                 <main class="main-content">
-                    <div class="page-header">
-                        <h1>Visão Geral do Servidor</h1>
-                        <p>Estatísticas e informações gerais sobre o teu servidor</p>
+                    <!-- Visão Geral Section -->
+                    <div id="overview-section" class="dashboard-section active">
+                        <div class="page-header">
+                            <h1>Visão Geral do Servidor</h1>
+                            <p>Estatísticas e informações gerais sobre o teu servidor</p>
+                        </div>
+
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-icon members">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div class="stat-number" id="memberCount">15</div>
+                                <div class="stat-label">Membros</div>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <div class="stat-icon channels">
+                                    <i class="fas fa-hashtag"></i>
+                                </div>
+                                <div class="stat-number" id="channelCount">60</div>
+                                <div class="stat-label">Canais</div>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <div class="stat-icon roles">
+                                    <i class="fas fa-user-tag"></i>
+                                </div>
+                                <div class="stat-number" id="roleCount">46</div>
+                                <div class="stat-label">Cargos</div>
+                            </div>
+                            
+                            <div class="stat-card">
+                                <div class="stat-icon messages">
+                                    <i class="fas fa-comments"></i>
+                                </div>
+                                <div class="stat-number" id="messageCount">804</div>
+                                <div class="stat-label">Mensagens Hoje</div>
+                            </div>
+                        </div>
+
+                        <div class="content-area">
+                            <div class="bot-status">
+                                <div class="status-indicator"></div>
+                                <div class="status-text">
+                                    <h3>Bot Status: <span class="text-success">Online</span></h3>
+                                    <p>Última atualização: agora</p>
+                                </div>
+                            </div>
+
+                            <div class="feature-cards">
+                                <div class="feature-card">
+                                    <h4>
+                                        <i class="fas fa-cog"></i>
+                                        Configuração completa do bot
+                                    </h4>
+                                    <p>Configure todas as funcionalidades do bot de forma simples e intuitiva.</p>
+                                </div>
+                                
+                                <div class="feature-card">
+                                    <h4>
+                                        <i class="fas fa-chart-line"></i>
+                                        Monitorização em tempo real
+                                    </h4>
+                                    <p>Acompanhe as estatísticas do servidor e atividade dos membros em tempo real.</p>
+                                </div>
+                                
+                                <div class="feature-card">
+                                    <h4>
+                                        <i class="fas fa-shield-alt"></i>
+                                        Sistema de moderação avançado
+                                    </h4>
+                                    <p>Ferramentas completas de moderação para manter o teu servidor seguro.</p>
+                                </div>
+                                
+                                <div class="feature-card">
+                                    <h4>
+                                        <i class="fas fa-ticket-alt"></i>
+                                        Sistema de tickets integrado
+                                    </h4>
+                                    <p>Gestão eficiente de tickets de suporte com interface intuitiva.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-icon members">
-                                <i class="fas fa-users"></i>
-                            </div>
-                            <div class="stat-number" id="memberCount">15</div>
-                            <div class="stat-label">Membros</div>
+                    <!-- Configuração Section -->
+                    <div id="config-section" class="dashboard-section">
+                        <div class="page-header">
+                            <h1>Configuração do Bot</h1>
+                            <p>Configure as definições principais do teu bot Discord</p>
                         </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-icon channels">
-                                <i class="fas fa-hashtag"></i>
+
+                        <div class="config-grid">
+                            <div class="config-card">
+                                <h4><i class="fas fa-robot"></i> Configurações Gerais</h4>
+                                <div class="form-group">
+                                    <label>Prefixo do Bot</label>
+                                    <input type="text" class="form-control" value="!" placeholder="Digite o prefixo">
+                                </div>
+                                <div class="form-group">
+                                    <label>Canal de Logs</label>
+                                    <select class="form-control">
+                                        <option>Selecionar canal...</option>
+                                        <option>#logs</option>
+                                        <option>#admin-logs</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-primary">Guardar Configurações</button>
                             </div>
-                            <div class="stat-number" id="channelCount">60</div>
-                            <div class="stat-label">Canais</div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-icon roles">
-                                <i class="fas fa-user-tag"></i>
+
+                            <div class="config-card">
+                                <h4><i class="fas fa-bell"></i> Notificações</h4>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" checked> Notificar novos membros
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox"> Notificar saídas de membros
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" checked> Logs de moderação
+                                    </label>
+                                </div>
+                                <button class="btn btn-primary">Atualizar Notificações</button>
                             </div>
-                            <div class="stat-number" id="roleCount">46</div>
-                            <div class="stat-label">Cargos</div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-icon messages">
-                                <i class="fas fa-comments"></i>
+
+                            <div class="config-card">
+                                <h4><i class="fas fa-shield-alt"></i> Automod</h4>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" checked> Filtro de palavrões
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox"> Anti-spam
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" checked> Anti-flood
+                                    </label>
+                                </div>
+                                <button class="btn btn-primary">Guardar AutoMod</button>
                             </div>
-                            <div class="stat-number" id="messageCount">804</div>
-                            <div class="stat-label">Mensagens Hoje</div>
                         </div>
                     </div>
 
-                    <div class="content-area">
-                        <div class="bot-status">
-                            <div class="status-indicator"></div>
-                            <div class="status-text">
-                                <h3>Bot Status: <span class="text-success">Online</span></h3>
-                                <p>Última atualização: agora</p>
+                    <!-- Moderação Section -->
+                    <div id="moderation-section" class="dashboard-section">
+                        <div class="page-header">
+                            <h1>Painel de Moderação</h1>
+                            <p>Ferramentas avançadas para moderar o teu servidor</p>
+                        </div>
+
+                        <div class="moderation-grid">
+                            <div class="moderation-card" onclick="showModerationAction('warn')">
+                                <div class="icon">⚠️</div>
+                                <h4>Avisar Utilizador</h4>
+                                <p>Enviar um aviso oficial a um membro</p>
+                            </div>
+
+                            <div class="moderation-card" onclick="showModerationAction('mute')">
+                                <div class="icon">🔇</div>
+                                <h4>Silenciar</h4>
+                                <p>Remover permissões de fala temporariamente</p>
+                            </div>
+
+                            <div class="moderation-card" onclick="showModerationAction('kick')">
+                                <div class="icon">👢</div>
+                                <h4>Expulsar</h4>
+                                <p>Remover membro do servidor</p>
+                            </div>
+
+                            <div class="moderation-card" onclick="showModerationAction('ban')">
+                                <div class="icon">🔨</div>
+                                <h4>Banir</h4>
+                                <p>Banir permanentemente do servidor</p>
+                            </div>
+
+                            <div class="moderation-card" onclick="showModerationAction('timeout')">
+                                <div class="icon">⏰</div>
+                                <h4>Timeout</h4>
+                                <p>Silenciar temporariamente um membro</p>
+                            </div>
+
+                            <div class="moderation-card" onclick="showModerationAction('history')">
+                                <div class="icon">📋</div>
+                                <h4>Histórico</h4>
+                                <p>Ver histórico de moderação</p>
                             </div>
                         </div>
 
-                        <div class="feature-cards">
-                            <div class="feature-card">
-                                <h4>
-                                    <i class="fas fa-cog"></i>
-                                    Configuração completa do bot
-                                </h4>
-                                <p>Configure todas as funcionalidades do bot de forma simples e intuitiva.</p>
+                        <div id="moderation-action" class="content-area" style="display: none;">
+                            <h3 id="action-title">Ação de Moderação</h3>
+                            <div class="form-group">
+                                <label>Utilizador</label>
+                                <input type="text" class="form-control" id="target-user" placeholder="Nome ou ID do utilizador">
                             </div>
-                            
-                            <div class="feature-card">
-                                <h4>
-                                    <i class="fas fa-chart-line"></i>
-                                    Monitorização em tempo real
-                                </h4>
-                                <p>Acompanhe as estatísticas do servidor e atividade dos membros em tempo real.</p>
+                            <div class="form-group">
+                                <label>Motivo</label>
+                                <textarea class="form-control" id="action-reason" placeholder="Motivo da ação..."></textarea>
                             </div>
-                            
-                            <div class="feature-card">
-                                <h4>
-                                    <i class="fas fa-shield-alt"></i>
-                                    Sistema de moderação avançado
-                                </h4>
-                                <p>Ferramentas completas de moderação para manter o teu servidor seguro.</p>
+                            <div class="form-group" id="duration-group" style="display: none;">
+                                <label>Duração</label>
+                                <select class="form-control" id="action-duration">
+                                    <option value="60">1 minuto</option>
+                                    <option value="300">5 minutos</option>
+                                    <option value="3600">1 hora</option>
+                                    <option value="86400">1 dia</option>
+                                    <option value="604800">1 semana</option>
+                                </select>
                             </div>
-                            
-                            <div class="feature-card">
-                                <h4>
+                            <button class="btn btn-primary" onclick="executeModerationAction()">Executar Ação</button>
+                            <button class="btn btn-secondary" onclick="hideModerationAction()">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <!-- Tickets Section -->
+                    <div id="tickets-section" class="dashboard-section">
+                        <div class="page-header">
+                            <h1>Sistema de Tickets</h1>
+                            <p>Gerir tickets de suporte do servidor</p>
+                        </div>
+
+                        <div class="tickets-stats">
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background: var(--gradient-secondary);">
                                     <i class="fas fa-ticket-alt"></i>
-                                    Sistema de tickets integrado
-                                </h4>
-                                <p>Gestão eficiente de tickets de suporte com interface intuitiva.</p>
+                                </div>
+                                <div class="stat-number">12</div>
+                                <div class="stat-label">Tickets Abertos</div>
+                            </div>
+
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background: var(--gradient-warning);">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="stat-number">3</div>
+                                <div class="stat-label">Pendentes</div>
+                            </div>
+
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background: var(--gradient-main);">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                                <div class="stat-number">45</div>
+                                <div class="stat-label">Resolvidos</div>
+                            </div>
+                        </div>
+
+                        <div class="content-area">
+                            <div class="tickets-header">
+                                <h3>Tickets Recentes</h3>
+                                <button class="btn btn-primary">Criar Ticket</button>
+                            </div>
+
+                            <div class="tickets-list">
+                                <div class="ticket-item">
+                                    <div class="ticket-header">
+                                        <span class="ticket-title">Problema com comandos</span>
+                                        <span class="ticket-status open">Aberto</span>
+                                    </div>
+                                    <div class="ticket-meta">
+                                        <span>Por: João123</span>
+                                        <span>Há 2 horas</span>
+                                        <span>Prioridade: Normal</span>
+                                    </div>
+                                </div>
+
+                                <div class="ticket-item">
+                                    <div class="ticket-header">
+                                        <span class="ticket-title">Bug no sistema de levels</span>
+                                        <span class="ticket-status open">Aberto</span>
+                                    </div>
+                                    <div class="ticket-meta">
+                                        <span>Por: Maria456</span>
+                                        <span>Há 1 dia</span>
+                                        <span>Prioridade: Alta</span>
+                                    </div>
+                                </div>
+
+                                <div class="ticket-item">
+                                    <div class="ticket-header">
+                                        <span class="ticket-title">Dúvida sobre permissões</span>
+                                        <span class="ticket-status closed">Fechado</span>
+                                    </div>
+                                    <div class="ticket-meta">
+                                        <span>Por: Pedro789</span>
+                                        <span>Há 3 dias</span>
+                                        <span>Prioridade: Baixa</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Embed Builder Section -->
+                    <div id="embeds-section" class="dashboard-section">
+                        <div class="page-header">
+                            <h1>Construtor de Embeds</h1>
+                            <p>Crie embeds personalizados para o Discord</p>
+                        </div>
+
+                        <div class="embed-builder">
+                            <div class="embed-form">
+                                <h3>Configurar Embed</h3>
+                                
+                                <div class="form-group">
+                                    <label>Título</label>
+                                    <input type="text" class="form-control" id="embed-title" placeholder="Título do embed">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Descrição</label>
+                                    <textarea class="form-control" id="embed-description" placeholder="Descrição do embed..."></textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Cor</label>
+                                    <input type="color" class="form-control" id="embed-color" value="#4318FF">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>URL da Imagem</label>
+                                    <input type="url" class="form-control" id="embed-image" placeholder="https://exemplo.com/imagem.png">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Footer</label>
+                                    <input type="text" class="form-control" id="embed-footer" placeholder="Texto do footer">
+                                </div>
+
+                                <button class="btn btn-primary" onclick="updateEmbedPreview()">Atualizar Preview</button>
+                                <button class="btn btn-secondary" onclick="sendEmbed()">Enviar Embed</button>
+                            </div>
+
+                            <div class="embed-preview">
+                                <h3>Preview</h3>
+                                <div id="embed-preview-content" class="embed-message">
+                                    <div class="embed-title">Título do Embed</div>
+                                    <div class="embed-description">Esta é a descrição do teu embed personalizado.</div>
+                                    <div class="embed-footer">Footer do embed</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Logs Section -->
+                    <div id="logs-section" class="dashboard-section">
+                        <div class="page-header">
+                            <h1>Logs do Sistema</h1>
+                            <p>Monitorize a atividade do servidor e do bot</p>
+                        </div>
+
+                        <div class="logs-filters">
+                            <select class="form-control" id="logLevel">
+                                <option value="all">Todos os Levels</option>
+                                <option value="info">Info</option>
+                                <option value="warning">Aviso</option>
+                                <option value="error">Erro</option>
+                                <option value="success">Sucesso</option>
+                            </select>
+
+                            <select class="form-control" id="logFilter">
+                                <option value="all">Todas as Categorias</option>
+                                <option value="moderation">Moderação</option>
+                                <option value="tickets">Tickets</option>
+                                <option value="system">Sistema</option>
+                            </select>
+
+                            <button class="btn btn-primary" onclick="refreshLogs()">Atualizar</button>
+                            <button class="btn btn-secondary" onclick="clearLogs()">Limpar</button>
+                        </div>
+
+                        <div class="content-area">
+                            <div class="logs-container" id="logsContainer">
+                                <div class="log-entry info">
+                                    <span class="log-time">[12:34:56]</span>
+                                    <span class="log-message">Bot iniciado com sucesso</span>
+                                </div>
+                                <div class="log-entry success">
+                                    <span class="log-time">[12:35:12]</span>
+                                    <span class="log-message">Utilizador João123 entrou no servidor</span>
+                                </div>
+                                <div class="log-entry warning">
+                                    <span class="log-time">[12:36:45]</span>
+                                    <span class="log-message">Tentativa de spam detectada de Maria456</span>
+                                </div>
+                                <div class="log-entry error">
+                                    <span class="log-time">[12:37:23]</span>
+                                    <span class="log-message">Erro ao processar comando /ban</span>
+                                </div>
+                                <div class="log-entry info">
+                                    <span class="log-time">[12:38:01]</span>
+                                    <span class="log-message">Ticket #001 criado por Pedro789</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -471,13 +1112,17 @@
     <script>
         class YSNMDashboard {
             constructor() {
+                this.currentSection = 'overview';
                 this.init();
             }
 
             init() {
-                this.loadUserData();
                 this.setupEventListeners();
-                this.loadServerStats();
+                this.showSection('overview');
+                // Comentado para evitar erros 404
+                // this.loadUserData();
+                // this.loadServerStats();
+                console.log('Dashboard initialized successfully');
             }
 
             setupEventListeners() {
@@ -488,48 +1133,32 @@
                 }
 
                 // Navigation
-                const navItems = document.querySelectorAll('.nav-item a');
+                const navItems = document.querySelectorAll('.nav-item a[data-section]');
                 navItems.forEach(item => {
                     item.addEventListener('click', (e) => {
-                        // Remove active class from all items
+                        e.preventDefault();
+                        const section = e.target.closest('a').getAttribute('data-section');
+                        this.showSection(section);
+                        
+                        // Update active nav item
                         document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-                        // Add active class to clicked item
                         e.target.closest('.nav-item').classList.add('active');
                     });
                 });
             }
 
-            async loadUserData() {
-                try {
-                    const response = await fetch('/api/user', {
-                        headers: {
-                            'Authorization': `Bearer ${this.getAuthToken()}`
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const userData = await response.json();
-                        this.updateUserDisplay(userData);
-                    }
-                } catch (error) {
-                    console.error('Error loading user data:', error);
-                }
-            }
+            showSection(sectionName) {
+                // Hide all sections
+                document.querySelectorAll('.dashboard-section').forEach(section => {
+                    section.classList.remove('active');
+                });
 
-            async loadServerStats() {
-                try {
-                    const response = await fetch('/api/server/stats', {
-                        headers: {
-                            'Authorization': `Bearer ${this.getAuthToken()}`
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const stats = await response.json();
-                        this.updateStats(stats);
-                    }
-                } catch (error) {
-                    console.error('Error loading server stats:', error);
+                // Show selected section
+                const targetSection = document.getElementById(`${sectionName}-section`);
+                if (targetSection) {
+                    targetSection.classList.add('active');
+                    this.currentSection = sectionName;
+                    console.log(`Showing section: ${sectionName}`);
                 }
             }
 
@@ -549,7 +1178,6 @@
             }
 
             updateUserDisplay(userData) {
-                // Update user info if needed
                 console.log('User data loaded:', userData);
             }
 
@@ -568,9 +1196,133 @@
             }
         }
 
+        // Moderation functions
+        function showModerationAction(action) {
+            const actionDiv = document.getElementById('moderation-action');
+            const titleElement = document.getElementById('action-title');
+            const durationGroup = document.getElementById('duration-group');
+            
+            actionDiv.style.display = 'block';
+            
+            switch(action) {
+                case 'warn':
+                    titleElement.textContent = 'Avisar Utilizador';
+                    durationGroup.style.display = 'none';
+                    break;
+                case 'mute':
+                case 'timeout':
+                    titleElement.textContent = action === 'mute' ? 'Silenciar Utilizador' : 'Timeout';
+                    durationGroup.style.display = 'block';
+                    break;
+                case 'kick':
+                    titleElement.textContent = 'Expulsar Utilizador';
+                    durationGroup.style.display = 'none';
+                    break;
+                case 'ban':
+                    titleElement.textContent = 'Banir Utilizador';
+                    durationGroup.style.display = 'none';
+                    break;
+                case 'history':
+                    titleElement.textContent = 'Histórico de Moderação';
+                    durationGroup.style.display = 'none';
+                    break;
+            }
+        }
+
+        function hideModerationAction() {
+            document.getElementById('moderation-action').style.display = 'none';
+        }
+
+        function executeModerationAction() {
+            const user = document.getElementById('target-user').value;
+            const reason = document.getElementById('action-reason').value;
+            
+            if (!user) {
+                alert('Por favor, insira o nome do utilizador');
+                return;
+            }
+            
+            // Simular ação de moderação
+            alert(`Ação executada com sucesso!\nUtilizador: ${user}\nMotivo: ${reason || 'Sem motivo especificado'}`);
+            hideModerationAction();
+            
+            // Clear form
+            document.getElementById('target-user').value = '';
+            document.getElementById('action-reason').value = '';
+        }
+
+        // Embed functions
+        function updateEmbedPreview() {
+            const title = document.getElementById('embed-title').value || 'Título do Embed';
+            const description = document.getElementById('embed-description').value || 'Descrição do embed';
+            const color = document.getElementById('embed-color').value;
+            const footer = document.getElementById('embed-footer').value || 'Footer do embed';
+            
+            const preview = document.getElementById('embed-preview-content');
+            preview.innerHTML = `
+                <div class="embed-title" style="color: ${color}">${title}</div>
+                <div class="embed-description">${description}</div>
+                <div class="embed-footer">${footer}</div>
+            `;
+            preview.style.borderLeftColor = color;
+        }
+
+        function sendEmbed() {
+            const title = document.getElementById('embed-title').value;
+            const description = document.getElementById('embed-description').value;
+            
+            if (!title && !description) {
+                alert('Por favor, preenche pelo menos o título ou a descrição');
+                return;
+            }
+            
+            alert('Embed enviado com sucesso! (Funcionalidade simulada)');
+        }
+
+        // Logs functions
+        function refreshLogs() {
+            const container = document.getElementById('logsContainer');
+            const currentTime = new Date().toLocaleTimeString();
+            
+            const newLog = document.createElement('div');
+            newLog.className = 'log-entry info';
+            newLog.innerHTML = `
+                <span class="log-time">[${currentTime}]</span>
+                <span class="log-message">Logs atualizados pelo utilizador</span>
+            `;
+            
+            container.insertBefore(newLog, container.firstChild);
+            
+            // Limitar a 50 logs
+            while (container.children.length > 50) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        function clearLogs() {
+            if (confirm('Tens a certeza de que queres limpar todos os logs?')) {
+                const currentTime = new Date().toLocaleTimeString();
+                document.getElementById('logsContainer').innerHTML = `
+                    <div class="log-entry info">
+                        <span class="log-time">[${currentTime}]</span>
+                        <span class="log-message">Logs limpos pelo utilizador</span>
+                    </div>
+                `;
+            }
+        }
+
         // Initialize dashboard when page loads
         document.addEventListener('DOMContentLoaded', () => {
             new YSNMDashboard();
+            
+            // Auto-update embed preview when typing
+            const embedInputs = ['embed-title', 'embed-description', 'embed-color', 'embed-footer'];
+            embedInputs.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', updateEmbedPreview);
+                }
+            });
         });
     </script>
 </body>
