@@ -59,6 +59,7 @@ module.exports = {
 
         // Sistema de Status - Botões interativos
         else if (interaction.isButton()) {
+            console.log(`🔍 BOTÃO DETECTADO: ID = "${interaction.customId}"`);
             const { customId } = interaction;
             
             // Botão de verificação
@@ -249,6 +250,189 @@ module.exports = {
                     }
                 }
             }
+            
+            // Handler para botões de criação de tickets do painel
+            if (interaction.customId.startsWith('ticket_create_')) {
+                console.log(`🎫 Handler de ticket ativado: ${interaction.customId}`);
+                const tipo = interaction.customId.split('_')[2];
+                console.log(`🎫 Tipo de ticket: ${tipo}`);
+                
+                try {
+                    console.log(`🎫 Inicializando verificação de tickets existentes...`);
+                    // Verificar se o usuário já tem um ticket aberto
+                    const Database = require('../website/database/database');
+                    const db = new Database();
+                    await db.initialize();
+                    console.log(`🎫 Database inicializada`);
+                    
+                    const userTickets = await db.getTickets(interaction.guild.id);
+                    console.log(`🎫 Tickets do usuário verificados: ${userTickets.length} encontrados`);
+                    const openTicket = userTickets.find(ticket => 
+                        ticket.user_id === interaction.user.id && 
+                        (ticket.status === 'open' || ticket.status === 'assigned')
+                    );
+                    
+                    if (openTicket) {
+                        console.log(`🎫 Usuário já tem ticket aberto: ${openTicket.channel_id}`);
+                        return await interaction.reply({
+                            content: `❌ Já tens um ticket aberto: <#${openTicket.channel_id}>
+                            
+Por favor fecha o ticket atual antes de criar um novo.`,
+                            ephemeral: true
+                        });
+                    }
+                    
+                    console.log(`🎫 Criando modal para tipo: ${tipo}`);
+                    // Criar modal para detalhes do ticket
+                    const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+                    
+                    const modal = new ModalBuilder()
+                        .setCustomId(`ticket_panel_modal_${tipo}`)
+                        .setTitle(`🎫 ${getTipoEmoji(tipo)} ${getTipoNome(tipo)}`);
+
+                    const subjectInput = new TextInputBuilder()
+                        .setCustomId('ticket_subject')
+                        .setLabel('Assunto do Ticket')
+                        .setStyle(TextInputStyle.Short)
+                        .setMinLength(5)
+                        .setMaxLength(100)
+                        .setPlaceholder(`Descreve brevemente o teu ${tipo}...`)
+                        .setRequired(true);
+
+                    const descriptionInput = new TextInputBuilder()
+                        .setCustomId('ticket_description')
+                        .setLabel('Descrição Detalhada')
+                        .setStyle(TextInputStyle.Paragraph)
+                        .setMinLength(10)
+                        .setMaxLength(1000)
+                        .setPlaceholder(getPlaceholderByType(tipo))
+                        .setRequired(true);
+
+                    const row1 = new ActionRowBuilder().addComponents(subjectInput);
+                    const row2 = new ActionRowBuilder().addComponents(descriptionInput);
+
+                    modal.addComponents(row1, row2);
+
+                    console.log(`🎫 Modal criado, mostrando para usuário...`);
+                    await interaction.showModal(modal);
+                    console.log(`🎫 Modal mostrado com sucesso!`);
+
+                } catch (error) {
+                    console.error('❌ Erro ao processar botão do painel:', error);
+                    
+                    // Apenas responder se a interação ainda não foi processada
+                    if (!interaction.replied && !interaction.deferred) {
+                        try {
+                            await interaction.reply({
+                                content: '❌ Erro ao processar pedido. Tenta novamente.',
+                                ephemeral: true
+                            });
+                        } catch (replyError) {
+                            console.error('❌ Erro ao responder:', replyError);
+                        }
+                    }
+                }
+            }
+            
+            // Handler para botões de assumir/fechar tickets
+            if (interaction.customId.startsWith('ticket_assign_') || interaction.customId.startsWith('ticket_close_')) {
+                console.log(`🎫 BOTÃO DE TICKET DETECTADO: ${interaction.customId}`);
+                
+                try {
+                    const Database = require('../website/database/database');
+                    const db = new Database();
+                    await db.initialize();
+                    
+                    if (interaction.customId.startsWith('ticket_assign_')) {
+                        const ticketId = interaction.customId.split('_')[2];
+                        const userId = interaction.user.id;
+                        const username = interaction.user.username;
+                        
+                        // Verificar se o usuário tem permissão
+                        if (!interaction.member.permissions.has('ManageMessages')) {
+                            return await interaction.reply({
+                                content: '❌ Não tens permissão para atribuir tickets.',
+                                ephemeral: true
+                            });
+                        }
+                        
+                        // Atualizar ticket na base de dados
+                        await db.updateTicketStatus(ticketId, 'assigned', userId);
+                        
+                        // Criar embed de atribuição
+                        const { EmbedBuilder } = require('discord.js');
+                        const assignEmbed = new EmbedBuilder()
+                            .setColor(0xFFAA00)
+                            .setTitle('👋 Ticket Atribuído')
+                            .setDescription(`Ticket foi atribuído para <@${userId}>`)
+                            .addFields(
+                                { name: '🎫 Ticket', value: `#${ticketId}`, inline: true },
+                                { name: '👤 Atribuído para', value: username, inline: true },
+                                { name: '🕒 Data', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+                            )
+                            .setFooter({ text: 'Sistema de Tickets YSNM' })
+                            .setTimestamp();
+
+                        await interaction.reply({ embeds: [assignEmbed] });
+                        
+                        console.log(`✅ Ticket ${ticketId} atribuído para ${username}`);
+                        
+                    } else if (interaction.customId.startsWith('ticket_close_')) {
+                        const ticketId = interaction.customId.split('_')[2];
+                        
+                        // Verificar se o usuário tem permissão
+                        if (!interaction.member.permissions.has('ManageMessages')) {
+                            return await interaction.reply({
+                                content: '❌ Não tens permissão para fechar tickets.',
+                                ephemeral: true
+                            });
+                        }
+                        
+                        // Criar modal para motivo de fechamento
+                        const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+                        
+                        const modal = new ModalBuilder()
+                            .setCustomId(`ticket_close_modal_${ticketId}`)
+                            .setTitle('🔒 Fechar Ticket');
+
+                        const reasonInput = new TextInputBuilder()
+                            .setCustomId('close_reason')
+                            .setLabel('Motivo do Fechamento')
+                            .setStyle(TextInputStyle.Paragraph)
+                            .setMinLength(5)
+                            .setMaxLength(500)
+                            .setPlaceholder('Explica o motivo pelo qual estás a fechar este ticket...')
+                            .setRequired(true);
+
+                        const choiceInput = new TextInputBuilder()
+                            .setCustomId('close_choice')
+                            .setLabel('Ação: arquivar ou deletar')
+                            .setStyle(TextInputStyle.Short)
+                            .setMinLength(6)
+                            .setMaxLength(8)
+                            .setPlaceholder('arquivar ou deletar')
+                            .setRequired(true);
+
+                        const row1 = new ActionRowBuilder().addComponents(reasonInput);
+                        const row2 = new ActionRowBuilder().addComponents(choiceInput);
+
+                        modal.addComponents(row1, row2);
+                        await interaction.showModal(modal);
+                        
+                        console.log(`🔒 Modal de fechamento mostrado para ticket ${ticketId}`);
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Erro ao processar botão de ticket:', error);
+                    
+                    if (!interaction.replied && !interaction.deferred) {
+                        await interaction.reply({
+                            content: '❌ Erro ao processar ação. Tenta novamente.',
+                            ephemeral: true
+                        });
+                    }
+                }
+            }
         }
 
         // Select menu para pedidos de tags
@@ -298,6 +482,8 @@ module.exports = {
 
         // Processamento de modais
         else if (interaction.isModalSubmit()) {
+            console.log(`🔍 MODAL DETECTADO: ID = "${interaction.customId}"`);
+            
             if (interaction.customId.startsWith('tag_modal_')) {
                 const tagType = interaction.customId.replace('tag_modal_', '');
                 const reason = interaction.fields.getTextInputValue('tag_reason');
@@ -357,6 +543,236 @@ module.exports = {
                         content: '❌ Canal de pedidos não encontrado! Contacta um administrador.',
                         ephemeral: true
                     });
+                }
+            }
+            
+            // Handler para modal de fechamento de ticket
+            if (interaction.customId.startsWith('ticket_close_modal_')) {
+                try {
+                    const ticketId = interaction.customId.split('_')[3];
+                    const reason = interaction.fields.getTextInputValue('close_reason');
+                    const choice = interaction.fields.getTextInputValue('close_choice').toLowerCase();
+                    const userId = interaction.user.id;
+                    const username = interaction.user.username;
+                    
+                    console.log(`🔍 Modal valores recebidos: ticketId=${ticketId}, choice="${choice}", reason="${reason}"`);
+                    
+                    await interaction.deferReply();
+                    
+                    const Database = require('../website/database/database');
+                    const db = new Database();
+                    await db.initialize();
+                    
+                    // Atualizar ticket na base de dados
+                    await db.updateTicketStatus(ticketId, 'closed', userId, reason);
+                    
+                    // Verificar se deve arquivar
+                    const shouldArchive = choice === 'arquivar';
+                    
+                    // Criar embed de fechamento
+                    const closeEmbed = new EmbedBuilder()
+                        .setColor(0xFF0000)
+                        .setTitle('🔒 Ticket Fechado')
+                        .setDescription(shouldArchive ? 
+                            'Este ticket será arquivado no servidor de logs e deletado em 5 segundos.' : 
+                            'Este ticket será **deletado permanentemente** em 5 segundos.')
+                        .addFields(
+                            { name: '🎫 Ticket', value: `#${ticketId}`, inline: true },
+                            { name: '👤 Fechado por', value: username, inline: true },
+                            { name: '📁 Arquivar', value: shouldArchive ? '✅ Sim' : '❌ Não', inline: true },
+                            { name: '📝 Motivo', value: reason, inline: false },
+                            { name: '🕒 Data', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
+                        )
+                        .setFooter({ text: 'Sistema de Tickets YSNM' })
+                        .setTimestamp();
+                    
+                    await interaction.editReply({
+                        embeds: [closeEmbed]
+                    });
+                    
+                    if (shouldArchive) {
+                        // Arquivar canal no servidor de logs após 5 segundos
+                        setTimeout(async () => {
+                            try {
+                                await archiveTicketToLogServer(interaction, ticketId, reason);
+                            } catch (archiveError) {
+                                console.error('Erro ao arquivar ticket:', archiveError);
+                            }
+                        }, 5000);
+                    } else {
+                        // Deletar canal após 5 segundos (sem arquivar)
+                        setTimeout(async () => {
+                            try {
+                                console.log(`🗑️ Deletando permanentemente ticket #${ticketId} (${interaction.channel.name}) por ${interaction.user.tag}`);
+                                await interaction.channel.delete(`Ticket #${ticketId} deletado permanentemente por ${interaction.user.tag}`);
+                            } catch (error) {
+                                console.error('Erro ao deletar ticket:', error);
+                            }
+                        }, 5000);
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao processar modal de fechamento:', error);
+                    await interaction.reply({
+                        content: '❌ Erro ao processar fechamento do ticket.',
+                        ephemeral: true
+                    });
+                }
+            }
+            
+            // Handler para modais do painel de tickets
+            if (interaction.customId.startsWith('ticket_panel_modal_')) {
+                console.log('🎫 MODAL DE TICKET DETECTADO:', interaction.customId);
+                console.log('🎫 Processando modal de ticket:', interaction.customId);
+                
+                const [, , , tipo] = interaction.customId.split('_');
+                const subject = interaction.fields.getTextInputValue('ticket_subject');
+                const description = interaction.fields.getTextInputValue('ticket_description');
+                
+                console.log('📋 Dados do ticket:', { tipo, subject, description });
+                
+                try {
+                    await interaction.deferReply({ ephemeral: true });
+                    
+                    // Buscar categoria de tickets (ou criar se não existir)
+                    let ticketCategory = interaction.guild.channels.cache.find(
+                        channel => channel.type === 4 && channel.name.toLowerCase() === 'tickets'
+                    );
+                    
+                    if (!ticketCategory) {
+                        console.log('📁 Criando categoria de tickets...');
+                        ticketCategory = await interaction.guild.channels.create({
+                            name: 'Tickets',
+                            type: 4, // Category
+                            permissionOverwrites: [
+                                {
+                                    id: interaction.guild.roles.everyone,
+                                    deny: ['ViewChannel']
+                                }
+                            ]
+                        });
+                    }
+                    
+                    // Criar canal do ticket
+                    const ticketChannelName = `ticket-${interaction.user.username}-${Date.now().toString().slice(-6)}`;
+                    console.log('🎫 Criando canal:', ticketChannelName);
+                    
+                    const ticketChannel = await interaction.guild.channels.create({
+                        name: ticketChannelName,
+                        type: 0, // Text channel
+                        parent: ticketCategory.id,
+                        permissionOverwrites: [
+                            {
+                                id: interaction.guild.roles.everyone,
+                                deny: ['ViewChannel']
+                            },
+                            {
+                                id: interaction.user.id,
+                                allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AttachFiles']
+                            },
+                            // Permitir que moderadores vejam
+                            ...interaction.guild.roles.cache
+                                .filter(role => role.permissions.has('ManageMessages'))
+                                .map(role => ({
+                                    id: role.id,
+                                    allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'ManageMessages']
+                                }))
+                        ]
+                    });
+                    
+                    // Criar ticket na base de dados
+                    const Database = require('../website/database/database');
+                    const db = new Database();
+                    await db.initialize();
+                    
+                    const ticketData = {
+                        guild_id: interaction.guild.id,
+                        channel_id: ticketChannel.id,
+                        user_id: interaction.user.id,
+                        category: tipo,
+                        subject: subject,
+                        description: description,
+                        priority: 'medium'
+                    };
+                    
+                    const ticketResult = await db.createTicket(ticketData);
+                    
+                    // Criar embed informativo
+                    const { EmbedBuilder, ActionRowBuilder } = require('discord.js');
+                    
+                    const embed = new EmbedBuilder()
+                        .setColor('#9932CC')
+                        .setTitle(`🎫 Ticket #${ticketResult.id}`)
+                        .setThumbnail(interaction.user.displayAvatarURL())
+                        .addFields(
+                            { name: '� Assunto', value: subject, inline: true },
+                            { name: '🏷️ Tipo', value: `${getTipoEmoji(tipo)} ${getTipoNome(tipo)}`, inline: true },
+                            { name: '⚡ Prioridade', value: `🟡 MEDIUM`, inline: true },
+                            { name: '📄 Descrição', value: description.length > 500 ? description.substring(0, 500) + '...' : description, inline: false },
+                            { name: '👤 Criado por', value: `<@${interaction.user.id}>`, inline: true },
+                            { name: '🕒 Data', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+                        )
+                        .setFooter({ text: 'Sistema de Tickets YSNM', iconURL: interaction.guild.iconURL() })
+                        .setTimestamp();
+                    
+                    const assignButton = new ButtonBuilder()
+                        .setCustomId(`ticket_assign_${ticketResult.id}`)
+                        .setLabel('Atribuir-me')
+                        .setStyle(ButtonStyle.Success)
+                        .setEmoji('👤');
+                    
+                    const closeButton = new ButtonBuilder()
+                        .setCustomId(`ticket_close_${ticketResult.id}`)
+                        .setLabel('Fechar Ticket')
+                        .setStyle(ButtonStyle.Danger)
+                        .setEmoji('🔒');
+                    
+                    // Criar botões de ação
+                    const actionRow = new ActionRowBuilder()
+                        .addComponents(assignButton, closeButton);
+                    
+                    // Enviar mensagem no canal do ticket
+                    await ticketChannel.send({
+                                style: 3,
+                                label: 'Atribuir-me',
+                                custom_id: `ticket_assign_${ticketResult.id}`,
+                                emoji: { name: '�' }
+                            },
+                            {
+                                type: 2,
+                                style: 4,
+                                label: 'Fechar Ticket',
+                                custom_id: `ticket_close_${ticketResult.id}`,
+                                emoji: { name: '🔒' }
+                            }
+                        );
+                    
+                    // Enviar mensagem no canal do ticket
+                    await ticketChannel.send({
+                        content: `Olá ${interaction.user}! 👋\n\n**O teu ticket foi criado com sucesso.**\nA nossa equipa de suporte irá responder em breve.\n\n**📋 Staff:** Utilizem os botões abaixo para gerir este ticket.`,
+                        embeds: [embed],
+                        components: [actionRow]
+                    });
+                    
+                    // Responder ao usuário
+                    await interaction.editReply({
+                        content: `✅ **Ticket criado com sucesso!**\n\nO teu ticket foi criado em ${ticketChannel}.\nPor favor, aguarda que a nossa equipa responda.`
+                    });
+                    
+                    console.log(`✅ Ticket criado: ${ticketChannelName} por ${interaction.user.tag}`);
+                    
+                } catch (error) {
+                    console.error('❌ Erro ao criar ticket:', error);
+                    
+                    if (!interaction.replied && !interaction.deferred) {
+                        await interaction.reply({
+                            content: '❌ Erro ao criar ticket. Tenta novamente.',
+                            ephemeral: true
+                        });
+                    } else {
+                        await interaction.editReply({
+                            content: '❌ Erro ao criar ticket. Tenta novamente.'
+                        });
+                    }
                 }
             }
         }
@@ -454,125 +870,6 @@ module.exports = {
             }
         }
         
-        // Handler para botões de criação de tickets do painel
-        else if (interaction.isButton() && interaction.customId.startsWith('ticket_create_')) {
-            console.log(`🎫 Handler de ticket ativado: ${interaction.customId}`);
-            const tipo = interaction.customId.split('_')[2];
-            console.log(`🎫 Tipo de ticket: ${tipo}`);
-            
-            try {
-                console.log(`🎫 Inicializando verificação de tickets existentes...`);
-                // Verificar se o usuário já tem um ticket aberto
-                const Database = require('../website/database/database');
-                const db = new Database();
-                await db.initialize();
-                console.log(`🎫 Database inicializada`);
-                
-                const userTickets = await db.getTickets(interaction.guild.id);
-                console.log(`🎫 Tickets do usuário verificados: ${userTickets.length} encontrados`);
-                const openTicket = userTickets.find(ticket => 
-                    ticket.user_id === interaction.user.id && 
-                    (ticket.status === 'open' || ticket.status === 'assigned')
-                );
-                
-                if (openTicket) {
-                    console.log(`🎫 Usuário já tem ticket aberto: ${openTicket.channel_id}`);
-                    return await interaction.reply({
-                        content: `❌ Já tens um ticket aberto: <#${openTicket.channel_id}>
-                        
-Por favor fecha o ticket atual antes de criar um novo.`,
-                        ephemeral: true
-                    });
-                }
-                
-                console.log(`🎫 Criando modal para tipo: ${tipo}`);
-                // Criar modal para detalhes do ticket
-                const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
-                
-                const modal = new ModalBuilder()
-                    .setCustomId(`ticket_panel_modal_${tipo}`)
-                    .setTitle(`🎫 ${getTipoEmoji(tipo)} ${getTipoNome(tipo)}`);
-
-                const subjectInput = new TextInputBuilder()
-                    .setCustomId('ticket_subject')
-                    .setLabel('Assunto do Ticket')
-                    .setStyle(TextInputStyle.Short)
-                    .setMinLength(5)
-                    .setMaxLength(100)
-                    .setPlaceholder(`Descreve brevemente o teu ${tipo}...`)
-                    .setRequired(true);
-
-                const descriptionInput = new TextInputBuilder()
-                    .setCustomId('ticket_description')
-                    .setLabel('Descrição Detalhada')
-                    .setStyle(TextInputStyle.Paragraph)
-                    .setMinLength(10)
-                    .setMaxLength(1000)
-                    .setPlaceholder(getPlaceholderByType(tipo))
-                    .setRequired(true);
-
-                const row1 = new ActionRowBuilder().addComponents(subjectInput);
-                const row2 = new ActionRowBuilder().addComponents(descriptionInput);
-
-                modal.addComponents(row1, row2);
-
-                console.log(`🎫 Modal criado, mostrando para usuário...`);
-                await interaction.showModal(modal);
-                console.log(`🎫 Modal mostrado com sucesso!`);
-
-            } catch (error) {
-                console.error('❌ Erro ao processar botão do painel:', error);
-                
-                // Apenas responder se a interação ainda não foi processada
-                if (!interaction.replied && !interaction.deferred) {
-                    try {
-                        await interaction.reply({
-                            content: '❌ Erro ao processar pedido. Tenta novamente.',
-                            ephemeral: true
-                        });
-                    } catch (replyError) {
-                        console.error('❌ Erro ao responder:', replyError);
-                    }
-                }
-            }
-        }
-        
-        // Handler para modais do painel de tickets
-        else if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_panel_modal_')) {
-            console.log('🎫 Processando modal de ticket:', interaction.customId);
-            
-            const [, , , tipo] = interaction.customId.split('_');
-            const subject = interaction.fields.getTextInputValue('ticket_subject');
-            const description = interaction.fields.getTextInputValue('ticket_description');
-            
-            console.log('📋 Dados do ticket:', { tipo, subject, description });
-            
-            try {
-                await interaction.deferReply({ ephemeral: true });
-                
-                // Criar ticket usando implementação direta
-                await createTicketDirect(interaction, tipo, subject, description, 'normal');
-                
-            } catch (error) {
-                console.error('❌ Erro ao processar modal do painel:', error);
-                
-                try {
-                    if (interaction.deferred) {
-                        await interaction.editReply({
-                            content: '❌ Erro ao criar ticket. Tenta novamente ou contacta um administrador.'
-                        });
-                    } else {
-                        await interaction.reply({
-                            content: '❌ Erro ao criar ticket. Tenta novamente ou contacta um administrador.',
-                            ephemeral: true
-                        });
-                    }
-                } catch (replyError) {
-                    console.error('❌ Erro ao responder interação:', replyError);
-                }
-            }
-        }
-        
         // Handler para botões de tickets
         else if (interaction.isButton() && (interaction.customId.startsWith('ticket_assign_') || interaction.customId.startsWith('ticket_close_'))) {
             try {
@@ -664,95 +961,6 @@ Por favor fecha o ticket atual antes de criar um novo.`,
                     await interaction.reply({
                         content: '❌ Erro ao processar ação do ticket.',
                         ephemeral: true
-                    });
-                }
-            }
-        }
-        
-        // Handler para modal de fechamento de ticket
-        else if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_close_modal_')) {
-            try {
-                const ticketId = interaction.customId.split('_')[3];
-                const reason = interaction.fields.getTextInputValue('close_reason');
-                const archiveOption = interaction.fields.getTextInputValue('archive_option').toLowerCase();
-                const userId = interaction.user.id;
-                const username = interaction.user.username;
-                
-                await interaction.deferReply();
-                
-                const Database = require('../website/database/database');
-                const db = new Database();
-                await db.initialize();
-                
-                // Atualizar ticket na base de dados
-                await db.updateTicketStatus(ticketId, 'closed', userId, reason);
-                
-                // Verificar se deve arquivar
-                const shouldArchive = archiveOption === 'sim' || archiveOption === 's' || archiveOption === 'yes' || archiveOption === 'y';
-                
-                // Criar embed de fechamento
-                const closeEmbed = new EmbedBuilder()
-                    .setColor(0xFF0000)
-                    .setTitle('🔒 Ticket Fechado')
-                    .setDescription(shouldArchive ? 
-                        'Este ticket será arquivado no servidor de logs em 10 segundos.' : 
-                        'Este ticket será **eliminado permanentemente** em 10 segundos.')
-                    .addFields(
-                        { name: '🎫 Ticket', value: `#${ticketId}`, inline: true },
-                        { name: '👤 Fechado por', value: username, inline: true },
-                        { name: '� Arquivar', value: shouldArchive ? '✅ Sim' : '❌ Não', inline: true },
-                        { name: '�📝 Motivo', value: reason, inline: false },
-                        { name: '🕒 Data', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
-                    )
-                    .setFooter({ text: 'Sistema de Tickets YSNM' })
-                    .setTimestamp();
-                
-                await interaction.editReply({
-                    embeds: [closeEmbed]
-                });
-                
-                if (shouldArchive) {
-                    // Arquivar canal após 5 segundos
-                    setTimeout(async () => {
-                        try {
-                            await archiveTicket(interaction, ticketId);
-                        } catch (archiveError) {
-                            console.error('Erro ao arquivar ticket:', archiveError);
-                        }
-                    }, 5000);
-                } else {
-                    // Apenas renomear o canal para indicar que está fechado
-                    try {
-                        const newName = `fechado-${interaction.channel.name.replace('ticket-', '')}`;
-                        await interaction.channel.setName(newName);
-                        
-                        // Remover permissões do usuário original (exceto se for staff)
-                        const ticketOwnerId = interaction.channel.topic?.match(/User: (\d+)/)?.[1];
-                        if (ticketOwnerId) {
-                            const member = interaction.guild.members.cache.get(ticketOwnerId);
-                            if (member && !member.permissions.has('ManageMessages')) {
-                                await interaction.channel.permissionOverwrites.delete(ticketOwnerId);
-                            }
-                        }
-                        
-                        console.log(`� Ticket #${ticketId} fechado (não arquivado) como ${newName}`);
-                    } catch (error) {
-                        console.error('Erro ao renomear ticket fechado:', error);
-                    }
-                }
-                
-                console.log(`✅ Ticket #${ticketId} fechado por ${username} (${shouldArchive ? 'Arquivar' : 'Deletar'})`);
-                
-            } catch (error) {
-                console.error('❌ Erro ao fechar ticket:', error);
-                if (!interaction.replied && !interaction.deferred) {
-                    await interaction.reply({
-                        content: '❌ Erro ao fechar ticket.',
-                        ephemeral: true
-                    });
-                } else {
-                    await interaction.editReply({
-                        content: '❌ Erro ao fechar ticket.'
                     });
                 }
             }

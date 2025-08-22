@@ -8,6 +8,8 @@
     "dev": "nodemon index.js",
     "deploy": "node deploy-commands.js",
     "register": "node register-commands.js",
+    "restart": "taskkill /f /im node.exe >nul 2>&1 & timeout /t 2 /nobreak >nul & node index.js",
+    "clean-start": "restart-bot.bat",
     "test": "echo \"✅ No tests specified\" && exit 0"
   },
   "repository": {
