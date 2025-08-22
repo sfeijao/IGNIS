@@ -96,15 +96,20 @@ Os utilizadores agora podem clicar nos botões para criar tickets automaticament
         } catch (error) {
             console.error('❌ Erro ao criar painel de tickets:', error);
             
-            if (!interaction.replied && !interaction.deferred) {
-                await interaction.reply({
-                    content: '❌ Erro ao criar painel de tickets.',
-                    ephemeral: true
-                });
-            } else {
-                await interaction.editReply({
-                    content: '❌ Erro ao criar painel de tickets.'
-                });
+            // Verifica se a interação ainda pode ser respondida
+            try {
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({
+                        content: '❌ Erro ao criar painel de tickets.',
+                        ephemeral: true
+                    });
+                } else if (interaction.deferred) {
+                    await interaction.editReply({
+                        content: '❌ Erro ao criar painel de tickets.'
+                    });
+                }
+            } catch (responseError) {
+                console.error('❌ Erro ao responder interação:', responseError);
             }
         }
     },

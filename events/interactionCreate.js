@@ -462,6 +462,7 @@ module.exports = {
                 // Verificar se o usuário já tem um ticket aberto
                 const Database = require('../website/database/database');
                 const db = new Database();
+                await db.initialize();
                 
                 const userTickets = await db.getTickets(interaction.guild.id);
                 const openTicket = userTickets.find(ticket => 
@@ -579,6 +580,7 @@ Por favor fecha o ticket atual antes de criar um novo.`,
             try {
                 const Database = require('../website/database/database');
                 const db = new Database();
+                await db.initialize();
                 
                 if (interaction.customId.startsWith('ticket_assign_')) {
                     const ticketId = interaction.customId.split('_')[2];
@@ -671,6 +673,7 @@ Por favor fecha o ticket atual antes de criar um novo.`,
                 
                 const Database = require('../website/database/database');
                 const db = new Database();
+                await db.initialize();
                 
                 // Atualizar ticket na base de dados
                 await db.updateTicketStatus(ticketId, 'closed', userId, reason);
@@ -859,6 +862,7 @@ async function createTicketDirect(interaction, tipo, subject, description, prior
     // Criar ticket na base de dados
     const Database = require('../website/database/database');
     const db = new Database();
+    await db.initialize();
     
     const ticketData = {
         guild_id: interaction.guild.id,
