@@ -363,7 +363,10 @@ class SocketManager {
     
     async handleDiscordMessage(guildId, data) {
         // Atualizar estatísticas de mensagens em tempo real
-        await this.db.incrementMessageCount(guildId, data.channelId, data.authorId);
+        await this.db.recordAnalytics(guildId, 'message_created', 1, {
+            channelId: data.channelId,
+            authorId: data.authorId
+        });
         
         // Enviar atualização para dashboard
         this.io.to(`dashboard_${guildId}`).emit('new_message', {
