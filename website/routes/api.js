@@ -1513,19 +1513,35 @@ function formatUptime(seconds) {
 
 // Debug logs endpoint
 router.get('/debug-logs', (req, res) => {
-    const limit = parseInt(req.query.limit) || 50;
-    const level = req.query.level;
-    
-    let logs = debugLogs.slice(-limit);
-    
-    if (level) {
-        logs = logs.filter(log => log.level === level);
+    try {
+        const limit = parseInt(req.query.limit) || 50;
+        const level = req.query.level;
+        
+        let logs = debugLogs.slice(-limit);
+        
+        if (level) {
+            logs = logs.filter(log => log.level === level);
+        }
+        
+        res.json({
+            total: debugLogs.length,
+            showing: logs.length,
+            logs: logs.reverse() // Mais recentes primeiro
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            error: 'Erro ao obter logs',
+            details: error.message 
+        });
     }
-    
-    res.json({
-        total: debugLogs.length,
-        showing: logs.length,
-        logs: logs.reverse() // Mais recentes primeiro
+});
+
+// Simple test endpoint
+router.get('/test', (req, res) => {
+    res.json({ 
+        message: 'API funcionando',
+        timestamp: new Date().toISOString(),
+        logsCount: debugLogs.length
     });
 });
 
