@@ -70,6 +70,7 @@ body {
 /* Modern Glass Morphism Effects */
 .glass-effect {
     background: rgba(255, 255, 255, 0.1);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: var(--radius-lg);
@@ -87,6 +88,7 @@ body {
 /* Modern Header */
 .header {
     background: rgba(17, 28, 68, 0.8);
+    -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: var(--shadow-primary);
@@ -1055,8 +1057,6 @@ body {
     from { transform: translateY(100%); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
 }
-}
-}
 
 .ql-editor {
     color: var(--discord-text) !important;
@@ -1354,6 +1354,7 @@ body {
     font-size: 0.9rem;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -1488,4 +1489,35 @@ body {
 
 .text-danger {
     color: var(--brand-red) !important;
+}
+
+/* Hidden utility classes */
+.moderation-action-hidden {
+    display: none;
+}
+
+.duration-group-hidden {
+    display: none;
+}
+
+/* Stat icon variants */
+.stat-icon-secondary {
+    background: var(--gradient-secondary);
+}
+
+.stat-icon-warning {
+    background: var(--gradient-warning);
+}
+
+.stat-icon-main {
+    background: var(--gradient-main);
+}
+
+/* Embed preview styling */
+#embed-preview-content {
+    border-left-color: var(--embed-color, var(--brand-purple));
+}
+
+#embed-preview-content .embed-title {
+    color: var(--title-color, var(--brand-purple));
 }

@@ -898,7 +898,7 @@
                             </div>
                         </div>
 
-                        <div id="moderation-action" class="content-area" style="display: none;">
+                        <div id="moderation-action" class="content-area moderation-action-hidden">
                             <h3 id="action-title">Ação de Moderação</h3>
                             <div class="form-group">
                                 <label>Utilizador</label>
@@ -908,7 +908,7 @@
                                 <label>Motivo</label>
                                 <textarea class="form-control" id="action-reason" placeholder="Motivo da ação..."></textarea>
                             </div>
-                            <div class="form-group" id="duration-group" style="display: none;">
+                            <div class="form-group duration-group-hidden" id="duration-group">
                                 <label>Duração</label>
                                 <select class="form-control" id="action-duration">
                                     <option value="60">1 minuto</option>
@@ -932,7 +932,7 @@
 
                         <div class="tickets-stats">
                             <div class="stat-card">
-                                <div class="stat-icon" style="background: var(--gradient-secondary);">
+                                <div class="stat-icon stat-icon-secondary">
                                     <i class="fas fa-ticket-alt"></i>
                                 </div>
                                 <div class="stat-number">12</div>
@@ -940,7 +940,7 @@
                             </div>
 
                             <div class="stat-card">
-                                <div class="stat-icon" style="background: var(--gradient-warning);">
+                                <div class="stat-icon stat-icon-warning">
                                     <i class="fas fa-clock"></i>
                                 </div>
                                 <div class="stat-number">3</div>
@@ -948,7 +948,7 @@
                             </div>
 
                             <div class="stat-card">
-                                <div class="stat-icon" style="background: var(--gradient-main);">
+                                <div class="stat-icon stat-icon-main">
                                     <i class="fas fa-check"></i>
                                 </div>
                                 <div class="stat-number">45</div>
@@ -1245,35 +1245,35 @@
             const titleElement = document.getElementById('action-title');
             const durationGroup = document.getElementById('duration-group');
             
-            actionDiv.style.display = 'block';
+            actionDiv.classList.remove('moderation-action-hidden');
             
             switch(action) {
                 case 'warn':
                     titleElement.textContent = 'Avisar Utilizador';
-                    durationGroup.style.display = 'none';
+                    durationGroup.classList.add('duration-group-hidden');
                     break;
                 case 'mute':
                 case 'timeout':
                     titleElement.textContent = action === 'mute' ? 'Silenciar Utilizador' : 'Timeout';
-                    durationGroup.style.display = 'block';
+                    durationGroup.classList.remove('duration-group-hidden');
                     break;
                 case 'kick':
                     titleElement.textContent = 'Expulsar Utilizador';
-                    durationGroup.style.display = 'none';
+                    durationGroup.classList.add('duration-group-hidden');
                     break;
                 case 'ban':
                     titleElement.textContent = 'Banir Utilizador';
-                    durationGroup.style.display = 'none';
+                    durationGroup.classList.add('duration-group-hidden');
                     break;
                 case 'history':
                     titleElement.textContent = 'Histórico de Moderação';
-                    durationGroup.style.display = 'none';
+                    durationGroup.classList.add('duration-group-hidden');
                     break;
             }
         }
 
         function hideModerationAction() {
-            document.getElementById('moderation-action').style.display = 'none';
+            document.getElementById('moderation-action').classList.add('moderation-action-hidden');
         }
 
         function executeModerationAction() {
@@ -1303,11 +1303,17 @@
             
             const preview = document.getElementById('embed-preview-content');
             preview.innerHTML = `
-                <div class="embed-title" style="color: ${color}">${title}</div>
+                <div class="embed-title">${title}</div>
                 <div class="embed-description">${description}</div>
                 <div class="embed-footer">${footer}</div>
             `;
-            preview.style.borderLeftColor = color;
+            
+            // Use CSS custom properties for dynamic colors
+            preview.style.setProperty('--embed-color', color);
+            const embedTitle = preview.querySelector('.embed-title');
+            if (embedTitle) {
+                embedTitle.style.setProperty('--title-color', color);
+            }
         }
 
         function sendEmbed() {
