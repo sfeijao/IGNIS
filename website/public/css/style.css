@@ -155,6 +155,48 @@ body {
     font-weight: 500;
 }
 
+/* Modern Header Actions */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.config-btn {
+    background: var(--gradient-secondary);
+    border: none;
+    color: var(--text-white);
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    min-width: 120px;
+    box-shadow: var(--shadow-card);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    text-decoration: none;
+}
+
+.config-btn i {
+    font-size: 1rem;
+}
+
+.config-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+    text-decoration: none;
+    color: var(--text-white);
+}
+
+.config-btn:active {
+    transform: translateY(0);
+}
+
 /* Modern Logout Button */
 .logout-btn {
     background: var(--gradient-danger);

@@ -631,6 +631,56 @@
         .log-message {
             color: var(--text-white);
         }
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            padding: var(--space-xl);
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h3 {
+            color: var(--text-white);
+            margin-bottom: var(--space-lg);
+        }
+
+        .current-token {
+            background: var(--bg-primary);
+            padding: var(--space-sm);
+            border-radius: 4px;
+            font-family: monospace;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: var(--space-sm);
+            margin-top: var(--space-lg);
+            flex-wrap: wrap;
+        }
+
+        .form-actions .btn {
+            flex: 1;
+            min-width: 120px;
+        }
     </style>
 </head>
 <body>
@@ -642,10 +692,16 @@
                     <h1><i class="fas fa-rocket"></i> YSNM Modern Dashboard</h1>
                     <p>Sistema avançado de gestão para Discord bot</p>
                 </div>
-                <button id="logoutBtn" class="logout-btn" title="Terminar sessão">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Sair</span>
-                </button>
+                <div class="header-actions">
+                    <button id="configBtn" class="config-btn" title="Configurar Token">
+                        <i class="fas fa-cog"></i>
+                        <span>Config</span>
+                    </button>
+                    <button id="logoutBtn" class="logout-btn" title="Terminar sessão">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Sair</span>
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -1120,10 +1176,54 @@
             init() {
                 this.setupEventListeners();
                 this.showSection('overview');
+                this.checkAuthentication();
                 // Comentado para evitar erros 404
                 // this.loadUserData();
                 // this.loadServerStats();
                 console.log('Dashboard initialized successfully');
+            }
+            
+            async checkAuthentication() {
+                const token = getAuthToken();
+                console.log('Using auth token:', token ? token.substring(0, 8) + '...' : 'none');
+                
+                // For local development, set a dev token
+                if (!token && (window.location.protocol === 'file:' || 
+                              window.location.hostname === 'localhost' || 
+                              window.location.hostname === '127.0.0.1')) {
+                    localStorage.setItem('authToken', 'dev-token');
+                    console.log('Set development token for local access');
+                }
+                
+                // Test authentication with server
+                try {
+                    const response = await fetch('/api/test-auth', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${getAuthToken()}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('✅ Authentication test passed:', data);
+                        this.showMessage('Sistema autenticado com sucesso', 'success');
+                        return true;
+                    } else {
+                        console.log('❌ Authentication test failed:', response.status);
+                        this.showMessage('Problema de autenticação. Configure um token válido.', 'error');
+                        return false;
+                    }
+                } catch (error) {
+                    console.error('Authentication test error:', error);
+                    // If server is not running, allow local development
+                    if (window.location.protocol === 'file:') {
+                        this.showMessage('Modo de desenvolvimento (servidor offline)', 'warning');
+                        return true;
+                    }
+                    this.showMessage('Erro ao verificar autenticação', 'error');
+                    return false;
+                }
             }
 
             setupEventListeners() {
@@ -1131,6 +1231,12 @@
                 const logoutBtn = document.getElementById('logoutBtn');
                 if (logoutBtn) {
                     logoutBtn.addEventListener('click', this.logout.bind(this));
+                }
+                
+                // Config button
+                const configBtn = document.getElementById('configBtn');
+                if (configBtn) {
+                    configBtn.addEventListener('click', this.showTokenConfig.bind(this));
                 }
 
                 // Navigation
@@ -1234,8 +1340,125 @@
             logout() {
                 if (confirm('Tens a certeza de que queres terminar a sessão?')) {
                     document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                    localStorage.removeItem('authToken');
                     window.location.href = '/login';
                 }
+            }
+            
+            showTokenConfig() {
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <h3><i class="fas fa-key"></i> Configurar Token de Acesso</h3>
+                        <div class="form-group">
+                            <label>Token atual:</label>
+                            <div class="current-token">${getAuthToken() || 'Nenhum token configurado'}</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Escolha uma opção:</label>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-primary" onclick="setDevToken()">
+                                    <i class="fas fa-code"></i> Dev Token
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="setAdminToken()">
+                                    <i class="fas fa-shield-alt"></i> Admin Token
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="setCustomToken()">
+                                    <i class="fas fa-edit"></i> Token Personalizado
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <small>
+                                <strong>Tokens válidos:</strong><br>
+                                • <code>dev-token</code> - Para desenvolvimento local<br>
+                                • <code>admin-token</code> - Para administração<br>
+                                • <code>dashboard-token</code> - Para painel<br>
+                                • Qualquer token Discord válido
+                            </small>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-success" onclick="testAuth()">
+                                <i class="fas fa-check"></i> Testar Autenticação
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="closeModal()">
+                                <i class="fas fa-times"></i> Fechar
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // Add modal functions
+                window.setDevToken = () => {
+                    localStorage.setItem('authToken', 'dev-token');
+                    this.showMessage('Token de desenvolvimento configurado', 'success');
+                    this.updateTokenDisplay();
+                };
+                
+                window.setAdminToken = () => {
+                    localStorage.setItem('authToken', 'admin-token');
+                    this.showMessage('Token de administração configurado', 'success');
+                    this.updateTokenDisplay();
+                };
+                
+                window.setCustomToken = () => {
+                    const token = prompt('Digite o token de acesso personalizado:');
+                    if (token && token.trim()) {
+                        localStorage.setItem('authToken', token.trim());
+                        this.showMessage('Token personalizado configurado', 'success');
+                        this.updateTokenDisplay();
+                    }
+                };
+                
+                window.testAuth = async () => {
+                    try {
+                        const response = await fetch('/api/test-auth', {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${getAuthToken()}`
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.showMessage('✅ Autenticação funcionando!', 'success');
+                            console.log('Auth test result:', data);
+                        } else {
+                            this.showMessage(`❌ Falha na autenticação (${response.status})`, 'error');
+                        }
+                    } catch (error) {
+                        this.showMessage('❌ Erro ao testar autenticação', 'error');
+                        console.error('Auth test error:', error);
+                    }
+                };
+                
+                window.closeModal = () => {
+                    document.body.removeChild(modal);
+                    // Clean up global functions
+                    delete window.setDevToken;
+                    delete window.setAdminToken;
+                    delete window.setCustomToken;
+                    delete window.testAuth;
+                    delete window.closeModal;
+                };
+                
+                this.updateTokenDisplay = () => {
+                    const tokenDisplay = modal.querySelector('.current-token');
+                    if (tokenDisplay) {
+                        const token = getAuthToken();
+                        tokenDisplay.textContent = token ? `${token.substring(0, 15)}...` : 'Nenhum token configurado';
+                    }
+                };
+                
+                document.body.appendChild(modal);
+                
+                // Close modal when clicking outside
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        window.closeModal();
+                    }
+                });
             }
         }
 
@@ -1390,10 +1613,31 @@
         }
         
         function getAuthToken() {
-            return document.cookie
+            // Try to get token from cookie first
+            const cookieToken = document.cookie
                 .split('; ')
                 .find(row => row.startsWith('authToken='))
-                ?.split('=')[1] || '';
+                ?.split('=')[1];
+                
+            if (cookieToken) {
+                return cookieToken;
+            }
+            
+            // Try localStorage
+            const localToken = localStorage.getItem('authToken');
+            if (localToken) {
+                return localToken;
+            }
+            
+            // For local development, use a dev token
+            if (window.location.protocol === 'file:' || 
+                window.location.hostname === 'localhost' || 
+                window.location.hostname === '127.0.0.1') {
+                return 'dev-token';
+            }
+            
+            // Fallback empty token (backend will handle local dev)
+            return '';
         }
         
         function addModerationLog(action, user, reason) {
