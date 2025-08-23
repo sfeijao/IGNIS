@@ -363,15 +363,20 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
     try {
         const schema = Joi.object({
             title: Joi.string().min(3).max(100).required(),
-            reason: Joi.string().max(1000).required(),
+            reason: Joi.string().max(1000).optional().default('Sem descrição fornecida'),
             severity: Joi.string().valid('low', 'medium', 'high', 'urgent').default('medium'),
             userId: Joi.string().optional(),
             priority: Joi.string().valid('low', 'normal', 'high', 'urgent').default('normal'),
-            category: Joi.string().max(50).optional().default('general')
+            category: Joi.string().max(50).optional().default('general'),
+            createdBy: Joi.string().optional().default('dashboard')
         });
+        
+        console.log('🎫 Request body recebido:', req.body);
         
         const { error, value } = schema.validate(req.body);
         if (error) {
+            console.error('❌ Erro de validação:', error.details[0].message);
+            console.log('📝 Dados enviados:', req.body);
             return res.status(400).json({ error: error.details[0].message });
         }
         
