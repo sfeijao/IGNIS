@@ -401,14 +401,40 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
         
         const guild = global.discordClient.guilds.cache.get(guildId);
         if (!guild) {
+            console.error('❌ Servidor não encontrado:', guildId);
             return res.status(404).json({ error: 'Servidor não encontrado' });
         }
+        
+        console.log('🏠 Servidor encontrado:', guild.name, 'ID:', guild.id);
+        
+        // Verificar permissões do bot
+        const botMember = guild.members.cache.get(global.discordClient.user.id);
+        if (!botMember) {
+            console.error('❌ Bot não está no servidor');
+            return res.status(403).json({ error: 'Bot não tem acesso ao servidor' });
+        }
+        
+        const requiredPermissions = ['ManageChannels', 'ViewChannel', 'SendMessages'];
+        const missingPermissions = requiredPermissions.filter(perm => !botMember.permissions.has(perm));
+        
+        if (missingPermissions.length > 0) {
+            console.error('❌ Bot não tem permissões necessárias:', missingPermissions);
+            return res.status(403).json({ 
+                error: 'Bot não tem permissões necessárias',
+                missingPermissions 
+            });
+        }
+        
+        console.log('✅ Bot tem todas as permissões necessárias');
 
         // Verificar se o usuário alvo existe no servidor
         let targetMember;
         try {
+            console.log('👤 Procurando usuário:', targetUserId);
             targetMember = await guild.members.fetch(targetUserId);
+            console.log('✅ Usuário encontrado:', targetMember.displayName);
         } catch (error) {
+            console.error('❌ Erro ao buscar usuário:', error.message);
             return res.status(404).json({ error: 'Usuário não encontrado no servidor' });
         }
         
@@ -419,49 +445,70 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
         
         if (!ticketCategory) {
             console.log('📁 Criando categoria de tickets...');
-            ticketCategory = await guild.channels.create({
-                name: 'Tickets',
-                type: 4, // Category
-                permissionOverwrites: [
-                    {
-                        id: guild.roles.everyone,
-                        deny: ['ViewChannel']
-                    }
-                ]
-            });
+            try {
+                ticketCategory = await guild.channels.create({
+                    name: 'Tickets',
+                    type: 4, // Category
+                    permissionOverwrites: [
+                        {
+                            id: guild.roles.everyone,
+                            deny: ['ViewChannel']
+                        }
+                    ]
+                });
+                console.log('✅ Categoria de tickets criada:', ticketCategory.name);
+            } catch (error) {
+                console.error('❌ Erro ao criar categoria de tickets:', error);
+                return res.status(500).json({ 
+                    error: 'Erro ao criar categoria de tickets',
+                    details: error.message 
+                });
+            }
+        } else {
+            console.log('✅ Categoria de tickets encontrada:', ticketCategory.name);
         }
         
         // Criar canal do ticket
         const ticketChannelName = `ticket-${targetMember.displayName.toLowerCase().replace(/[^a-z0-9]/g, '')}-${Date.now().toString().slice(-6)}`;
         console.log('🎫 Criando canal:', ticketChannelName);
         
-        const ticketChannel = await guild.channels.create({
-            name: ticketChannelName,
-            type: 0, // Text channel
-            parent: ticketCategory.id,
-            permissionOverwrites: [
-                {
-                    id: guild.roles.everyone,
-                    deny: ['ViewChannel']
-                },
-                {
-                    id: targetUserId,
-                    allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory']
-                },
-                // Se o criador for diferente do usuário alvo, dar permissões também
-                ...(requesterId !== targetUserId ? [{
-                    id: requesterId,
-                    allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory']
-                }] : []),
-                // Permitir que moderadores vejam
-                ...guild.roles.cache
-                    .filter(role => role.permissions.has('ManageMessages'))
-                    .map(role => ({
-                        id: role.id,
-                        allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'ManageMessages']
-                    }))
-            ]
-        });
+        let ticketChannel;
+        try {
+            ticketChannel = await guild.channels.create({
+                name: ticketChannelName,
+                type: 0, // Text channel
+                parent: ticketCategory.id,
+                permissionOverwrites: [
+                    {
+                        id: guild.roles.everyone,
+                        deny: ['ViewChannel']
+                    },
+                    {
+                        id: targetUserId,
+                        allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory']
+                    },
+                    // Se o criador for diferente do usuário alvo, dar permissões também
+                    ...(requesterId !== targetUserId ? [{
+                        id: requesterId,
+                        allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory']
+                    }] : []),
+                    // Permitir que moderadores vejam
+                    ...guild.roles.cache
+                        .filter(role => role.permissions.has('ManageMessages'))
+                        .map(role => ({
+                            id: role.id,
+                            allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'ManageMessages']
+                        }))
+                ]
+            });
+            console.log('✅ Canal criado com sucesso:', ticketChannel.name, 'ID:', ticketChannel.id);
+        } catch (error) {
+            console.error('❌ Erro ao criar canal do ticket:', error);
+            return res.status(500).json({ 
+                error: 'Erro ao criar canal do ticket',
+                details: error.message 
+            });
+        }
         
         // Criar ticket na base de dados
         const db = req.db;
