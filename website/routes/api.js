@@ -607,16 +607,25 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
             components: components
         });
         
-        // Log da criação
-        await db.createLog(guildId, 'ticket_created', {
-            ticketId: ticketResult.id,
-            title: value.title,
-            severity: value.severity,
-            targetUserId,
-            createdBy: requesterId
-        });
+        // Log da criação (não crítico - se falhar, ticket ainda é criado)
+        try {
+            await db.createLog(guildId, 'ticket_created', {
+                ticketId: ticketResult.id,
+                title: value.title,
+                severity: value.severity,
+                targetUserId,
+                createdBy: requesterId
+            });
+            addDebugLog('info', '✅ Log de criação de ticket registrado', { ticketId: ticketResult.id });
+        } catch (logError) {
+            addDebugLog('error', '⚠️ Erro ao criar log (não crítico)', { 
+                error: logError.message, 
+                ticketId: ticketResult.id,
+                guildId 
+            });
+        }
         
-        console.log(`✅ Ticket #${ticketResult.id} criado com sucesso no canal ${ticketChannel.name}`);
+        addDebugLog('info', `✅ Ticket #${ticketResult.id} criado com sucesso no canal ${ticketChannel.name}`);
         
         res.json({
             success: true,
@@ -871,11 +880,14 @@ router.put('/tickets/:id/severity', requireAuth, ensureDbReady, async (req, res)
     try {
         const ticketId = req.params.id;
         const { severity } = req.body;
-        const { username } = req.session;
+        const username = req.user?.username || 'Unknown'; // Corrigir para req.user em vez de req.session
+        
+        addDebugLog('info', '🔄 Atualizando severidade do ticket', { ticketId, severity, username });
         
         // Validar severidade
         const validSeverities = ['low', 'medium', 'high', 'urgent'];
         if (!validSeverities.includes(severity)) {
+            addDebugLog('error', '❌ Severidade inválida', { severity, validSeverities });
             return res.status(400).json({ error: 'Severidade inválida' });
         }
         
@@ -886,8 +898,11 @@ router.put('/tickets/:id/severity', requireAuth, ensureDbReady, async (req, res)
         const ticket = tickets.find(t => t.id == ticketId);
         
         if (!ticket) {
+            addDebugLog('error', '❌ Ticket não encontrado', { ticketId, guildId: req.currentServerId });
             return res.status(404).json({ error: 'Ticket não encontrado' });
         }
+        
+        addDebugLog('info', '✅ Ticket encontrado, atualizando severidade', { ticket: ticket.title, oldSeverity: ticket.severity, newSeverity: severity });
         
         // Atualizar severidade
         await db.updateTicketSeverity(ticketId, severity);
@@ -900,12 +915,20 @@ router.put('/tickets/:id/severity', requireAuth, ensureDbReady, async (req, res)
             updatedBy: username
         });
         
+        addDebugLog('info', '✅ Severidade do ticket atualizada com sucesso', { ticketId, severity });
+        
         res.json({
             success: true,
             message: 'Severidade do ticket atualizada com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao atualizar severidade do ticket:', error);
+        addDebugLog('error', '❌ Erro ao atualizar severidade do ticket', {
+            error: error.message,
+            stack: error.stack,
+            ticketId: req.params.id,
+            body: req.body,
+            guildId: req.currentServerId
+        });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
