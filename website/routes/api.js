@@ -561,8 +561,16 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
             message: 'Ticket criado com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao criar ticket:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        console.error('❌ Erro ao criar ticket:', error);
+        console.error('📊 Stack trace completo:', error.stack);
+        console.error('📝 Request body original:', req.body);
+        console.error('🔧 User info:', req.user);
+        console.error('🏠 Guild ID:', req.currentServerId);
+        res.status(500).json({ 
+            error: 'Erro interno do servidor',
+            details: error.message,
+            timestamp: new Date().toISOString()
+        });
     }
 });
 
