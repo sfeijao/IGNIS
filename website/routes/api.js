@@ -289,8 +289,31 @@ router.get('/tickets', requireAuth, ensureDbReady, async (req, res) => {
         
         const tickets = await db.getTickets(guildId, filters.status);
         
+        // Filtrar tickets corrompidos (título null ou vazio) e adicionar limpeza automática
+        const validTickets = tickets.filter(ticket => {
+            const isValid = ticket.title && 
+                           ticket.title !== 'null' && 
+                           ticket.title !== 'undefined' && 
+                           ticket.title.trim() !== '';
+            
+            if (!isValid) {
+                console.log(`⚠️ Ticket corrompido encontrado: ID ${ticket.id}, título: "${ticket.title}"`);
+                // Agendar limpeza assíncrona (não bloqueante)
+                setImmediate(async () => {
+                    try {
+                        console.log(`🗑️ Auto-limpeza: removendo ticket corrompido ID ${ticket.id}`);
+                        await db.deleteTicket(ticket.id);
+                    } catch (error) {
+                        console.error(`❌ Erro na auto-limpeza do ticket ${ticket.id}:`, error);
+                    }
+                });
+            }
+            
+            return isValid;
+        });
+        
         // Aplicar filtros adicionais se necessário
-        let filteredTickets = tickets;
+        let filteredTickets = validTickets;
         if (filters.priority) {
             filteredTickets = filteredTickets.filter(t => t.priority === filters.priority);
         }
