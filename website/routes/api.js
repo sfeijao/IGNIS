@@ -909,11 +909,21 @@ router.delete('/tickets/:id', requireAuth, ensureDbReady, async (req, res) => {
         const ticketId = req.params.id;
         const { username } = req.session;
         
+        console.log('🗑️ Tentando deletar ticket:', ticketId, 'por:', username);
+        
+        // Validar se ticketId é um número
+        if (isNaN(ticketId)) {
+            console.error('❌ ID de ticket inválido:', ticketId);
+            return res.status(400).json({ error: 'ID de ticket inválido' });
+        }
+        
         const db = req.db;
         
         // Verificar se o ticket existe
         const tickets = await db.getTickets(req.currentServerId);
         const ticket = tickets.find(t => t.id == ticketId);
+        
+        console.log('🎫 Ticket encontrado:', ticket ? `ID ${ticket.id}` : 'Não encontrado');
         
         if (!ticket) {
             return res.status(404).json({ error: 'Ticket não encontrado' });

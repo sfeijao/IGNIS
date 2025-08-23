@@ -1975,6 +1975,12 @@
                     return;
                 }
 
+                // Validar se o ID é numérico
+                if (!/^\d+$/.test(ticketId)) {
+                    this.showMessage('ID do ticket deve ser um número válido', 'error');
+                    return;
+                }
+
                 let userId = null;
                 const userIdMatch = userInput.match(/\((\d+)\)$/);
                 if (userIdMatch) {
@@ -2017,6 +2023,12 @@
 
                 if (!ticketId || !userInput) {
                     this.showMessage('ID do ticket e utilizador são obrigatórios', 'error');
+                    return;
+                }
+
+                // Validar se o ID é numérico
+                if (!/^\d+$/.test(ticketId)) {
+                    this.showMessage('ID do ticket deve ser um número válido', 'error');
                     return;
                 }
 
@@ -2065,6 +2077,12 @@
                     return;
                 }
 
+                // Validar se o ID é numérico
+                if (!/^\d+$/.test(ticketId)) {
+                    this.showMessage('ID do ticket deve ser um número válido', 'error');
+                    return;
+                }
+
                 if (!selectedSeverity) {
                     this.showMessage('Selecione uma gravidade', 'error');
                     return;
@@ -2103,6 +2121,12 @@
                     return;
                 }
 
+                // Validar se o ID é numérico
+                if (!/^\d+$/.test(ticketId)) {
+                    this.showMessage('ID do ticket deve ser um número válido', 'error');
+                    return;
+                }
+
                 try {
                     const response = await fetch(`/api/tickets/${ticketId}`, {
                         method: 'DELETE',
@@ -2134,10 +2158,23 @@
                     });
 
                     if (response.ok) {
-                        const tickets = await response.json();
-                        this.updateTicketsDisplay(tickets);
-                        this.showMessage('Tickets atualizados!', 'success');
+                        const data = await response.json();
+                        console.log('Tickets response:', data); // Debug
+                        
+                        // Verificar se a resposta tem a estrutura correta
+                        const tickets = data.tickets || data || [];
+                        
+                        // Garantir que tickets é um array
+                        if (Array.isArray(tickets)) {
+                            this.updateTicketsDisplay(tickets);
+                            this.showMessage('Tickets atualizados!', 'success');
+                        } else {
+                            console.error('Tickets não é um array:', tickets);
+                            this.updateTicketsDisplay([]);
+                            this.showMessage('Nenhum ticket encontrado', 'info');
+                        }
                     } else {
+                        console.error('Response not ok:', response.status, response.statusText);
                         this.showMessage('Erro ao carregar tickets', 'error');
                     }
                 } catch (error) {
@@ -2149,6 +2186,12 @@
             updateTicketsDisplay(tickets) {
                 const ticketsList = document.querySelector('.tickets-list');
                 if (!ticketsList) return;
+
+                // Garantir que tickets é um array
+                if (!Array.isArray(tickets)) {
+                    console.error('updateTicketsDisplay: tickets não é um array:', tickets);
+                    tickets = [];
+                }
 
                 if (tickets.length === 0) {
                     ticketsList.innerHTML = `
