@@ -681,6 +681,18 @@
             flex: 1;
             min-width: 120px;
         }
+
+        /* Animation for messages */
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1330,6 +1342,66 @@
                 console.log('User data loaded:', userData);
             }
 
+            showMessage(message, type = 'info') {
+                // Create or get existing message container
+                let messageContainer = document.getElementById('message-container');
+                if (!messageContainer) {
+                    messageContainer = document.createElement('div');
+                    messageContainer.id = 'message-container';
+                    messageContainer.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        z-index: 10000;
+                        max-width: 400px;
+                    `;
+                    document.body.appendChild(messageContainer);
+                }
+
+                // Create message element
+                const messageEl = document.createElement('div');
+                messageEl.className = `alert alert-${type}`;
+                messageEl.style.cssText = `
+                    background: ${type === 'success' ? '#10B981' : 
+                                  type === 'error' ? '#EF4444' : 
+                                  type === 'warning' ? '#F59E0B' : '#3B82F6'};
+                    color: white;
+                    padding: 12px 16px;
+                    border-radius: 8px;
+                    margin-bottom: 10px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                    animation: slideIn 0.3s ease-out;
+                `;
+                
+                messageEl.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>${message}</span>
+                        <button class="message-close-btn" style="
+                            background: none; 
+                            border: none; 
+                            color: white; 
+                            font-size: 18px; 
+                            cursor: pointer;
+                            margin-left: 10px;
+                        ">&times;</button>
+                    </div>
+                `;
+
+                // Add event listener for close button
+                messageEl.querySelector('.message-close-btn').addEventListener('click', () => {
+                    messageEl.remove();
+                });
+
+                messageContainer.appendChild(messageEl);
+
+                // Auto remove after 5 seconds
+                setTimeout(() => {
+                    if (messageEl.parentNode) {
+                        messageEl.remove();
+                    }
+                }, 5000);
+            }
+
             getAuthToken() {
                 return document.cookie
                     .split('; ')
@@ -1358,13 +1430,13 @@
                         <div class="form-group">
                             <label>Escolha uma opção:</label>
                             <div class="form-actions">
-                                <button type="button" class="btn btn-primary" onclick="setDevToken()">
+                                <button type="button" class="btn btn-primary" id="setDevTokenBtn">
                                     <i class="fas fa-code"></i> Dev Token
                                 </button>
-                                <button type="button" class="btn btn-secondary" onclick="setAdminToken()">
+                                <button type="button" class="btn btn-secondary" id="setAdminTokenBtn">
                                     <i class="fas fa-shield-alt"></i> Admin Token
                                 </button>
-                                <button type="button" class="btn btn-secondary" onclick="setCustomToken()">
+                                <button type="button" class="btn btn-secondary" id="setCustomTokenBtn">
                                     <i class="fas fa-edit"></i> Token Personalizado
                                 </button>
                             </div>
@@ -1379,39 +1451,41 @@
                             </small>
                         </div>
                         <div class="form-actions">
-                            <button type="button" class="btn btn-success" onclick="testAuth()">
+                            <button type="button" class="btn btn-success" id="testAuthBtn">
                                 <i class="fas fa-check"></i> Testar Autenticação
                             </button>
-                            <button type="button" class="btn btn-secondary" onclick="closeModal()">
+                            <button type="button" class="btn btn-secondary" id="closeModalBtn">
                                 <i class="fas fa-times"></i> Fechar
                             </button>
                         </div>
                     </div>
                 `;
                 
-                // Add modal functions
-                window.setDevToken = () => {
+                document.body.appendChild(modal);
+                
+                // Add event listeners to modal buttons
+                modal.querySelector('#setDevTokenBtn').addEventListener('click', () => {
                     localStorage.setItem('authToken', 'dev-token');
                     this.showMessage('Token de desenvolvimento configurado', 'success');
-                    this.updateTokenDisplay();
-                };
+                    this.updateTokenDisplay(modal);
+                });
                 
-                window.setAdminToken = () => {
+                modal.querySelector('#setAdminTokenBtn').addEventListener('click', () => {
                     localStorage.setItem('authToken', 'admin-token');
                     this.showMessage('Token de administração configurado', 'success');
-                    this.updateTokenDisplay();
-                };
+                    this.updateTokenDisplay(modal);
+                });
                 
-                window.setCustomToken = () => {
+                modal.querySelector('#setCustomTokenBtn').addEventListener('click', () => {
                     const token = prompt('Digite o token de acesso personalizado:');
                     if (token && token.trim()) {
                         localStorage.setItem('authToken', token.trim());
                         this.showMessage('Token personalizado configurado', 'success');
-                        this.updateTokenDisplay();
+                        this.updateTokenDisplay(modal);
                     }
-                };
+                });
                 
-                window.testAuth = async () => {
+                modal.querySelector('#testAuthBtn').addEventListener('click', async () => {
                     try {
                         const response = await fetch('/api/test-auth', {
                             method: 'GET',
@@ -1431,34 +1505,26 @@
                         this.showMessage('❌ Erro ao testar autenticação', 'error');
                         console.error('Auth test error:', error);
                     }
-                };
+                });
                 
-                window.closeModal = () => {
+                modal.querySelector('#closeModalBtn').addEventListener('click', () => {
                     document.body.removeChild(modal);
-                    // Clean up global functions
-                    delete window.setDevToken;
-                    delete window.setAdminToken;
-                    delete window.setCustomToken;
-                    delete window.testAuth;
-                    delete window.closeModal;
-                };
-                
-                this.updateTokenDisplay = () => {
-                    const tokenDisplay = modal.querySelector('.current-token');
-                    if (tokenDisplay) {
-                        const token = getAuthToken();
-                        tokenDisplay.textContent = token ? `${token.substring(0, 15)}...` : 'Nenhum token configurado';
-                    }
-                };
-                
-                document.body.appendChild(modal);
+                });
                 
                 // Close modal when clicking outside
                 modal.addEventListener('click', (e) => {
                     if (e.target === modal) {
-                        window.closeModal();
+                        document.body.removeChild(modal);
                     }
                 });
+            }
+            
+            updateTokenDisplay(modal) {
+                const tokenDisplay = modal.querySelector('.current-token');
+                if (tokenDisplay) {
+                    const token = getAuthToken();
+                    tokenDisplay.textContent = token ? `${token.substring(0, 15)}...` : 'Nenhum token configurado';
+                }
             }
         }
 

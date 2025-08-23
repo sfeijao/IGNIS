@@ -206,12 +206,13 @@ class SocketManager {
             }
             
             // Log da ação administrativa
-            await this.db.logActivity({
+            await this.db.createLog({
                 guild_id: socket.guildId,
                 user_id: socket.userId,
                 type: 'admin_action',
                 description: `Ação administrativa: ${data.action}`,
-                details: JSON.stringify(data)
+                details: JSON.stringify(data),
+                timestamp: new Date().toISOString()
             });
             
             // Notificar dashboard em tempo real
@@ -374,11 +375,12 @@ class SocketManager {
     
     async handleMemberJoin(guildId, data) {
         // Log de entrada
-        await this.db.logActivity({
+        await this.db.createLog({
             guild_id: guildId,
             user_id: data.userId,
             type: 'member_join',
-            description: `${data.username} entrou no servidor`
+            description: `${data.username} entrou no servidor`,
+            timestamp: new Date().toISOString()
         });
         
         // Notificar dashboard
@@ -394,11 +396,12 @@ class SocketManager {
     
     async handleMemberLeave(guildId, data) {
         // Log de saída
-        await this.db.logActivity({
+        await this.db.createLog({
             guild_id: guildId,
             user_id: data.userId,
             type: 'member_leave',
-            description: `${data.username} saiu do servidor`
+            description: `${data.username} saiu do servidor`,
+            timestamp: new Date().toISOString()
         });
         
         // Notificar dashboard
@@ -414,7 +417,7 @@ class SocketManager {
     
     async handleMessageDelete(guildId, data) {
         // Log de mensagem deletada
-        await this.db.logActivity({
+        await this.db.createLog({
             guild_id: guildId,
             user_id: data.authorId,
             type: 'message_delete',
@@ -423,7 +426,8 @@ class SocketManager {
                 channelId: data.channelId,
                 messageId: data.messageId,
                 content: data.content?.substring(0, 100) || 'Conteúdo não disponível'
-            })
+            }),
+            timestamp: new Date().toISOString()
         });
         
         // Notificar moderadores
@@ -437,18 +441,20 @@ class SocketManager {
     
     async handleVoiceUpdate(guildId, data) {
         if (data.joined) {
-            await this.db.logActivity({
+            await this.db.createLog({
                 guild_id: guildId,
                 user_id: data.userId,
                 type: 'voice_join',
-                description: `Entrou no canal de voz ${data.channelName}`
+                description: `Entrou no canal de voz ${data.channelName}`,
+                timestamp: new Date().toISOString()
             });
         } else if (data.left) {
-            await this.db.logActivity({
+            await this.db.createLog({
                 guild_id: guildId,
                 user_id: data.userId,
                 type: 'voice_leave',
-                description: `Saiu do canal de voz ${data.channelName}`
+                description: `Saiu do canal de voz ${data.channelName}`,
+                timestamp: new Date().toISOString()
             });
             
             // Calcular tempo em voz se disponível

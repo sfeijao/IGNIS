@@ -127,10 +127,14 @@ function setupDashboardIntegration() {
         if (message.author.bot) return;
         
         try {
-            await client.database.incrementMessageCount(
+            await client.database.recordAnalytics(
                 message.guild.id, 
-                message.channel.id, 
-                message.author.id
+                'message_created', 
+                1,
+                {
+                    channelId: message.channel.id,
+                    authorId: message.author.id
+                }
             );
             
             // Send real-time update to dashboard
