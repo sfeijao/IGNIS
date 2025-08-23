@@ -365,7 +365,7 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
             title: Joi.string().min(3).max(100).required(),
             reason: Joi.string().max(1000).optional().default('Sem descrição fornecida'),
             severity: Joi.string().valid('low', 'medium', 'high', 'urgent').default('medium'),
-            userId: Joi.string().optional(),
+            userId: Joi.string().optional().allow(null),
             priority: Joi.string().valid('low', 'normal', 'high', 'urgent').default('normal'),
             category: Joi.string().max(50).optional().default('general'),
             createdBy: Joi.string().optional().default('dashboard')
