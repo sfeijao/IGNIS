@@ -755,7 +755,7 @@ router.get('/admin/roles', requireAdmin, async (req, res) => {
 router.post('/admin/members/action', requireAdmin, async (req, res) => {
     try {
         const schema = Joi.object({
-            action: Joi.string().valid('timeout', 'kick', 'ban', 'unban', 'role').required(),
+            action: Joi.string().valid('warn', 'timeout', 'kick', 'ban', 'unban', 'role').required(),
             memberId: Joi.string().required(),
             reason: Joi.string().max(500).optional(),
             duration: Joi.number().optional(),
@@ -776,6 +776,29 @@ router.post('/admin/members/action', requireAdmin, async (req, res) => {
         
         let result;
         switch (value.action) {
+            case 'warn':
+                // Send warning DM to user
+                try {
+                    const user = await guild.client.users.fetch(value.memberId);
+                    await user.send({
+                        embeds: [{
+                            title: '⚠️ Aviso do Servidor',
+                            description: `Recebeste um aviso no servidor **${guild.name}**`,
+                            fields: [
+                                { name: 'Motivo', value: value.reason || 'Nenhum motivo especificado' },
+                                { name: 'Servidor', value: guild.name, inline: true }
+                            ],
+                            color: 0xFFA500,
+                            timestamp: new Date()
+                        }]
+                    });
+                    result = { success: true };
+                } catch (dmError) {
+                    console.error('Não foi possível enviar DM:', dmError);
+                    result = { success: true, note: 'Aviso registrado, mas DM não pôde ser enviada' };
+                }
+                break;
+                
             case 'timeout':
                 const duration = value.duration || 10 * 60 * 1000; // 10 minutes default
                 result = await member.timeout(duration, value.reason);

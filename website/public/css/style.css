@@ -1521,3 +1521,19 @@ body {
 #embed-preview-content .embed-title {
     color: var(--title-color, var(--brand-purple));
 }
+
+/* Log entry types */
+.log-entry.moderation {
+    border-left: 3px solid var(--brand-orange);
+    background: rgba(255, 165, 0, 0.1);
+}
+
+.log-entry.error {
+    border-left: 3px solid var(--brand-red);
+    background: rgba(231, 76, 60, 0.1);
+}
+
+.log-entry.success {
+    border-left: 3px solid var(--brand-green);
+    background: rgba(46, 213, 115, 0.1);
+}

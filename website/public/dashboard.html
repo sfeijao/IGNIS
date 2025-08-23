@@ -1279,19 +1279,125 @@
         function executeModerationAction() {
             const user = document.getElementById('target-user').value;
             const reason = document.getElementById('action-reason').value;
+            const actionTitle = document.getElementById('action-title').textContent;
+            const duration = document.getElementById('action-duration')?.value;
             
             if (!user) {
                 alert('Por favor, insira o nome do utilizador');
                 return;
             }
             
-            // Simular ação de moderação
-            alert(`Ação executada com sucesso!\nUtilizador: ${user}\nMotivo: ${reason || 'Sem motivo especificado'}`);
-            hideModerationAction();
+            // Map action title to API action
+            let action;
+            switch(actionTitle) {
+                case 'Avisar Utilizador':
+                    action = 'warn';
+                    break;
+                case 'Silenciar Utilizador':
+                    action = 'timeout';
+                    break;
+                case 'Timeout':
+                    action = 'timeout';
+                    break;
+                case 'Expulsar Utilizador':
+                    action = 'kick';
+                    break;
+                case 'Banir Utilizador':
+                    action = 'ban';
+                    break;
+                default:
+                    action = 'warn';
+            }
             
-            // Clear form
-            document.getElementById('target-user').value = '';
-            document.getElementById('action-reason').value = '';
+            // Show loading state
+            const executeBtn = document.getElementById('execute-moderation-btn');
+            const originalText = executeBtn.textContent;
+            executeBtn.textContent = 'Executando...';
+            executeBtn.disabled = true;
+            
+            // Prepare request data
+            const requestData = {
+                action: action,
+                memberId: user,
+                reason: reason || 'Sem motivo especificado'
+            };
+            
+            // Add duration for timeout actions
+            if ((action === 'timeout' || action === 'mute') && duration) {
+                requestData.duration = parseInt(duration) * 1000; // Convert to milliseconds
+            }
+            
+            // Execute moderation action via API
+            fetch('/api/admin/members/action', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getAuthToken()}`
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`✅ ${data.message}\nUtilizador: ${user}\nMotivo: ${requestData.reason}`);
+                    hideModerationAction();
+                    
+                    // Clear form
+                    document.getElementById('target-user').value = '';
+                    document.getElementById('action-reason').value = '';
+                    if (document.getElementById('action-duration')) {
+                        document.getElementById('action-duration').value = '';
+                    }
+                    
+                    // Add to recent activity or refresh logs
+                    addModerationLog(action, user, requestData.reason);
+                } else {
+                    alert(`❌ Erro: ${data.error || 'Falha ao executar ação'}`);
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao executar ação de moderação:', error);
+                alert(`❌ Erro de rede: Não foi possível conectar ao servidor\n${error.message}`);
+            })
+            .finally(() => {
+                // Reset button state
+                executeBtn.textContent = originalText;
+                executeBtn.disabled = false;
+            });
+        }
+        
+        function getAuthToken() {
+            return document.cookie
+                .split('; ')
+                .find(row => row.startsWith('authToken='))
+                ?.split('=')[1] || '';
+        }
+        
+        function addModerationLog(action, user, reason) {
+            const container = document.getElementById('logsContainer');
+            if (container) {
+                const currentTime = new Date().toLocaleTimeString();
+                const actionNames = {
+                    'warn': 'Aviso',
+                    'timeout': 'Timeout',
+                    'kick': 'Expulsão',
+                    'ban': 'Banimento'
+                };
+                
+                const newLog = document.createElement('div');
+                newLog.className = 'log-entry moderation';
+                newLog.innerHTML = `
+                    <span class="log-time">[${currentTime}]</span>
+                    <span class="log-message">${actionNames[action] || action} aplicado a ${user}: ${reason}</span>
+                `;
+                
+                container.insertBefore(newLog, container.firstChild);
+                
+                // Limit to 50 logs
+                while (container.children.length > 50) {
+                    container.removeChild(container.lastChild);
+                }
+            }
         }
 
         // Embed functions
