@@ -1444,4 +1444,36 @@ function formatUptime(seconds) {
     return parts.join(' ') || '0m';
 }
 
+// Diagnostic endpoint
+router.get('/diagnostic', async (req, res) => {
+    try {
+        const diagnostics = {
+            timestamp: new Date().toISOString(),
+            database: {
+                initialized: dbInitialized,
+                connected: !!(db && db.db)
+            },
+            discord: {
+                clientAvailable: !!global.discordClient,
+                clientReady: !!(global.discordClient && global.discordClient.isReady()),
+                guilds: global.discordClient ? global.discordClient.guilds.cache.size : 0,
+                users: global.discordClient ? global.discordClient.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0) : 0
+            },
+            system: {
+                uptime: process.uptime(),
+                memoryUsage: process.memoryUsage(),
+                nodeVersion: process.version
+            }
+        };
+
+        res.json(diagnostics);
+    } catch (error) {
+        console.error('❌ Erro no diagnóstico:', error);
+        res.status(500).json({ 
+            error: 'Erro no diagnóstico',
+            details: error.message 
+        });
+    }
+});
+
 module.exports = router;
