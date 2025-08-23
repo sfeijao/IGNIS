@@ -495,32 +495,50 @@ class Database {
     // Deletar ticket
     async deleteTicket(ticketId) {
         return new Promise((resolve, reject) => {
+            console.log('🗑️ Iniciando deleção do ticket:', ticketId);
+            
             this.db.serialize(() => {
-                this.db.run('BEGIN TRANSACTION');
-                
-                // Deletar usuários associados ao ticket
-                const deleteUsersStmt = this.db.prepare('DELETE FROM ticket_users WHERE ticket_id = ?');
-                deleteUsersStmt.run([ticketId]);
-                deleteUsersStmt.finalize();
-                
-                // Deletar mensagens do ticket
-                const deleteMessagesStmt = this.db.prepare('DELETE FROM ticket_messages WHERE ticket_id = ?');
-                deleteMessagesStmt.run([ticketId]);
-                deleteMessagesStmt.finalize();
-                
-                // Deletar o ticket
-                const deleteTicketStmt = this.db.prepare('DELETE FROM tickets WHERE id = ?');
-                deleteTicketStmt.run([ticketId], function(err) {
+                this.db.run('BEGIN TRANSACTION', (err) => {
                     if (err) {
-                        console.error('Erro ao deletar ticket:', err);
-                        this.db.run('ROLLBACK');
-                        reject(err);
-                    } else {
-                        this.db.run('COMMIT');
-                        resolve({ changes: this.changes });
+                        console.error('Erro ao iniciar transação:', err);
+                        return reject(err);
                     }
+                    
+                    // Deletar usuários associados ao ticket
+                    const deleteUsersStmt = this.db.prepare('DELETE FROM ticket_users WHERE ticket_id = ?');
+                    deleteUsersStmt.run([ticketId], (err) => {
+                        if (err) {
+                            console.error('Erro ao deletar usuários do ticket:', err);
+                            this.db.run('ROLLBACK');
+                            deleteUsersStmt.finalize();
+                            return reject(err);
+                        }
+                        
+                        deleteUsersStmt.finalize();
+                        
+                        // Deletar o ticket
+                        const deleteTicketStmt = this.db.prepare('DELETE FROM tickets WHERE id = ?');
+                        deleteTicketStmt.run([ticketId], function(err) {
+                            if (err) {
+                                console.error('Erro ao deletar ticket:', err);
+                                this.db.run('ROLLBACK');
+                                deleteTicketStmt.finalize();
+                                reject(err);
+                            } else {
+                                console.log('✅ Ticket deletado com sucesso, ID:', ticketId, 'Linhas afetadas:', this.changes);
+                                this.db.run('COMMIT', (commitErr) => {
+                                    deleteTicketStmt.finalize();
+                                    if (commitErr) {
+                                        console.error('Erro ao fazer commit:', commitErr);
+                                        reject(commitErr);
+                                    } else {
+                                        resolve({ changes: this.changes });
+                                    }
+                                });
+                            }
+                        });
+                    });
                 });
-                deleteTicketStmt.finalize();
             });
         });
     }
