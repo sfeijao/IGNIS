@@ -44,10 +44,12 @@ const ensureDbReady = async (req, res, next) => {
             await db.initialize();
             dbInitialized = true;
         } catch (error) {
-            console.error('❌ Erro ao inicializar database:', error);
+            addDebugLog('error', '❌ Erro ao inicializar database', { error: error.message });
             return res.status(500).json({ error: 'Database não disponível' });
         }
     }
+    // Passar a instância da database para a requisição
+    req.db = db;
     next();
 };
 
