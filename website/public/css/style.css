@@ -51,6 +51,17 @@
     --space-lg: 24px;
     --space-xl: 32px;
     --space-2xl: 48px;
+    
+    /* Discord Theme Variables */
+    --discord-darker: #2c2f33;
+    --discord-dark: #36393f;
+    --discord-light: #40444b;
+    --discord-text: #dcddde;
+    --discord-text-muted: #72767d;
+    --discord-purple: #7289da;
+    --discord-blue: #00d4aa;
+    --discord-green: #43b581;
+    --discord-red: #f04747;
 }
 
 /* Modern Typography & Base Styles */
@@ -595,12 +606,33 @@ body {
     background-position: right 0.75rem center;
     background-size: 0.75rem;
     padding-right: 2.5rem;
+    color: var(--discord-text, #dcddde) !important;
+    background-color: var(--discord-darker, #2c2f33) !important;
 }
 
 .form-group select option {
-    background: var(--discord-darker);
-    color: var(--discord-text);
+    background: var(--discord-darker) !important;
+    color: var(--discord-text) !important;
     padding: 0.5rem;
+    border: none;
+}
+
+.form-group select option:hover,
+.form-group select option:focus,
+.form-group select option:checked {
+    background: var(--discord-purple) !important;
+    color: white !important;
+}
+
+/* Ensure select text is always visible */
+.form-group select {
+    color: var(--discord-text) !important;
+    background: var(--discord-darker) !important;
+}
+
+.form-group select:focus {
+    color: var(--discord-text) !important;
+    background: var(--discord-darker) !important;
 }
 
 .channel-info {

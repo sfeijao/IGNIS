@@ -1336,10 +1336,20 @@
                 },
                 body: JSON.stringify(requestData)
             })
-            .then(response => response.json())
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${data.error || 'Erro no servidor'}`);
+                }
+                return data;
+            })
             .then(data => {
                 if (data.success) {
-                    alert(`✅ ${data.message}\nUtilizador: ${user}\nMotivo: ${requestData.reason}`);
+                    const message = data.note ? 
+                        `✅ ${data.message}\n⚠️ ${data.note}\nUtilizador: ${user}\nMotivo: ${requestData.reason}` :
+                        `✅ ${data.message}\nUtilizador: ${user}\nMotivo: ${requestData.reason}`;
+                    
+                    alert(message);
                     hideModerationAction();
                     
                     // Clear form
@@ -1357,7 +1367,20 @@
             })
             .catch(error => {
                 console.error('Erro ao executar ação de moderação:', error);
-                alert(`❌ Erro de rede: Não foi possível conectar ao servidor\n${error.message}`);
+                
+                let errorMessage = '❌ Erro de rede: Não foi possível conectar ao servidor';
+                if (error.message.includes('403')) {
+                    errorMessage = '❌ Erro: Permissões insuficientes. Verifique se está logado.';
+                } else if (error.message.includes('404')) {
+                    errorMessage = '❌ Erro: Membro não encontrado no servidor.';
+                } else if (error.message.includes('500')) {
+                    errorMessage = '❌ Erro interno do servidor. O bot pode estar offline.';
+                } else if (error.message.includes('400')) {
+                    errorMessage = '❌ Erro: Dados inválidos fornecidos.';
+                }
+                
+                alert(`${errorMessage}\n\nDetalhes técnicos: ${error.message}`);
+                addModerationLog('error', user, `Falha na ação: ${error.message}`);
             })
             .finally(() => {
                 // Reset button state
@@ -1381,14 +1404,18 @@
                     'warn': 'Aviso',
                     'timeout': 'Timeout',
                     'kick': 'Expulsão',
-                    'ban': 'Banimento'
+                    'ban': 'Banimento',
+                    'error': 'Erro'
                 };
                 
+                const logClass = action === 'error' ? 'log-entry error' : 'log-entry moderation';
+                const icon = action === 'error' ? '❌' : '⚖️';
+                
                 const newLog = document.createElement('div');
-                newLog.className = 'log-entry moderation';
+                newLog.className = logClass;
                 newLog.innerHTML = `
                     <span class="log-time">[${currentTime}]</span>
-                    <span class="log-message">${actionNames[action] || action} aplicado a ${user}: ${reason}</span>
+                    <span class="log-message">${icon} ${actionNames[action] || action} - ${user}: ${reason}</span>
                 `;
                 
                 container.insertBefore(newLog, container.firstChild);
