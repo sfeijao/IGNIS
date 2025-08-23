@@ -489,7 +489,7 @@ router.post('/tickets/:id/messages', requireAuth, ensureDbReady, async (req, res
         }
         
         const ticketId = req.params.id;
-        const userId = req.session.user.id;
+        const userId = req.user?.id || req.session?.user?.id || 'dashboard_user';
         
         const messageId = await db.addTicketMessage({
             ticket_id: ticketId,
@@ -855,14 +855,21 @@ router.post('/admin/members/action', requireAdmin, async (req, res) => {
         }
         
         // Log moderation action
-        await db.logModerationAction({
-            guild_id: guild.id,
-            user_id: value.memberId,
-            moderator_id: req.session.user.id,
-            action: value.action,
-            reason: value.reason,
-            duration: value.duration
-        });
+        try {
+            await db.createModerationAction({
+                guild_id: guild.id,
+                user_id: value.memberId,
+                moderator_id: req.user?.id || 'dashboard_user',
+                action_type: value.action,
+                reason: value.reason,
+                duration: value.duration,
+                expires_at: value.duration ? new Date(Date.now() + value.duration).toISOString() : null,
+                metadata: {}
+            });
+        } catch (dbError) {
+            console.error('Erro ao registrar ação de moderação no banco de dados:', dbError);
+            // Continue even if logging fails
+        }
         
         res.json({
             success: true,

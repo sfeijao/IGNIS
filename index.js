@@ -149,13 +149,22 @@ function setupDashboardIntegration() {
     // Member join/leave events
     client.on('guildMemberAdd', async (member) => {
         try {
-            await client.database.logActivity({
-                guild_id: member.guild.id,
-                user_id: member.id,
-                type: 'member_join',
-                description: `${member.user.username} entrou no servidor`
-            });
+            // Log member join to database
+            try {
+                await client.database.createLog({
+                    guild_id: member.guild.id,
+                    type: 'member_join',
+                    user_id: member.id,
+                    data: {
+                        username: member.user.username,
+                        description: `${member.user.username} entrou no servidor`
+                    }
+                });
+            } catch (dbError) {
+                console.error('Erro ao registrar entrada de membro no banco de dados:', dbError);
+            }
             
+            // Send socket event
             if (socketManager) {
                 socketManager.onDiscordEvent('guildMemberAdd', member.guild.id, {
                     userId: member.id,
@@ -169,13 +178,22 @@ function setupDashboardIntegration() {
     
     client.on('guildMemberRemove', async (member) => {
         try {
-            await client.database.logActivity({
-                guild_id: member.guild.id,
-                user_id: member.id,
-                type: 'member_leave',
-                description: `${member.user.username} saiu do servidor`
-            });
+            // Log member leave to database
+            try {
+                await client.database.createLog({
+                    guild_id: member.guild.id,
+                    type: 'member_leave',
+                    user_id: member.id,
+                    data: {
+                        username: member.user.username,
+                        description: `${member.user.username} saiu do servidor`
+                    }
+                });
+            } catch (dbError) {
+                console.error('Erro ao registrar saída de membro no banco de dados:', dbError);
+            }
             
+            // Send socket event
             if (socketManager) {
                 socketManager.onDiscordEvent('guildMemberRemove', member.guild.id, {
                     userId: member.id,
