@@ -497,19 +497,21 @@ class Database {
         return new Promise((resolve, reject) => {
             console.log('🗑️ Iniciando deleção do ticket:', ticketId);
             
-            this.db.serialize(() => {
-                this.db.run('BEGIN TRANSACTION', (err) => {
+            const database = this.db; // Salvar referência
+            
+            database.serialize(() => {
+                database.run('BEGIN TRANSACTION', (err) => {
                     if (err) {
                         console.error('Erro ao iniciar transação:', err);
                         return reject(err);
                     }
                     
                     // Deletar usuários associados ao ticket
-                    const deleteUsersStmt = this.db.prepare('DELETE FROM ticket_users WHERE ticket_id = ?');
+                    const deleteUsersStmt = database.prepare('DELETE FROM ticket_users WHERE ticket_id = ?');
                     deleteUsersStmt.run([ticketId], (err) => {
                         if (err) {
                             console.error('Erro ao deletar usuários do ticket:', err);
-                            this.db.run('ROLLBACK');
+                            database.run('ROLLBACK');
                             deleteUsersStmt.finalize();
                             return reject(err);
                         }
@@ -517,16 +519,16 @@ class Database {
                         deleteUsersStmt.finalize();
                         
                         // Deletar o ticket
-                        const deleteTicketStmt = this.db.prepare('DELETE FROM tickets WHERE id = ?');
+                        const deleteTicketStmt = database.prepare('DELETE FROM tickets WHERE id = ?');
                         deleteTicketStmt.run([ticketId], function(err) {
                             if (err) {
                                 console.error('Erro ao deletar ticket:', err);
-                                this.db.run('ROLLBACK');
+                                database.run('ROLLBACK');
                                 deleteTicketStmt.finalize();
                                 reject(err);
                             } else {
                                 console.log('✅ Ticket deletado com sucesso, ID:', ticketId, 'Linhas afetadas:', this.changes);
-                                this.db.run('COMMIT', (commitErr) => {
+                                database.run('COMMIT', (commitErr) => {
                                     deleteTicketStmt.finalize();
                                     if (commitErr) {
                                         console.error('Erro ao fazer commit:', commitErr);
