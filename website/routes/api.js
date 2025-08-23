@@ -6,6 +6,24 @@ const Database = require('../database/database');
 const router = express.Router();
 const db = new Database();
 
+// Sistema de logging temporário para debug
+const debugLogs = [];
+const MAX_LOGS = 100;
+
+function addDebugLog(level, message, data = null) {
+    const log = {
+        timestamp: new Date().toISOString(),
+        level,
+        message,
+        data: data ? JSON.stringify(data) : null
+    };
+    debugLogs.push(log);
+    if (debugLogs.length > MAX_LOGS) {
+        debugLogs.shift(); // Remove o mais antigo
+    }
+    console.log(`[${level.toUpperCase()}] ${message}`, data || '');
+}
+
 // Variável para controlar se a database foi inicializada
 let dbInitialized = false;
 
@@ -371,12 +389,11 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
             createdBy: Joi.string().optional().default('dashboard')
         });
         
-        console.log('🎫 Request body recebido:', req.body);
+        addDebugLog('info', '🎫 Request body recebido', req.body);
         
         const { error, value } = schema.validate(req.body);
         if (error) {
-            console.error('❌ Erro de validação:', error.details[0].message);
-            console.log('📝 Dados enviados:', req.body);
+            addDebugLog('error', '❌ Erro de validação', { error: error.details[0].message, data: req.body });
             return res.status(400).json({ error: error.details[0].message });
         }
         
@@ -385,7 +402,7 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
         const requesterUsername = req.user.username;
         const targetUserId = value.userId || requesterId; // Usar o usuário especificado ou o próprio usuário
         
-        console.log('🎫 Criando ticket para:', { 
+        addDebugLog('info', '🎫 Criando ticket para', { 
             guildId, 
             requesterId, 
             targetUserId, 
@@ -396,21 +413,22 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
         
         // Verificar se o bot está online e tem acesso ao servidor
         if (!global.discordClient || !global.discordClient.isReady()) {
+            addDebugLog('error', '❌ Bot do Discord não está disponível');
             return res.status(503).json({ error: 'Bot do Discord não está disponível' });
         }
         
         const guild = global.discordClient.guilds.cache.get(guildId);
         if (!guild) {
-            console.error('❌ Servidor não encontrado:', guildId);
+            addDebugLog('error', '❌ Servidor não encontrado', { guildId });
             return res.status(404).json({ error: 'Servidor não encontrado' });
         }
         
-        console.log('🏠 Servidor encontrado:', guild.name, 'ID:', guild.id);
+        addDebugLog('info', '🏠 Servidor encontrado', { name: guild.name, id: guild.id });
         
         // Verificar permissões do bot
         const botMember = guild.members.cache.get(global.discordClient.user.id);
         if (!botMember) {
-            console.error('❌ Bot não está no servidor');
+            addDebugLog('error', '❌ Bot não está no servidor');
             return res.status(403).json({ error: 'Bot não tem acesso ao servidor' });
         }
         
@@ -608,11 +626,13 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
             message: 'Ticket criado com sucesso'
         });
     } catch (error) {
-        console.error('❌ Erro ao criar ticket:', error);
-        console.error('📊 Stack trace completo:', error.stack);
-        console.error('📝 Request body original:', req.body);
-        console.error('🔧 User info:', req.user);
-        console.error('🏠 Guild ID:', req.currentServerId);
+        addDebugLog('error', '❌ Erro ao criar ticket', {
+            error: error.message,
+            stack: error.stack,
+            requestBody: req.body,
+            userInfo: req.user,
+            guildId: req.currentServerId
+        });
         res.status(500).json({ 
             error: 'Erro interno do servidor',
             details: error.message,
@@ -1490,6 +1510,24 @@ function formatUptime(seconds) {
     
     return parts.join(' ') || '0m';
 }
+
+// Debug logs endpoint
+router.get('/debug-logs', (req, res) => {
+    const limit = parseInt(req.query.limit) || 50;
+    const level = req.query.level;
+    
+    let logs = debugLogs.slice(-limit);
+    
+    if (level) {
+        logs = logs.filter(log => log.level === level);
+    }
+    
+    res.json({
+        total: debugLogs.length,
+        showing: logs.length,
+        logs: logs.reverse() // Mais recentes primeiro
+    });
+});
 
 // Diagnostic endpoint
 router.get('/diagnostic', async (req, res) => {
