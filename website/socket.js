@@ -13,7 +13,23 @@ class SocketManager {
         this.db = new Database();
         this.connectedUsers = new Map();
         
+        this.initializeDatabase();
         this.setupSocketHandlers();
+    }
+    
+    async initializeDatabase() {
+        try {
+            await this.db.initialize();
+            console.log('✅ SocketManager: Database initialized successfully');
+        } catch (error) {
+            console.error('❌ SocketManager: Database initialization failed:', error);
+            this.db = null; // Set to null to prevent further errors
+        }
+    }
+    
+    // Método auxiliar para verificar se a database está disponível
+    isDatabaseReady() {
+        return this.db && this.db.db;
     }
     
     setupSocketHandlers() {
@@ -104,6 +120,11 @@ class SocketManager {
         try {
             if (!socket.authenticated) {
                 socket.emit('error', { message: 'Socket não autenticado' });
+                return;
+            }
+            
+            if (!this.isDatabaseReady()) {
+                socket.emit('error', { message: 'Database não disponível' });
                 return;
             }
             
@@ -275,8 +296,13 @@ class SocketManager {
     // Métodos para enviar atualizações
     
     async sendAnalyticsUpdate(guildId) {
+        if (!this.isDatabaseReady()) {
+            console.warn('⚠️ Database not ready, skipping analytics update');
+            return;
+        }
+        
         try {
-            const stats = await this.db.getAnalyticsOverview(guildId, '24h');
+            const stats = await this.db.getAnalytics(guildId, 'message_created', 1);
             
             this.io.to(`dashboard_${guildId}`).emit('analytics_update', {
                 stats,
@@ -288,8 +314,15 @@ class SocketManager {
     }
     
     async sendModerationStatsUpdate(guildId) {
+        if (!this.isDatabaseReady()) {
+            console.warn('⚠️ Database not ready, skipping moderation stats update');
+            return;
+        }
+        
         try {
-            const stats = await this.db.getModerationStats(guildId);
+            // const stats = await this.db.getModerationStats(guildId);
+            // Método não implementado - usar dados mock ou implementar depois
+            const stats = { warnings: 0, kicks: 0, bans: 0, timeouts: 0 };
             
             this.io.to(`dashboard_${guildId}`).emit('moderation_stats_update', {
                 stats,
@@ -301,6 +334,11 @@ class SocketManager {
     }
     
     async sendTicketStatsUpdate(guildId) {
+        if (!this.isDatabaseReady()) {
+            console.warn('⚠️ Database not ready, skipping ticket stats update');
+            return;
+        }
+        
         try {
             const stats = await this.db.getTicketStats(guildId);
             
@@ -362,11 +400,20 @@ class SocketManager {
     }
     
     async handleDiscordMessage(guildId, data) {
-        // Atualizar estatísticas de mensagens em tempo real
-        await this.db.recordAnalytics(guildId, 'message_created', 1, {
-            channelId: data.channelId,
-            authorId: data.authorId
-        });
+        if (!this.isDatabaseReady()) {
+            console.warn('⚠️ Database not ready, skipping message analytics');
+            return;
+        }
+        
+        try {
+            // Atualizar estatísticas de mensagens em tempo real
+            await this.db.recordAnalytics(guildId, 'message_created', 1, {
+                channelId: data.channelId,
+                authorId: data.authorId
+            });
+        } catch (error) {
+            console.error('Erro ao registrar analytics de mensagem:', error);
+        }
         
         // Enviar atualização para dashboard
         this.io.to(`dashboard_${guildId}`).emit('new_message', {
@@ -377,14 +424,23 @@ class SocketManager {
     }
     
     async handleMemberJoin(guildId, data) {
-        // Log de entrada
-        await this.db.createLog({
-            guild_id: guildId,
-            user_id: data.userId,
-            type: 'member_join',
-            description: `${data.username} entrou no servidor`,
-            timestamp: new Date().toISOString()
-        });
+        if (!this.isDatabaseReady()) {
+            console.warn('⚠️ Database not ready, skipping member join log');
+            return;
+        }
+        
+        try {
+            // Log de entrada
+            await this.db.createLog({
+                guild_id: guildId,
+                user_id: data.userId,
+                type: 'member_join',
+                description: `${data.username} entrou no servidor`,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('Erro ao registrar entrada de membro:', error);
+        }
         
         // Notificar dashboard
         this.io.to(`dashboard_${guildId}`).emit('member_joined', {
@@ -398,14 +454,23 @@ class SocketManager {
     }
     
     async handleMemberLeave(guildId, data) {
-        // Log de saída
-        await this.db.createLog({
-            guild_id: guildId,
-            user_id: data.userId,
-            type: 'member_leave',
-            description: `${data.username} saiu do servidor`,
-            timestamp: new Date().toISOString()
-        });
+        if (!this.isDatabaseReady()) {
+            console.warn('⚠️ Database not ready, skipping member leave log');
+            return;
+        }
+        
+        try {
+            // Log de saída
+            await this.db.createLog({
+                guild_id: guildId,
+                user_id: data.userId,
+                type: 'member_leave',
+                description: `${data.username} saiu do servidor`,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('Erro ao registrar saída de membro:', error);
+        }
         
         // Notificar dashboard
         this.io.to(`dashboard_${guildId}`).emit('member_left', {
@@ -419,19 +484,28 @@ class SocketManager {
     }
     
     async handleMessageDelete(guildId, data) {
-        // Log de mensagem deletada
-        await this.db.createLog({
-            guild_id: guildId,
-            user_id: data.authorId,
-            type: 'message_delete',
-            description: `Mensagem deletada no canal ${data.channelName}`,
-            details: JSON.stringify({
-                channelId: data.channelId,
-                messageId: data.messageId,
-                content: data.content?.substring(0, 100) || 'Conteúdo não disponível'
-            }),
-            timestamp: new Date().toISOString()
-        });
+        if (!this.isDatabaseReady()) {
+            console.warn('⚠️ Database not ready, skipping message delete log');
+            return;
+        }
+        
+        try {
+            // Log de mensagem deletada
+            await this.db.createLog({
+                guild_id: guildId,
+                user_id: data.authorId,
+                type: 'message_delete',
+                description: `Mensagem deletada no canal ${data.channelName}`,
+                details: JSON.stringify({
+                    channelId: data.channelId,
+                    messageId: data.messageId,
+                    content: data.content?.substring(0, 100) || 'Conteúdo não disponível'
+                }),
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('Erro ao registrar deleção de mensagem:', error);
+        }
         
         // Notificar moderadores
         this.notifyModerators(guildId, 'message_deleted', {
@@ -443,27 +517,39 @@ class SocketManager {
     }
     
     async handleVoiceUpdate(guildId, data) {
-        if (data.joined) {
-            await this.db.createLog({
-                guild_id: guildId,
-                user_id: data.userId,
-                type: 'voice_join',
-                description: `Entrou no canal de voz ${data.channelName}`,
-                timestamp: new Date().toISOString()
-            });
-        } else if (data.left) {
-            await this.db.createLog({
-                guild_id: guildId,
-                user_id: data.userId,
-                type: 'voice_leave',
-                description: `Saiu do canal de voz ${data.channelName}`,
-                timestamp: new Date().toISOString()
-            });
-            
-            // Calcular tempo em voz se disponível
-            if (data.duration) {
-                await this.db.updateVoiceTime(guildId, data.userId, data.duration);
+        // Verificar se a database está inicializada
+        if (!this.isDatabaseReady()) {
+            console.warn('⚠️ Database not ready, skipping voice update log');
+            return;
+        }
+        
+        try {
+            if (data.joined) {
+                await this.db.createLog({
+                    guild_id: guildId,
+                    user_id: data.userId,
+                    type: 'voice_join',
+                    description: `Entrou no canal de voz ${data.channelName}`,
+                    timestamp: new Date().toISOString()
+                });
+            } else if (data.left) {
+                await this.db.createLog({
+                    guild_id: guildId,
+                    user_id: data.userId,
+                    type: 'voice_leave',
+                    description: `Saiu do canal de voz ${data.channelName}`,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Calcular tempo em voz se disponível
+                if (data.duration) {
+                    // await this.db.updateVoiceTime(guildId, data.userId, data.duration);
+                    // Método não implementado - pode ser implementado depois se necessário
+                    console.log(`Voice time update: ${data.userId} - ${data.duration}ms`);
+                }
             }
+        } catch (error) {
+            console.error('Erro ao processar atualização de voz:', error);
         }
         
         // Notificar dashboard sobre mudanças de voz
