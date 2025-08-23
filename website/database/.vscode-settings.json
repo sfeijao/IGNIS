@@ -1,0 +1,14 @@
+{
+    "mssql.connections": [],
+    "files.associations": {
+        "schema.sql": "sqlite"
+    },
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "YSNM Dashboard",
+            "database": "./ysnm_dashboard.db"
+        }
+    ]
+}

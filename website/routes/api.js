@@ -339,8 +339,10 @@ router.get('/tickets/stats', requireAuth, ensureDbReady, async (req, res) => {
 router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
     try {
         const schema = Joi.object({
-            subject: Joi.string().min(3).max(100).required(),
-            description: Joi.string().max(1000).required(),
+            title: Joi.string().min(3).max(100).required(),
+            reason: Joi.string().max(1000).required(),
+            severity: Joi.string().valid('low', 'medium', 'high', 'urgent').default('medium'),
+            userId: Joi.string().optional(),
             priority: Joi.string().valid('low', 'normal', 'high', 'urgent').default('normal'),
             category: Joi.string().max(50).optional().default('general')
         });
@@ -351,10 +353,18 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
         }
         
         const guildId = req.currentServerId;
-        const userId = req.user.id;
-        const username = req.user.username;
+        const requesterId = req.user.id;
+        const requesterUsername = req.user.username;
+        const targetUserId = value.userId || requesterId; // Usar o usuário especificado ou o próprio usuário
         
-        console.log('🎫 Criando ticket para:', { guildId, userId, username, subject: value.subject });
+        console.log('🎫 Criando ticket para:', { 
+            guildId, 
+            requesterId, 
+            targetUserId, 
+            requesterUsername, 
+            title: value.title,
+            severity: value.severity 
+        });
         
         // Verificar se o bot está online e tem acesso ao servidor
         if (!global.discordClient || !global.discordClient.isReady()) {
@@ -364,6 +374,14 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
         const guild = global.discordClient.guilds.cache.get(guildId);
         if (!guild) {
             return res.status(404).json({ error: 'Servidor não encontrado' });
+        }
+
+        // Verificar se o usuário alvo existe no servidor
+        let targetMember;
+        try {
+            targetMember = await guild.members.fetch(targetUserId);
+        } catch (error) {
+            return res.status(404).json({ error: 'Usuário não encontrado no servidor' });
         }
         
         // Buscar categoria de tickets (ou criar se não existir)
@@ -386,7 +404,7 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
         }
         
         // Criar canal do ticket
-        const ticketChannelName = `ticket-${username}-${Date.now().toString().slice(-6)}`;
+        const ticketChannelName = `ticket-${targetMember.displayName.toLowerCase().replace(/[^a-z0-9]/g, '')}-${Date.now().toString().slice(-6)}`;
         console.log('🎫 Criando canal:', ticketChannelName);
         
         const ticketChannel = await guild.channels.create({
@@ -399,9 +417,14 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
                     deny: ['ViewChannel']
                 },
                 {
-                    id: userId,
+                    id: targetUserId,
                     allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory']
                 },
+                // Se o criador for diferente do usuário alvo, dar permissões também
+                ...(requesterId !== targetUserId ? [{
+                    id: requesterId,
+                    allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory']
+                }] : []),
                 // Permitir que moderadores vejam
                 ...guild.roles.cache
                     .filter(role => role.permissions.has('ManageMessages'))
@@ -413,28 +436,48 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
         });
         
         // Criar ticket na base de dados
+        const db = req.db;
         const ticketData = {
             guild_id: guildId,
             channel_id: ticketChannel.id,
-            user_id: userId,
+            user_id: targetUserId,
             category: value.category,
-            subject: value.subject,
-            description: value.description,
+            title: value.title,
+            subject: value.title, // Manter compatibilidade
+            description: value.reason,
+            severity: value.severity,
             priority: value.priority
         };
         
         const ticketResult = await db.createTicket(ticketData);
         
+        // Adicionar usuário ao ticket na tabela ticket_users
+        await db.addUserToTicket(ticketResult.id, targetUserId);
+        
+        // Se o criador for diferente do usuário alvo, adicionar também
+        if (requesterId !== targetUserId) {
+            await db.addUserToTicket(ticketResult.id, requesterId);
+        }
+        
         // Enviar mensagem inicial no canal do ticket
+        const severityEmojis = {
+            low: '🟢',
+            medium: '🟡', 
+            high: '🟠',
+            urgent: '🔴'
+        };
+        
         const embed = {
-            color: 0x00FF00,
-            title: `🎫 Ticket #${ticketResult.id}`,
+            color: value.severity === 'urgent' ? 0xFF0000 : value.severity === 'high' ? 0xFF8C00 : value.severity === 'medium' ? 0xFFFF00 : 0x00FF00,
+            title: `🎫 Ticket #${ticketResult.id} - ${value.title}`,
             fields: [
-                { name: '📝 Assunto', value: value.subject, inline: true },
+                { name: '📝 Título', value: value.title, inline: true },
+                { name: `${severityEmojis[value.severity]} Severidade`, value: value.severity.toUpperCase(), inline: true },
                 { name: '⚡ Prioridade', value: value.priority.toUpperCase(), inline: true },
                 { name: '📂 Categoria', value: value.category, inline: true },
-                { name: '📄 Descrição', value: value.description, inline: false },
-                { name: '👤 Criado por', value: `<@${userId}>`, inline: true },
+                { name: '📄 Descrição', value: value.reason, inline: false },
+                { name: '👤 Usuário', value: `<@${targetUserId}>`, inline: true },
+                { name: '🔧 Criado por', value: `<@${requesterId}>`, inline: true },
                 { name: '🕒 Data', value: new Date().toLocaleString('pt-PT'), inline: true }
             ],
             footer: { text: 'Sistema de Tickets YSNM' },
@@ -464,9 +507,18 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
         ];
         
         await ticketChannel.send({
-            content: `<@${userId}> O seu ticket foi criado com sucesso!`,
+            content: `<@${targetUserId}> ${requesterId !== targetUserId ? `Ticket criado por <@${requesterId}>` : 'O seu ticket foi criado com sucesso!'}`,
             embeds: [embed],
             components: components
+        });
+        
+        // Log da criação
+        await db.createLog(guildId, 'ticket_created', {
+            ticketId: ticketResult.id,
+            title: value.title,
+            severity: value.severity,
+            targetUserId,
+            createdBy: requesterId
         });
         
         console.log(`✅ Ticket #${ticketResult.id} criado com sucesso no canal ${ticketChannel.name}`);
@@ -476,6 +528,8 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
             ticket_id: ticketResult.id,
             channel_id: ticketChannel.id,
             channel_name: ticketChannel.name,
+            title: value.title,
+            severity: value.severity,
             message: 'Ticket criado com sucesso'
         });
     } catch (error) {
@@ -703,6 +757,243 @@ router.post('/tickets/:id/close', requireAuth, ensureDbReady, async (req, res) =
         });
     } catch (error) {
         console.error('Erro ao fechar ticket:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// Endpoint para atualizar severidade do ticket
+router.put('/tickets/:id/severity', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        const { severity } = req.body;
+        const { username } = req.session;
+        
+        // Validar severidade
+        const validSeverities = ['low', 'medium', 'high', 'urgent'];
+        if (!validSeverities.includes(severity)) {
+            return res.status(400).json({ error: 'Severidade inválida' });
+        }
+        
+        const db = req.db;
+        
+        // Verificar se o ticket existe
+        const tickets = await db.getTickets(req.currentServerId);
+        const ticket = tickets.find(t => t.id == ticketId);
+        
+        if (!ticket) {
+            return res.status(404).json({ error: 'Ticket não encontrado' });
+        }
+        
+        // Atualizar severidade
+        await db.updateTicketSeverity(ticketId, severity);
+        
+        // Log da alteração
+        await db.createLog(req.currentServerId, 'ticket_severity_updated', {
+            ticketId,
+            oldSeverity: ticket.severity,
+            newSeverity: severity,
+            updatedBy: username
+        });
+        
+        res.json({
+            success: true,
+            message: 'Severidade do ticket atualizada com sucesso'
+        });
+    } catch (error) {
+        console.error('Erro ao atualizar severidade do ticket:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// Endpoint para adicionar usuário ao ticket
+router.post('/tickets/:id/users', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        const { userId } = req.body;
+        const { username } = req.session;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'ID do usuário é obrigatório' });
+        }
+        
+        const db = req.db;
+        
+        // Verificar se o ticket existe
+        const tickets = await db.getTickets(req.currentServerId);
+        const ticket = tickets.find(t => t.id == ticketId);
+        
+        if (!ticket) {
+            return res.status(404).json({ error: 'Ticket não encontrado' });
+        }
+        
+        // Verificar se o usuário existe no Discord
+        let user = null;
+        if (global.discordClient && global.discordClient.isReady()) {
+            const guild = global.discordClient.guilds.cache.get(req.currentServerId);
+            if (guild) {
+                try {
+                    const member = await guild.members.fetch(userId);
+                    user = {
+                        id: member.id,
+                        username: member.user.username,
+                        displayName: member.displayName,
+                        avatar: member.user.displayAvatarURL()
+                    };
+                } catch (error) {
+                    return res.status(404).json({ error: 'Usuário não encontrado no servidor' });
+                }
+            }
+        }
+        
+        // Adicionar usuário ao ticket
+        await db.addUserToTicket(ticketId, userId);
+        
+        // Log da adição
+        await db.createLog(req.currentServerId, 'ticket_user_added', {
+            ticketId,
+            userId,
+            addedBy: username
+        });
+        
+        res.json({
+            success: true,
+            message: 'Usuário adicionado ao ticket com sucesso',
+            user
+        });
+    } catch (error) {
+        console.error('Erro ao adicionar usuário ao ticket:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// Endpoint para remover usuário do ticket
+router.delete('/tickets/:id/users/:userId', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        const userId = req.params.userId;
+        const { username } = req.session;
+        
+        const db = req.db;
+        
+        // Verificar se o ticket existe
+        const tickets = await db.getTickets(req.currentServerId);
+        const ticket = tickets.find(t => t.id == ticketId);
+        
+        if (!ticket) {
+            return res.status(404).json({ error: 'Ticket não encontrado' });
+        }
+        
+        // Remover usuário do ticket
+        await db.removeUserFromTicket(ticketId, userId);
+        
+        // Log da remoção
+        await db.createLog(req.currentServerId, 'ticket_user_removed', {
+            ticketId,
+            userId,
+            removedBy: username
+        });
+        
+        res.json({
+            success: true,
+            message: 'Usuário removido do ticket com sucesso'
+        });
+    } catch (error) {
+        console.error('Erro ao remover usuário do ticket:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// Endpoint para deletar ticket
+router.delete('/tickets/:id', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        const { username } = req.session;
+        
+        const db = req.db;
+        
+        // Verificar se o ticket existe
+        const tickets = await db.getTickets(req.currentServerId);
+        const ticket = tickets.find(t => t.id == ticketId);
+        
+        if (!ticket) {
+            return res.status(404).json({ error: 'Ticket não encontrado' });
+        }
+        
+        // Deletar canal do Discord se existir
+        if (global.discordClient && global.discordClient.isReady()) {
+            const guild = global.discordClient.guilds.cache.get(req.currentServerId);
+            if (guild && ticket.channel_id) {
+                try {
+                    const channel = guild.channels.cache.get(ticket.channel_id);
+                    if (channel) {
+                        await channel.delete('Ticket deletado via dashboard');
+                    }
+                } catch (error) {
+                    console.warn('Erro ao deletar canal do Discord:', error);
+                }
+            }
+        }
+        
+        // Deletar ticket da base de dados
+        await db.deleteTicket(ticketId);
+        
+        // Log da deleção
+        await db.createLog(req.currentServerId, 'ticket_deleted', {
+            ticketId,
+            ticketTitle: ticket.title,
+            deletedBy: username
+        });
+        
+        res.json({
+            success: true,
+            message: 'Ticket deletado com sucesso'
+        });
+    } catch (error) {
+        console.error('Erro ao deletar ticket:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// Endpoint para buscar usuários do Discord
+router.get('/discord/users/search', requireAuth, async (req, res) => {
+    try {
+        const { query } = req.query;
+        
+        if (!query || query.length < 2) {
+            return res.json({ users: [] });
+        }
+        
+        const users = [];
+        
+        if (global.discordClient && global.discordClient.isReady()) {
+            const guild = global.discordClient.guilds.cache.get(req.currentServerId);
+            if (guild) {
+                // Buscar membros que correspondam à query
+                const members = guild.members.cache.filter(member => 
+                    member.user.username.toLowerCase().includes(query.toLowerCase()) ||
+                    member.displayName.toLowerCase().includes(query.toLowerCase()) ||
+                    member.user.tag.toLowerCase().includes(query.toLowerCase())
+                );
+                
+                // Limitar a 10 resultados
+                const limitedMembers = members.first(10);
+                
+                limitedMembers.forEach(member => {
+                    users.push({
+                        id: member.id,
+                        username: member.user.username,
+                        displayName: member.displayName,
+                        discriminator: member.user.discriminator,
+                        tag: member.user.tag,
+                        avatar: member.user.displayAvatarURL({ size: 32 })
+                    });
+                });
+            }
+        }
+        
+        res.json({ users });
+    } catch (error) {
+        console.error('Erro ao buscar usuários:', error);
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });

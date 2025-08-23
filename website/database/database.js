@@ -77,7 +77,10 @@ class Database {
                                         } else {
                                             console.log('✅ Timestamps atualizados');
                                         }
-                                        resolve();
+                                        // Continuar com a migração dos tickets
+                                        this.migrateTicketsTable()
+                                            .then(() => resolve())
+                                            .catch(reject);
                                     }
                                 );
                             }
@@ -85,8 +88,100 @@ class Database {
                     );
                 } else {
                     console.log('✅ Estrutura da tabela logs está correta');
-                    resolve();
+                    // Verificar tickets mesmo se logs estiver correto
+                    this.migrateTicketsTable()
+                        .then(() => resolve())
+                        .catch(reject);
                 }
+            });
+        });
+    }
+
+    async migrateTicketsTable() {
+        return new Promise((resolve, reject) => {
+            // Verificar estrutura da tabela tickets
+            this.db.all("PRAGMA table_info(tickets)", (err, rows) => {
+                if (err) {
+                    console.error('❌ Erro ao verificar estrutura da tabela tickets:', err);
+                    reject(err);
+                    return;
+                }
+
+                const hasTitle = rows.some(row => row.name === 'title');
+                const hasSeverity = rows.some(row => row.name === 'severity');
+                
+                let promises = [];
+                
+                // Adicionar coluna title se não existir
+                if (!hasTitle) {
+                    console.log('🔧 Adicionando coluna title à tabela tickets...');
+                    promises.push(new Promise((res, rej) => {
+                        this.db.run(
+                            "ALTER TABLE tickets ADD COLUMN title TEXT",
+                            (err) => {
+                                if (err) {
+                                    console.error('❌ Erro ao adicionar coluna title:', err);
+                                    rej(err);
+                                } else {
+                                    console.log('✅ Coluna title adicionada com sucesso');
+                                    res();
+                                }
+                            }
+                        );
+                    }));
+                }
+                
+                // Adicionar coluna severity se não existir
+                if (!hasSeverity) {
+                    console.log('🔧 Adicionando coluna severity à tabela tickets...');
+                    promises.push(new Promise((res, rej) => {
+                        this.db.run(
+                            "ALTER TABLE tickets ADD COLUMN severity TEXT DEFAULT 'medium'",
+                            (err) => {
+                                if (err) {
+                                    console.error('❌ Erro ao adicionar coluna severity:', err);
+                                    rej(err);
+                                } else {
+                                    console.log('✅ Coluna severity adicionada com sucesso');
+                                    res();
+                                }
+                            }
+                        );
+                    }));
+                }
+                
+                // Criar tabela ticket_users se não existir
+                promises.push(new Promise((res, rej) => {
+                    this.db.run(`
+                        CREATE TABLE IF NOT EXISTS ticket_users (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            ticket_id INTEGER NOT NULL,
+                            user_id TEXT NOT NULL,
+                            added_by TEXT,
+                            added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+                            FOREIGN KEY (user_id) REFERENCES users(discord_id),
+                            FOREIGN KEY (added_by) REFERENCES users(discord_id),
+                            UNIQUE(ticket_id, user_id)
+                        )
+                    `, (err) => {
+                        if (err) {
+                            console.error('❌ Erro ao criar tabela ticket_users:', err);
+                            rej(err);
+                        } else {
+                            console.log('✅ Tabela ticket_users criada/verificada com sucesso');
+                            res();
+                        }
+                    });
+                }));
+                
+                // Executar todas as migrações
+                Promise.all(promises)
+                    .then(() => {
+                        console.log('✅ Migração da tabela tickets concluída');
+                        resolve();
+                    })
+                    .catch(reject);
             });
         });
     }
@@ -197,15 +292,15 @@ class Database {
 
     // Tickets
     async createTicket(ticketData) {
-        const { guild_id, channel_id, user_id, category, subject, description } = ticketData;
+        const { guild_id, channel_id, user_id, category, title, subject, description, severity = 'medium' } = ticketData;
         return new Promise((resolve, reject) => {
             const stmt = this.db.prepare(`
                 INSERT INTO tickets 
-                (guild_id, channel_id, user_id, category, subject, description) 
-                VALUES (?, ?, ?, ?, ?, ?)
+                (guild_id, channel_id, user_id, category, title, subject, description, severity) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `);
             
-            stmt.run([guild_id, channel_id, user_id, category, subject, description], function(err) {
+            stmt.run([guild_id, channel_id, user_id, category, title, subject, description, severity], function(err) {
                 if (err) {
                     reject(err);
                 } else {
@@ -234,11 +329,19 @@ class Database {
 
             query += ' ORDER BY t.created_at DESC';
 
-            this.db.all(query, params, (err, rows) => {
+            this.db.all(query, params, async (err, rows) => {
                 if (err) {
                     reject(err);
                 } else {
-                    resolve(rows);
+                    // Para cada ticket, buscar os usuários associados
+                    const ticketsWithUsers = await Promise.all(rows.map(async (ticket) => {
+                        const users = await this.getTicketUsers(ticket.id);
+                        return {
+                            ...ticket,
+                            users: users
+                        };
+                    }));
+                    resolve(ticketsWithUsers);
                 }
             });
         });
@@ -304,6 +407,140 @@ class Database {
                     reject(err);
                 } else {
                     resolve(row || { open: 0, assigned: 0, closedToday: 0, urgent: 0 });
+                }
+            });
+            stmt.finalize();
+        });
+    }
+
+    // Atualizar severidade do ticket
+    async updateTicketSeverity(ticketId, severity) {
+        return new Promise((resolve, reject) => {
+            const stmt = this.db.prepare(`
+                UPDATE tickets 
+                SET severity = ?, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            `);
+            
+            stmt.run([severity, ticketId], function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve({ changes: this.changes });
+                }
+            });
+            stmt.finalize();
+        });
+    }
+
+    // Adicionar usuário ao ticket
+    async addUserToTicket(ticketId, userId) {
+        return new Promise((resolve, reject) => {
+            // Primeiro verificar se já existe
+            const checkStmt = this.db.prepare(`
+                SELECT id FROM ticket_users 
+                WHERE ticket_id = ? AND user_id = ?
+            `);
+            
+            checkStmt.get([ticketId, userId], (err, row) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                
+                if (row) {
+                    // Usuário já está no ticket
+                    resolve({ changes: 0, message: 'Usuário já está no ticket' });
+                    return;
+                }
+                
+                // Adicionar usuário
+                const insertStmt = this.db.prepare(`
+                    INSERT INTO ticket_users (ticket_id, user_id, added_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                `);
+                
+                insertStmt.run([ticketId, userId], function(err) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve({ changes: this.changes, id: this.lastID });
+                    }
+                });
+                insertStmt.finalize();
+            });
+            checkStmt.finalize();
+        });
+    }
+
+    // Remover usuário do ticket
+    async removeUserFromTicket(ticketId, userId) {
+        return new Promise((resolve, reject) => {
+            const stmt = this.db.prepare(`
+                DELETE FROM ticket_users 
+                WHERE ticket_id = ? AND user_id = ?
+            `);
+            
+            stmt.run([ticketId, userId], function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve({ changes: this.changes });
+                }
+            });
+            stmt.finalize();
+        });
+    }
+
+    // Deletar ticket
+    async deleteTicket(ticketId) {
+        return new Promise((resolve, reject) => {
+            this.db.serialize(() => {
+                this.db.run('BEGIN TRANSACTION');
+                
+                // Deletar usuários associados ao ticket
+                const deleteUsersStmt = this.db.prepare('DELETE FROM ticket_users WHERE ticket_id = ?');
+                deleteUsersStmt.run([ticketId]);
+                deleteUsersStmt.finalize();
+                
+                // Deletar mensagens do ticket
+                const deleteMessagesStmt = this.db.prepare('DELETE FROM ticket_messages WHERE ticket_id = ?');
+                deleteMessagesStmt.run([ticketId]);
+                deleteMessagesStmt.finalize();
+                
+                // Deletar o ticket
+                const deleteTicketStmt = this.db.prepare('DELETE FROM tickets WHERE id = ?');
+                deleteTicketStmt.run([ticketId], function(err) {
+                    if (err) {
+                        console.error('Erro ao deletar ticket:', err);
+                        this.db.run('ROLLBACK');
+                        reject(err);
+                    } else {
+                        this.db.run('COMMIT');
+                        resolve({ changes: this.changes });
+                    }
+                });
+                deleteTicketStmt.finalize();
+            });
+        });
+    }
+
+    // Obter usuários de um ticket
+    async getTicketUsers(ticketId) {
+        return new Promise((resolve, reject) => {
+            const stmt = this.db.prepare(`
+                SELECT tu.user_id, tu.added_at, u.username, u.discriminator, u.avatar
+                FROM ticket_users tu
+                LEFT JOIN users u ON tu.user_id = u.discord_id
+                WHERE tu.ticket_id = ?
+                ORDER BY tu.added_at ASC
+            `);
+            
+            stmt.all([ticketId], (err, rows) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(rows || []);
                 }
             });
             stmt.finalize();

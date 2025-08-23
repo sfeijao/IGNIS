@@ -46,6 +46,12 @@ setTimeout(() => {
 }, 2000);
 
 setTimeout(() => {
+    console.log('\nTesting Discord bot token...');
+    // Token real do seu bot do config.json
+    testAuth('MTQwNDU4NDk0OTI4NTM4ODMzOQ.G4LsTN.J7v1bnFqfUB0Kc9fnb26F5RvjML4J0JqOKzzPQ');
+}, 3000);
+
+setTimeout(() => {
     console.log('\nTesting invalid token...');
     testAuth('invalid-token');
-}, 3000);
+}, 4000);

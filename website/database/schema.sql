@@ -1,5 +1,7 @@
 -- YSNM Bot Dashboard Database Schema
 -- Complete moderation and management system
+-- Database Type: SQLite3
+-- This schema is designed specifically for SQLite and uses SQLite-specific syntax
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
@@ -97,6 +99,8 @@ CREATE TABLE IF NOT EXISTS tickets (
     category TEXT DEFAULT 'general',
     status TEXT DEFAULT 'open', -- 'open', 'assigned', 'closed', 'archived'
     priority TEXT DEFAULT 'normal', -- 'low', 'normal', 'high', 'urgent'
+    severity TEXT DEFAULT 'medium', -- 'low', 'medium', 'high', 'urgent'
+    title TEXT,
     subject TEXT,
     description TEXT,
     tags TEXT DEFAULT '[]',
@@ -109,6 +113,19 @@ CREATE TABLE IF NOT EXISTS tickets (
     FOREIGN KEY (user_id) REFERENCES users(discord_id),
     FOREIGN KEY (assigned_to) REFERENCES users(discord_id),
     FOREIGN KEY (closed_by) REFERENCES users(discord_id)
+);
+
+-- Ticket users table (for multiple users per ticket)
+CREATE TABLE IF NOT EXISTS ticket_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id INTEGER NOT NULL,
+    user_id TEXT NOT NULL,
+    added_by TEXT,
+    added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(discord_id),
+    FOREIGN KEY (added_by) REFERENCES users(discord_id),
+    UNIQUE(ticket_id, user_id)
 );
 
 -- Ticket messages table
@@ -209,6 +226,8 @@ CREATE INDEX IF NOT EXISTS idx_guilds_discord_id ON guilds(discord_id);
 CREATE INDEX IF NOT EXISTS idx_guild_members_guild_user ON guild_members(guild_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_moderation_actions_guild ON moderation_actions(guild_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_tickets_guild_status ON tickets(guild_id, status);
+CREATE INDEX IF NOT EXISTS idx_ticket_users_ticket_id ON ticket_users(ticket_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_users_user_id ON ticket_users(user_id);
 CREATE INDEX IF NOT EXISTS idx_logs_guild_type ON logs(guild_id, type, timestamp);
 CREATE INDEX IF NOT EXISTS idx_analytics_guild_type_date ON analytics(guild_id, type, date);
 CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id, is_active);
