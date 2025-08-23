@@ -1,6 +1,6 @@
 {
   "name": "ysnm-community-bot",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "🤖 Bot Discord completo para YSNM Community com sistema de verificação, tags, status roxo e administração avançada",
   "main": "index.js",
   "scripts": {
