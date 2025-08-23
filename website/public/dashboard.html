@@ -1608,17 +1608,17 @@
                                     <span class="severity-icon severity-low">🟢</span>
                                     <span>Baixa</span>
                                 </div>
-                                <div class="severity-option selected" data-severity="normal">
-                                    <span class="severity-icon severity-normal">🟡</span>
-                                    <span>Normal</span>
+                                <div class="severity-option selected" data-severity="medium">
+                                    <span class="severity-icon severity-medium">🟡</span>
+                                    <span>Média</span>
                                 </div>
                                 <div class="severity-option" data-severity="high">
                                     <span class="severity-icon severity-high">🔴</span>
                                     <span>Alta</span>
                                 </div>
-                                <div class="severity-option" data-severity="critical">
-                                    <span class="severity-icon severity-critical">🟣</span>
-                                    <span>Crítica</span>
+                                <div class="severity-option" data-severity="urgent">
+                                    <span class="severity-icon severity-urgent">🟣</span>
+                                    <span>Urgente</span>
                                 </div>
                             </div>
                         </div>
@@ -1762,6 +1762,8 @@
                     createdBy: 'dashboard-admin'
                 };
 
+                console.log('🎫 Enviando dados do ticket:', ticketData);
+
                 try {
                     const response = await fetch('/api/tickets', {
                         method: 'POST',
@@ -1779,7 +1781,13 @@
                         this.refreshTickets();
                     } else {
                         const error = await response.json();
-                        this.showMessage(`Erro ao criar ticket: ${error.error}`, 'error');
+                        console.error('❌ Erro detalhado ao criar ticket:', {
+                            status: response.status,
+                            statusText: response.statusText,
+                            error: error,
+                            ticketData: ticketData
+                        });
+                        this.showMessage(`Erro ao criar ticket: ${error.error || 'Erro desconhecido'}`, 'error');
                     }
                 } catch (error) {
                     console.error('Error creating ticket:', error);
@@ -1884,17 +1892,17 @@
                                     <span class="severity-icon severity-low">🟢</span>
                                     <span>Baixa</span>
                                 </div>
-                                <div class="severity-option" data-severity="normal">
-                                    <span class="severity-icon severity-normal">🟡</span>
-                                    <span>Normal</span>
+                                <div class="severity-option" data-severity="medium">
+                                    <span class="severity-icon severity-medium">🟡</span>
+                                    <span>Média</span>
                                 </div>
                                 <div class="severity-option" data-severity="high">
                                     <span class="severity-icon severity-high">🔴</span>
                                     <span>Alta</span>
                                 </div>
-                                <div class="severity-option" data-severity="critical">
-                                    <span class="severity-icon severity-critical">🟣</span>
-                                    <span>Crítica</span>
+                                <div class="severity-option" data-severity="urgent">
+                                    <span class="severity-icon severity-urgent">🟣</span>
+                                    <span>Urgente</span>
                                 </div>
                             </div>
                         </div>
