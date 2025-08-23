@@ -313,6 +313,12 @@ class Database {
 
     async getTickets(guildId, status = null) {
         return new Promise((resolve, reject) => {
+            // Verificar se a database está inicializada
+            if (!this.db) {
+                console.error('❌ Database não inicializada em getTickets');
+                return reject(new Error('Database não inicializada'));
+            }
+
             let query = `
                 SELECT t.*, u.username, u.avatar, a.username as assigned_name 
                 FROM tickets t

@@ -34,8 +34,16 @@ module.exports = {
             const prioridade = interaction.options.getString('prioridade') || 'normal';
             
             // Verificar se o usuário já tem um ticket aberto
-            const Database = require('../website/database/database');
-            const db = new Database();
+            const db = interaction.client.database;
+            
+            // Verificar se a database está inicializada
+            if (!db || !db.db) {
+                console.error('❌ Database não inicializada no comando ticket');
+                return await interaction.reply({
+                    content: '❌ Sistema de tickets temporariamente indisponível. Tente novamente em alguns momentos.',
+                    ephemeral: true
+                });
+            }
             
             const userTickets = await db.getTickets(interaction.guild.id);
             const openTicket = userTickets.find(ticket => 
@@ -147,8 +155,7 @@ module.exports = {
             });
             
             // Criar ticket na base de dados
-            const Database = require('../website/database/database');
-            const db = new Database();
+            const db = interaction.client.database;
             
             const ticketData = {
                 guild_id: interaction.guild.id,
@@ -268,8 +275,7 @@ module.exports = {
         });
         
         // Criar ticket na base de dados
-        const Database = require('../website/database/database');
-        const db = new Database();
+        const db = interaction.client.database;
         
         const ticketDBData = {
             guild_id: interaction.guild.id,

@@ -7,6 +7,15 @@ module.exports = {
         try {
             // Comando Slash
             if (interaction.isChatInputCommand()) {
+                // Verificar se client.commands existe
+                if (!client.commands) {
+                    console.error('❌ client.commands não inicializado');
+                    return interaction.reply({
+                        content: '❌ Sistema de comandos ainda não foi inicializado. Tente novamente em alguns segundos.',
+                        ephemeral: true
+                    });
+                }
+
                 const command = client.commands.get(interaction.commandName);
                 if (!command) return;
 
