@@ -16,7 +16,7 @@ const config = {
     DISCORD: {
         TOKEN: process.env.DISCORD_TOKEN,
         CLIENT_ID: process.env.CLIENT_ID || process.env.DISCORD_CLIENT_ID,
-        CLIENT_SECRET: process.env.CLIENT_SECRET || process.env.DISCORD_CLIENT_SECRET,
+        CLIENT_SECRET: process.env.CLIENT_SECRET || process.env.DISCORD_CLIENT_SECRET || process.env.CLIENTSECRET, // Handle typo
         GUILD_ID: process.env.GUILD_ID || process.env.DISCORD_GUILD_ID,
     },
     

@@ -15,7 +15,7 @@ const csrfProtection = require('../utils/csrf');
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || config.WEBSITE.PORT || 4000;
 
 // Trust proxy settings (needed for rate limiting behind proxies)
 app.set('trust proxy', 1);
@@ -151,9 +151,12 @@ const isProduction = process.env.NODE_ENV === 'production' ||
                     !!process.env.RAILWAY_ENVIRONMENT_NAME || 
                     !!process.env.RAILWAY_PROJECT_NAME ||
                     !!process.env.RAILWAY_SERVICE_NAME;
-                    
+
+// Configuração segura do callback URL
 const callbackURL = isProduction ? 
-    (config.website.production?.redirectUri || 'https://ysnmbot-alberto.up.railway.app/auth/discord/callback') :
+    (config.WEBSITE?.production?.redirectUri || 
+     process.env.CALLBACK_URL || 
+     'https://ysnmbot-alberto.up.railway.app/auth/discord/callback') :
     `http://localhost:${PORT}/auth/discord/callback`;
 
 console.log('🔍 Debug OAuth2:');
@@ -161,6 +164,7 @@ console.log('   NODE_ENV:', process.env.NODE_ENV);
 console.log('   RAILWAY_ENVIRONMENT_NAME:', process.env.RAILWAY_ENVIRONMENT_NAME);
 console.log('   RAILWAY_PROJECT_NAME:', process.env.RAILWAY_PROJECT_NAME);
 console.log('   isProduction:', isProduction);
+console.log('   config.WEBSITE exists:', !!config.WEBSITE);
 console.log('   callbackURL:', callbackURL);
 
 // Verificar se CLIENT_SECRET está disponível para OAuth2

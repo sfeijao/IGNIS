@@ -3,10 +3,20 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-// Importar sistema do dashboard
-const { server, socketManager } = require('./website/server');
-const Database = require('./website/database/database');
 const config = require('./utils/config');
+
+// Importar sistema do dashboard APENAS se CLIENT_SECRET estiver disponível
+let server, socketManager, Database;
+if (config.DISCORD.CLIENT_SECRET) {
+    console.log('✅ CLIENT_SECRET disponível - carregando sistema completo (bot + website)');
+    const websiteServer = require('./website/server');
+    server = websiteServer.server;
+    socketManager = websiteServer.socketManager;
+    Database = require('./website/database/database');
+} else {
+    console.log('⚠️  CLIENT_SECRET não disponível - modo bot-only ativado');
+    console.log('   Website/dashboard desabilitado');
+}
 
 const client = new Client({
     intents: [
@@ -29,15 +39,29 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-client.socketManager = socketManager;
-client.database = new Database();
 
-// Initialize database for bot
-client.database.initialize().then(() => {
-    console.log('✅ Bot database connection established');
-}).catch(error => {
-    console.error('❌ Bot database connection failed:', error);
-});
+// Configurar componentes do website apenas se disponível
+if (socketManager) {
+    client.socketManager = socketManager;
+    console.log('✅ Socket manager configurado');
+} else {
+    client.socketManager = null;
+    console.log('⚠️  Socket manager não disponível (modo bot-only)');
+}
+
+if (Database) {
+    client.database = new Database();
+    
+    // Initialize database for bot
+    client.database.initialize().then(() => {
+        console.log('✅ Bot database connection established');
+    }).catch(error => {
+        console.error('❌ Bot database connection failed:', error);
+    });
+} else {
+    client.database = null;
+    console.log('⚠️  Database não disponível (modo bot-only)');
+}
 
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -142,17 +166,20 @@ client.once('ready', () => {
     console.log(`🏠 Servidores: ${client.guilds.cache.size}`);
     console.log(`👥 Usuários: ${client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0)}`);
     
-    // Update bot status
-    client.user.setActivity('🛡️ Dashboard ativo | /ajuda', { type: 'WATCHING' });
+    // Update bot status baseado no modo
+    const statusMessage = config.DISCORD.CLIENT_SECRET ? 
+        '🛡️ Dashboard ativo | /ajuda' : 
+        '🤖 Bot ativo | /ajuda';
+    client.user.setActivity(statusMessage, { type: 'WATCHING' });
     
-    // Tornar cliente disponível globalmente para o website
+    // Tornar cliente disponível globalmente para o website (se disponível)
     global.discordClient = client;
     
-    // Iniciar servidor web
-    try {
-        require('./website/server.js');
-    } catch (error) {
-        console.error('⚠️ Erro ao iniciar website de updates:', error);
+    // Website já foi inicializado anteriormente se CLIENT_SECRET disponível
+    if (config.DISCORD.CLIENT_SECRET) {
+        console.log('✅ Website já inicializado - Dashboard disponível');
+    } else {
+        console.log('⚠️  Modo bot-only - Website não disponível');
     }
 });
 
