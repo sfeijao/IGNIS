@@ -4,10 +4,15 @@
   "description": "🤖 Bot Discord completo para YSNM Community com sistema de verificação, tags, status roxo e administração avançada",
   "main": "index.js",
   "scripts": {
-    "start": "node register-commands.js && node index.js",
+    "start": "node scripts/deploy-commands.js && node index.js",
     "dev": "nodemon index.js",
-    "deploy": "node deploy-commands.js",
-    "register": "node register-commands.js",
+    "deploy": "node scripts/deploy-commands.js",
+    "deploy:global": "node scripts/deploy-commands.js --global",
+    "deploy:list": "node scripts/deploy-commands.js --list",
+    "deploy:clear": "node scripts/deploy-commands.js --clear",
+    "server": "node website/server.js",
+    "database:backup": "node -e \"require('./website/database/database').backupDatabase()\"",
+    "logs:clean": "node -e \"require('./utils/logger').cleanOldLogs()\"",
     "restart": "taskkill /f /im node.exe >nul 2>&1 & timeout /t 2 /nobreak >nul & node index.js",
     "clean-start": "restart-bot.bat",
     "test": "echo \"✅ No tests specified\" && exit 0"

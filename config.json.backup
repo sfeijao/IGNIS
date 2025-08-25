@@ -1,0 +1,46 @@
+{
+  "token": "MTQwNDU4NDk0OTI4NTM4ODMzOQ.G4LsTN.J7v1bnFqfUB0Kc9fnb26F5RvjML4J0JqOKzzPQ",
+  "clientId": "1404584949285388339",
+  "clientSecret": "6vXfqh4fr_zW7ddJiScSXb_Jj87DvPmd",
+  "guildId": "1333820000791691284",
+  "channels": {
+    "verification": "1333820001282560020",
+    "logs": "1407237814617116692",
+    "status": "1404307994421760040",
+    "solicitarTag": "1404308410832392332",
+    "comandosAdm": "1404310493480489031",
+    "cargoLogs": "1407237814617116692",
+    "updates": "1407240868334800958"
+  },
+  "roles": {
+    "verified": "1333820000846483482",
+    "unverified": "1333820000846483481",
+    "admin": "1333820000892616724",
+    "staff": "1333820000892616726",
+    "owner": "381762006329589760",
+    "vip": "1333820000846483478",
+    "member": "1333820000846483482",
+    "mod": "1333820000846483485",
+    "support": "1334157459161612288",
+    "supTickets": "1404306109723836476"
+  },
+  "ticketSystem": {
+    "logServerId": "1408278468822565075",
+    "logChannelId": null,
+    "deleteInsteadOfArchive": true
+  },
+  "serverName": "YSNM COMMUNITY",
+  "embedColor": "#8B5FBF",
+  "statusColor": "#7B68EE",
+  "primaryColor": "#9932CC",
+  "errorColor": "#ff0000",
+  "website": {
+    "baseUrl": "http://localhost:3001",
+    "redirectUri": "http://localhost:3001/auth/discord/callback",
+    "sessionSecret": "your-session-secret-key-here",
+    "production": {
+      "baseUrl": "https://ysnmbot-alberto.up.railway.app",
+      "redirectUri": "https://ysnmbot-alberto.up.railway.app/auth/discord/callback"
+    }
+  }
+}

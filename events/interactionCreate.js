@@ -1,5 +1,8 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelType, PermissionFlagsBits } = require('discord.js');
 const Database = require('../website/database/database');
+const errorHandler = require('../utils/errorHandler');
+const logger = require('../utils/logger');
+const { BUTTON_IDS, MODAL_IDS, INPUT_IDS, EMBED_COLORS, EMOJIS, ERROR_MESSAGES } = require('../constants/ui');
 
 module.exports = {
     name: 'interactionCreate',
@@ -9,30 +12,36 @@ module.exports = {
             if (interaction.isChatInputCommand()) {
                 // Verificar se client.commands existe
                 if (!client.commands) {
-                    console.error('❌ client.commands não inicializado');
+                    logger.error('client.commands não inicializado', {
+                        userId: interaction.user.id,
+                        guildId: interaction.guild?.id
+                    });
                     return interaction.reply({
-                        content: '❌ Sistema de comandos ainda não foi inicializado. Tente novamente em alguns segundos.',
+                        content: ERROR_MESSAGES.SYSTEM_ERROR,
                         ephemeral: true
                     });
                 }
 
                 const command = client.commands.get(interaction.commandName);
-                if (!command) return;
+                if (!command) {
+                    logger.warn(`Comando não encontrado: ${interaction.commandName}`, {
+                        userId: interaction.user.id,
+                        guildId: interaction.guild?.id
+                    });
+                    return;
+                }
 
                 try {
+                    // Log comando sendo executado
+                    logger.command(interaction.commandName, interaction, true);
+                    
                     await command.execute(interaction, client);
                 } catch (error) {
-                    console.error(`Erro ao executar comando ${interaction.commandName}:`, error);
-                    const reply = {
-                        content: '❌ Ocorreu um erro ao executar este comando.',
-                        ephemeral: true
-                    };
+                    // Usar error handler centralizado
+                    await errorHandler.handleInteractionError(interaction, error, 'Comando');
                     
-                    if (interaction.replied || interaction.deferred) {
-                        await interaction.followUp(reply);
-                    } else {
-                        await interaction.reply(reply);
-                    }
+                    // Log estruturado do erro
+                    logger.command(interaction.commandName, interaction, false);
                 }
                 return;
             }
@@ -42,53 +51,61 @@ module.exports = {
                 const customId = interaction.customId;
 
                 // Sistema de Verificação
-                if (customId === 'verify_user') {
+                if (customId === BUTTON_IDS.VERIFY_USER) {
                     try {
+                        logger.interaction('button', customId, interaction, true);
+                        
                         const verifyRole = interaction.guild.roles.cache.find(role => role.name === 'Verificado');
                         if (!verifyRole) {
-                            return await interaction.reply({
-                                content: '❌ Cargo de verificação não encontrado. Contacte um administrador.',
-                                ephemeral: true
-                            });
+                            await errorHandler.handleInteractionError(interaction, new Error('VERIFY_ROLE_NOT_FOUND'));
+                            return;
                         }
 
                         if (interaction.member.roles.cache.has(verifyRole.id)) {
                             return await interaction.reply({
-                                content: '✅ Já estás verificado!',
+                                content: `${EMOJIS.SUCCESS} Já estás verificado!`,
                                 ephemeral: true
                             });
                         }
 
                         await interaction.member.roles.add(verifyRole);
                         await interaction.reply({
-                            content: '✅ Verificação completa! Bem-vindo(a) ao servidor!',
+                            content: `${EMOJIS.SUCCESS} Verificação completa! Bem-vindo(a) ao servidor!`,
                             ephemeral: true
                         });
 
-                        // Log da verificação
-                        const database = new Database();
-                        database.run('INSERT INTO logs (type, user_id, action, timestamp) VALUES (?, ?, ?, ?)', 
-                            ['verification', interaction.user.id, 'User verified', new Date().toISOString()]);
+                        // Log da verificação com sistema estruturado
+                        logger.database('verification', {
+                            userId: interaction.user.id,
+                            guildId: interaction.guild.id,
+                            roleId: verifyRole.id,
+                            action: 'user_verified'
+                        });
+
+                        // Analytics para dashboard
+                        if (global.socketManager) {
+                            global.socketManager.broadcast('verification', {
+                                userId: interaction.user.id,
+                                username: interaction.user.username,
+                                timestamp: new Date().toISOString()
+                            });
+                        }
 
                     } catch (error) {
-                        console.error('Erro na verificação:', error);
-                        await interaction.reply({
-                            content: '❌ Erro ao verificar. Tenta novamente.',
-                            ephemeral: true
-                        });
+                        await errorHandler.handleInteractionError(interaction, error);
                     }
                     return;
                 }
 
                 // Sistema de Tickets
-                if (customId === 'create_ticket') {
+                if (customId === BUTTON_IDS.CREATE_TICKET) {
                     try {
+                        logger.interaction('button', customId, interaction, true);
+                        
                         const ticketCategory = interaction.guild.channels.cache.find(c => c.name === '📁 TICKETS' && c.type === ChannelType.GuildCategory);
                         if (!ticketCategory) {
-                            return await interaction.reply({
-                                content: '❌ Categoria de tickets não encontrada.',
-                                ephemeral: true
-                            });
+                            await errorHandler.handleInteractionError(interaction, new Error('TICKET_CATEGORY_NOT_FOUND'));
+                            return;
                         }
 
                         // Verificar se já tem ticket aberto
@@ -98,7 +115,7 @@ module.exports = {
 
                         if (existingTicket) {
                             return await interaction.reply({
-                                content: `❌ Já tens um ticket aberto: ${existingTicket}`,
+                                content: `${EMOJIS.ERROR} Já tens um ticket aberto: ${existingTicket}`,
                                 ephemeral: true
                             });
                         }
@@ -129,14 +146,14 @@ module.exports = {
                                 { name: '🕐 Criado', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true },
                                 { name: '📋 Status', value: '🟢 Aberto', inline: true }
                             )
-                            .setColor('#00ff00')
+                            .setColor(EMBED_COLORS.SUCCESS)
                             .setTimestamp();
 
                         const closeButton = new ActionRowBuilder()
                             .addComponents(
                                 new ButtonBuilder()
-                                    .setCustomId('close_ticket')
-                                    .setLabel('🔒 Fechar Ticket')
+                                    .setCustomId(BUTTON_IDS.CLOSE_TICKET)
+                                    .setLabel(`${EMOJIS.TICKET} Fechar Ticket`)
                                     .setStyle(ButtonStyle.Danger)
                             );
 
@@ -147,42 +164,53 @@ module.exports = {
                         });
 
                         await interaction.reply({
-                            content: `✅ Ticket criado: ${ticketChannel}`,
+                            content: `${EMOJIS.SUCCESS} Ticket criado: ${ticketChannel}`,
                             ephemeral: true
                         });
 
-                        // Guardar na database
-                        const database = new Database();
-                        database.run('INSERT INTO tickets (user_id, channel_id, status, created_at) VALUES (?, ?, ?, ?)',
-                            [interaction.user.id, ticketChannel.id, 'open', new Date().toISOString()]);
+                        // Log estruturado do ticket
+                        logger.database('ticket_created', {
+                            userId: interaction.user.id,
+                            channelId: ticketChannel.id,
+                            guildId: interaction.guild.id,
+                            ticketName: ticketChannel.name
+                        });
+
+                        // Analytics para dashboard
+                        if (global.socketManager) {
+                            global.socketManager.broadcast('ticket_created', {
+                                userId: interaction.user.id,
+                                username: interaction.user.username,
+                                channelId: ticketChannel.id,
+                                timestamp: new Date().toISOString()
+                            });
+                        }
 
                     } catch (error) {
-                        console.error('Erro ao criar ticket:', error);
-                        await interaction.reply({
-                            content: '❌ Erro ao criar ticket. Tenta novamente.',
-                            ephemeral: true
-                        });
+                        await errorHandler.handleInteractionError(interaction, error);
                     }
                     return;
                 }
 
                 // Fechar Ticket
-                if (customId === 'close_ticket') {
+                if (customId === BUTTON_IDS.CLOSE_TICKET) {
                     try {
+                        logger.interaction('button', customId, interaction, true);
+                        
                         const confirmEmbed = new EmbedBuilder()
                             .setTitle('⚠️ Confirmar Encerramento')
                             .setDescription('Tens a certeza que queres fechar este ticket?')
-                            .setColor('#ff9900');
+                            .setColor(EMBED_COLORS.WARNING);
 
                         const confirmButtons = new ActionRowBuilder()
                             .addComponents(
                                 new ButtonBuilder()
-                                    .setCustomId('confirm_close')
-                                    .setLabel('✅ Sim, Fechar')
+                                    .setCustomId(BUTTON_IDS.CONFIRM_CLOSE)
+                                    .setLabel(`${EMOJIS.SUCCESS} Sim, Fechar`)
                                     .setStyle(ButtonStyle.Danger),
                                 new ButtonBuilder()
-                                    .setCustomId('cancel_close')
-                                    .setLabel('❌ Cancelar')
+                                    .setCustomId(BUTTON_IDS.CANCEL_CLOSE)
+                                    .setLabel(`${EMOJIS.ERROR} Cancelar`)
                                     .setStyle(ButtonStyle.Secondary)
                             );
 
@@ -193,32 +221,47 @@ module.exports = {
                         });
 
                     } catch (error) {
-                        console.error('Erro ao confirmar fecho de ticket:', error);
+                        await errorHandler.handleInteractionError(interaction, error);
                     }
                     return;
                 }
 
                 // Confirmar fecho do ticket
-                if (customId === 'confirm_close') {
+                if (customId === BUTTON_IDS.CONFIRM_CLOSE) {
                     try {
+                        logger.interaction('button', customId, interaction, true);
+                        
                         const closedEmbed = new EmbedBuilder()
                             .setTitle('🔒 Ticket Fechado')
                             .setDescription(`Ticket fechado por ${interaction.user}`)
                             .addFields(
                                 { name: '🕐 Fechado em', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
                             )
-                            .setColor('#ff0000')
+                            .setColor(EMBED_COLORS.ERROR)
                             .setTimestamp();
 
                         await interaction.channel.send({ embeds: [closedEmbed] });
                         
-                        // Atualizar na database
-                        const database = new Database();
-                        database.run('UPDATE tickets SET status = ?, closed_at = ? WHERE channel_id = ?',
-                            ['closed', new Date().toISOString(), interaction.channel.id]);
+                        // Log estruturado
+                        logger.database('ticket_closed', {
+                            userId: interaction.user.id,
+                            channelId: interaction.channel.id,
+                            guildId: interaction.guild.id,
+                            closedBy: interaction.user.tag
+                        });
+
+                        // Analytics para dashboard
+                        if (global.socketManager) {
+                            global.socketManager.broadcast('ticket_closed', {
+                                userId: interaction.user.id,
+                                username: interaction.user.username,
+                                channelId: interaction.channel.id,
+                                timestamp: new Date().toISOString()
+                            });
+                        }
 
                         await interaction.reply({
-                            content: '🔒 Ticket será fechado em 5 segundos...',
+                            content: `${EMOJIS.SUCCESS} Ticket será fechado em 5 segundos...`,
                             ephemeral: true
                         });
 
@@ -226,20 +269,23 @@ module.exports = {
                             try {
                                 await interaction.channel.delete();
                             } catch (error) {
-                                console.error('Erro ao deletar canal:', error);
+                                logger.error('Erro ao deletar canal de ticket', { 
+                                    channelId: interaction.channel.id,
+                                    error: error.message 
+                                });
                             }
                         }, 5000);
 
                     } catch (error) {
-                        console.error('Erro ao fechar ticket:', error);
+                        await errorHandler.handleInteractionError(interaction, error);
                     }
                     return;
                 }
 
                 // Cancelar fecho
-                if (customId === 'cancel_close') {
+                if (customId === BUTTON_IDS.CANCEL_CLOSE) {
                     await interaction.reply({
-                        content: '✅ Fecho cancelado.',
+                        content: `${EMOJIS.SUCCESS} Fecho cancelado.`,
                         ephemeral: true
                     });
                     return;
@@ -247,24 +293,31 @@ module.exports = {
 
                 // Sistema de Tags
                 if (customId.startsWith('request_tag_')) {
-                    const tagName = customId.replace('request_tag_', '');
-                    
-                    const modal = new ModalBuilder()
-                        .setCustomId(`tag_modal_${tagName}`)
-                        .setTitle(`Solicitar Tag: ${tagName}`);
+                    try {
+                        const tagName = customId.replace('request_tag_', '');
+                        logger.interaction('button', customId, interaction, true);
+                        
+                        const modal = new ModalBuilder()
+                            .setCustomId(`tag_modal_${tagName}`)
+                            .setTitle(`Solicitar Tag: ${tagName}`);
 
-                    const reasonInput = new TextInputBuilder()
-                        .setCustomId('tag_reason')
-                        .setLabel('Motivo da solicitação')
-                        .setStyle(TextInputStyle.Paragraph)
-                        .setPlaceholder('Explica porque queres esta tag...')
-                        .setRequired(true)
-                        .setMaxLength(500);
+                        const reasonInput = new TextInputBuilder()
+                            .setCustomId('tag_reason')
+                            .setLabel('Motivo da solicitação')
+                            .setStyle(TextInputStyle.Paragraph)
+                            .setPlaceholder('Explica porque mereces esta tag...')
+                            .setRequired(true)
+                            .setMinLength(10)
+                            .setMaxLength(500);
 
-                    const firstActionRow = new ActionRowBuilder().addComponents(reasonInput);
-                    modal.addComponents(firstActionRow);
+                        const firstActionRow = new ActionRowBuilder().addComponents(reasonInput);
+                        modal.addComponents(firstActionRow);
 
-                    await interaction.showModal(modal);
+                        await interaction.showModal(modal);
+                        
+                    } catch (error) {
+                        await errorHandler.handleInteractionError(interaction, error);
+                    }
                     return;
                 }
             }
@@ -272,34 +325,52 @@ module.exports = {
             // Modals
             if (interaction.isModalSubmit()) {
                 if (interaction.customId.startsWith('tag_modal_')) {
-                    const tagName = interaction.customId.replace('tag_modal_', '');
-                    const reason = interaction.fields.getTextInputValue('tag_reason');
+                    try {
+                        const tagName = interaction.customId.replace('tag_modal_', '');
+                        const reason = interaction.fields.getTextInputValue('tag_reason');
 
-                    // Guardar solicitação na database
-                    const database = new Database();
-                    database.run('INSERT INTO tag_requests (user_id, tag_name, reason, status, created_at) VALUES (?, ?, ?, ?, ?)',
-                        [interaction.user.id, tagName, reason, 'pending', new Date().toISOString()]);
+                        // Log da solicitação
+                        logger.database('tag_request', {
+                            userId: interaction.user.id,
+                            tagName,
+                            reason: reason.substring(0, 100),
+                            guildId: interaction.guild.id
+                        });
 
-                    const confirmEmbed = new EmbedBuilder()
-                        .setTitle('✅ Solicitação Enviada')
-                        .setDescription(`A tua solicitação para a tag **${tagName}** foi enviada!`)
-                        .addFields(
-                            { name: '📝 Motivo', value: reason },
-                            { name: '⏰ Status', value: '🟡 Pendente' }
-                        )
-                        .setColor('#ffff00')
-                        .setTimestamp();
+                        const confirmEmbed = new EmbedBuilder()
+                            .setTitle(`${EMOJIS.SUCCESS} Solicitação Enviada`)
+                            .setDescription(`A tua solicitação para a tag **${tagName}** foi enviada!`)
+                            .addFields(
+                                { name: '📝 Motivo', value: reason },
+                                { name: '⏰ Status', value: '🟡 Pendente' }
+                            )
+                            .setColor(EMBED_COLORS.WARNING)
+                            .setTimestamp();
 
-                    await interaction.reply({
-                        embeds: [confirmEmbed],
-                        ephemeral: true
-                    });
+                        await interaction.reply({
+                            embeds: [confirmEmbed],
+                            ephemeral: true
+                        });
+
+                        // Analytics para dashboard
+                        if (global.socketManager) {
+                            global.socketManager.broadcast('tag_request', {
+                                userId: interaction.user.id,
+                                username: interaction.user.username,
+                                tagName,
+                                timestamp: new Date().toISOString()
+                            });
+                        }
+
+                    } catch (error) {
+                        await errorHandler.handleInteractionError(interaction, error);
+                    }
                     return;
                 }
             }
 
         } catch (error) {
-            console.error('Erro geral no interactionCreate:', error);
+            await errorHandler.handleInteractionError(interaction, error);
         }
     }
 };

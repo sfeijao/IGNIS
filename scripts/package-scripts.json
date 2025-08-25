@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "deploy": "node scripts/deploy-commands.js",
+    "deploy:global": "node scripts/deploy-commands.js --global",
+    "deploy:list": "node scripts/deploy-commands.js --list",
+    "deploy:clear": "node scripts/deploy-commands.js --clear",
+    "server": "node website/server.js",
+    "database:backup": "node -e \"require('./website/database/database').backupDatabase()\"",
+    "logs:clean": "node -e \"require('./utils/logger').cleanOldLogs()\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

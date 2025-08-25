@@ -11,6 +11,7 @@ const cors = require('cors');
 const { EmbedBuilder, WebhookClient, REST, Routes } = require('discord.js');
 const Database = require('./database/database');
 const SocketManager = require('./socket');
+const csrfProtection = require('../utils/csrf');
 
 const app = express();
 const server = http.createServer(app);
@@ -119,34 +120,25 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Carregar configuração
-let config;
-try {
-    config = require('../config.json');
-} catch (error) {
-    console.log('⚠️ Usando configuração padrão para o website');
-    config = {
-        clientId: process.env.DISCORD_CLIENT_ID,
-        clientSecret: process.env.DISCORD_CLIENT_SECRET,
-        website: {
-            baseUrl: process.env.BASE_URL || 'http://localhost:3001',
-            redirectUri: process.env.REDIRECT_URI || 'http://localhost:3001/auth/discord/callback',
-            sessionSecret: process.env.SESSION_SECRET || 'fallback-session-secret'
-        },
-        channels: {
-            updates: process.env.UPDATES_CHANNEL_ID || '1404310493468041228'
-        }
-    };
-}
+// Carregar configuração segura
+const config = require('../utils/config');
 
-// Configuração de sessão
+// Configuração de sessão segura
+const isProd = process.env.NODE_ENV === 'production' || 
+              !!process.env.RAILWAY_ENVIRONMENT_NAME || 
+              !!process.env.RAILWAY_PROJECT_NAME;
+
 app.use(session({
-    secret: config.website.sessionSecret,
+    secret: config.WEBSITE.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    name: 'sessionId', // Nome customizado para o cookie
     cookie: {
-        secure: false, // true para HTTPS
-        maxAge: 24 * 60 * 60 * 1000 // 24 horas
+        secure: isProd, // HTTPS obrigatório em produção
+        httpOnly: true, // Proteção contra XSS
+        sameSite: isProd ? 'lax' : 'lax', // Proteção CSRF
+        maxAge: 2 * 60 * 60 * 1000, // 2 horas (mais seguro que 24h)
+        domain: isProd ? '.railway.app' : undefined
     }
 }));
 
@@ -173,8 +165,8 @@ console.log('   callbackURL:', callbackURL);
 
 // Estratégia do Discord
 passport.use(new DiscordStrategy({
-    clientID: config.clientId,
-    clientSecret: config.clientSecret,
+    clientID: config.DISCORD.CLIENT_ID,
+    clientSecret: config.DISCORD.CLIENT_SECRET,
     callbackURL: callbackURL,
     scope: ['identify', 'guilds']
 }, (accessToken, refreshToken, profile, done) => {
@@ -185,8 +177,8 @@ passport.use(new DiscordStrategy({
 }));
 
 console.log('🔧 Configuração OAuth2 Discord:');
-console.log('   Client ID:', config.clientId ? `${config.clientId.substring(0, 8)}...` : 'AUSENTE');
-console.log('   Client Secret:', config.clientSecret ? `${config.clientSecret.substring(0, 8)}...` : 'AUSENTE');
+console.log('   Client ID:', config.DISCORD.CLIENT_ID ? `${config.DISCORD.CLIENT_ID.substring(0, 8)}...` : 'AUSENTE');
+console.log('   Client Secret:', config.DISCORD.CLIENT_SECRET ? `${config.DISCORD.CLIENT_SECRET.substring(0, 8)}...` : 'AUSENTE');
 console.log('   Callback URL:', callbackURL);
 
 passport.serializeUser((user, done) => {
@@ -360,9 +352,23 @@ app.get('/dashboard-fixed.html', requireAuth, requireServerAccess, (req, res) =>
     }
 });
 
+// Middleware CSRF para rotas autenticadas que modificam dados
+const csrfMiddleware = csrfProtection.middleware();
+
 // Importar e usar rotas de API
 const apiRoutes = require('./routes/api');
 app.use('/api', apiRoutes);
+
+// API para obter token CSRF
+app.get('/api/csrf-token', requireAuth, (req, res) => {
+    try {
+        const token = req.csrfToken();
+        res.json({ csrfToken: token });
+    } catch (error) {
+        console.error('Erro ao gerar token CSRF:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
 
 // API para obter dados do usuário
 app.get('/api/user', requireAuth, (req, res) => {
