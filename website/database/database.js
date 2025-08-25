@@ -710,26 +710,8 @@ class Database {
     }
 
     // Logs
-    async createLog(guildIdOrLogData, type = null, data = null) {
-        let logData;
-        
-        // Se o primeiro parâmetro é um objeto, usar formato antigo
-        if (typeof guildIdOrLogData === 'object' && guildIdOrLogData !== null) {
-            logData = guildIdOrLogData;
-        } else {
-            // Usar formato novo: createLog(guildId, type, data)
-            logData = {
-                guild_id: guildIdOrLogData,
-                type: type,
-                user_id: null,
-                channel_id: null,
-                target_id: null,
-                data: data
-            };
-        }
-        
-        const { guild_id, type: logType, user_id, channel_id, target_id, data: logDataField } = logData;
-        
+    async createLog(logData) {
+        const { guild_id, type, user_id, channel_id, target_id, data } = logData;
         return new Promise((resolve, reject) => {
             const stmt = this.db.prepare(`
                 INSERT INTO logs 
@@ -737,7 +719,7 @@ class Database {
                 VALUES (?, ?, ?, ?, ?, ?)
             `);
             
-            stmt.run([guild_id, logType, user_id, channel_id, target_id, JSON.stringify(logDataField || {})], function(err) {
+            stmt.run([guild_id, type, user_id, channel_id, target_id, JSON.stringify(data || {})], function(err) {
                 if (err) {
                     reject(err);
                 } else {

@@ -876,7 +876,17 @@ router.post('/tickets/:id/close', requireAuth, ensureDbReady, async (req, res) =
 });
 
 // Endpoint para atualizar severidade do ticket
+// Update ticket severity
 router.put('/tickets/:id/severity', requireAuth, ensureDbReady, async (req, res) => {
+    addDebugLog('info', '🎯 Endpoint /tickets/:id/severity chamado', { 
+        ticketId: req.params.id, 
+        method: req.method,
+        body: req.body,
+        user: req.user?.username,
+        authenticated: req.isAuthenticated(),
+        url: req.url
+    });
+    
     try {
         const ticketId = req.params.id;
         const { severity } = req.body;
@@ -1033,11 +1043,19 @@ router.delete('/tickets/:id/users/:userId', requireAuth, ensureDbReady, async (r
 
 // Endpoint para deletar ticket
 router.delete('/tickets/:id', requireAuth, ensureDbReady, async (req, res) => {
+    addDebugLog('info', '🗑️ Endpoint DELETE /tickets/:id chamado', { 
+        ticketId: req.params.id, 
+        method: req.method,
+        user: req.user?.username,
+        authenticated: req.isAuthenticated(),
+        url: req.url
+    });
+    
     try {
         const ticketId = req.params.id;
-        const { username } = req.session;
+        const username = req.user?.username || 'Unknown';
         
-        console.log('🗑️ Tentando deletar ticket:', ticketId, 'por:', username);
+        addDebugLog('info', '🗑️ Tentando deletar ticket', { ticketId, username });
         
         // Validar se ticketId é um número
         if (isNaN(ticketId)) {
@@ -1568,6 +1586,27 @@ router.get('/test', (req, res) => {
         timestamp: new Date().toISOString(),
         logsCount: debugLogs.length
     });
+});
+
+// Test endpoint with auth
+router.get('/test-auth', requireAuth, (req, res) => {
+    res.json({ 
+        message: 'Auth funcionando',
+        timestamp: new Date().toISOString(),
+        user: req.user?.username || 'Unknown',
+        authenticated: req.isAuthenticated()
+    });
+});
+
+// Test ticket endpoint
+router.put('/test-tickets/:id/severity', requireAuth, ensureDbReady, async (req, res) => {
+    addDebugLog('info', '🧪 Test endpoint chamado', { 
+        ticketId: req.params.id, 
+        body: req.body,
+        user: req.user?.username,
+        authenticated: req.isAuthenticated()
+    });
+    res.json({ success: true, message: 'Test endpoint funcionando' });
 });
 
 // Diagnostic endpoint
