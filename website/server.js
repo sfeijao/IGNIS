@@ -163,23 +163,34 @@ console.log('   RAILWAY_PROJECT_NAME:', process.env.RAILWAY_PROJECT_NAME);
 console.log('   isProduction:', isProduction);
 console.log('   callbackURL:', callbackURL);
 
-// Estratégia do Discord
-passport.use(new DiscordStrategy({
-    clientID: config.DISCORD.CLIENT_ID,
-    clientSecret: config.DISCORD.CLIENT_SECRET,
-    callbackURL: callbackURL,
-    scope: ['identify', 'guilds']
-}, (accessToken, refreshToken, profile, done) => {
-    console.log('✅ OAuth2 estratégia executada com sucesso');
-    console.log('   Profile ID:', profile.id);
-    console.log('   Profile Username:', profile.username);
-    return done(null, profile);
-}));
-
+// Verificar se CLIENT_SECRET está disponível para OAuth2
+const hasClientSecret = !!config.DISCORD.CLIENT_SECRET;
 console.log('🔧 Configuração OAuth2 Discord:');
 console.log('   Client ID:', config.DISCORD.CLIENT_ID ? `${config.DISCORD.CLIENT_ID.substring(0, 8)}...` : 'AUSENTE');
-console.log('   Client Secret:', config.DISCORD.CLIENT_SECRET ? `${config.DISCORD.CLIENT_SECRET.substring(0, 8)}...` : 'AUSENTE');
+console.log('   Client Secret:', hasClientSecret ? `${config.DISCORD.CLIENT_SECRET.substring(0, 8)}...` : 'AUSENTE');
+console.log('   OAuth2 Habilitado:', hasClientSecret);
 console.log('   Callback URL:', callbackURL);
+
+// Configurar OAuth2 apenas se CLIENT_SECRET estiver disponível
+if (hasClientSecret) {
+    // Estratégia do Discord
+    passport.use(new DiscordStrategy({
+        clientID: config.DISCORD.CLIENT_ID,
+        clientSecret: config.DISCORD.CLIENT_SECRET,
+        callbackURL: callbackURL,
+        scope: ['identify', 'guilds']
+    }, (accessToken, refreshToken, profile, done) => {
+        console.log('✅ OAuth2 estratégia executada com sucesso');
+        console.log('   Profile ID:', profile.id);
+        console.log('   Profile Username:', profile.username);
+        return done(null, profile);
+    }));
+    
+    console.log('✅ OAuth2 Discord configurado com sucesso');
+} else {
+    console.log('⚠️  OAuth2 desabilitado - CLIENT_SECRET não encontrado');
+    console.log('   Dashboard funcionará em modo somente leitura');
+}
 
 passport.serializeUser((user, done) => {
     done(null, user);
@@ -243,10 +254,21 @@ app.use('/js', express.static(path.join(__dirname, 'public/js')));
 app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
 
 // Rotas de autenticação Discord
-app.get('/auth/discord', passport.authenticate('discord'));
+app.get('/auth/discord', (req, res) => {
+    if (!config.DISCORD.CLIENT_SECRET) {
+        console.log('⚠️  OAuth2 não disponível - redirecionando para login alternativo');
+        return res.redirect('/login?error=oauth_disabled');
+    }
+    passport.authenticate('discord')(req, res);
+});
 
 app.get('/auth/discord/callback',
     (req, res, next) => {
+        if (!config.DISCORD.CLIENT_SECRET) {
+            console.log('⚠️  OAuth2 callback solicitado mas CLIENT_SECRET não disponível');
+            return res.redirect('/login?error=oauth_disabled');
+        }
+        
         passport.authenticate('discord', { failureRedirect: '/login' }, (err, user, info) => {
             if (err) {
                 console.error('❌ Erro OAuth2 detalhado:', err);

@@ -4,7 +4,10 @@
   "description": "🤖 Bot Discord completo para YSNM Community com sistema de verificação, tags, status roxo e administração avançada",
   "main": "index.js",
   "scripts": {
-    "start": "node scripts/deploy-commands.js && node index.js",
+    "start": "node railway-start.js",
+    "start:local": "node scripts/deploy-commands.js && node index.js",
+    "start:bot-only": "node scripts/deploy-commands.js && node bot-only.js",
+    "start:health": "node health-check.js",
     "dev": "nodemon index.js",
     "deploy": "node scripts/deploy-commands.js",
     "deploy:global": "node scripts/deploy-commands.js --global",
