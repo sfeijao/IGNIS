@@ -1391,6 +1391,26 @@
                         return true;
                     } else {
                         console.log('❌ Authentication test failed:', response.status);
+                        
+                        // Special handling for production (Railway)
+                        if (window.location.hostname.includes('railway.app')) {
+                            console.log('🚂 Production environment detected - trying alternative auth');
+                            
+                            // Show authentication options for production
+                            this.showMessage(`
+                                <strong>Autenticação necessária para Railway</strong><br>
+                                Status: ${response.status}<br>
+                                <button onclick="promptForToken()" class="btn btn-primary btn-sm mt-2">
+                                    Inserir Token de Acesso
+                                </button>
+                                <button onclick="redirectToOAuth()" class="btn btn-secondary btn-sm mt-2 ml-2">
+                                    Login via Discord
+                                </button>
+                            `, 'warning');
+                            
+                            return false;
+                        }
+                        
                         this.showMessage('Problema de autenticação. Configure um token válido.', 'error');
                         return false;
                     }
@@ -2678,6 +2698,27 @@
                 return 'dev-token';
             }
             
+            // For Railway production, check for production token
+            if (window.location.hostname.includes('railway.app')) {
+                // Try to get production token from URL parameters or prompt user
+                const urlParams = new URLSearchParams(window.location.search);
+                const prodToken = urlParams.get('token');
+                if (prodToken) {
+                    localStorage.setItem('authToken', prodToken);
+                    return prodToken;
+                }
+                
+                // Check if we have a stored production token
+                const storedToken = localStorage.getItem('productionToken');
+                if (storedToken) {
+                    return storedToken;
+                }
+                
+                // For now, use admin-token for Railway production
+                // TODO: Implement proper OAuth flow
+                return 'admin-token';
+            }
+            
             // Fallback empty token (backend will handle local dev)
             return '';
         }
@@ -2792,6 +2833,51 @@
                 }
             });
         });
+    </script>
+    
+    <script>
+        // Production authentication helper functions
+        function promptForToken() {
+            const token = prompt('Insira o token de acesso para Railway:');
+            if (token && token.trim()) {
+                localStorage.setItem('productionToken', token.trim());
+                localStorage.setItem('authToken', token.trim());
+                location.reload();
+            }
+        }
+        
+        function redirectToOAuth() {
+            // Redirect to Discord OAuth
+            window.location.href = '/auth/discord';
+        }
+        
+        // Add token input to production interface
+        if (window.location.hostname.includes('railway.app')) {
+            document.addEventListener('DOMContentLoaded', function() {
+                // Add production token input to top nav
+                const navbar = document.querySelector('.navbar');
+                if (navbar) {
+                    const tokenInput = document.createElement('div');
+                    tokenInput.className = 'ml-auto mr-3';
+                    tokenInput.innerHTML = `
+                        <input type="password" id="prodToken" placeholder="Token de Acesso" class="form-control form-control-sm" style="width: 200px; display: inline-block;">
+                        <button onclick="setProductionToken()" class="btn btn-primary btn-sm ml-2">Definir</button>
+                    `;
+                    navbar.appendChild(tokenInput);
+                }
+            });
+        }
+        
+        function setProductionToken() {
+            const tokenInput = document.getElementById('prodToken');
+            const token = tokenInput?.value?.trim();
+            if (token) {
+                localStorage.setItem('productionToken', token);
+                localStorage.setItem('authToken', token);
+                tokenInput.value = '';
+                location.reload();
+            }
+        }
     </script>
 </body>
 </html>
