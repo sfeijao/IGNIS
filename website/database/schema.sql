@@ -220,6 +220,17 @@ CREATE TABLE IF NOT EXISTS logs (
     FOREIGN KEY (guild_id) REFERENCES guilds(discord_id)
 );
 
+-- Guild configuration table
+CREATE TABLE IF NOT EXISTS guild_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    config_key TEXT NOT NULL,
+    value TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (guild_id) REFERENCES guilds(discord_id),
+    UNIQUE(guild_id, config_key)
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id);
 CREATE INDEX IF NOT EXISTS idx_guilds_discord_id ON guilds(discord_id);

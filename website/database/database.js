@@ -175,6 +175,28 @@ class Database {
                     });
                 }));
                 
+                // Criar tabela guild_config se não existir
+                promises.push(new Promise((res, rej) => {
+                    this.db.run(`
+                        CREATE TABLE IF NOT EXISTS guild_config (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            guild_id TEXT NOT NULL,
+                            config_key TEXT NOT NULL,
+                            value TEXT,
+                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            UNIQUE(guild_id, config_key)
+                        )
+                    `, (err) => {
+                        if (err) {
+                            console.error('❌ Erro ao criar tabela guild_config:', err);
+                            rej(err);
+                        } else {
+                            console.log('✅ Tabela guild_config criada/verificada com sucesso');
+                            res();
+                        }
+                    });
+                }));
+                
                 // Executar todas as migrações
                 Promise.all(promises)
                     .then(() => {
@@ -898,6 +920,43 @@ class Database {
                     reject(err);
                 } else {
                     resolve(this.changes);
+                }
+            });
+            stmt.finalize();
+        });
+    }
+
+    // Configurações de servidor
+    async getGuildConfig(guildId, key) {
+        return new Promise((resolve, reject) => {
+            const stmt = this.db.prepare(`
+                SELECT value FROM guild_config 
+                WHERE guild_id = ? AND config_key = ?
+            `);
+            
+            stmt.get([guildId, key], (err, row) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(row ? { value: row.value } : null);
+                }
+            });
+            stmt.finalize();
+        });
+    }
+
+    async setGuildConfig(guildId, key, value) {
+        return new Promise((resolve, reject) => {
+            const stmt = this.db.prepare(`
+                INSERT OR REPLACE INTO guild_config (guild_id, config_key, value, updated_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            `);
+            
+            stmt.run([guildId, key, value], function(err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve({ changes: this.changes, id: this.lastID });
                 }
             });
             stmt.finalize();
