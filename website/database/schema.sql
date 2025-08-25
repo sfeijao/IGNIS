@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS moderation_actions (
     guild_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
     moderator_id TEXT NOT NULL,
-    action_type TEXT NOT NULL, -- 'warn', 'timeout', 'kick', 'ban', 'unban'
+    action_type TEXT NOT NULL, -- warn, timeout, kick, ban, unban
     reason TEXT,
     duration INTEGER, -- in minutes
     expires_at DATETIME,
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS automod_rules (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,
     name TEXT NOT NULL,
-    type TEXT NOT NULL, -- 'spam', 'profanity', 'links', 'caps', 'mentions'
+    type TEXT NOT NULL, -- spam, profanity, links, caps, mentions
     enabled BOOLEAN DEFAULT TRUE,
     triggers TEXT DEFAULT '[]',
     actions TEXT DEFAULT '[]',
@@ -97,9 +97,9 @@ CREATE TABLE IF NOT EXISTS tickets (
     user_id TEXT NOT NULL,
     assigned_to TEXT,
     category TEXT DEFAULT 'general',
-    status TEXT DEFAULT 'open', -- 'open', 'assigned', 'closed', 'archived'
-    priority TEXT DEFAULT 'normal', -- 'low', 'normal', 'high', 'urgent'
-    severity TEXT DEFAULT 'medium', -- 'low', 'medium', 'high', 'urgent'
+    status TEXT DEFAULT 'open', -- open, assigned, closed, archived
+    priority TEXT DEFAULT 'normal', -- low, normal, high, urgent
+    severity TEXT DEFAULT 'medium', -- low, medium, high, urgent
     title TEXT,
     subject TEXT,
     description TEXT,
@@ -146,10 +146,10 @@ CREATE TABLE IF NOT EXISTS ticket_messages (
 CREATE TABLE IF NOT EXISTS guild_settings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,
-    category TEXT NOT NULL, -- 'moderation', 'automod', 'tickets', 'logging', 'general'
+    category TEXT NOT NULL, -- moderation, automod, tickets, logging, general
     key TEXT NOT NULL,
     value TEXT,
-    type TEXT DEFAULT 'string', -- 'string', 'number', 'boolean', 'json'
+    type TEXT DEFAULT 'string', -- string, number, boolean, json
     description TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -164,7 +164,7 @@ CREATE TABLE IF NOT EXISTS guild_settings (
 CREATE TABLE IF NOT EXISTS analytics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,
-    type TEXT NOT NULL, -- 'message_count', 'member_count', 'voice_time', 'moderation_action'
+    type TEXT NOT NULL, -- message_count, member_count, voice_time, moderation_action
     date DATE NOT NULL,
     hour INTEGER, -- 0-23 for hourly stats
     value INTEGER DEFAULT 0,
@@ -208,8 +208,8 @@ CREATE TABLE IF NOT EXISTS command_usage (
 CREATE TABLE IF NOT EXISTS logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id TEXT NOT NULL,
-    type TEXT NOT NULL, -- 'moderation', 'message', 'member', 'channel', 'role', 'bot', 'error'
-    level TEXT DEFAULT 'info', -- 'debug', 'info', 'warn', 'error', 'critical'
+    type TEXT NOT NULL, -- moderation, message, member, channel, role, bot, error
+    level TEXT DEFAULT 'info', -- debug, info, warn, error, critical
     message TEXT NOT NULL,
     user_id TEXT,
     username TEXT,
