@@ -732,17 +732,64 @@ class Database {
     }
 
     // Logs
-    async createLog(logData) {
-        const { guild_id, type, user_id, channel_id, target_id, data } = logData;
+    async createLog(guildIdOrLogData, type = null, data = null) {
+        // Handle both calling patterns:
+        // 1. createLog({ guild_id, type, ... }) - object format
+        // 2. createLog(guildId, type, data) - parameter format
+        
+        let logData;
+        if (typeof guildIdOrLogData === 'object' && guildIdOrLogData !== null) {
+            // Object format - use as-is
+            logData = guildIdOrLogData;
+        } else {
+            // Parameter format - convert to object
+            logData = {
+                guild_id: guildIdOrLogData,
+                type: type,
+                user_id: data?.createdBy || data?.targetUserId || data?.userId || null,
+                message: data?.description || data?.title || `${type} action`,
+                level: data?.level || 'info',
+                details: data
+            };
+        }
+        
+        // Ensure required fields
+        if (!logData.guild_id) {
+            throw new Error('guild_id is required for log entry');
+        }
+        if (!logData.type) {
+            throw new Error('type is required for log entry');
+        }
+        if (!logData.message) {
+            logData.message = `${logData.type} action`;
+        }
+        
         return new Promise((resolve, reject) => {
             const stmt = this.db.prepare(`
                 INSERT INTO logs 
-                (guild_id, type, user_id, channel_id, target_id, data) 
-                VALUES (?, ?, ?, ?, ?, ?)
+                (guild_id, type, level, message, user_id, username, channel_id, channel_name, details) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
             
-            stmt.run([guild_id, type, user_id, channel_id, target_id, JSON.stringify(data || {})], function(err) {
+            const params = [
+                logData.guild_id,
+                logData.type,
+                logData.level || 'info',
+                logData.message,
+                logData.user_id || null,
+                logData.username || null,
+                logData.channel_id || null,
+                logData.channel_name || null,
+                JSON.stringify(logData.details || logData.data || {})
+            ];
+            
+            stmt.run(params, function(err) {
                 if (err) {
+                    console.error('[ERROR] ⚠️ Erro ao criar log (não crítico)', {
+                        error: err.message,
+                        logData: logData,
+                        params: params
+                    });
                     reject(err);
                 } else {
                     resolve({ id: this.lastID });
@@ -767,7 +814,7 @@ class Database {
                 params.push(type);
             }
 
-            query += ' ORDER BY l.created_at DESC LIMIT ?';
+            query += ' ORDER BY l.timestamp DESC LIMIT ?';
             params.push(limit);
 
             this.db.all(query, params, (err, rows) => {
