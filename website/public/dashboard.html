@@ -1058,6 +1058,24 @@
                                 </div>
                                 <button class="btn btn-primary">Guardar AutoMod</button>
                             </div>
+
+                            <div class="config-card">
+                                <h4><i class="fas fa-archive"></i> Arquivo de Tickets</h4>
+                                <div class="form-group">
+                                    <label>URL do Webhook (Discord)</label>
+                                    <input type="url" id="webhook-url" class="form-control" placeholder="https://discord.com/api/webhooks/...">
+                                    <small class="form-text">Webhook para onde serão enviados os tickets arquivados</small>
+                                </div>
+                                <div class="webhook-actions">
+                                    <button class="btn btn-secondary" id="test-webhook-btn">
+                                        <i class="fas fa-test-tube"></i> Testar Webhook
+                                    </button>
+                                    <button class="btn btn-primary" id="save-webhook-btn">
+                                        <i class="fas fa-save"></i> Guardar Webhook
+                                    </button>
+                                </div>
+                                <div id="webhook-status" class="webhook-status"></div>
+                            </div>
                         </div>
                     </div>
 
@@ -1472,6 +1490,20 @@
                 if (manageTicketBtn) {
                     manageTicketBtn.addEventListener('click', this.showManageTicketModal.bind(this));
                 }
+
+                // Webhook configuration buttons
+                const saveWebhookBtn = document.getElementById('save-webhook-btn');
+                if (saveWebhookBtn) {
+                    saveWebhookBtn.addEventListener('click', this.saveWebhookConfig.bind(this));
+                }
+
+                const testWebhookBtn = document.getElementById('test-webhook-btn');
+                if (testWebhookBtn) {
+                    testWebhookBtn.addEventListener('click', this.testWebhook.bind(this));
+                }
+
+                // Load webhook configuration on page load
+                this.loadWebhookConfig();
             }
 
             showSection(sectionName) {
@@ -2353,6 +2385,121 @@
                 if (tokenDisplay) {
                     const token = getAuthToken();
                     tokenDisplay.textContent = token ? `${token.substring(0, 15)}...` : 'Nenhum token configurado';
+                }
+            }
+
+            async loadWebhookConfig() {
+                try {
+                    const response = await fetch('/api/config/archive-webhook', {
+                        headers: {
+                            'Authorization': `Bearer ${getAuthToken()}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const webhookInput = document.getElementById('webhook-url');
+                        if (webhookInput && data.webhookUrl) {
+                            webhookInput.value = data.webhookUrl;
+                        }
+                    } else {
+                        console.log('Nenhuma configuração de webhook encontrada');
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar configuração de webhook:', error);
+                }
+            }
+
+            async saveWebhookConfig() {
+                const webhookInput = document.getElementById('webhook-url');
+                const statusDiv = document.getElementById('webhook-status');
+                
+                if (!webhookInput || !statusDiv) return;
+
+                const webhookUrl = webhookInput.value.trim();
+                
+                // Validar URL do webhook
+                if (webhookUrl && !webhookUrl.includes('discord.com/api/webhooks/')) {
+                    this.showWebhookStatus('URL do webhook deve ser do Discord (discord.com/api/webhooks/...)', 'error');
+                    return;
+                }
+
+                try {
+                    this.showWebhookStatus('A guardar configuração...', 'loading');
+
+                    const response = await fetch('/api/config/archive-webhook', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${getAuthToken()}`
+                        },
+                        body: JSON.stringify({ webhookUrl })
+                    });
+
+                    if (response.ok) {
+                        this.showWebhookStatus(webhookUrl ? 'Webhook configurado com sucesso!' : 'Webhook removido com sucesso!', 'success');
+                        this.showMessage('Configuração de webhook atualizada', 'success');
+                    } else {
+                        const error = await response.text();
+                        this.showWebhookStatus(`Erro ao guardar: ${error}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Erro ao guardar webhook:', error);
+                    this.showWebhookStatus('Erro de conexão ao guardar webhook', 'error');
+                }
+            }
+
+            async testWebhook() {
+                const webhookInput = document.getElementById('webhook-url');
+                const statusDiv = document.getElementById('webhook-status');
+                
+                if (!webhookInput || !statusDiv) return;
+
+                const webhookUrl = webhookInput.value.trim();
+                
+                if (!webhookUrl) {
+                    this.showWebhookStatus('Configure uma URL de webhook primeiro', 'error');
+                    return;
+                }
+
+                try {
+                    this.showWebhookStatus('A testar webhook...', 'loading');
+
+                    const response = await fetch('/api/config/archive-webhook/test', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${getAuthToken()}`
+                        },
+                        body: JSON.stringify({ webhookUrl })
+                    });
+
+                    if (response.ok) {
+                        this.showWebhookStatus('✅ Webhook testado com sucesso! Verifica o Discord.', 'success');
+                        this.showMessage('Teste de webhook enviado!', 'success');
+                    } else {
+                        const error = await response.text();
+                        this.showWebhookStatus(`❌ Erro no teste: ${error}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Erro ao testar webhook:', error);
+                    this.showWebhookStatus('❌ Erro de conexão ao testar webhook', 'error');
+                }
+            }
+
+            showWebhookStatus(message, type) {
+                const statusDiv = document.getElementById('webhook-status');
+                if (!statusDiv) return;
+
+                statusDiv.className = `webhook-status ${type}`;
+                statusDiv.textContent = message;
+                statusDiv.style.display = 'block';
+
+                // Auto-hide success/error messages after 5 seconds
+                if (type === 'success' || type === 'error') {
+                    setTimeout(() => {
+                        statusDiv.style.display = 'none';
+                    }, 5000);
                 }
             }
         }

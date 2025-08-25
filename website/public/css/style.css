@@ -558,6 +558,43 @@ body {
     gap: var(--space-sm);
 }
 
+/* Webhook Configuration */
+.webhook-actions {
+    display: flex;
+    gap: var(--space-md);
+    margin-top: var(--space-md);
+}
+
+.webhook-status {
+    margin-top: var(--space-md);
+    padding: var(--space-sm);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.webhook-status.success {
+    background: rgba(88, 173, 88, 0.1);
+    border: 1px solid rgba(88, 173, 88, 0.3);
+    color: #58ad58;
+}
+
+.webhook-status.error {
+    background: rgba(255, 107, 107, 0.1);
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    color: #ff6b6b;
+}
+
+.webhook-status.loading {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    color: #ffc107;
+}
+
+.webhook-status {
+    display: none;
+}
+
 .emoji-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));

@@ -6,6 +6,92 @@ const Database = require('../database/database');
 const router = express.Router();
 const db = new Database();
 
+// Função para enviar ticket arquivado via webhook
+async function sendArchivedTicketWebhook(webhookUrl, ticketData, reason = 'Ticket arquivado') {
+    if (!webhookUrl) return;
+    
+    try {
+        const embed = {
+            title: `🗃️ Ticket Arquivado #${ticketData.id}`,
+            description: ticketData.description || 'Sem descrição',
+            color: 0x95a5a6, // Cor cinza para arquivado
+            fields: [
+                {
+                    name: '📝 Título',
+                    value: ticketData.title || 'Sem título',
+                    inline: true
+                },
+                {
+                    name: '👤 Usuário',
+                    value: `<@${ticketData.user_id}>`,
+                    inline: true
+                },
+                {
+                    name: '📊 Severidade',
+                    value: (ticketData.severity || 'medium').toUpperCase(),
+                    inline: true
+                },
+                {
+                    name: '📂 Categoria',
+                    value: ticketData.category || 'Geral',
+                    inline: true
+                },
+                {
+                    name: '📅 Criado em',
+                    value: new Date(ticketData.created_at).toLocaleString('pt-PT'),
+                    inline: true
+                },
+                {
+                    name: '🗃️ Arquivado em',
+                    value: new Date().toLocaleString('pt-PT'),
+                    inline: true
+                },
+                {
+                    name: '📝 Motivo',
+                    value: reason,
+                    inline: false
+                }
+            ],
+            footer: {
+                text: 'Sistema de Tickets YSNM - Arquivo'
+            },
+            timestamp: new Date().toISOString()
+        };
+
+        const payload = {
+            embeds: [embed],
+            username: 'YSNM Tickets Archive',
+            avatar_url: 'https://cdn.discordapp.com/emojis/1234567890.png' // Opcional
+        };
+
+        const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Webhook failed: ${response.status} ${response.statusText}`);
+        }
+
+        addDebugLog('info', '✅ Ticket enviado para webhook de arquivo', { 
+            ticketId: ticketData.id, 
+            webhookStatus: response.status 
+        });
+        
+        return true;
+    } catch (error) {
+        addDebugLog('error', '❌ Erro ao enviar ticket para webhook de arquivo', {
+            error: error.message,
+            ticketId: ticketData.id,
+            webhookUrl: webhookUrl.substring(0, 50) + '...'
+        });
+        return false;
+    }
+}
+
 // Sistema de logging temporário para debug
 const debugLogs = [];
 const MAX_LOGS = 100;
@@ -1090,6 +1176,23 @@ router.delete('/tickets/:id', requireAuth, ensureDbReady, async (req, res) => {
             }
         }
         
+        // Enviar ticket para webhook de arquivo (antes de deletar)
+        try {
+            const webhookConfig = await db.getGuildConfig(req.currentServerId, 'archive_webhook_url');
+            if (webhookConfig?.value) {
+                await sendArchivedTicketWebhook(
+                    webhookConfig.value, 
+                    ticket, 
+                    `Ticket deletado por ${username}`
+                );
+            }
+        } catch (webhookError) {
+            addDebugLog('error', '⚠️ Erro ao enviar webhook (não crítico)', { 
+                error: webhookError.message, 
+                ticketId 
+            });
+        }
+        
         // Deletar ticket da base de dados
         await db.deleteTicket(ticketId);
         
@@ -1553,6 +1656,88 @@ function formatUptime(seconds) {
     
     return parts.join(' ') || '0m';
 }
+
+// Configuração de webhook para tickets arquivados
+router.get('/config/archive-webhook', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        const db = req.db;
+        const guildId = req.currentServerId;
+        
+        // Buscar configuração atual do webhook
+        const config = await db.getGuildConfig(guildId, 'archive_webhook_url');
+        
+        res.json({
+            success: true,
+            webhookUrl: config?.value || null
+        });
+    } catch (error) {
+        addDebugLog('error', '❌ Erro ao buscar config de webhook', { error: error.message });
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+router.post('/config/archive-webhook', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        const { webhookUrl } = req.body;
+        const db = req.db;
+        const guildId = req.currentServerId;
+        
+        // Validar URL do webhook
+        if (webhookUrl && !webhookUrl.includes('discord.com/api/webhooks/')) {
+            return res.status(400).json({ error: 'URL de webhook inválida' });
+        }
+        
+        // Salvar configuração
+        await db.setGuildConfig(guildId, 'archive_webhook_url', webhookUrl);
+        
+        addDebugLog('info', '✅ Webhook de arquivo configurado', { guildId, hasWebhook: !!webhookUrl });
+        
+        res.json({
+            success: true,
+            message: webhookUrl ? 'Webhook configurado com sucesso' : 'Webhook removido com sucesso'
+        });
+    } catch (error) {
+        addDebugLog('error', '❌ Erro ao configurar webhook', { error: error.message });
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// Endpoint para testar webhook
+router.post('/config/archive-webhook/test', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        const db = req.db;
+        const guildId = req.currentServerId;
+        
+        // Buscar URL do webhook
+        const config = await db.getGuildConfig(guildId, 'archive_webhook_url');
+        if (!config?.value) {
+            return res.status(400).json({ error: 'Webhook não configurado' });
+        }
+        
+        // Dados de teste
+        const testTicket = {
+            id: 999,
+            title: 'Ticket de Teste',
+            description: 'Este é um ticket de teste para verificar o webhook',
+            user_id: req.user.id,
+            severity: 'medium',
+            category: 'teste',
+            created_at: new Date().toISOString()
+        };
+        
+        // Enviar teste
+        const success = await sendArchivedTicketWebhook(config.value, testTicket, 'Teste de webhook');
+        
+        if (success) {
+            res.json({ success: true, message: 'Webhook testado com sucesso' });
+        } else {
+            res.status(500).json({ error: 'Falha ao enviar webhook de teste' });
+        }
+    } catch (error) {
+        addDebugLog('error', '❌ Erro ao testar webhook', { error: error.message });
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
 
 // Debug logs endpoint
 router.get('/debug-logs', (req, res) => {
