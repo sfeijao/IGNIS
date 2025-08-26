@@ -4,6 +4,28 @@ const errorHandler = require('../utils/errorHandler');
 const logger = require('../utils/logger');
 const { BUTTON_IDS, MODAL_IDS, INPUT_IDS, EMBED_COLORS, EMOJIS, ERROR_MESSAGES } = require('../constants/ui');
 
+// Função auxiliar para obter ou criar categoria de tickets
+async function getOrCreateTicketCategory(guild) {
+    let ticketCategory = guild.channels.cache.find(c => c.name === '📁 TICKETS' && c.type === ChannelType.GuildCategory);
+    
+    if (!ticketCategory) {
+        console.log(`🎫 DEBUG: Categoria '📁 TICKETS' não encontrada, criando automaticamente...`);
+        try {
+            ticketCategory = await guild.channels.create({
+                name: '📁 TICKETS',
+                type: ChannelType.GuildCategory,
+                reason: 'Categoria criada automaticamente para sistema de tickets'
+            });
+            console.log(`🎫 DEBUG: Categoria criada com sucesso: ${ticketCategory.name}`);
+        } catch (error) {
+            console.error(`🎫 ERROR: Erro ao criar categoria:`, error);
+            throw new Error('FAILED_TO_CREATE_TICKET_CATEGORY');
+        }
+    }
+    
+    return ticketCategory;
+}
+
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction, client) {
@@ -105,11 +127,7 @@ module.exports = {
                     try {
                         logger.interaction('button', customId, interaction, true);
                         
-                        const ticketCategory = interaction.guild.channels.cache.find(c => c.name === '📁 TICKETS' && c.type === ChannelType.GuildCategory);
-                        if (!ticketCategory) {
-                            await errorHandler.handleInteractionError(interaction, new Error('TICKET_CATEGORY_NOT_FOUND'));
-                            return;
-                        }
+                        const ticketCategory = await getOrCreateTicketCategory(interaction.guild);
 
                         // Verificar se já tem ticket aberto
                         const existingTicket = interaction.guild.channels.cache.find(
@@ -202,11 +220,7 @@ module.exports = {
                         console.log(`🎫 DEBUG: Criando ticket tipo: "${ticketType}" para ${interaction.user.tag}`);
                         logger.interaction('button', customId, interaction, true);
                         
-                        const ticketCategory = interaction.guild.channels.cache.find(c => c.name === '📁 TICKETS' && c.type === ChannelType.GuildCategory);
-                        if (!ticketCategory) {
-                            await errorHandler.handleInteractionError(interaction, new Error('TICKET_CATEGORY_NOT_FOUND'));
-                            return;
-                        }
+                        const ticketCategory = await getOrCreateTicketCategory(interaction.guild);
 
                         // Verificar se já tem ticket aberto
                         const existingTicket = interaction.guild.channels.cache.find(
