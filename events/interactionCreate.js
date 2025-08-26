@@ -7,6 +7,7 @@ const { BUTTON_IDS, MODAL_IDS, INPUT_IDS, EMBED_COLORS, EMOJIS, ERROR_MESSAGES }
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction, client) {
+        console.log(`🔧 DEBUG: interactionCreate chamado - client exists: ${!!client}, commands exists: ${!!client?.commands}`);
         try {
             // Comando Slash
             if (interaction.isChatInputCommand()) {
@@ -49,6 +50,8 @@ module.exports = {
             // Botões
             if (interaction.isButton()) {
                 const customId = interaction.customId;
+                console.log(`🔘 DEBUG: Botão pressionado - ID: "${customId}" por ${interaction.user.tag}`);
+                console.log(`🔘 DEBUG: IDs disponíveis - CLOSE_TICKET: "${BUTTON_IDS.CLOSE_TICKET}", CONFIRM_CLOSE: "${BUTTON_IDS.CONFIRM_CLOSE}"`);
 
                 // Sistema de Verificação
                 if (customId === BUTTON_IDS.VERIFY_USER) {
@@ -196,6 +199,7 @@ module.exports = {
                 if (customId.startsWith('ticket_create_')) {
                     try {
                         const ticketType = customId.replace('ticket_create_', '');
+                        console.log(`🎫 DEBUG: Criando ticket tipo: "${ticketType}" para ${interaction.user.tag}`);
                         logger.interaction('button', customId, interaction, true);
                         
                         const ticketCategory = interaction.guild.channels.cache.find(c => c.name === '📁 TICKETS' && c.type === ChannelType.GuildCategory);
@@ -305,6 +309,7 @@ module.exports = {
                 // Fechar Ticket
                 if (customId === BUTTON_IDS.CLOSE_TICKET) {
                     try {
+                        console.log(`🎫 DEBUG: Botão fechar ticket clicado por ${interaction.user.tag}`);
                         logger.interaction('button', customId, interaction, true);
                         
                         const confirmEmbed = new EmbedBuilder()
@@ -324,6 +329,7 @@ module.exports = {
                                     .setStyle(ButtonStyle.Secondary)
                             );
 
+                        console.log(`🎫 DEBUG: Embed de confirmação criado`);
                         await interaction.reply({
                             embeds: [confirmEmbed],
                             components: [confirmButtons],
@@ -339,6 +345,7 @@ module.exports = {
                 // Confirmar fecho do ticket
                 if (customId === BUTTON_IDS.CONFIRM_CLOSE) {
                     try {
+                        console.log(`🎫 DEBUG: Confirmação de fecho de ticket por ${interaction.user.tag}`);
                         logger.interaction('button', customId, interaction, true);
                         
                         const closedEmbed = new EmbedBuilder()
@@ -350,6 +357,7 @@ module.exports = {
                             .setColor(EMBED_COLORS.ERROR)
                             .setTimestamp();
 
+                        console.log(`🎫 DEBUG: Enviando embed de fechamento`);
                         await interaction.channel.send({ embeds: [closedEmbed] });
                         
                         // Log estruturado
@@ -370,15 +378,20 @@ module.exports = {
                             });
                         }
 
+                        console.log(`🎫 DEBUG: Respondendo com confirmação de fechamento`);
                         await interaction.reply({
                             content: `${EMOJIS.SUCCESS} Ticket será fechado em 5 segundos...`,
                             ephemeral: true
                         });
 
+                        console.log(`🎫 DEBUG: Iniciando timeout para deletar canal em 5 segundos`);
                         setTimeout(async () => {
                             try {
+                                console.log(`🎫 DEBUG: Tentando deletar canal ${interaction.channel.id}`);
                                 await interaction.channel.delete();
+                                console.log(`🎫 DEBUG: Canal deletado com sucesso`);
                             } catch (error) {
+                                console.error(`🎫 ERROR: Erro ao deletar canal:`, error);
                                 logger.error('Erro ao deletar canal de ticket', { 
                                     channelId: interaction.channel.id,
                                     error: error.message 
@@ -387,6 +400,7 @@ module.exports = {
                         }, 5000);
 
                     } catch (error) {
+                        console.error(`🎫 ERROR: Erro no processo de fechar ticket:`, error);
                         await errorHandler.handleInteractionError(interaction, error);
                     }
                     return;
@@ -394,6 +408,7 @@ module.exports = {
 
                 // Cancelar fecho
                 if (customId === BUTTON_IDS.CANCEL_CLOSE) {
+                    console.log(`🎫 DEBUG: Cancelar fecho de ticket por ${interaction.user.tag}`);
                     await interaction.reply({
                         content: `${EMOJIS.SUCCESS} Fecho cancelado.`,
                         ephemeral: true
