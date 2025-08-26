@@ -192,6 +192,116 @@ module.exports = {
                     return;
                 }
 
+                // Botões do Painel de Tickets
+                if (customId.startsWith('ticket_create_')) {
+                    try {
+                        const ticketType = customId.replace('ticket_create_', '');
+                        logger.interaction('button', customId, interaction, true);
+                        
+                        const ticketCategory = interaction.guild.channels.cache.find(c => c.name === '📁 TICKETS' && c.type === ChannelType.GuildCategory);
+                        if (!ticketCategory) {
+                            await errorHandler.handleInteractionError(interaction, new Error('TICKET_CATEGORY_NOT_FOUND'));
+                            return;
+                        }
+
+                        // Verificar se já tem ticket aberto
+                        const existingTicket = interaction.guild.channels.cache.find(
+                            c => c.name === `ticket-${interaction.user.username.toLowerCase()}` && c.parentId === ticketCategory.id
+                        );
+
+                        if (existingTicket) {
+                            return await interaction.reply({
+                                content: `${EMOJIS.ERROR} Já tens um ticket aberto: ${existingTicket}`,
+                                ephemeral: true
+                            });
+                        }
+
+                        // Criar canal do ticket
+                        const ticketChannel = await interaction.guild.channels.create({
+                            name: `ticket-${interaction.user.username.toLowerCase()}`,
+                            type: ChannelType.GuildText,
+                            parent: ticketCategory.id,
+                            permissionOverwrites: [
+                                {
+                                    id: interaction.guild.id,
+                                    deny: [PermissionFlagsBits.ViewChannel],
+                                },
+                                {
+                                    id: interaction.user.id,
+                                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+                                },
+                            ],
+                        });
+
+                        // Map de tipos de ticket para emojis e cores
+                        const ticketTypeInfo = {
+                            'suporte': { emoji: '🛠️', color: EMBED_COLORS.PRIMARY, title: 'Suporte Técnico' },
+                            'problema': { emoji: '🚨', color: EMBED_COLORS.ERROR, title: 'Reportar Problema' },
+                            'sugestao': { emoji: '💡', color: EMBED_COLORS.SUCCESS, title: 'Sugestão' },
+                            'moderacao': { emoji: '👤', color: EMBED_COLORS.WARNING, title: 'Questão de Moderação' },
+                            'geral': { emoji: '📝', color: EMBED_COLORS.INFO, title: 'Geral' }
+                        };
+
+                        const typeInfo = ticketTypeInfo[ticketType] || ticketTypeInfo['geral'];
+
+                        // Embed do ticket
+                        const ticketEmbed = new EmbedBuilder()
+                            .setTitle(`${typeInfo.emoji} Ticket Criado - ${typeInfo.title}`)
+                            .setDescription(`Olá ${interaction.user}, o teu ticket foi criado com sucesso!\n\nDescreve o teu problema ou questão em detalhe e a nossa equipa irá ajudar-te rapidamente.`)
+                            .addFields(
+                                { name: '👤 Utilizador', value: `${interaction.user}`, inline: true },
+                                { name: '📂 Categoria', value: typeInfo.title, inline: true },
+                                { name: '🕐 Criado', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true },
+                                { name: '📋 Status', value: '🟢 Aberto', inline: true }
+                            )
+                            .setColor(typeInfo.color)
+                            .setTimestamp();
+
+                        const closeButton = new ActionRowBuilder()
+                            .addComponents(
+                                new ButtonBuilder()
+                                    .setCustomId(BUTTON_IDS.CLOSE_TICKET)
+                                    .setLabel(`${EMOJIS.TICKET} Fechar Ticket`)
+                                    .setStyle(ButtonStyle.Danger)
+                            );
+
+                        await ticketChannel.send({
+                            content: `${interaction.user} | <@&${interaction.guild.roles.cache.find(r => r.name === 'Staff')?.id || interaction.guild.roles.cache.find(r => r.permissions.has('MANAGE_MESSAGES'))?.id}>`,
+                            embeds: [ticketEmbed],
+                            components: [closeButton]
+                        });
+
+                        await interaction.reply({
+                            content: `${EMOJIS.SUCCESS} Ticket criado: ${ticketChannel}`,
+                            ephemeral: true
+                        });
+
+                        // Log estruturado do ticket
+                        logger.database('ticket_created', {
+                            userId: interaction.user.id,
+                            channelId: ticketChannel.id,
+                            guildId: interaction.guild.id,
+                            ticketName: ticketChannel.name,
+                            ticketType: ticketType
+                        });
+
+                        // Analytics para dashboard
+                        if (global.socketManager) {
+                            global.socketManager.broadcast('ticket_created', {
+                                userId: interaction.user.id,
+                                username: interaction.user.username,
+                                channelId: ticketChannel.id,
+                                ticketType: ticketType,
+                                timestamp: new Date().toISOString()
+                            });
+                        }
+
+                    } catch (error) {
+                        await errorHandler.handleInteractionError(interaction, error);
+                    }
+                    return;
+                }
+
                 // Fechar Ticket
                 if (customId === BUTTON_IDS.CLOSE_TICKET) {
                     try {

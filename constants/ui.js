@@ -7,8 +7,10 @@ const BUTTON_IDS = {
     VERIFY_USER: 'verify_user',
     
     // Sistema de Tickets
-    TICKET_CREATE: 'create_ticket',
-    TICKET_CLOSE: 'close_ticket',
+    CREATE_TICKET: 'create_ticket',
+    CLOSE_TICKET: 'close_ticket',
+    CONFIRM_CLOSE: 'confirm_close',
+    CANCEL_CLOSE: 'cancel_close',
     TICKET_DELETE: 'delete_ticket',
     TICKET_REOPEN: 'reopen_ticket',
     TICKET_CLAIM: 'claim_ticket',
