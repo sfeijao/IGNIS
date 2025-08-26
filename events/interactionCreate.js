@@ -1,4 +1,4 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelType, PermissionFlagsBits } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelType, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const Database = require('../website/database/database');
 const errorHandler = require('../utils/errorHandler');
 const logger = require('../utils/logger');
@@ -41,7 +41,7 @@ module.exports = {
                     });
                     return interaction.reply({
                         content: ERROR_MESSAGES.SYSTEM_ERROR,
-                        ephemeral: true
+                        flags: MessageFlags.Ephemeral
                     });
                 }
 
@@ -89,14 +89,14 @@ module.exports = {
                         if (interaction.member.roles.cache.has(verifyRole.id)) {
                             return await interaction.reply({
                                 content: `${EMOJIS.SUCCESS} Já estás verificado!`,
-                                ephemeral: true
+                                flags: MessageFlags.Ephemeral
                             });
                         }
 
                         await interaction.member.roles.add(verifyRole);
                         await interaction.reply({
                             content: `${EMOJIS.SUCCESS} Verificação completa! Bem-vindo(a) ao servidor!`,
-                            ephemeral: true
+                            flags: MessageFlags.Ephemeral
                         });
 
                         // Log da verificação com sistema estruturado
@@ -122,98 +122,7 @@ module.exports = {
                     return;
                 }
 
-                // Sistema de Tickets
-                if (customId === BUTTON_IDS.CREATE_TICKET) {
-                    try {
-                        logger.interaction('button', customId, interaction, true);
-                        
-                        const ticketCategory = await getOrCreateTicketCategory(interaction.guild);
-
-                        // Verificar se já tem ticket aberto
-                        const existingTicket = interaction.guild.channels.cache.find(
-                            c => c.name === `ticket-${interaction.user.username.toLowerCase()}` && c.parentId === ticketCategory.id
-                        );
-
-                        if (existingTicket) {
-                            return await interaction.reply({
-                                content: `${EMOJIS.ERROR} Já tens um ticket aberto: ${existingTicket}`,
-                                ephemeral: true
-                            });
-                        }
-
-                        // Criar canal de ticket
-                        const ticketChannel = await interaction.guild.channels.create({
-                            name: `ticket-${interaction.user.username.toLowerCase()}`,
-                            type: ChannelType.GuildText,
-                            parent: ticketCategory.id,
-                            permissionOverwrites: [
-                                {
-                                    id: interaction.guild.id,
-                                    deny: [PermissionFlagsBits.ViewChannel],
-                                },
-                                {
-                                    id: interaction.user.id,
-                                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
-                                },
-                            ],
-                        });
-
-                        // Embed do ticket
-                        const ticketEmbed = new EmbedBuilder()
-                            .setTitle('🎫 Ticket Criado')
-                            .setDescription(`Olá ${interaction.user}, o teu ticket foi criado com sucesso!`)
-                            .addFields(
-                                { name: '👤 Utilizador', value: `${interaction.user}`, inline: true },
-                                { name: '🕐 Criado', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true },
-                                { name: '📋 Status', value: '🟢 Aberto', inline: true }
-                            )
-                            .setColor(EMBED_COLORS.SUCCESS)
-                            .setTimestamp();
-
-                        const closeButton = new ActionRowBuilder()
-                            .addComponents(
-                                new ButtonBuilder()
-                                    .setCustomId(BUTTON_IDS.CLOSE_TICKET)
-                                    .setLabel(`${EMOJIS.TICKET} Fechar Ticket`)
-                                    .setStyle(ButtonStyle.Danger)
-                            );
-
-                        await ticketChannel.send({
-                            content: `${interaction.user}`,
-                            embeds: [ticketEmbed],
-                            components: [closeButton]
-                        });
-
-                        await interaction.reply({
-                            content: `${EMOJIS.SUCCESS} Ticket criado: ${ticketChannel}`,
-                            ephemeral: true
-                        });
-
-                        // Log estruturado do ticket
-                        logger.database('ticket_created', {
-                            userId: interaction.user.id,
-                            channelId: ticketChannel.id,
-                            guildId: interaction.guild.id,
-                            ticketName: ticketChannel.name
-                        });
-
-                        // Analytics para dashboard
-                        if (global.socketManager) {
-                            global.socketManager.broadcast('ticket_created', {
-                                userId: interaction.user.id,
-                                username: interaction.user.username,
-                                channelId: ticketChannel.id,
-                                timestamp: new Date().toISOString()
-                            });
-                        }
-
-                    } catch (error) {
-                        await errorHandler.handleInteractionError(interaction, error);
-                    }
-                    return;
-                }
-
-                // Botões do Painel de Tickets
+                // Botões do Painel de Tickets (tipos específicos)
                 if (customId.startsWith('ticket_create_')) {
                     try {
                         const ticketType = customId.replace('ticket_create_', '');
@@ -230,7 +139,7 @@ module.exports = {
                         if (existingTicket) {
                             return await interaction.reply({
                                 content: `${EMOJIS.ERROR} Já tens um ticket aberto: ${existingTicket}`,
-                                ephemeral: true
+                                flags: MessageFlags.Ephemeral
                             });
                         }
 
@@ -291,7 +200,7 @@ module.exports = {
 
                         await interaction.reply({
                             content: `${EMOJIS.SUCCESS} Ticket criado: ${ticketChannel}`,
-                            ephemeral: true
+                            flags: MessageFlags.Ephemeral
                         });
 
                         // Log estruturado do ticket
@@ -347,7 +256,7 @@ module.exports = {
                         await interaction.reply({
                             embeds: [confirmEmbed],
                             components: [confirmButtons],
-                            ephemeral: true
+                            flags: MessageFlags.Ephemeral
                         });
 
                     } catch (error) {
@@ -395,7 +304,7 @@ module.exports = {
                         console.log(`🎫 DEBUG: Respondendo com confirmação de fechamento`);
                         await interaction.reply({
                             content: `${EMOJIS.SUCCESS} Ticket será fechado em 5 segundos...`,
-                            ephemeral: true
+                            flags: MessageFlags.Ephemeral
                         });
 
                         console.log(`🎫 DEBUG: Iniciando timeout para deletar canal em 5 segundos`);
@@ -425,7 +334,7 @@ module.exports = {
                     console.log(`🎫 DEBUG: Cancelar fecho de ticket por ${interaction.user.tag}`);
                     await interaction.reply({
                         content: `${EMOJIS.SUCCESS} Fecho cancelado.`,
-                        ephemeral: true
+                        flags: MessageFlags.Ephemeral
                     });
                     return;
                 }
@@ -488,7 +397,7 @@ module.exports = {
 
                         await interaction.reply({
                             embeds: [confirmEmbed],
-                            ephemeral: true
+                            flags: MessageFlags.Ephemeral
                         });
 
                         // Analytics para dashboard

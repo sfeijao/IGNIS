@@ -86,11 +86,12 @@ const EMBED_COLORS = {
     },
     
     // Estados do sistema
-    SUCCESS: 0x00FF00,      // Verde
-    WARNING: 0xFFFF00,      // Amarelo
-    ERROR: 0xFF0000,        // Vermelho
-    INFO: 0x0099FF,         // Azul
-    NEUTRAL: 0x99AAB5,      // Cinzento
+    PRIMARY: '#5865F2',     // Azul Discord (Blurple)
+    SUCCESS: '#00FF00',     // Verde
+    WARNING: '#FFFF00',     // Amarelo
+    ERROR: '#FF0000',       // Vermelho
+    INFO: '#0099FF',        // Azul
+    NEUTRAL: '#99AAB5',     // Cinzento
     
     // Categorias de tickets
     CATEGORY: {
