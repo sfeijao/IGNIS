@@ -211,11 +211,11 @@ function requireAuth(req, res, next) {
         console.log('🔧 Modo desenvolvimento: Bypass autenticação');
         // Simular usuário autenticado para desenvolvimento
         req.user = {
-            id: 'dev_user',
+            id: '381762006329589760', // ID de teste válido (snowflake)
             username: 'Developer',
             discriminator: '0001',
             avatar: null,
-            guilds: ['1234567890'] // ID de teste
+            guilds: ['1333820000791691284'] // Guild ID real
         };
         return next();
     }

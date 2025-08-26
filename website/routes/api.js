@@ -176,9 +176,9 @@ const requireAuth = (req, res, next) => {
         
         if (token && (validTokens.includes(token) || token.length > 10)) {
             req.user = { 
-                id: token === 'dev-token' ? 'dev_user' : 
-                    token === 'admin-token' ? 'admin_user' : 
-                    'dashboard_user', 
+                id: token === 'dev-token' ? '381762006329589760' : 
+                    token === 'admin-token' ? '381762006329589760' : 
+                    '381762006329589760', // ID de utilizador válido (snowflake)
                 isAdmin: true,
                 token: token
             };
@@ -195,7 +195,7 @@ const requireAuth = (req, res, next) => {
                       req.connection?.remoteAddress === '::1';
                       
     if (isLocalDev) {
-        req.user = { id: 'local_dev_user', isAdmin: true };
+        req.user = { id: '381762006329589760', isAdmin: true };
         console.log('✅ Authenticated via localhost');
         return next();
     }
@@ -238,8 +238,8 @@ const requireAdmin = (req, res, next) => {
         if (token && (validTokens.includes(token) || token.length > 10)) {
             req.user = { 
                 id: token === 'dev-token' ? 'dev_user' : 
-                    token === 'admin-token' ? 'admin_user' : 
-                    'dashboard_user', 
+                    token === 'admin-token' ? '381762006329589760' : 
+                    '381762006329589760', 
                 isAdmin: true,
                 token: token
             };
@@ -256,7 +256,7 @@ const requireAdmin = (req, res, next) => {
                       req.connection?.remoteAddress === '::1';
                       
     if (isLocalDev) {
-        req.user = { id: 'local_dev_user', isAdmin: true };
+        req.user = { id: '381762006329589760', isAdmin: true };
         console.log('✅ Authenticated via localhost');
         return next();
     }
@@ -838,7 +838,7 @@ router.post('/tickets/:id/messages', requireAuth, ensureDbReady, async (req, res
         }
         
         const ticketId = req.params.id;
-        const userId = req.user?.id || req.session?.user?.id || 'dashboard_user';
+        const userId = req.user?.id || req.session?.user?.id || '381762006329589760';
         
         const messageId = await db.addTicketMessage({
             ticket_id: ticketId,
@@ -1514,7 +1514,7 @@ router.post('/admin/members/action', requireAdmin, async (req, res) => {
             await db.createModerationAction({
                 guild_id: guild.id,
                 user_id: value.memberId,
-                moderator_id: req.user?.id || 'dashboard_user',
+                moderator_id: req.user?.id || '381762006329589760',
                 action_type: value.action,
                 reason: value.reason,
                 duration: value.duration,
