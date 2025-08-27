@@ -68,6 +68,16 @@ module.exports = {
     name: 'interactionCreate',
     async execute(interaction, client) {
         console.log(`🔧 DEBUG: interactionCreate chamado - client exists: ${!!client}, commands exists: ${!!client?.commands}`);
+        
+        // Verificar se a interação ainda é válida (não expirou)
+        const now = Date.now();
+        const interactionTime = new Date(interaction.createdTimestamp).getTime();
+        const timeDiff = now - interactionTime;
+        
+        if (timeDiff > 2000) { // Se passou mais de 2 segundos
+            console.log(`🔧 DEBUG: Interação potencialmente expirada (${timeDiff}ms), processando com cuidado`);
+        }
+        
         try {
             // Comando Slash
             if (interaction.isChatInputCommand()) {
@@ -184,6 +194,9 @@ module.exports = {
                         console.log(`🎫 DEBUG: Criando ticket tipo: "${ticketType}" para ${interaction.user.tag}`);
                         logger.interaction('button', customId, interaction, true);
                         
+                        // Defer a resposta para dar mais tempo (15 minutos)
+                        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                        
                         const ticketCategory = await getOrCreateTicketCategory(interaction.guild);
 
                         // Verificar se já tem ticket aberto
@@ -192,9 +205,8 @@ module.exports = {
                         );
 
                         if (existingTicket) {
-                            return await interaction.reply({
-                                content: `${EMOJIS.ERROR} Já tens um ticket aberto: ${existingTicket}`,
-                                flags: MessageFlags.Ephemeral
+                            return await interaction.editReply({
+                                content: `${EMOJIS.ERROR} Já tens um ticket aberto: ${existingTicket}`
                             });
                         }
 
@@ -253,9 +265,8 @@ module.exports = {
                             components: [closeButton]
                         });
 
-                        await interaction.reply({
-                            content: `${EMOJIS.SUCCESS} Ticket criado: ${ticketChannel}`,
-                            flags: MessageFlags.Ephemeral
+                        await interaction.editReply({
+                            content: `${EMOJIS.SUCCESS} Ticket criado: ${ticketChannel}`
                         });
 
                         // Log estruturado do ticket
@@ -331,7 +342,27 @@ module.exports = {
                         }, 10000); // 10 segundos
 
                     } catch (error) {
-                        await errorHandler.handleInteractionError(interaction, error);
+                        console.error('🎫 ERROR: Erro na criação de ticket:', error);
+                        
+                        // Limpar cache em caso de erro
+                        const cacheKey = `${interaction.user.id}-${interaction.guild.id}-${ticketType}`;
+                        ticketCreationCache.delete(cacheKey);
+                        
+                        // Tentar responder apenas se a interação ainda estiver válida
+                        try {
+                            if (!interaction.replied && !interaction.deferred) {
+                                await interaction.reply({
+                                    content: `${EMOJIS.ERROR} Erro ao criar ticket. Tenta novamente!`,
+                                    flags: MessageFlags.Ephemeral
+                                });
+                            } else if (interaction.deferred) {
+                                await interaction.editReply({
+                                    content: `${EMOJIS.ERROR} Erro ao criar ticket. Tenta novamente!`
+                                });
+                            }
+                        } catch (responseError) {
+                            console.error('🎫 ERROR: Erro ao responder interação:', responseError);
+                        }
                     }
                     return;
                 }
