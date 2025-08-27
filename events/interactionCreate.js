@@ -1,7 +1,8 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelType, PermissionFlagsBits, MessageFlags } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelType, PermissionFlagsBits, MessageFlags, WebhookClient } = require('discord.js');
 const Database = require('../website/database/database');
 const errorHandler = require('../utils/errorHandler');
 const logger = require('../utils/logger');
+const config = require('../utils/config');
 const { BUTTON_IDS, MODAL_IDS, INPUT_IDS, EMBED_COLORS, EMOJIS, ERROR_MESSAGES } = require('../constants/ui');
 
 // Função auxiliar para obter ou criar categoria de tickets
@@ -25,6 +26,43 @@ async function getOrCreateTicketCategory(guild) {
     
     return ticketCategory;
 }
+
+// Função para enviar ticket via webhook
+async function sendTicketWebhook(ticketData) {
+    try {
+        // Verificar se há webhook de tickets configurado
+        const webhookUrl = config.WEBHOOKS.TICKETS;
+        if (!webhookUrl) {
+            console.log('🔗 DEBUG: Webhook de tickets não configurado');
+            return;
+        }
+
+        const webhook = new WebhookClient({ url: webhookUrl });
+        
+        const embed = new EmbedBuilder()
+            .setTitle('🎫 Novo Ticket Criado')
+            .setDescription(`Um novo ticket foi criado no servidor **${ticketData.guildName}**`)
+            .addFields(
+                { name: '👤 Utilizador', value: ticketData.userName, inline: true },
+                { name: '📂 Tipo', value: ticketData.ticketType || 'Geral', inline: true },
+                { name: '🆔 Canal', value: `<#${ticketData.channelId}>`, inline: true },
+                { name: '🏷️ Nome do Canal', value: ticketData.channelName, inline: true },
+                { name: '🕐 Criado', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true }
+            )
+            .setColor(EMBED_COLORS.PRIMARY)
+            .setTimestamp()
+            .setFooter({ text: `Servidor: ${ticketData.guildName}` });
+
+        await webhook.send({ embeds: [embed] });
+        console.log('🔗 DEBUG: Ticket enviado via webhook com sucesso');
+        
+    } catch (error) {
+        console.error('🔗 ERROR: Erro ao enviar ticket via webhook:', error);
+    }
+}
+
+// Cache para prevenir duplicação de tickets
+const ticketCreationCache = new Map();
 
 module.exports = {
     name: 'interactionCreate',
@@ -126,6 +164,23 @@ module.exports = {
                 if (customId.startsWith('ticket_create_')) {
                     try {
                         const ticketType = customId.replace('ticket_create_', '');
+                        const cacheKey = `${interaction.user.id}-${interaction.guild.id}-${ticketType}`;
+                        
+                        // Verificar cache anti-duplicação (5 segundos)
+                        if (ticketCreationCache.has(cacheKey)) {
+                            const lastCreation = ticketCreationCache.get(cacheKey);
+                            if (Date.now() - lastCreation < 5000) {
+                                console.log(`🎫 DEBUG: Bloqueando criação duplicada de ticket para ${interaction.user.tag}`);
+                                return await interaction.reply({
+                                    content: `${EMOJIS.ERROR} Aguarda um momento antes de criar outro ticket!`,
+                                    flags: MessageFlags.Ephemeral
+                                });
+                            }
+                        }
+                        
+                        // Marcar no cache
+                        ticketCreationCache.set(cacheKey, Date.now());
+                        
                         console.log(`🎫 DEBUG: Criando ticket tipo: "${ticketType}" para ${interaction.user.tag}`);
                         logger.interaction('button', customId, interaction, true);
                         
@@ -212,6 +267,17 @@ module.exports = {
                             ticketType: ticketType
                         });
 
+                        // Enviar via webhook para outro Discord
+                        await sendTicketWebhook({
+                            userName: interaction.user.tag,
+                            userId: interaction.user.id,
+                            channelId: ticketChannel.id,
+                            channelName: ticketChannel.name,
+                            ticketType: ticketType,
+                            guildName: interaction.guild.name,
+                            guildId: interaction.guild.id
+                        });
+
                         // Analytics para dashboard
                         if (global.socketManager) {
                             global.socketManager.broadcast('ticket_created', {
@@ -258,6 +324,11 @@ module.exports = {
                             components: [confirmButtons],
                             flags: MessageFlags.Ephemeral
                         });
+
+                        // Limpar cache após sucesso
+                        setTimeout(() => {
+                            ticketCreationCache.delete(cacheKey);
+                        }, 10000); // 10 segundos
 
                     } catch (error) {
                         await errorHandler.handleInteractionError(interaction, error);
