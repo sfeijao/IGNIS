@@ -109,6 +109,8 @@ class Database {
 
                 const hasTitle = rows.some(row => row.name === 'title');
                 const hasSeverity = rows.some(row => row.name === 'severity');
+                const hasBugWebhookSent = rows.some(row => row.name === 'bug_webhook_sent');
+                const hasArchived = rows.some(row => row.name === 'archived');
                 
                 let promises = [];
                 
@@ -350,9 +352,17 @@ class Database {
             `;
             const params = [guildId];
 
-            if (status) {
-                query += ' AND t.status = ?';
-                params.push(status);
+            // Por padrão, ocultar tickets arquivados das listas ativas.
+            // Se for solicitado status='archived', retornar apenas os arquivados.
+            if (status && status === 'archived') {
+                query += ' AND t.archived = 1';
+            } else {
+                // Excluir arquivados (archived NULL ou 0)
+                query += ' AND (t.archived IS NULL OR t.archived = 0)';
+                if (status) {
+                    query += ' AND t.status = ?';
+                    params.push(status);
+                }
             }
 
             query += ' ORDER BY t.created_at DESC';
@@ -387,6 +397,15 @@ class Database {
         });
     }
 
+    async getTicketById(ticketId) {
+        return new Promise((resolve, reject) => {
+            this.db.get('SELECT * FROM tickets WHERE id = ?', [ticketId], (err, row) => {
+                if (err) return reject(err);
+                resolve(row);
+            });
+        });
+    }
+
     async updateTicketStatus(ticketId, status, closedBy = null, closedReason = null) {
         return new Promise((resolve, reject) => {
             const stmt = this.db.prepare(`
@@ -402,6 +421,20 @@ class Database {
                 } else {
                     resolve({ changes: this.changes });
                 }
+            });
+            stmt.finalize();
+        });
+    }
+
+    // Marcar que o webhook de arquivo foi enviado para evitar duplicados
+    async markTicketWebhookSent(ticketId) {
+        return new Promise((resolve, reject) => {
+            const stmt = this.db.prepare(`
+                UPDATE tickets SET bug_webhook_sent = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+            `);
+            stmt.run([ticketId], function(err) {
+                if (err) return reject(err);
+                resolve({ changes: this.changes });
             });
             stmt.finalize();
         });

@@ -933,6 +933,39 @@ router.post('/tickets/:id/close', requireAuth, ensureDbReady, async (req, res) =
         
         // Atualizar ticket na base de dados
         await db.updateTicketStatus(ticketId, 'closed', null, reason || 'Resolvido');
+
+        // Atualizar campo archived na base para que nao apareca em ativos
+        try {
+            await db.updateTicket(ticketId, { archived: 1 });
+        } catch (err) {
+            console.warn('⚠️ Falha ao marcar ticket como arquivado no DB:', err.message);
+        }
+
+        // Recarregar ticket atual para verificar flag do webhook
+        const updatedTicket = await db.getTicketById(ticketId);
+
+        // Enviar webhook de arquivo se configurado e ainda nao enviado
+        try {
+            const webhookConfig = await db.getGuildConfig(req.currentServerId, 'archive_webhook_url');
+            if (webhookConfig?.value && !updatedTicket?.bug_webhook_sent) {
+                const sent = await sendArchivedTicketWebhook(webhookConfig.value, updatedTicket, reason || 'Resolvido');
+                if (sent) {
+                    await db.markTicketWebhookSent(ticketId);
+                }
+            }
+        } catch (webhookErr) {
+            addDebugLog('error', 'Erro ao enviar webhook ao fechar ticket', { error: webhookErr.message, ticketId });
+        }
+
+        // Emitir atualização via Socket.IO para dashboards/tickets conectados
+        try {
+            if (global.socketManager) {
+                global.socketManager.broadcastToGuild(req.currentServerId, 'ticket_closed', { ticketId });
+                global.socketManager.broadcastToGuild(req.currentServerId, 'ticket_updated', { ticket: updatedTicket });
+            }
+        } catch (emitErr) {
+            console.warn('⚠️ Erro ao emitir eventos via socketManager:', emitErr.message);
+        }
         
         // Notificar no Discord e arquivar canal se bot disponível
         if (global.discordClient && global.discordClient.isReady()) {

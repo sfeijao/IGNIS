@@ -1138,9 +1138,11 @@
             loadStats();
         });
 
-        async function loadTickets() {
+    async function loadTickets(status = null) {
             try {
-                const response = await fetch('/api/tickets');
+        let url = '/api/tickets';
+        if (status) url += `?status=${encodeURIComponent(status)}`;
+        const response = await fetch(url);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -1215,8 +1217,12 @@
             // Update active filter button
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
-            
-            renderTickets();
+            // Recarregar tickets aplicando o filtro no servidor (especialmente para 'archived')
+            if (filter === 'all') {
+                loadTickets();
+            } else {
+                loadTickets(filter);
+            }
         }
 
         function showCreateTicketModal() {
