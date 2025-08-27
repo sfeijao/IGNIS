@@ -375,6 +375,18 @@ class Database {
         });
     }
 
+    async getTicketByChannelId(channelId) {
+        return new Promise((resolve, reject) => {
+            this.db.get('SELECT * FROM tickets WHERE channel_id = ?', [channelId], (err, row) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(row);
+                }
+            });
+        });
+    }
+
     async updateTicketStatus(ticketId, status, closedBy = null, closedReason = null) {
         return new Promise((resolve, reject) => {
             const stmt = this.db.prepare(`

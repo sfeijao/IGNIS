@@ -1531,6 +1531,78 @@ app.post('/api/send-update', requireAuth, requireServerAccess, async (req, res) 
     }
 });
 
+// Health check endpoints para monitoramento do bot
+app.get('/health', (req, res) => {
+    const isDiscordReady = global.discordClient && global.discordClient.isReady();
+    const uptime = process.uptime();
+    const memoryUsage = process.memoryUsage();
+    
+    const healthStatus = {
+        status: isDiscordReady ? 'healthy' : 'unhealthy',
+        timestamp: new Date().toISOString(),
+        uptime: uptime,
+        discord: {
+            connected: isDiscordReady,
+            ping: isDiscordReady ? global.discordClient.ws.ping : null,
+            guilds: isDiscordReady ? global.discordClient.guilds.cache.size : 0
+        },
+        server: {
+            port: PORT,
+            environment: isProduction ? 'production' : 'development'
+        },
+        memory: {
+            used: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+            total: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+            rss: Math.round(memoryUsage.rss / 1024 / 1024)
+        }
+    };
+    
+    const statusCode = isDiscordReady ? 200 : 503;
+    res.status(statusCode).json(healthStatus);
+});
+
+// Health check simples para o script de monitoramento
+app.get('/ping', (req, res) => {
+    res.status(200).json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        discord: global.discordClient && global.discordClient.isReady()
+    });
+});
+
+// Status detalhado do bot para admin
+app.get('/api/bot-status', requireAuth, (req, res) => {
+    const isDiscordReady = global.discordClient && global.discordClient.isReady();
+    
+    if (!isDiscordReady) {
+        return res.status(503).json({ 
+            error: 'Bot Discord não está conectado',
+            connected: false 
+        });
+    }
+    
+    const client = global.discordClient;
+    const status = {
+        connected: true,
+        user: {
+            id: client.user.id,
+            tag: client.user.tag,
+            avatar: client.user.displayAvatarURL()
+        },
+        stats: {
+            ping: client.ws.ping,
+            uptime: client.uptime,
+            guilds: client.guilds.cache.size,
+            users: client.users.cache.size,
+            channels: client.channels.cache.size
+        },
+        memory: process.memoryUsage(),
+        lastReady: client.readyAt
+    };
+    
+    res.json(status);
+});
+
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({ error: 'Página não encontrada' });

@@ -269,6 +269,44 @@ module.exports = {
                             content: `${EMOJIS.SUCCESS} Ticket criado: ${ticketChannel}`
                         });
 
+                        // Salvar ticket na base de dados
+                        let result = null;
+                        try {
+                            const db = new Database();
+                            await db.initialize();
+                            
+                            // Primeiro, criar/atualizar o utilizador
+                            const userData = {
+                                discord_id: interaction.user.id,
+                                username: interaction.user.username,
+                                discriminator: interaction.user.discriminator || '0',
+                                avatar: interaction.user.avatar,
+                                email: null,
+                                global_name: interaction.user.globalName || interaction.user.username
+                            };
+                            
+                            await db.createUser(userData);
+                            console.log(`✅ Utilizador ${interaction.user.username} atualizado na base de dados`);
+                            
+                            // Depois, criar o ticket
+                            const ticketData = {
+                                guild_id: interaction.guild.id,
+                                channel_id: ticketChannel.id,
+                                user_id: interaction.user.id,
+                                category: ticketType,
+                                title: `${typeInfo.title} - ${interaction.user.username}`,
+                                subject: typeInfo.title,
+                                description: `Ticket criado via painel de ${typeInfo.title.toLowerCase()}`,
+                                severity: 'medium'
+                            };
+                            
+                            result = await db.createTicket(ticketData);
+                            console.log(`✅ Ticket salvo na base de dados com ID: ${result.id}`);
+                            
+                        } catch (dbError) {
+                            console.error('❌ Erro ao salvar ticket na base de dados:', dbError);
+                        }
+
                         // Log estruturado do ticket
                         logger.database('ticket_created', {
                             userId: interaction.user.id,
@@ -292,12 +330,25 @@ module.exports = {
                         // Analytics para dashboard
                         if (global.socketManager) {
                             global.socketManager.broadcast('ticket_created', {
+                                id: result?.id,
+                                guildId: interaction.guild.id,
+                                channelId: ticketChannel.id,
                                 userId: interaction.user.id,
                                 username: interaction.user.username,
-                                channelId: ticketChannel.id,
-                                ticketType: ticketType,
-                                timestamp: new Date().toISOString()
+                                discriminator: interaction.user.discriminator || '0',
+                                avatar: interaction.user.avatar,
+                                globalName: interaction.user.globalName,
+                                category: ticketType,
+                                title: `${typeInfo.title} - ${interaction.user.username}`,
+                                subject: typeInfo.title,
+                                status: 'open',
+                                severity: 'medium',
+                                channelName: ticketChannel.name,
+                                timestamp: new Date().toISOString(),
+                                createdAt: new Date().toISOString()
                             });
+                            
+                            console.log('📡 Socket.IO: Ticket enviado para dashboard em tempo real');
                         }
 
                     } catch (error) {
