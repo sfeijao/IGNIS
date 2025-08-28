@@ -9,8 +9,6 @@ const logger = require('./utils/logger');
 // Importar sistema do dashboard APENAS se CLIENT_SECRET estiver disponível
 let server, socketManager, Database;
 if (config.DISCORD.CLIENT_SECRET) {
-    require('./utils/logger');
-    const logger = require('./utils/logger');
     logger.info('✅ CLIENT_SECRET disponível - carregando sistema completo (bot + website)');
     const websiteServer = require('./website/server');
     server = websiteServer.server;
@@ -45,7 +43,6 @@ client.commands = new Collection();
 
 // Configurar componentes do website apenas se disponível
 if (socketManager) {
-    const logger = require('./utils/logger');
     client.socketManager = socketManager;
     logger.info('✅ Socket manager configurado');
 } else {
@@ -58,11 +55,9 @@ if (Database) {
     
     // Initialize database for bot
     client.database.initialize().then(() => {
-        const logger = require('./utils/logger');
-        logger.info('✅ Bot database connection established');
+    logger.info('✅ Bot database connection established');
     }).catch(error => {
-        const logger = require('./utils/logger');
-        logger.error('❌ Bot database connection failed', { error: error && error.message ? error.message : error, stack: error && error.stack });
+    logger.error('❌ Bot database connection failed', { error: error && error.message ? error.message : error, stack: error && error.stack });
     });
 } else {
     client.database = null;
@@ -78,7 +73,6 @@ for (const file of commandFiles) {
     
     if ('data' in command && 'execute' in command) {
         client.commands.set(command.data.name, command);
-    const logger = require('./utils/logger');
     logger.info(`✅ Comando carregado: ${command.data.name}`);
     } else {
         logger.warn(`⚠️ Comando em ${filePath} está faltando propriedades necessárias.`);
@@ -97,18 +91,15 @@ for (const file of eventFiles) {
     } else {
         client.on(event.name, (...args) => event.execute(...args, client));
     }
-    const logger = require('./utils/logger');
     logger.info(`✅ Evento carregado: ${event.name}`);
 }
 
 // Tratamento de erros
 process.on('unhandledRejection', error => {
-    const logger = require('./utils/logger');
     logger.error('❌ Unhandled promise rejection', { error: error && error.message ? error.message : error, stack: error && error.stack });
 });
 
 process.on('uncaughtException', error => {
-    const logger = require('./utils/logger');
     logger.error('❌ Uncaught exception', { error: error && error.message ? error.message : error, stack: error && error.stack });
     process.exit(1);
 });
@@ -116,7 +107,6 @@ process.on('uncaughtException', error => {
 // Função para registrar comandos automaticamente
 async function registerCommands() {
     try {
-    const logger = require('./utils/logger');
     logger.info('🔄 Registrando comandos slash...');
         
         const commands = [];
@@ -136,10 +126,8 @@ async function registerCommands() {
             { body: commands }
         );
         
-    const logger = require('./utils/logger');
     logger.info(`✅ ${commands.length} comandos registrados com sucesso!`);
     } catch (error) {
-    const logger = require('./utils/logger');
     logger.error('❌ Erro ao registrar comandos', { error: error && error.message ? error.message : error, stack: error && error.stack });
     }
 }
