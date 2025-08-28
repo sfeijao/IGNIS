@@ -33,6 +33,14 @@
             height: 3px;
             background: var(--gradient-main);
         }
+        .ticket-controls {
+            margin: 12px 0;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .ticket-controls .search-box { flex: 1; }
+        .ticket-pagination { margin-top: 12px; text-align: center; }
 
         .header-content {
             display: flex;
@@ -505,7 +513,7 @@
                     
                     <div class="filter-group">
                         <label class="filter-label">Status</label>
-                        <select class="filter-select" id="statusFilter">
+                        <select class="filter-select" id="statusFilter" title="Filtrar por status">
                             <option value="">Todos os Status</option>
                             <option value="open">Abertos</option>
                             <option value="pending">Pendentes</option>
@@ -515,7 +523,7 @@
                     
                     <div class="filter-group">
                         <label class="filter-label">Categoria</label>
-                        <select class="filter-select" id="categoryFilter">
+                        <select class="filter-select" id="categoryFilter" title="Filtrar por categoria">
                             <option value="">Todas as Categorias</option>
                             <option value="bug">Bug Report</option>
                             <option value="feature">Feature Request</option>
@@ -526,7 +534,7 @@
                     
                     <div class="filter-group">
                         <label class="filter-label">Período</label>
-                        <select class="filter-select" id="timeFilter">
+                        <select class="filter-select" id="timeFilter" title="Filtrar por periodo">
                             <option value="">Todos os Períodos</option>
                             <option value="today">Hoje</option>
                             <option value="week">Esta Semana</option>
@@ -1053,15 +1061,35 @@
                     <button class="filter-btn" onclick="filterTickets('open')">Abertos</button>
                     <button class="filter-btn" onclick="filterTickets('assigned')">Atribuídos</button>
                     <button class="filter-btn" onclick="filterTickets('closed')">Fechados</button>
+                    <button class="filter-btn" onclick="filterTickets('archived')">Arquivados</button>
+                    <button class="btn" onclick="exportArchivedTickets()">⬇️ Exportar Arquivados</button>
                     <button class="btn btn-primary" onclick="showCreateTicketModal()">➕ Novo Ticket</button>
                 </div>
             </div>
+            <div id="toast" style="position:fixed; right:16px; bottom:16px; display:none; background:#222; color:#fff; padding:12px 16px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.3);"></div>
+                <div class="ticket-controls">
+                <div class="search-box">
+                    <input id="ticketSearchInput" class="search-input" placeholder="Pesquisar tickets (título, assunto, descrição)">
+                </div>
+                <select id="ticketSeverityFilter" class="filter-select" title="Filtrar por severidade">
+                    <option value="">Todas Severidades</option>
+                    <option value="low">Baixa</option>
+                    <option value="medium">Média</option>
+                    <option value="high">Alta</option>
+                    <option value="urgent">Urgente</option>
+                </select>
+                <input type="date" id="ticketFromDate" title="Data desde">
+                <input type="date" id="ticketToDate" title="Data até">
+                <button class="btn" onclick="onSearchSubmit()">Pesquisar</button>
+            </div>
+
             <div class="ticket-list" id="ticketList">
                 <div class="empty-state">
                     <div class="loading"></div>
                     <p>Carregando tickets...</p>
                 </div>
             </div>
+            <div id="ticketPagination" class="ticket-pagination"></div>
         </div>
     </div>
 
@@ -1129,24 +1157,59 @@
 
     <script>
         let currentTickets = [];
-        let currentFilter = 'all';
-        let selectedTicket = null;
+    let currentFilter = 'all';
+    let currentQuery = '';
+    let currentPage = 1;
+    const pageSize = 25;
+    let selectedTicket = null;
+    let __IS_ADMIN__ = false;
 
         // Load tickets on page load
         document.addEventListener('DOMContentLoaded', function() {
-            loadTickets();
-            loadStats();
+                (async () => {
+                    // Fetch current user info to enable admin-only UI
+                    try {
+                        const meR = await fetch('/api/me');
+                        const meData = await meR.json();
+                        __IS_ADMIN__ = !!(meData && meData.user && meData.user.isAdmin);
+                    } catch (e) {
+                        console.warn('Não foi possível obter info do usuário:', e);
+                    }
+
+                    // Disable export if not admin
+                    if (!__IS_ADMIN__) {
+                        document.querySelectorAll('button[onclick^="exportArchivedTickets"]').forEach(b => {
+                            b.disabled = true;
+                            b.title = 'Exportação disponível apenas para administradores.';
+                            b.style.opacity = '0.6';
+                            b.style.cursor = 'not-allowed';
+                        });
+                    }
+
+                    loadTickets();
+                    loadStats();
+                })();
         });
 
-    async function loadTickets(status = null) {
+    async function loadTickets(status = null, q = null, page = 1, severity = null, from = null, to = null) {
             try {
-        let url = '/api/tickets';
-        if (status) url += `?status=${encodeURIComponent(status)}`;
+        let params = [];
+        if (status) params.push(`status=${encodeURIComponent(status)}`);
+        if (q) params.push(`q=${encodeURIComponent(q)}`);
+        if (severity) params.push(`severity=${encodeURIComponent(severity)}`);
+        if (from) params.push(`from=${encodeURIComponent(from)}`);
+        if (to) params.push(`to=${encodeURIComponent(to)}`);
+        params.push(`page=${page}`);
+        params.push(`pageSize=${pageSize}`);
+        const url = '/api/tickets' + (params.length ? `?${params.join('&')}` : '');
         const response = await fetch(url);
                 const data = await response.json();
                 
                 if (data.success) {
                     currentTickets = data.tickets;
+                    // meta available: data.meta
+                    currentPage = data.meta?.page || page;
+                    renderPagination(data.meta || { total: currentTickets.length, page: currentPage, pageSize });
                     renderTickets();
                 } else {
                     showError('Erro ao carregar tickets');
@@ -1211,18 +1274,84 @@
             `).join('');
         }
 
-        function filterTickets(filter) {
+    function filterTickets(filter) {
             currentFilter = filter;
             
             // Update active filter button
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
             // Recarregar tickets aplicando o filtro no servidor (especialmente para 'archived')
-            if (filter === 'all') {
-                loadTickets();
-            } else {
-                loadTickets(filter);
+            currentQuery = '';
+            currentPage = 1;
+            // reset advanced filters
+            document.getElementById('ticketSeverityFilter').value = '';
+            document.getElementById('ticketFromDate').value = '';
+            document.getElementById('ticketToDate').value = '';
+            loadTickets(filter, currentQuery, currentPage);
+        }
+
+        // Search box
+        function onSearchSubmit() {
+            const q = document.getElementById('ticketSearchInput').value.trim();
+            const severity = document.getElementById('ticketSeverityFilter').value || null;
+            const from = document.getElementById('ticketFromDate').value || null;
+            const to = document.getElementById('ticketToDate').value || null;
+            currentQuery = q;
+            currentPage = 1;
+            loadTickets(currentFilter === 'all' ? null : currentFilter, currentQuery, currentPage, severity, from, to);
+        }
+
+        function renderPagination(meta) {
+            const pagination = document.getElementById('ticketPagination');
+            const total = meta.total || 0;
+            const page = meta.page || 1;
+            const pageSizeLocal = meta.pageSize || pageSize;
+            const totalPages = Math.max(1, Math.ceil(total / pageSizeLocal));
+
+            pagination.innerHTML = `
+                <div class="pagination-controls">
+                    <button onclick="changePage(${Math.max(1, page-1)})">← Anterior</button>
+                    <span> Página ${page} de ${totalPages} </span>
+                    <button onclick="changePage(${Math.min(totalPages, page+1)})">Próxima →</button>
+                </div>
+            `;
+        }
+
+        function changePage(newPage) {
+            currentPage = newPage;
+            const severity = document.getElementById('ticketSeverityFilter').value || null;
+            const from = document.getElementById('ticketFromDate').value || null;
+            const to = document.getElementById('ticketToDate').value || null;
+            loadTickets(currentFilter === 'all' ? null : currentFilter, currentQuery, currentPage, severity, from, to);
+        }
+
+        // Export archived tickets using current filters
+        function exportArchivedTickets() {
+            if (!__IS_ADMIN__) {
+                showExportToast('Exportação restrita a administradores. Peça a um admin para exportar os dados.');
+                return;
             }
+            const q = currentQuery || document.getElementById('ticketSearchInput').value.trim();
+            const severity = document.getElementById('ticketSeverityFilter').value || '';
+            const from = document.getElementById('ticketFromDate').value || '';
+            const to = document.getElementById('ticketToDate').value || '';
+            const params = [];
+            params.push('status=archived');
+            if (q) params.push(`q=${encodeURIComponent(q)}`);
+            if (severity) params.push(`severity=${encodeURIComponent(severity)}`);
+            if (from) params.push(`from=${encodeURIComponent(from)}`);
+            if (to) params.push(`to=${encodeURIComponent(to)}`);
+            const url = '/api/tickets/export' + (params.length ? `?${params.join('&')}` : '');
+            // trigger download and show toast
+            showExportToast('A exportação vai começar — se o navegador bloquear, verifique permissões.');
+            window.location.href = url;
+        }
+
+        function showExportToast(message, ms = 5000) {
+            const t = document.getElementById('toast');
+            t.textContent = message;
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, ms);
         }
 
         function showCreateTicketModal() {

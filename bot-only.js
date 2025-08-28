@@ -13,10 +13,10 @@ const path = require('path');
 const config = require('./utils/config');
 const logger = require('./utils/logger');
 
-console.log('🤖 === YSNM Bot - Modo Bot-Only ===');
-console.log(`⏰ Iniciando em: ${new Date().toISOString()}`);
-console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-console.log(`🚂 Railway: ${process.env.RAILWAY_ENVIRONMENT_NAME || 'local'}`);
+logger.info('🤖 === YSNM Bot - Modo Bot-Only ===');
+logger.info('⏰ Iniciando em: %s', new Date().toISOString());
+logger.info('🌍 Environment: %s', process.env.NODE_ENV || 'development');
+logger.info('🚂 Railway: %s', process.env.RAILWAY_ENVIRONMENT_NAME || 'local');
 
 async function startBotOnly() {
     try {
@@ -30,10 +30,10 @@ async function startBotOnly() {
             throw new Error('❌ CLIENT_ID é obrigatório para comandos slash');
         }
         
-        console.log('✅ Configuração básica validada');
-        console.log(`   Bot Token: ${botToken.substring(0, 20)}...`);
-        console.log(`   Client ID: ${config.DISCORD.CLIENT_ID}`);
-        console.log(`   Client Secret: ${config.DISCORD.CLIENT_SECRET ? 'Presente (modo completo)' : 'Ausente (modo bot-only)'}`);
+    logger.info('✅ Configuração básica validada');
+    logger.info('   Bot Token: %s...', botToken.substring(0, 20));
+    logger.info('   Client ID: %s', config.DISCORD.CLIENT_ID);
+    logger.info('   Client Secret: %s', config.DISCORD.CLIENT_SECRET ? 'Presente (modo completo)' : 'Ausente (modo bot-only)');
         
         // Criar cliente Discord
         const client = new Client({
@@ -49,7 +49,7 @@ async function startBotOnly() {
         client.commands = new Collection();
         
         // Carregar comandos
-        console.log('\n📂 Carregando comandos...');
+    logger.info('\n📂 Carregando comandos...');
         const commandsPath = path.join(__dirname, 'commands');
         const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
         
@@ -62,19 +62,19 @@ async function startBotOnly() {
                 if ('data' in command && 'execute' in command) {
                     client.commands.set(command.data.name, command);
                     loadedCommands++;
-                    console.log(`   ✅ ${command.data.name}`);
+                    logger.info('   ✅ %s', command.data.name);
                 } else {
-                    console.log(`   ⚠️  ${file} - formato inválido`);
+                    logger.warn('   ⚠️  %s - formato inválido', file);
                 }
             } catch (error) {
-                console.log(`   ❌ ${file} - erro: ${error.message}`);
+                logger.error('   ❌ %s - erro: %s', file, error && error.message ? error.message : error);
             }
         }
         
-        console.log(`✅ ${loadedCommands} comandos carregados`);
+        logger.info('✅ %d comandos carregados', loadedCommands);
         
         // Carregar eventos
-        console.log('\n🎭 Carregando eventos...');
+    logger.info('\n🎭 Carregando eventos...');
         const eventsPath = path.join(__dirname, 'events');
         const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
         
@@ -90,24 +90,24 @@ async function startBotOnly() {
                     client.on(event.name, (...args) => event.execute(...args));
                 }
                 
-                loadedEvents++;
-                console.log(`   ✅ ${event.name} (${event.once ? 'once' : 'on'})`);
+        loadedEvents++;
+        logger.info('   ✅ %s (%s)', event.name, event.once ? 'once' : 'on');
             } catch (error) {
-                console.log(`   ❌ ${file} - erro: ${error.message}`);
+        logger.error('   ❌ %s - erro: %s', file, error && error.message ? error.message : error);
             }
         }
         
-        console.log(`✅ ${loadedEvents} eventos carregados`);
+    logger.info('✅ %d eventos carregados', loadedEvents);
         
         // Event listeners básicos
         client.once('ready', () => {
-            console.log('\n🎉 === BOT PRONTO ===');
-            console.log(`✅ Logado como: ${client.user.tag}`);
-            console.log(`✅ ID: ${client.user.id}`);
-            console.log(`✅ Servidores: ${client.guilds.cache.size}`);
-            console.log(`✅ Usuários: ${client.users.cache.size}`);
-            console.log(`✅ Latência: ${client.ws.ping}ms`);
-            console.log(`⏰ Pronto em: ${new Date().toISOString()}`);
+            logger.info('\n🎉 === BOT PRONTO ===');
+            logger.info('✅ Logado como: %s', client.user.tag);
+            logger.info('✅ ID: %s', client.user.id);
+            logger.info('✅ Servidores: %d', client.guilds.cache.size);
+            logger.info('✅ Usuários: %d', client.users.cache.size);
+            logger.info('✅ Latência: %dms', client.ws.ping);
+            logger.info('⏰ Pronto em: %s', new Date().toISOString());
             
             // Log para Railway
             logger.info('Bot iniciado com sucesso', {
@@ -120,35 +120,32 @@ async function startBotOnly() {
         });
         
         client.on('error', (error) => {
-            console.error('❌ Erro do cliente Discord:', error);
-            logger.error('Discord client error', error);
+            logger.error('❌ Erro do cliente Discord', { error: error && error.message ? error.message : error, stack: error && error.stack });
         });
         
         client.on('warn', (warning) => {
-            console.warn('⚠️  Aviso do Discord:', warning);
-            logger.warn('Discord warning', { warning });
+            logger.warn('⚠️  Aviso do Discord', { warning });
         });
         
         // Graceful shutdown
         process.on('SIGINT', () => {
-            console.log('\n🛑 Recebido SIGINT, desligando bot...');
+            logger.info('\n🛑 Recebido SIGINT, desligando bot...');
             client.destroy();
             process.exit(0);
         });
         
         process.on('SIGTERM', () => {
-            console.log('\n🛑 Recebido SIGTERM, desligando bot...');
+            logger.info('\n🛑 Recebido SIGTERM, desligando bot...');
             client.destroy();
             process.exit(0);
         });
         
         // Login
-        console.log('\n🔐 Conectando ao Discord...');
-        await client.login(botToken);
+    logger.info('\n🔐 Conectando ao Discord...');
+    await client.login(botToken);
         
     } catch (error) {
-        console.error('❌ Erro fatal ao iniciar bot:', error);
-        logger.error('Bot startup failed', error);
+        logger.error('❌ Erro fatal ao iniciar bot', { error: error && error.message ? error.message : error, stack: error && error.stack });
         process.exit(1);
     }
 }

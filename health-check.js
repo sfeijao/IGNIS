@@ -12,10 +12,10 @@ const config = require('./utils/config');
 const logger = require('./utils/logger');
 
 async function healthCheck() {
-    console.log('🩺 === YSNM Bot Health Check ===');
-    console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🚂 Railway: ${process.env.RAILWAY_ENVIRONMENT_NAME || 'local'}`);
+    logger.info('🩺 === YSNM Bot Health Check ===');
+    logger.info(`⏰ Timestamp: ${new Date().toISOString()}`);
+    logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.info(`🚂 Railway: ${process.env.RAILWAY_ENVIRONMENT_NAME || 'local'}`);
     
     const results = {
         timestamp: new Date().toISOString(),
@@ -27,7 +27,7 @@ async function healthCheck() {
     
     try {
         // 1. Verificar configuração
-        console.log('\n📋 1. Verificando configuração...');
+    logger.info('\n📋 1. Verificando configuração...');
         results.checks.config = {
             status: 'ok',
             hasToken: !!(config.DISCORD.TOKEN || config.DISCORD.BOT_TOKEN),
@@ -36,13 +36,13 @@ async function healthCheck() {
             mode: config.DISCORD.CLIENT_SECRET ? 'full' : 'bot-only'
         };
         
-        console.log(`   ✅ Bot Token: ${results.checks.config.hasToken ? 'Presente' : 'AUSENTE'}`);
-        console.log(`   ✅ Client ID: ${results.checks.config.hasClientId ? 'Presente' : 'AUSENTE'}`);
-        console.log(`   ${config.DISCORD.CLIENT_SECRET ? '✅' : '⚠️ '} Client Secret: ${results.checks.config.hasClientSecret ? 'Presente' : 'AUSENTE'}`);
-        console.log(`   📋 Modo: ${results.checks.config.mode}`);
+    logger.info(`   ✅ Bot Token: ${results.checks.config.hasToken ? 'Presente' : 'AUSENTE'}`);
+    logger.info(`   ✅ Client ID: ${results.checks.config.hasClientId ? 'Presente' : 'AUSENTE'}`);
+    logger.info(`   ${config.DISCORD.CLIENT_SECRET ? '✅' : '⚠️ '} Client Secret: ${results.checks.config.hasClientSecret ? 'Presente' : 'AUSENTE'}`);
+    logger.info(`   📋 Modo: ${results.checks.config.mode}`);
         
         // 2. Teste de conexão Discord (rápido)
-        console.log('\n🔌 2. Testando conexão Discord...');
+    logger.info('\n🔌 2. Testando conexão Discord...');
         
         const botToken = config.DISCORD.TOKEN || config.DISCORD.BOT_TOKEN;
         if (!botToken) {
@@ -78,15 +78,15 @@ async function healthCheck() {
         await client.login(botToken);
         results.checks.discord = await connectionPromise;
         
-        console.log(`   ✅ Bot conectado: ${results.checks.discord.user}`);
-        console.log(`   ✅ Servidores: ${results.checks.discord.guilds}`);
-        console.log(`   ✅ Latência: ${results.checks.discord.ping}ms`);
+    logger.info(`   ✅ Bot conectado: ${results.checks.discord.user}`);
+    logger.info(`   ✅ Servidores: ${results.checks.discord.guilds}`);
+    logger.info(`   ✅ Latência: ${results.checks.discord.ping}ms`);
         
         // Desconectar após teste
         client.destroy();
         
         // 3. Verificar database
-        console.log('\n💾 3. Verificando database...');
+    logger.info('\n💾 3. Verificando database...');
         try {
             const db = require('./website/database/database');
             
@@ -103,20 +103,20 @@ async function healthCheck() {
                 testQuery: testResult.length > 0
             };
             
-            console.log('   ✅ Database conectado e funcional');
+            logger.info('   ✅ Database conectado e funcional');
         } catch (dbError) {
             results.checks.database = {
                 status: 'warning',
                 error: dbError.message,
                 note: 'Database não crítico para funcionamento do bot'
             };
-            console.log(`   ⚠️  Database aviso: ${dbError.message}`);
-            console.log('   ℹ️  Bot funcionará normalmente sem database');
+            logger.warn(`   ⚠️  Database aviso: ${dbError.message}`);
+            logger.info('   ℹ️  Bot funcionará normalmente sem database');
         }
         
-        results.status = 'healthy';
-        console.log('\n🎉 === Health Check CONCLUÍDO ===');
-        console.log('✅ Bot está funcionando corretamente!');
+    results.status = 'healthy';
+    logger.info('\n🎉 === Health Check CONCLUÍDO ===');
+    logger.info('✅ Bot está funcionando corretamente!');
         
     } catch (error) {
         results.status = 'unhealthy';
@@ -126,14 +126,14 @@ async function healthCheck() {
             error: error.message
         };
         
-        console.log(`\n❌ === Health Check FALHOU ===`);
-        console.log(`❌ Erro: ${error.message}`);
+    logger.error(`\n❌ === Health Check FALHOU ===`);
+    logger.error(`❌ Erro: ${error.message}`);
         process.exit(1);
     }
     
     // Output JSON para automação
-    console.log('\n📊 === Resultado JSON ===');
-    console.log(JSON.stringify(results, null, 2));
+    logger.info('\n📊 === Resultado JSON ===');
+    logger.info(JSON.stringify(results, null, 2));
     
     return results;
 }
@@ -141,7 +141,7 @@ async function healthCheck() {
 // Executar se chamado diretamente
 if (require.main === module) {
     healthCheck().catch(error => {
-        console.error('❌ Health check falhou:', error);
+        logger.error('❌ Health check falhou:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         process.exit(1);
     });
 }

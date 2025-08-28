@@ -12,6 +12,7 @@ const { EmbedBuilder, WebhookClient, REST, Routes } = require('discord.js');
 const Database = require('./database/database');
 const SocketManager = require('./socket');
 const csrfProtection = require('../utils/csrf');
+const logger = require('../..//utils/logger');
 
 const app = express();
 const server = http.createServer(app);
@@ -50,7 +51,7 @@ const corsOptions = {
             if (isAllowed) {
                 callback(null, true);
             } else {
-                console.log('❌ CORS blocked origin:', origin);
+                logger.warn('❌ CORS blocked origin: %s', origin);
                 callback(new Error('Not allowed by CORS'));
             }
         } else {
@@ -67,7 +68,7 @@ const corsOptions = {
             if (allowedDev.includes(origin)) {
                 callback(null, true);
             } else {
-                console.log('⚠️ Dev CORS allowing origin:', origin);
+                logger.debug('⚠️ Dev CORS allowing origin: %s', origin);
                 callback(null, true); // Allow all in development
             }
         }
@@ -83,9 +84,9 @@ app.use(cors(corsOptions));
 // Initialize database
 const db = new Database();
 db.initialize().then(() => {
-    console.log('✅ Database initialized successfully');
+    logger.info('✅ Database initialized successfully');
 }).catch(error => {
-    console.error('❌ Database initialization failed:', error);
+    logger.error('❌ Database initialization failed:', { error: error && error.message ? error.message : error });
 });
 
 // Initialize Socket.IO
@@ -159,21 +160,11 @@ const callbackURL = isProduction ?
      'https://ysnmbot-alberto.up.railway.app/auth/discord/callback') :
     `http://localhost:${PORT}/auth/discord/callback`;
 
-console.log('🔍 Debug OAuth2:');
-console.log('   NODE_ENV:', process.env.NODE_ENV);
-console.log('   RAILWAY_ENVIRONMENT_NAME:', process.env.RAILWAY_ENVIRONMENT_NAME);
-console.log('   RAILWAY_PROJECT_NAME:', process.env.RAILWAY_PROJECT_NAME);
-console.log('   isProduction:', isProduction);
-console.log('   config.WEBSITE exists:', !!config.WEBSITE);
-console.log('   callbackURL:', callbackURL);
+logger.info('🔍 Debug OAuth2:', { NODE_ENV: process.env.NODE_ENV, RAILWAY_ENVIRONMENT_NAME: process.env.RAILWAY_ENVIRONMENT_NAME, RAILWAY_PROJECT_NAME: process.env.RAILWAY_PROJECT_NAME, isProduction, callbackURL, hasWebsite: !!config.WEBSITE });
 
 // Verificar se CLIENT_SECRET está disponível para OAuth2
 const hasClientSecret = !!config.DISCORD.CLIENT_SECRET;
-console.log('🔧 Configuração OAuth2 Discord:');
-console.log('   Client ID:', config.DISCORD.CLIENT_ID ? `${config.DISCORD.CLIENT_ID.substring(0, 8)}...` : 'AUSENTE');
-console.log('   Client Secret:', hasClientSecret ? `${config.DISCORD.CLIENT_SECRET.substring(0, 8)}...` : 'AUSENTE');
-console.log('   OAuth2 Habilitado:', hasClientSecret);
-console.log('   Callback URL:', callbackURL);
+logger.info('🔧 Configuração OAuth2 Discord', { clientId: config.DISCORD.CLIENT_ID ? `${config.DISCORD.CLIENT_ID.substring(0, 8)}...` : 'AUSENTE', hasClientSecret, callbackURL });
 
 // Configurar OAuth2 apenas se CLIENT_SECRET estiver disponível
 if (hasClientSecret) {
@@ -184,16 +175,13 @@ if (hasClientSecret) {
         callbackURL: callbackURL,
         scope: ['identify', 'guilds']
     }, (accessToken, refreshToken, profile, done) => {
-        console.log('✅ OAuth2 estratégia executada com sucesso');
-        console.log('   Profile ID:', profile.id);
-        console.log('   Profile Username:', profile.username);
+        logger.info('✅ OAuth2 estratégia executada com sucesso', { profileId: profile.id, profileUsername: profile.username });
         return done(null, profile);
     }));
     
-    console.log('✅ OAuth2 Discord configurado com sucesso');
+    logger.info('✅ OAuth2 Discord configurado com sucesso');
 } else {
-    console.log('⚠️  OAuth2 desabilitado - CLIENT_SECRET não encontrado');
-    console.log('   Dashboard funcionará em modo somente leitura');
+    logger.warn('⚠️  OAuth2 desabilitado - CLIENT_SECRET não encontrado. Dashboard funcionando em modo somente leitura');
 }
 
 passport.serializeUser((user, done) => {
@@ -208,7 +196,7 @@ passport.deserializeUser((user, done) => {
 function requireAuth(req, res, next) {
     // Modo de desenvolvimento - bypass autenticação
     if (process.env.NODE_ENV !== 'production' && !process.env.RAILWAY_ENVIRONMENT_NAME) {
-        console.log('🔧 Modo desenvolvimento: Bypass autenticação');
+    logger.info('🔧 Modo desenvolvimento: Bypass autenticação');
         // Simular usuário autenticado para desenvolvimento
         req.user = {
             id: '381762006329589760', // ID de teste válido (snowflake)
@@ -231,23 +219,23 @@ function requireServerAccess(req, res, next) {
     try {
         // Modo de desenvolvimento - bypass verificação de servidor
         if (process.env.NODE_ENV !== 'production' && !process.env.RAILWAY_ENVIRONMENT_NAME) {
-            console.log('🔧 Modo desenvolvimento: Bypass verificação de servidor');
-            return next();
-        }
+                logger.info('🔧 Modo desenvolvimento: Bypass verificação de servidor');
+                return next();
+            }
         
-        console.log('🔐 Verificando acesso ao servidor para:', req.user?.username || 'Usuário desconhecido');
+            logger.debug('🔐 Verificando acesso ao servidor para: %s', req.user?.username || 'Usuário desconhecido');
         
-        if (!req.user) {
-            console.log('❌ Usuário não encontrado, redirecionando para login');
-            return res.redirect('/login');
-        }
+            if (!req.user) {
+                logger.warn('❌ Usuário não encontrado, redirecionando para login');
+                return res.redirect('/login');
+            }
 
-        // Para desenvolvimento, permitir todos os usuários autenticados
-        // TODO: Implementar verificação real dos servidores onde o bot está presente
-        console.log('✅ Usuário autenticado, permitindo acesso (modo desenvolvimento)');
+            // Para desenvolvimento, permitir todos os usuários autenticados
+            // TODO: Implementar verificação real dos servidores onde o bot está presente
+            logger.info('✅ Usuário autenticado, permitindo acesso (modo desenvolvimento)');
         next();
     } catch (error) {
-        console.error('❌ Erro no middleware requireServerAccess:', error);
+        logger.error('❌ Erro no middleware requireServerAccess:', { error: error && error.message ? error.message : error });
         res.status(500).json({ error: 'Erro de autenticação', details: error.message });
     }
 }
@@ -260,7 +248,7 @@ app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
 // Rotas de autenticação Discord
 app.get('/auth/discord', (req, res) => {
     if (!config.DISCORD.CLIENT_SECRET) {
-        console.log('⚠️  OAuth2 não disponível - redirecionando para login alternativo');
+    logger.warn('⚠️  OAuth2 não disponível - redirecionando para login alternativo');
         return res.redirect('/login?error=oauth_disabled');
     }
     passport.authenticate('discord')(req, res);
@@ -269,27 +257,25 @@ app.get('/auth/discord', (req, res) => {
 app.get('/auth/discord/callback',
     (req, res, next) => {
         if (!config.DISCORD.CLIENT_SECRET) {
-            console.log('⚠️  OAuth2 callback solicitado mas CLIENT_SECRET não disponível');
+            logger.warn('⚠️  OAuth2 callback solicitado mas CLIENT_SECRET não disponível');
             return res.redirect('/login?error=oauth_disabled');
         }
         
         passport.authenticate('discord', { failureRedirect: '/login' }, (err, user, info) => {
             if (err) {
-                console.error('❌ Erro OAuth2 detalhado:', err);
-                console.error('   Tipo do erro:', err.name);
-                console.error('   Mensagem:', err.message);
+                logger.error('❌ Erro OAuth2 detalhado', { error: err && err.message ? err.message : err, name: err && err.name });
                 return res.redirect('/login?error=oauth_error');
             }
             if (!user) {
-                console.error('❌ Usuário não encontrado após OAuth2');
+                logger.warn('❌ Usuário não encontrado após OAuth2');
                 return res.redirect('/login?error=user_not_found');
             }
             req.logIn(user, (loginErr) => {
                 if (loginErr) {
-                    console.error('❌ Erro ao fazer login:', loginErr);
+                    logger.error('❌ Erro ao fazer login', { error: loginErr && loginErr.message ? loginErr.message : loginErr });
                     return res.redirect('/login?error=login_error');
                 }
-                console.log('✅ OAuth2 callback bem-sucedido para:', user.username);
+                logger.info('✅ OAuth2 callback bem-sucedido para: %s', user.username);
                 return res.redirect('/dashboard');
             });
         })(req, res, next);
@@ -300,11 +286,11 @@ app.get('/auth/discord/callback',
 app.get('/logout', (req, res) => {
     req.logout((err) => {
         if (err) {
-            console.error('Erro no logout:', err);
+            logger.error('Erro no logout', { error: err && err.message ? err.message : err });
         }
         req.session.destroy((err) => {
             if (err) {
-                console.error('Erro ao destruir sessão:', err);
+                logger.error('Erro ao destruir sessão', { error: err && err.message ? err.message : err });
             }
             res.redirect('/login');
         });
@@ -329,10 +315,10 @@ app.get('/login', (req, res) => {
 // Dashboard (protegido)
 app.get('/dashboard', requireAuth, requireServerAccess, (req, res) => {
     try {
-        console.log('📊 Usuário acessando dashboard:', req.user?.username || 'Desconhecido');
+        logger.info('📊 Usuário acessando dashboard: %s', req.user?.username || 'Desconhecido');
         res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
     } catch (error) {
-        console.error('❌ Erro no dashboard:', error);
+        logger.error('❌ Erro no dashboard', { error: error && error.message ? error.message : error });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
@@ -340,40 +326,40 @@ app.get('/dashboard', requireAuth, requireServerAccess, (req, res) => {
 // Páginas de teste (desenvolvimento)
 app.get('/debug.html', requireAuth, (req, res) => {
     try {
-        console.log('🔧 Usuário acessando debug:', req.user?.username || 'Developer');
+        logger.info('🔧 Usuário acessando debug: %s', req.user?.username || 'Developer');
         res.sendFile(path.join(__dirname, 'public', 'debug.html'));
     } catch (error) {
-        console.error('❌ Erro no debug:', error);
+        logger.error('❌ Erro no debug', { error: error && error.message ? error.message : error });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
 
 app.get('/test-api.html', requireAuth, (req, res) => {
     try {
-        console.log('🧪 Usuário acessando test-api:', req.user?.username || 'Developer');
+        logger.info('🧪 Usuário acessando test-api: %s', req.user?.username || 'Developer');
         res.sendFile(path.join(__dirname, 'public', 'test-api.html'));
     } catch (error) {
-        console.error('❌ Erro no test-api:', error);
+        logger.error('❌ Erro no test-api', { error: error && error.message ? error.message : error });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
 
 app.get('/simple-test.html', requireAuth, (req, res) => {
     try {
-        console.log('🔧 Usuário acessando simple-test:', req.user?.username || 'Developer');
+        logger.info('🔧 Usuário acessando simple-test: %s', req.user?.username || 'Developer');
         res.sendFile(path.join(__dirname, 'public', 'simple-test.html'));
     } catch (error) {
-        console.error('❌ Erro no simple-test:', error);
+        logger.error('❌ Erro no simple-test', { error: error && error.message ? error.message : error });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
 
 app.get('/dashboard-fixed.html', requireAuth, requireServerAccess, (req, res) => {
     try {
-        console.log('🔧 Usuário acessando dashboard-fixed:', req.user?.username || 'Developer');
+        logger.info('🔧 Usuário acessando dashboard-fixed: %s', req.user?.username || 'Developer');
         res.sendFile(path.join(__dirname, 'public', 'dashboard-fixed.html'));
     } catch (error) {
-        console.error('❌ Erro no dashboard-fixed:', error);
+        logger.error('❌ Erro no dashboard-fixed', { error: error && error.message ? error.message : error });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
@@ -391,7 +377,7 @@ app.get('/api/csrf-token', requireAuth, (req, res) => {
         const token = req.csrfToken();
         res.json({ csrfToken: token });
     } catch (error) {
-        console.error('Erro ao gerar token CSRF:', error);
+        logger.error('Erro ao gerar token CSRF', { error: error && error.message ? error.message : error });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -414,11 +400,11 @@ app.get('/api/user', requireAuth, (req, res) => {
 // API para obter servidores do usuário
 app.get('/api/guilds', requireAuth, async (req, res) => {
     try {
-        console.log('📡 API /api/guilds chamada por:', req.user?.username);
+        logger.info('📡 API /api/guilds chamada por: %s', req.user?.username);
         
         // Verificar se o bot está conectado
         if (!global.discordClient || !global.discordClient.isReady()) {
-            console.log('⚠️ Bot Discord não está conectado');
+            logger.warn('⚠️ Bot Discord não está conectado');
             return res.json({
                 success: true,
                 guilds: [{
@@ -435,7 +421,7 @@ app.get('/api/guilds', requireAuth, async (req, res) => {
         // Obter dados reais do servidor
         const guild = global.discordClient.guilds.cache.get(config.guildId);
         if (!guild) {
-            console.log('⚠️ Servidor não encontrado no cache do bot');
+            logger.warn('⚠️ Servidor não encontrado no cache do bot');
             return res.json({
                 success: true,
                 guilds: [{
@@ -467,13 +453,13 @@ app.get('/api/guilds', requireAuth, async (req, res) => {
             roleCount: guild.roles.cache.size
         }];
         
-        console.log(`✅ Dados reais do servidor: ${humanMembers.size} membros humanos, ${botMembers.size} bots`);
+    logger.info(`✅ Dados reais do servidor: ${humanMembers.size} membros humanos, ${botMembers.size} bots`);
         res.json({
             success: true,
             guilds: guilds
         });
     } catch (error) {
-        console.error('❌ Erro ao obter guilds:', error);
+    logger.error('❌ Erro ao obter guilds:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
@@ -482,17 +468,17 @@ app.get('/api/guilds', requireAuth, async (req, res) => {
 app.get('/api/server/:serverId/channels', requireAuth, async (req, res) => {
     try {
         const serverId = req.params.serverId;
-        console.log(`📺 API channels para servidor ${serverId} por:`, req.user?.username);
+    logger.info(`📺 API channels para servidor ${serverId} por: ${req.user?.username}`);
         
         if (!global.discordClient || !global.discordClient.isReady()) {
             // Fallback: usar Discord REST API
-            console.log('⚠️ Bot offline, usando Discord REST API');
+            logger.warn('⚠️ Bot offline, usando Discord REST API');
             return await getChannelsViaREST(serverId, req, res);
         }
 
         const guild = global.discordClient.guilds.cache.get(serverId);
         if (!guild) {
-            console.log('⚠️ Servidor não encontrado no cache, tentando REST API');
+            logger.warn('⚠️ Servidor não encontrado no cache, tentando REST API');
             return await getChannelsViaREST(serverId, req, res);
         }
 
@@ -509,13 +495,13 @@ app.get('/api/server/:serverId/channels', requireAuth, async (req, res) => {
             }))
             .sort((a, b) => a.position - b.position);
 
-        console.log(`✅ ${channels.length} canais encontrados`);
+    logger.info(`✅ ${channels.length} canais encontrados`);
         res.json({
             success: true,
             channels: channels
         });
     } catch (error) {
-        console.error('❌ Erro ao obter canais:', error);
+    logger.error('❌ Erro ao obter canais:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
@@ -540,13 +526,13 @@ async function getChannelsViaREST(serverId, req, res) {
             }))
             .sort((a, b) => a.position - b.position);
 
-        console.log(`✅ REST API: ${filteredChannels.length} canais encontrados`);
+    logger.info(`✅ REST API: ${filteredChannels.length} canais encontrados`);
         res.json({
             success: true,
             channels: filteredChannels
         });
     } catch (error) {
-        console.error('❌ Erro REST API para canais:', error);
+    logger.error('❌ Erro REST API para canais:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ 
             error: 'Erro ao buscar canais', 
             details: 'Bot offline e REST API falhou',
@@ -559,17 +545,17 @@ async function getChannelsViaREST(serverId, req, res) {
 app.get('/api/server/:serverId/roles', requireAuth, async (req, res) => {
     try {
         const serverId = req.params.serverId;
-        console.log(`👑 API roles para servidor ${serverId} por:`, req.user?.username);
+    logger.info(`👑 API roles para servidor ${serverId} por: ${req.user?.username}`);
         
         if (!global.discordClient || !global.discordClient.isReady()) {
             // Fallback: usar Discord REST API
-            console.log('⚠️ Bot offline, usando Discord REST API para roles');
+            logger.warn('⚠️ Bot offline, usando Discord REST API para roles');
             return await getRolesViaREST(serverId, req, res);
         }
 
         const guild = global.discordClient.guilds.cache.get(serverId);
         if (!guild) {
-            console.log('⚠️ Servidor não encontrado, tentando REST API para roles');
+            logger.warn('⚠️ Servidor não encontrado, tentando REST API para roles');
             return await getRolesViaREST(serverId, req, res);
         }
 
@@ -589,13 +575,13 @@ app.get('/api/server/:serverId/roles', requireAuth, async (req, res) => {
             }))
             .sort((a, b) => b.position - a.position);
 
-        console.log(`✅ ${roles.length} roles encontrados`);
+    logger.info(`✅ ${roles.length} roles encontrados`);
         res.json({
             success: true,
             roles: roles
         });
     } catch (error) {
-        console.error('❌ Erro ao obter roles:', error);
+    logger.error('❌ Erro ao obter roles:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
@@ -623,13 +609,13 @@ async function getRolesViaREST(serverId, req, res) {
             }))
             .sort((a, b) => b.position - a.position);
 
-        console.log(`✅ REST API: ${filteredRoles.length} roles encontrados`);
+    logger.info(`✅ REST API: ${filteredRoles.length} roles encontrados`);
         res.json({
             success: true,
             roles: filteredRoles
         });
     } catch (error) {
-        console.error('❌ Erro REST API para roles:', error);
+    logger.error('❌ Erro REST API para roles:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ 
             error: 'Erro ao buscar roles', 
             details: 'Bot offline e REST API falhou',
@@ -646,7 +632,7 @@ async function getRolesViaREST(serverId, req, res) {
 app.post('/api/config/welcome', requireAuth, async (req, res) => {
     try {
         const { guildId, channelId } = req.body;
-        console.log(`💫 Configurando canal de boas-vindas: ${channelId} para servidor: ${guildId}`);
+    logger.info(`💫 Configurando canal de boas-vindas: ${channelId} para servidor: ${guildId}`);
         
         if (!guildId || !channelId) {
             return res.status(400).json({ 
@@ -660,7 +646,7 @@ app.post('/api/config/welcome', requireAuth, async (req, res) => {
             message: 'Canal de boas-vindas configurado com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao configurar canal de boas-vindas:', error);
+    logger.error('Erro ao configurar canal de boas-vindas:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ 
             success: false, 
             error: 'Erro interno do servidor' 
@@ -672,7 +658,7 @@ app.post('/api/config/welcome', requireAuth, async (req, res) => {
 app.post('/api/config/logs', requireAuth, async (req, res) => {
     try {
         const { guildId, channelId } = req.body;
-        console.log(`📋 Configurando canal de logs: ${channelId} para servidor: ${guildId}`);
+    logger.info(`📋 Configurando canal de logs: ${channelId} para servidor: ${guildId}`);
         
         if (!guildId || !channelId) {
             return res.status(400).json({ 
@@ -686,7 +672,7 @@ app.post('/api/config/logs', requireAuth, async (req, res) => {
             message: 'Canal de logs configurado com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao configurar canal de logs:', error);
+    logger.error('Erro ao configurar canal de logs:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ 
             success: false, 
             error: 'Erro interno do servidor' 
@@ -698,7 +684,7 @@ app.post('/api/config/logs', requireAuth, async (req, res) => {
 app.post('/api/config/autorole', requireAuth, async (req, res) => {
     try {
         const { guildId, roleId } = req.body;
-        console.log(`👑 Configurando cargo automático: ${roleId} para servidor: ${guildId}`);
+    logger.info(`👑 Configurando cargo automático: ${roleId} para servidor: ${guildId}`);
         
         if (!guildId || !roleId) {
             return res.status(400).json({ 
@@ -712,7 +698,7 @@ app.post('/api/config/autorole', requireAuth, async (req, res) => {
             message: 'Cargo automático configurado com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao configurar cargo automático:', error);
+    logger.error('Erro ao configurar cargo automático:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ 
             success: false, 
             error: 'Erro interno do servidor' 
@@ -724,7 +710,7 @@ app.post('/api/config/autorole', requireAuth, async (req, res) => {
 app.post('/api/moderation/settings', requireAuth, async (req, res) => {
     try {
         const { guildId, settings } = req.body;
-        console.log(`🛡️ Configurando filtros automáticos para servidor: ${guildId}`, settings);
+    logger.info(`🛡️ Configurando filtros automáticos para servidor: ${guildId}`, settings);
         
         if (!guildId || !settings) {
             return res.status(400).json({ 
@@ -739,7 +725,7 @@ app.post('/api/moderation/settings', requireAuth, async (req, res) => {
             settings: settings
         });
     } catch (error) {
-        console.error('Erro ao configurar filtros:', error);
+    logger.error('Erro ao configurar filtros:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ 
             success: false, 
             error: 'Erro interno do servidor' 
@@ -753,7 +739,7 @@ app.post('/api/server/:serverId/channels/:channelId/clear', requireAuth, async (
         const { serverId, channelId } = req.params;
         const { amount = 10, filterType = 'all' } = req.body;
         
-        console.log(`🧹 Limpeza de canal ${channelId} no servidor ${serverId} por:`, req.user?.username);
+    logger.info(`🧹 Limpeza de canal ${channelId} no servidor ${serverId} por: ${req.user?.username}`);
         
         if (!global.discordClient || !global.discordClient.isReady()) {
             return res.status(503).json({ error: 'Bot Discord não está conectado' });
@@ -796,7 +782,7 @@ app.post('/api/server/:serverId/channels/:channelId/clear', requireAuth, async (
         // Deletar mensagens (Discord permite bulk delete apenas para mensagens com menos de 14 dias)
         const deletedCount = await channel.bulkDelete(messagesToDelete, true);
 
-        console.log(`✅ ${deletedCount.size} mensagens deletadas do canal ${channel.name}`);
+    logger.info(`✅ ${deletedCount.size} mensagens deletadas do canal ${channel.name}`);
         res.json({
             success: true,
             deletedCount: deletedCount.size,
@@ -805,7 +791,7 @@ app.post('/api/server/:serverId/channels/:channelId/clear', requireAuth, async (
         });
 
     } catch (error) {
-        console.error('❌ Erro ao limpar canal:', error);
+    logger.error('❌ Erro ao limpar canal:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
@@ -814,7 +800,7 @@ app.post('/api/server/:serverId/channels/:channelId/clear', requireAuth, async (
 app.post('/api/server/:serverId/unban-all', requireAuth, async (req, res) => {
     try {
         const serverId = req.params.serverId;
-        console.log(`🔓 Desbanir todos no servidor ${serverId} por:`, req.user?.username);
+    logger.info(`🔓 Desbanir todos no servidor ${serverId} por: ${req.user?.username}`);
         
         if (!global.discordClient || !global.discordClient.isReady()) {
             return res.status(503).json({ error: 'Bot Discord não está conectado' });
@@ -855,7 +841,7 @@ app.post('/api/server/:serverId/unban-all', requireAuth, async (req, res) => {
             }
         }
 
-        console.log(`✅ ${unbannedCount} usuários desbanidos`);
+    logger.info(`✅ ${unbannedCount} usuários desbanidos`);
         res.json({
             success: true,
             unbannedCount: unbannedCount,
@@ -864,7 +850,7 @@ app.post('/api/server/:serverId/unban-all', requireAuth, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Erro ao desbanir todos:', error);
+    logger.error('❌ Erro ao desbanir todos:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
@@ -875,7 +861,7 @@ app.post('/api/server/:serverId/lock', requireAuth, async (req, res) => {
         const serverId = req.params.serverId;
         const { lock = true, reason = 'Bloqueio via dashboard' } = req.body;
         
-        console.log(`🔒 ${lock ? 'Bloquear' : 'Desbloquear'} servidor ${serverId} por:`, req.user?.username);
+    logger.info(`🔒 ${lock ? 'Bloquear' : 'Desbloquear'} servidor ${serverId} por: ${req.user?.username}`);
         
         if (!global.discordClient || !global.discordClient.isReady()) {
             return res.status(503).json({ error: 'Bot Discord não está conectado' });
@@ -917,7 +903,7 @@ app.post('/api/server/:serverId/lock', requireAuth, async (req, res) => {
             }
         }
 
-        console.log(`✅ Servidor ${lock ? 'bloqueado' : 'desbloqueado'}: ${modifiedChannels} canais modificados`);
+    logger.info(`✅ Servidor ${lock ? 'bloqueado' : 'desbloqueado'}: ${modifiedChannels} canais modificados`);
         res.json({
             success: true,
             action: lock ? 'locked' : 'unlocked',
@@ -927,7 +913,7 @@ app.post('/api/server/:serverId/lock', requireAuth, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Erro ao bloquear/desbloquear servidor:', error);
+    logger.error('❌ Erro ao bloquear/desbloquear servidor:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
@@ -938,7 +924,7 @@ app.post('/api/server/:serverId/timeout', requireAuth, async (req, res) => {
         const serverId = req.params.serverId;
         const { userId, duration = 60, reason = 'Timeout via dashboard' } = req.body;
         
-        console.log(`⏰ Timeout usuário ${userId} no servidor ${serverId} por:`, req.user?.username);
+    logger.info(`⏰ Timeout usuário ${userId} no servidor ${serverId} por: ${req.user?.username}`);
         
         if (!global.discordClient || !global.discordClient.isReady()) {
             return res.status(503).json({ error: 'Bot Discord não está conectado' });
@@ -973,7 +959,7 @@ app.post('/api/server/:serverId/timeout', requireAuth, async (req, res) => {
         // Aplicar timeout
         await member.timeout(durationMs, `${reason} - por ${req.user?.username}`);
 
-        console.log(`✅ Timeout aplicado em ${member.user.tag} por ${duration} minutos`);
+    logger.info(`✅ Timeout aplicado em ${member.user.tag} por ${duration} minutos`);
         res.json({
             success: true,
             user: {
@@ -987,7 +973,7 @@ app.post('/api/server/:serverId/timeout', requireAuth, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Erro ao dar timeout:', error);
+    logger.error('❌ Erro ao dar timeout:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
@@ -998,7 +984,7 @@ app.post('/api/server/:serverId/kick', requireAuth, async (req, res) => {
         const serverId = req.params.serverId;
         const { userId, reason = 'Expulsão via dashboard' } = req.body;
         
-        console.log(`👢 Expulsar usuário ${userId} do servidor ${serverId} por:`, req.user?.username);
+    logger.info(`👢 Expulsar usuário ${userId} do servidor ${serverId} por: ${req.user?.username}`);
         
         if (!global.discordClient || !global.discordClient.isReady()) {
             return res.status(503).json({ error: 'Bot Discord não está conectado' });
@@ -1037,7 +1023,7 @@ app.post('/api/server/:serverId/kick', requireAuth, async (req, res) => {
         // Expulsar membro
         await member.kick(`${reason} - por ${req.user?.username}`);
 
-        console.log(`✅ ${userInfo.tag} foi expulso do servidor`);
+    logger.info(`✅ ${userInfo.tag} foi expulso do servidor`);
         res.json({
             success: true,
             user: userInfo,
@@ -1045,7 +1031,7 @@ app.post('/api/server/:serverId/kick', requireAuth, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Erro ao expulsar usuário:', error);
+    logger.error('❌ Erro ao expulsar usuário:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
@@ -1056,7 +1042,7 @@ app.post('/api/server/:serverId/ban', requireAuth, async (req, res) => {
         const serverId = req.params.serverId;
         const { userId, reason = 'Banimento via dashboard', deleteMessageDays = 0, duration = 0 } = req.body;
         
-        console.log(`🔨 Banir usuário ${userId} do servidor ${serverId} por:`, req.user?.username);
+    logger.info(`🔨 Banir usuário ${userId} do servidor ${serverId} por: ${req.user?.username}`);
         
         if (!global.discordClient || !global.discordClient.isReady()) {
             return res.status(503).json({ error: 'Bot Discord não está conectado' });
@@ -1117,7 +1103,7 @@ app.post('/api/server/:serverId/ban', requireAuth, async (req, res) => {
             // TODO: Implementar sistema de agendamento para desbanimento automático
         }
 
-        console.log(`✅ ${userInfo.tag} foi banido do servidor`);
+    logger.info(`✅ ${userInfo.tag} foi banido do servidor`);
         res.json({
             success: true,
             user: userInfo,
@@ -1128,7 +1114,7 @@ app.post('/api/server/:serverId/ban', requireAuth, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Erro ao banir usuário:', error);
+    logger.error('❌ Erro ao banir usuário:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
@@ -1139,7 +1125,7 @@ app.get('/api/server/:serverId/members', requireAuth, async (req, res) => {
         const serverId = req.params.serverId;
         const { search = '', limit = 50 } = req.query;
         
-        console.log(`👥 Buscar membros no servidor ${serverId} por:`, req.user?.username);
+    logger.info(`👥 Buscar membros no servidor ${serverId} por: ${req.user?.username}`);
         
         if (!global.discordClient || !global.discordClient.isReady()) {
             return res.status(503).json({ error: 'Bot Discord não está conectado' });
@@ -1185,7 +1171,7 @@ app.get('/api/server/:serverId/members', requireAuth, async (req, res) => {
         // Limitar resultados
         members = members.slice(0, parseInt(limit));
 
-        console.log(`✅ Enviados ${members.length} membros`);
+    logger.info(`✅ Enviados ${members.length} membros`);
         res.json({
             success: true,
             members: members,
@@ -1193,7 +1179,7 @@ app.get('/api/server/:serverId/members', requireAuth, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Erro ao buscar membros:', error);
+    logger.error('❌ Erro ao buscar membros:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
@@ -1202,7 +1188,7 @@ app.get('/api/server/:serverId/members', requireAuth, async (req, res) => {
 app.get('/api/server/:serverId/stats', requireAuth, async (req, res) => {
     try {
         const serverId = req.params.serverId;
-        console.log(`📊 API stats para servidor ${serverId} por:`, req.user?.username);
+    logger.info(`📊 API stats para servidor ${serverId} por: ${req.user?.username}`);
         
         if (!global.discordClient || !global.discordClient.isReady()) {
             return res.status(503).json({ error: 'Bot Discord não está conectado' });
@@ -1260,14 +1246,14 @@ app.get('/api/server/:serverId/stats', requireAuth, async (req, res) => {
             }
         };
 
-        console.log(`✅ Estatísticas enviadas: ${stats.members.humans} membros humanos`);
+    logger.info(`✅ Estatísticas enviadas: ${stats.members.humans} membros humanos`);
         res.json({
             success: true,
             stats: stats
         });
 
     } catch (error) {
-        console.error('❌ Erro ao obter estatísticas:', error);
+    logger.error('❌ Erro ao obter estatísticas:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
     }
 });
@@ -1282,7 +1268,7 @@ app.get('/api/config', requireAuth, requireServerAccess, (req, res) => {
         };
         res.json({ success: true, config: safeConfig });
     } catch (error) {
-        console.error('Erro ao carregar configuração:', error);
+    logger.error('Erro ao carregar configuração:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro ao carregar configuração' });
     }
 });
@@ -1300,7 +1286,7 @@ app.post('/api/config', requireAuth, requireServerAccess, (req, res) => {
         
         res.json({ success: true, message: 'Configuração atualizada com sucesso!' });
     } catch (error) {
-        console.error('Erro ao atualizar configuração:', error);
+    logger.error('Erro ao atualizar configuração:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro ao atualizar configuração' });
     }
 });
@@ -1312,8 +1298,8 @@ const sseClients = new Map();
 
 // API para logs via Server-Sent Events (SSE) - Versão sem auth para compatibilidade com EventSource
 app.get('/api/logs/stream', (req, res) => {
-    console.log('� DEBUG: EventSource endpoint /api/logs/stream acessado');
-    console.log('�📡 Cliente SSE conectado para logs');
+    logger.debug('EventSource endpoint /api/logs/stream acessado');
+    logger.info('Cliente SSE conectado para logs');
     
     // Configurar headers SSE
     res.writeHead(200, {
@@ -1324,7 +1310,7 @@ app.get('/api/logs/stream', (req, res) => {
         'Access-Control-Allow-Credentials': 'true'
     });
 
-    console.log('🔴 DEBUG: Headers SSE configurados');
+    logger.debug('Headers SSE configurados');
 
     // Identificador único para o cliente
     const clientId = Date.now() + Math.random();
@@ -1337,7 +1323,7 @@ app.get('/api/logs/stream', (req, res) => {
         connectedAt: new Date()
     });
 
-    console.log(`🔴 DEBUG: Cliente ${clientId} adicionado. Total de clientes: ${sseClients.size}`);
+    logger.debug(`Cliente ${clientId} adicionado. Total de clientes: ${sseClients.size}`);
 
     // Enviar evento de conexão
     res.write(`data: ${JSON.stringify({
@@ -1346,19 +1332,19 @@ app.get('/api/logs/stream', (req, res) => {
         timestamp: new Date().toISOString()
     })}\n\n`);
 
-    console.log('🔴 DEBUG: Mensagem de conexão enviada');
+    logger.debug('Mensagem de conexão enviada');
 
     // Enviar logs recentes (últimos 50)
     sendRecentLogs(res);
 
     // Cleanup quando cliente desconecta
     req.on('close', () => {
-        console.log('📡 Cliente SSE desconectado');
+    logger.info('Cliente SSE desconectado');
         sseClients.delete(clientId);
     });
 
     req.on('error', () => {
-        console.log('📡 Erro SSE cliente');
+        logger.error('Erro SSE cliente');
         sseClients.delete(clientId);
     });
 });
@@ -1385,7 +1371,7 @@ async function sendRecentLogs(res) {
             })}\n\n`);
         }
     } catch (error) {
-        console.error('❌ Erro ao enviar logs recentes:', error);
+    logger.error('❌ Erro ao enviar logs recentes:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         // Enviar erro como log
         res.write(`data: ${JSON.stringify({
             type: 'error',
@@ -1408,7 +1394,7 @@ function broadcastLog(logData) {
         try {
             client.response.write(`data: ${message}\n\n`);
         } catch (error) {
-            console.error('❌ Erro ao enviar log para cliente SSE:', error);
+            logger.error('❌ Erro ao enviar log para cliente SSE:', { error: error && error.message ? error.message : error, stack: error && error.stack });
             sseClients.delete(clientId);
         }
     });
@@ -1440,7 +1426,7 @@ app.get('/api/test/generate-log', async (req, res) => {
 
         res.json({ success: true, message: 'Log de teste gerado', log: testLog });
     } catch (error) {
-        console.error('❌ Erro ao gerar log de teste:', error);
+    logger.error('❌ Erro ao gerar log de teste:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro ao gerar log de teste' });
     }
 });
@@ -1467,7 +1453,7 @@ app.get('/api/logs', requireAuth, async (req, res) => {
             hasMore: logs.length === parseInt(limit)
         });
     } catch (error) {
-        console.error('❌ Erro ao buscar logs:', error);
+    logger.error('❌ Erro ao buscar logs:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1484,7 +1470,7 @@ app.delete('/api/logs', requireAuth, async (req, res) => {
             deletedCount: deleted
         });
     } catch (error) {
-        console.error('❌ Erro ao limpar logs:', error);
+    logger.error('❌ Erro ao limpar logs:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1495,7 +1481,7 @@ global.logToDatabase = async (logData) => {
         await db.addLog(logData);
         broadcastLog(logData);
     } catch (error) {
-        console.error('❌ Erro ao registrar log:', error);
+    logger.error('❌ Erro ao registrar log:', { error: error && error.message ? error.message : error, stack: error && error.stack });
     }
 };
 
@@ -1526,7 +1512,7 @@ app.post('/api/send-update', requireAuth, requireServerAccess, async (req, res) 
         
         res.json({ success: true, message: 'Update enviado com sucesso!' });
     } catch (error) {
-        console.error('Erro ao enviar update:', error);
+    logger.error('Erro ao enviar update:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro ao enviar update' });
     }
 });
@@ -1610,7 +1596,7 @@ app.use((req, res) => {
 
 // Error handler
 app.use((error, req, res, next) => {
-    console.error('Server error:', error);
+    logger.error('Server error', { error: error && error.stack ? error.stack : error });
     res.status(500).json({ error: 'Erro interno do servidor' });
 });
 
@@ -1619,18 +1605,18 @@ app.use('/api', require('./routes/api'));
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-    console.log('🛑 SIGTERM received, shutting down gracefully');
+    logger.info('SIGTERM received, shutting down gracefully');
     server.close(() => {
-        console.log('✅ Server closed');
+        logger.info('Server closed');
         db.close();
         process.exit(0);
     });
 });
 
 process.on('SIGINT', () => {
-    console.log('🛑 SIGINT received, shutting down gracefully');
+    logger.info('SIGINT received, shutting down gracefully');
     server.close(() => {
-        console.log('✅ Server closed');
+        logger.info('Server closed');
         db.close();
         process.exit(0);
     });
@@ -1638,12 +1624,10 @@ process.on('SIGINT', () => {
 
 // Iniciar servidor
 server.listen(PORT, () => {
-    console.log(`🌐 YSNM Dashboard rodando em http://localhost:${PORT}`);
-    console.log(`🔑 OAuth2 Discord configurado para: ${callbackURL}`);
-    console.log(`🏷️ Ambiente: ${isProduction ? 'Produção' : 'Desenvolvimento'}`);
-    console.log(`🔌 Socket.IO habilitado`);
-    console.log(`📊 Sistema completo: Dashboard, Tickets, Analytics, Admin`);
-    console.log(`🛡️ Sistema de segurança ativo`);
+    logger.info(`YSNM Dashboard rodando em http://localhost:${PORT}`, { callbackURL, environment: isProduction ? 'Produção' : 'Desenvolvimento' });
+    logger.info('Socket.IO habilitado');
+    logger.info('Sistema completo: Dashboard, Tickets, Analytics, Admin');
+    logger.info('Sistema de segurança ativo');
 });
 
 module.exports = { app, server, socketManager };

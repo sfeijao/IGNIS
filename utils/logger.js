@@ -1,215 +1,111 @@
-// utils/logger.js - Sistema de logging estruturado
+// utils/logger.js - Winston-based rotating logger
 const fs = require('fs');
 const path = require('path');
+const { createLogger, format, transports } = require('winston');
+const DailyRotateFile = require('winston-daily-rotate-file');
 
-class StructuredLogger {
-    constructor() {
-        this.logLevel = process.env.LOG_LEVEL || 'info';
-        this.logLevels = {
-            error: 0,
-            warn: 1,
-            info: 2,
-            debug: 3,
-            trace: 4
-        };
-        
-        // Criar diretório de logs se não existir
-        this.logsDir = path.join(process.cwd(), 'logs');
-        if (!fs.existsSync(this.logsDir)) {
-            fs.mkdirSync(this.logsDir, { recursive: true });
-        }
-    }
+const logsDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 
-    shouldLog(level) {
-        return this.logLevels[level] <= this.logLevels[this.logLevel];
-    }
+const level = process.env.LOG_LEVEL || 'info';
 
-    formatLog(level, message, metadata = {}) {
-        return {
-            timestamp: new Date().toISOString(),
-            level: level.toUpperCase(),
-            message,
-            ...metadata,
-            pid: process.pid,
-            environment: process.env.NODE_ENV || 'development'
-        };
-    }
+const logger = createLogger({
+    level,
+    format: format.combine(
+        format.timestamp(),
+        format.errors({ stack: true }),
+        format.splat(),
+        format.json()
+    ),
+    transports: [
+        new transports.Console({
+            format: format.combine(
+                format.colorize(),
+                format.printf(info => {
+                    const ts = new Date(info.timestamp).toLocaleTimeString('pt-PT');
+                    return `[${ts}] ${info.level}: ${info.message} ${info.stack || ''}`;
+                })
+            )
+        }),
+        new DailyRotateFile({
+            filename: path.join(logsDir, 'app-%DATE%.log'),
+            datePattern: 'YYYY-MM-DD',
+            zippedArchive: true,
+            maxSize: '20m',
+            maxFiles: '30d',
+            level: 'info'
+        }),
+        new DailyRotateFile({
+            filename: path.join(logsDir, 'error-%DATE%.log'),
+            datePattern: 'YYYY-MM-DD',
+            zippedArchive: true,
+            maxSize: '20m',
+            maxFiles: '90d',
+            level: 'error'
+        })
+    ],
+    exitOnError: false
+});
 
-    writeToFile(logEntry) {
-        const logLine = JSON.stringify(logEntry) + '\n';
-        const fileName = `app-${new Date().toISOString().split('T')[0]}.log`;
-        const filePath = path.join(this.logsDir, fileName);
-        
-        fs.appendFileSync(filePath, logLine);
-
-        if (logEntry.level === 'ERROR') {
-            const errorFileName = `error-${new Date().toISOString().split('T')[0]}.log`;
-            const errorFilePath = path.join(this.logsDir, errorFileName);
-            fs.appendFileSync(errorFilePath, logLine);
-        }
-    }
-
-    outputToConsole(logEntry) {
-        const colors = {
-            ERROR: '\x1b[31m',
-            WARN: '\x1b[33m',
-            INFO: '\x1b[36m',
-            DEBUG: '\x1b[35m',
-            TRACE: '\x1b[37m'
-        };
-        
-        const reset = '\x1b[0m';
-        const color = colors[logEntry.level] || reset;
-        
-        const timestamp = new Date(logEntry.timestamp).toLocaleTimeString('pt-PT');
-        console.log(`${color}[${timestamp}] ${logEntry.level}${reset} ${logEntry.message}`);
-        
-        if (process.env.NODE_ENV !== 'production' && Object.keys(logEntry).length > 5) {
-            const metadata = { ...logEntry };
-            delete metadata.timestamp;
-            delete metadata.level;
-            delete metadata.message;
-            delete metadata.pid;
-            delete metadata.environment;
-            
-            if (Object.keys(metadata).length > 0) {
-                console.log(`${color}  Metadata:${reset}`, metadata);
-            }
-        }
-    }
-
-    log(level, message, metadata = {}) {
-        if (!this.shouldLog(level)) return;
-
-        const logEntry = this.formatLog(level, message, metadata);
-        
-        this.outputToConsole(logEntry);
-        
-        if (process.env.NODE_ENV === 'production' || process.env.ENABLE_FILE_LOGGING === 'true') {
-            this.writeToFile(logEntry);
-        }
-    }
-
-    error(message, metadata = {}) {
-        this.log('error', message, metadata);
-    }
-
-    warn(message, metadata = {}) {
-        this.log('warn', message, metadata);
-    }
-
-    info(message, metadata = {}) {
-        this.log('info', message, metadata);
-    }
-
-    debug(message, metadata = {}) {
-        this.log('debug', message, metadata);
-    }
-
-    trace(message, metadata = {}) {
-        this.log('trace', message, metadata);
-    }
-
-    command(commandName, interaction, success = true) {
+// Maintain compatibility with previous StructuredLogger API
+module.exports = {
+    error: (msg, meta = {}) => logger.error(msg, meta),
+    warn: (msg, meta = {}) => logger.warn(msg, meta),
+    info: (msg, meta = {}) => logger.info(msg, meta),
+    debug: (msg, meta = {}) => logger.debug(msg, meta),
+    trace: (msg, meta = {}) => logger.debug(msg, meta),
+    command: (commandName, interaction, success = true) => {
         const metadata = {
             commandName,
-            userId: interaction.user.id,
-            username: interaction.user.username,
-            guildId: interaction.guild?.id,
-            guildName: interaction.guild?.name,
+            userId: interaction?.user?.id,
+            username: interaction?.user?.username,
+            guildId: interaction?.guild?.id,
+            guildName: interaction?.guild?.name,
             success,
             type: 'command'
         };
-
-        if (success) {
-            this.info(`Comando executado: ${commandName}`, metadata);
-        } else {
-            this.warn(`Comando falhou: ${commandName}`, metadata);
-        }
-    }
-
-    interaction(type, customId, interaction, success = true) {
+        if (success) module.exports.info(`Comando executado: ${commandName}`, metadata);
+        else module.exports.warn(`Comando falhou: ${commandName}`, metadata);
+    },
+    interaction: (typeName, customId, interaction, success = true) => {
         const metadata = {
-            interactionType: type,
+            interactionType: typeName,
             customId,
-            userId: interaction.user.id,
-            username: interaction.user.username,
-            guildId: interaction.guild?.id,
+            userId: interaction?.user?.id,
+            username: interaction?.user?.username,
+            guildId: interaction?.guild?.id,
             success,
             type: 'interaction'
         };
-
-        if (success) {
-            this.info(`Interação processada: ${type}`, metadata);
-        } else {
-            this.warn(`Interação falhou: ${type}`, metadata);
-        }
-    }
-
-    database(operation, table, success = true, metadata = {}) {
-        const logData = {
-            operation,
-            table,
-            success,
-            type: 'database',
-            ...metadata
-        };
-
-        if (success) {
-            this.debug(`Database ${operation}: ${table}`, logData);
-        } else {
-            this.error(`Database ${operation} failed: ${table}`, logData);
-        }
-    }
-
-    api(method, endpoint, statusCode, responseTime, metadata = {}) {
-        const logData = {
-            method,
-            endpoint,
-            statusCode,
-            responseTime: `${responseTime}ms`,
-            type: 'api',
-            ...metadata
-        };
-
+        if (success) module.exports.info(`Interação processada: ${typeName}`, metadata);
+        else module.exports.warn(`Interação falhou: ${typeName}`, metadata);
+    },
+    database: (operation, table, success = true, metadata = {}) => {
+        const logData = { operation, table, success, type: 'database', ...metadata };
+        if (success) module.exports.debug(`Database ${operation}: ${table}`, logData);
+        else module.exports.error(`Database ${operation} failed: ${table}`, logData);
+    },
+    api: (method, endpoint, statusCode, responseTime, metadata = {}) => {
+        const logData = { method, endpoint, statusCode, responseTime: `${responseTime}ms`, type: 'api', ...metadata };
         const message = `${method} ${endpoint} - ${statusCode} (${responseTime}ms)`;
-        
-        if (statusCode >= 500) {
-            this.error(message, logData);
-        } else if (statusCode >= 400) {
-            this.warn(message, logData);
-        } else {
-            this.info(message, logData);
-        }
-    }
-
-    cleanupOldLogs(daysToKeep = 30) {
+        if (statusCode >= 500) module.exports.error(message, logData);
+        else if (statusCode >= 400) module.exports.warn(message, logData);
+        else module.exports.info(message, logData);
+    },
+    cleanupOldLogs: (daysToKeep = 30) => {
         try {
-            const files = fs.readdirSync(this.logsDir);
-            const cutoffDate = new Date();
-            cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-
+            const files = fs.readdirSync(logsDir);
+            const cutoff = Date.now() - daysToKeep * 24 * 60 * 60 * 1000;
             files.forEach(file => {
-                if (file.endsWith('.log')) {
-                    const filePath = path.join(this.logsDir, file);
-                    const stats = fs.statSync(filePath);
-                    
-                    if (stats.mtime < cutoffDate) {
-                        fs.unlinkSync(filePath);
-                        this.info(`Log file cleanup: ${file} deleted`);
-                    }
+                if (!file.endsWith('.gz') && file.endsWith('.log')) {
+                    const p = path.join(logsDir, file);
+                    const stats = fs.statSync(p);
+                    if (stats.mtimeMs < cutoff) fs.unlinkSync(p);
                 }
             });
-        } catch (error) {
-            this.error('Erro na limpeza de logs antigos', { error: error.message });
+            module.exports.info('Log cleanup completed', { daysToKeep });
+        } catch (e) {
+            module.exports.error('Error cleaning logs', { error: e.message });
         }
     }
-}
-
-const logger = new StructuredLogger();
-
-setInterval(() => {
-    logger.cleanupOldLogs();
-}, 24 * 60 * 60 * 1000);
-
-module.exports = logger;
+};

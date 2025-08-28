@@ -1,5 +1,6 @@
 const socketIo = require('socket.io');
 const Database = require('./database/database');
+const logger = require('../../utils/logger');
 
 class SocketManager {
     constructor(server) {
@@ -20,9 +21,9 @@ class SocketManager {
     async initializeDatabase() {
         try {
             await this.db.initialize();
-            console.log('✅ SocketManager: Database initialized successfully');
+            logger.info('SocketManager: Database initialized successfully');
         } catch (error) {
-            console.error('❌ SocketManager: Database initialization failed:', error);
+            logger.error('SocketManager: Database initialization failed', { error: error && error.stack ? error.stack : error });
             this.db = null; // Set to null to prevent further errors
         }
     }
@@ -34,7 +35,7 @@ class SocketManager {
     
     setupSocketHandlers() {
         this.io.on('connection', (socket) => {
-            console.log(`🔌 Usuário conectado: ${socket.id}`);
+                logger.info(`Usuário conectado: ${socket.id}`);
             
             // Autenticação do socket
             socket.on('authenticate', (data) => {
@@ -44,18 +45,18 @@ class SocketManager {
             // Dashboard events
             socket.on('join_dashboard', (guildId) => {
                 socket.join(`dashboard_${guildId}`);
-                console.log(`📊 Socket ${socket.id} entrou no dashboard ${guildId}`);
+                logger.debug(`Socket ${socket.id} entrou no dashboard ${guildId}`);
             });
             
             socket.on('leave_dashboard', (guildId) => {
                 socket.leave(`dashboard_${guildId}`);
-                console.log(`📊 Socket ${socket.id} saiu do dashboard ${guildId}`);
+                logger.debug(`Socket ${socket.id} saiu do dashboard ${guildId}`);
             });
             
             // Ticket events
             socket.on('join_tickets', (guildId) => {
                 socket.join(`tickets_${guildId}`);
-                console.log(`🎫 Socket ${socket.id} entrou nos tickets ${guildId}`);
+                logger.debug(`Socket ${socket.id} entrou nos tickets ${guildId}`);
             });
             
             socket.on('create_ticket', async (data) => {
@@ -106,12 +107,12 @@ class SocketManager {
                 });
                 
                 socket.emit('authenticated', { success: true });
-                console.log(`✅ Socket ${socket.id} autenticado para usuário ${data.userId}`);
+                logger.info(`Socket ${socket.id} autenticado para usuário ${data.userId}`);
             } else {
                 socket.emit('authentication_error', { error: 'Dados de autenticação inválidos' });
             }
         } catch (error) {
-            console.error('Erro na autenticação do socket:', error);
+            logger.error('Erro na autenticação do socket', { error: error && error.stack ? error.stack : error });
             socket.emit('authentication_error', { error: 'Erro na autenticação' });
         }
     }
@@ -155,7 +156,7 @@ class SocketManager {
             socket.emit('ticket_create_success', { ticketId });
             
         } catch (error) {
-            console.error('Erro ao criar ticket via socket:', error);
+            logger.error('Erro ao criar ticket via socket', { error: error && error.stack ? error.stack : error });
             socket.emit('error', { message: 'Erro ao criar ticket' });
         }
     }
@@ -184,7 +185,7 @@ class SocketManager {
             }
             
         } catch (error) {
-            console.error('Erro ao atualizar ticket via socket:', error);
+            logger.error('Erro ao atualizar ticket via socket', { error: error && error.stack ? error.stack : error });
             socket.emit('error', { message: 'Erro ao atualizar ticket' });
         }
     }
@@ -214,7 +215,7 @@ class SocketManager {
             socket.emit('message_add_success', { messageId });
             
         } catch (error) {
-            console.error('Erro ao adicionar mensagem ao ticket via socket:', error);
+            logger.error('Erro ao adicionar mensagem ao ticket via socket', { error: error && error.stack ? error.stack : error });
             socket.emit('error', { message: 'Erro ao adicionar mensagem' });
         }
     }
@@ -245,7 +246,7 @@ class SocketManager {
             });
             
         } catch (error) {
-            console.error('Erro ao processar ação administrativa:', error);
+            logger.error('Erro ao processar ação administrativa', { error: error && error.stack ? error.stack : error });
             socket.emit('error', { message: 'Erro ao processar ação' });
         }
     }
@@ -280,7 +281,7 @@ class SocketManager {
             this.sendModerationStatsUpdate(socket.guildId);
             
         } catch (error) {
-            console.error('Erro ao processar ação de moderação:', error);
+            logger.error('Erro ao processar ação de moderação', { error: error && error.stack ? error.stack : error });
             socket.emit('error', { message: 'Erro ao processar ação de moderação' });
         }
     }
@@ -288,7 +289,7 @@ class SocketManager {
     handleDisconnect(socket) {
         const user = this.connectedUsers.get(socket.id);
         if (user) {
-            console.log(`🔌 Usuário ${user.userId} desconectado: ${socket.id}`);
+            logger.info(`Usuário ${user.userId} desconectado: ${socket.id}`);
             this.connectedUsers.delete(socket.id);
         }
     }
@@ -297,7 +298,7 @@ class SocketManager {
     
     async sendAnalyticsUpdate(guildId) {
         if (!this.isDatabaseReady()) {
-            console.warn('⚠️ Database not ready, skipping analytics update');
+            logger.warn('Database not ready, skipping analytics update');
             return;
         }
         
@@ -309,13 +310,13 @@ class SocketManager {
                 timestamp: new Date()
             });
         } catch (error) {
-            console.error('Erro ao enviar atualização de analytics:', error);
+            logger.error('Erro ao enviar atualização de analytics', { error: error && error.stack ? error.stack : error });
         }
     }
     
     async sendModerationStatsUpdate(guildId) {
         if (!this.isDatabaseReady()) {
-            console.warn('⚠️ Database not ready, skipping moderation stats update');
+            logger.warn('Database not ready, skipping moderation stats update');
             return;
         }
         
@@ -329,13 +330,13 @@ class SocketManager {
                 timestamp: new Date()
             });
         } catch (error) {
-            console.error('Erro ao enviar atualização de stats de moderação:', error);
+            logger.error('Erro ao enviar atualização de stats de moderação', { error: error && error.stack ? error.stack : error });
         }
     }
     
     async sendTicketStatsUpdate(guildId) {
         if (!this.isDatabaseReady()) {
-            console.warn('⚠️ Database not ready, skipping ticket stats update');
+            logger.warn('Database not ready, skipping ticket stats update');
             return;
         }
         
@@ -347,7 +348,7 @@ class SocketManager {
                 timestamp: new Date()
             });
         } catch (error) {
-            console.error('Erro ao enviar atualização de stats de tickets:', error);
+            logger.error('Erro ao enviar atualização de stats de tickets', { error: error && error.stack ? error.stack : error });
         }
     }
     
@@ -395,13 +396,13 @@ class SocketManager {
                     break;
             }
         } catch (error) {
-            console.error(`Erro ao processar evento ${eventType}:`, error);
+            logger.error(`Erro ao processar evento ${eventType}`, { error: error && error.stack ? error.stack : error });
         }
     }
     
     async handleDiscordMessage(guildId, data) {
-        if (!this.isDatabaseReady()) {
-            console.warn('⚠️ Database not ready, skipping message analytics');
+            if (!this.isDatabaseReady()) {
+                logger.warn('⚠️ Database not ready, skipping message analytics');
             return;
         }
         
@@ -411,8 +412,8 @@ class SocketManager {
                 channelId: data.channelId,
                 authorId: data.authorId
             });
-        } catch (error) {
-            console.error('Erro ao registrar analytics de mensagem:', error);
+            } catch (error) {
+                logger.error('Erro ao registrar analytics de mensagem', { error: error && error.message ? error.message : error, stack: error && error.stack });
         }
         
         // Enviar atualização para dashboard
@@ -425,7 +426,7 @@ class SocketManager {
     
     async handleMemberJoin(guildId, data) {
         if (!this.isDatabaseReady()) {
-            console.warn('⚠️ Database not ready, skipping member join log');
+                    logger.warn('⚠️ Database not ready, skipping member join log');
             return;
         }
         
@@ -438,8 +439,8 @@ class SocketManager {
                 description: `${data.username} entrou no servidor`,
                 timestamp: new Date().toISOString()
             });
-        } catch (error) {
-            console.error('Erro ao registrar entrada de membro:', error);
+            } catch (error) {
+                logger.error('Erro ao registrar entrada de membro', { error: error && error.message ? error.message : error, stack: error && error.stack });
         }
         
         // Notificar dashboard
@@ -455,7 +456,7 @@ class SocketManager {
     
     async handleMemberLeave(guildId, data) {
         if (!this.isDatabaseReady()) {
-            console.warn('⚠️ Database not ready, skipping member leave log');
+                    logger.warn('⚠️ Database not ready, skipping member leave log');
             return;
         }
         
@@ -468,8 +469,8 @@ class SocketManager {
                 description: `${data.username} saiu do servidor`,
                 timestamp: new Date().toISOString()
             });
-        } catch (error) {
-            console.error('Erro ao registrar saída de membro:', error);
+            } catch (error) {
+                logger.error('Erro ao registrar saída de membro', { error: error && error.message ? error.message : error, stack: error && error.stack });
         }
         
         // Notificar dashboard
@@ -485,7 +486,7 @@ class SocketManager {
     
     async handleMessageDelete(guildId, data) {
         if (!this.isDatabaseReady()) {
-            console.warn('⚠️ Database not ready, skipping message delete log');
+                    logger.warn('⚠️ Database not ready, skipping message delete log');
             return;
         }
         
@@ -503,8 +504,8 @@ class SocketManager {
                 }),
                 timestamp: new Date().toISOString()
             });
-        } catch (error) {
-            console.error('Erro ao registrar deleção de mensagem:', error);
+            } catch (error) {
+                logger.error('Erro ao registrar deleção de mensagem', { error: error && error.message ? error.message : error, stack: error && error.stack });
         }
         
         // Notificar moderadores
@@ -519,7 +520,7 @@ class SocketManager {
     async handleVoiceUpdate(guildId, data) {
         // Verificar se a database está inicializada
         if (!this.isDatabaseReady()) {
-            console.warn('⚠️ Database not ready, skipping voice update log');
+                    logger.warn('⚠️ Database not ready, skipping voice update log');
             return;
         }
         
@@ -545,11 +546,11 @@ class SocketManager {
                 if (data.duration) {
                     // await this.db.updateVoiceTime(guildId, data.userId, data.duration);
                     // Método não implementado - pode ser implementado depois se necessário
-                    console.log(`Voice time update: ${data.userId} - ${data.duration}ms`);
+                    logger.debug('Voice time update', { userId: data.userId, durationMs: data.duration });
                 }
             }
-        } catch (error) {
-            console.error('Erro ao processar atualização de voz:', error);
+            } catch (error) {
+                logger.error('Erro ao processar atualização de voz', { error: error && error.message ? error.message : error, stack: error && error.stack });
         }
         
         // Notificar dashboard sobre mudanças de voz

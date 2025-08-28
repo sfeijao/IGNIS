@@ -1,6 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const logger = require('../../utils/logger');
 
 class Database {
     constructor() {
@@ -12,10 +13,10 @@ class Database {
         return new Promise((resolve, reject) => {
             this.db = new sqlite3.Database(this.dbPath, (err) => {
                 if (err) {
-                    console.error('❌ Erro ao conectar com a base de dados:', err);
+                    logger.error('Erro ao conectar com a base de dados', { error: err && err.message ? err.message : err });
                     reject(err);
                 } else {
-                    console.log('✅ Conectado à base de dados SQLite');
+                    logger.info('Conectado à base de dados SQLite');
                     this.createTables().then(resolve).catch(reject);
                 }
             });
@@ -29,10 +30,10 @@ class Database {
             
             this.db.exec(schema, (err) => {
                 if (err) {
-                    console.error('❌ Erro ao criar tabelas:', err);
+                    logger.error('❌ Erro ao criar tabelas', { error: err && err.message ? err.message : err, stack: err && err.stack });
                     reject(err);
                 } else {
-                    console.log('✅ Tabelas criadas/verificadas com sucesso');
+                    logger.info('Tabelas criadas/verificadas com sucesso');
                     
                     // Verificar e corrigir estrutura da tabela logs se necessário
                     this.fixLogsTable()
@@ -48,7 +49,7 @@ class Database {
             // Verificar se a coluna timestamp existe na tabela logs
             this.db.all("PRAGMA table_info(logs)", (err, rows) => {
                 if (err) {
-                    console.error('❌ Erro ao verificar estrutura da tabela logs:', err);
+                    logger.error('❌ Erro ao verificar estrutura da tabela logs', { error: err && err.message ? err.message : err, stack: err && err.stack });
                     reject(err);
                     return;
                 }
@@ -56,26 +57,26 @@ class Database {
                 const hasTimestamp = rows.some(row => row.name === 'timestamp');
                 
                 if (!hasTimestamp) {
-                    console.log('🔧 Adicionando coluna timestamp à tabela logs...');
+                    logger.info('Adicionando coluna timestamp à tabela logs...');
                     
                     // Adicionar coluna timestamp se não existir
                     this.db.run(
                         "ALTER TABLE logs ADD COLUMN timestamp DATETIME DEFAULT CURRENT_TIMESTAMP",
                         (err) => {
                             if (err) {
-                                console.error('❌ Erro ao adicionar coluna timestamp:', err);
+                                logger.error('❌ Erro ao adicionar coluna timestamp', { error: err && err.message ? err.message : err, stack: err && err.stack });
                                 reject(err);
                             } else {
-                                console.log('✅ Coluna timestamp adicionada com sucesso');
+                                logger.info('Coluna timestamp adicionada com sucesso');
                                 
                                 // Atualizar registos existentes sem timestamp
                                 this.db.run(
                                     "UPDATE logs SET timestamp = CURRENT_TIMESTAMP WHERE timestamp IS NULL",
                                     (err) => {
                                         if (err) {
-                                            console.error('⚠️ Aviso ao atualizar timestamps:', err);
+                                            logger.warn('⚠️ Aviso ao atualizar timestamps', { error: err && err.message ? err.message : err, stack: err && err.stack });
                                         } else {
-                                            console.log('✅ Timestamps atualizados');
+                                            logger.info('Timestamps atualizados');
                                         }
                                         // Continuar com a migração dos tickets
                                         this.migrateTicketsTable()
@@ -87,7 +88,7 @@ class Database {
                         }
                     );
                 } else {
-                    console.log('✅ Estrutura da tabela logs está correta');
+                    logger.info('Estrutura da tabela logs está correta');
                     // Verificar tickets mesmo se logs estiver correto
                     this.migrateTicketsTable()
                         .then(() => resolve())
@@ -102,7 +103,7 @@ class Database {
             // Verificar estrutura da tabela tickets
             this.db.all("PRAGMA table_info(tickets)", (err, rows) => {
                 if (err) {
-                    console.error('❌ Erro ao verificar estrutura da tabela tickets:', err);
+                    logger.error('❌ Erro ao verificar estrutura da tabela tickets', { error: err && err.message ? err.message : err, stack: err && err.stack });
                     reject(err);
                     return;
                 }
@@ -113,19 +114,21 @@ class Database {
                 const hasArchived = rows.some(row => row.name === 'archived');
                 
                 let promises = [];
+                let willAlter = false;
                 
                 // Adicionar coluna title se não existir
                 if (!hasTitle) {
-                    console.log('🔧 Adicionando coluna title à tabela tickets...');
+                    logger.info('Adicionando coluna title à tabela tickets...');
+                    willAlter = true;
                     promises.push(new Promise((res, rej) => {
                         this.db.run(
                             "ALTER TABLE tickets ADD COLUMN title TEXT",
                             (err) => {
                                 if (err) {
-                                    console.error('❌ Erro ao adicionar coluna title:', err);
+                                    logger.error('❌ Erro ao adicionar coluna title', { error: err && err.message ? err.message : err, stack: err && err.stack });
                                     rej(err);
                                 } else {
-                                    console.log('✅ Coluna title adicionada com sucesso');
+                                    logger.info('Coluna title adicionada com sucesso');
                                     res();
                                 }
                             }
@@ -135,16 +138,57 @@ class Database {
                 
                 // Adicionar coluna severity se não existir
                 if (!hasSeverity) {
-                    console.log('🔧 Adicionando coluna severity à tabela tickets...');
+                    logger.info('Adicionando coluna severity à tabela tickets...');
+                    willAlter = true;
                     promises.push(new Promise((res, rej) => {
                         this.db.run(
                             "ALTER TABLE tickets ADD COLUMN severity TEXT DEFAULT 'medium'",
                             (err) => {
                                 if (err) {
-                                    console.error('❌ Erro ao adicionar coluna severity:', err);
+                                    logger.error('❌ Erro ao adicionar coluna severity', { error: err && err.message ? err.message : err, stack: err && err.stack });
                                     rej(err);
                                 } else {
-                                    console.log('✅ Coluna severity adicionada com sucesso');
+                                    logger.info('Coluna severity adicionada com sucesso');
+                                    res();
+                                }
+                            }
+                        );
+                    }));
+                }
+
+                // Adicionar coluna bug_webhook_sent se não existir (flag para evitar envios duplicados)
+                if (!hasBugWebhookSent) {
+                    logger.info('Adicionando coluna bug_webhook_sent à tabela tickets...');
+                    willAlter = true;
+                    promises.push(new Promise((res, rej) => {
+                        this.db.run(
+                            "ALTER TABLE tickets ADD COLUMN bug_webhook_sent INTEGER DEFAULT 0",
+                            (err) => {
+                                if (err) {
+                                    logger.error('❌ Erro ao adicionar coluna bug_webhook_sent', { error: err && err.message ? err.message : err, stack: err && err.stack });
+                                    rej(err);
+                                } else {
+                                    logger.info('Coluna bug_webhook_sent adicionada com sucesso');
+                                    res();
+                                }
+                            }
+                        );
+                    }));
+                }
+
+                // Adicionar coluna archived se não existir (marca tickets arquivados)
+                if (!hasArchived) {
+                    logger.info('Adicionando coluna archived à tabela tickets...');
+                    willAlter = true;
+                    promises.push(new Promise((res, rej) => {
+                        this.db.run(
+                            "ALTER TABLE tickets ADD COLUMN archived INTEGER DEFAULT 0",
+                            (err) => {
+                                if (err) {
+                                    logger.error('❌ Erro ao adicionar coluna archived', { error: err && err.message ? err.message : err, stack: err && err.stack });
+                                    rej(err);
+                                } else {
+                                    logger.info('Coluna archived adicionada com sucesso');
                                     res();
                                 }
                             }
@@ -168,10 +212,10 @@ class Database {
                         )
                     `, (err) => {
                         if (err) {
-                            console.error('❌ Erro ao criar tabela ticket_users:', err);
+                            logger.error('❌ Erro ao criar tabela ticket_users', { error: err && err.message ? err.message : err, stack: err && err.stack });
                             rej(err);
                         } else {
-                            console.log('✅ Tabela ticket_users criada/verificada com sucesso');
+                            logger.info('Tabela ticket_users criada/verificada com sucesso');
                             res();
                         }
                     });
@@ -190,23 +234,43 @@ class Database {
                         )
                     `, (err) => {
                         if (err) {
-                            console.error('❌ Erro ao criar tabela guild_config:', err);
+                            logger.error('❌ Erro ao criar tabela guild_config:', { error: err && err.message ? err.message : err, stack: err && err.stack });
                             rej(err);
                         } else {
-                            console.log('✅ Tabela guild_config criada/verificada com sucesso');
+                            logger.info('Tabela guild_config criada/verificada com sucesso');
                             res();
                         }
                     });
                 }));
                 
                 // Executar todas as migrações
-                Promise.all(promises)
+                (async () => {
+                    try {
+                        if (willAlter) await this.backupDatabase();
+                    } catch (err) {
+                        logger.warn('⚠️ Falha ao criar backup antes das migrações:', { error: err && err.message ? err.message : err, stack: err && err.stack });
+                    }
+                    Promise.all(promises)
                     .then(() => {
-                        console.log('✅ Migração da tabela tickets concluída');
+                        logger.info('Migração da tabela tickets concluída');
                         resolve();
                     })
                     .catch(reject);
+                })();
             });
+        });
+    }
+
+    async backupDatabase() {
+        return new Promise((resolve, reject) => {
+            try {
+                const backupPath = this.dbPath + '.bak.' + Date.now();
+                fs.copyFileSync(this.dbPath, backupPath);
+                        logger.info('Backup da DB criado em', { path: backupPath });
+                resolve(backupPath);
+            } catch (err) {
+                reject(err);
+            }
         });
     }
 
@@ -339,7 +403,7 @@ class Database {
         return new Promise((resolve, reject) => {
             // Verificar se a database está inicializada
             if (!this.db) {
-                console.error('❌ Database não inicializada em getTickets');
+                logger.error('❌ Database não inicializada em getTickets');
                 return reject(new Error('Database não inicializada'));
             }
 
@@ -568,14 +632,14 @@ class Database {
     // Deletar ticket
     async deleteTicket(ticketId) {
         return new Promise((resolve, reject) => {
-            console.log('🗑️ Iniciando deleção do ticket:', ticketId);
+            logger.info('Iniciando deleção do ticket', { ticketId });
             
             const database = this.db; // Salvar referência
             
             database.serialize(() => {
                 database.run('BEGIN TRANSACTION', (err) => {
                     if (err) {
-                        console.error('Erro ao iniciar transação:', err);
+                        logger.error('Erro ao iniciar transação:', { error: err && err.message ? err.message : err, stack: err && err.stack });
                         return reject(err);
                     }
                     
@@ -583,7 +647,7 @@ class Database {
                     const deleteUsersStmt = database.prepare('DELETE FROM ticket_users WHERE ticket_id = ?');
                     deleteUsersStmt.run([ticketId], (err) => {
                         if (err) {
-                            console.error('Erro ao deletar usuários do ticket:', err);
+                            logger.error('Erro ao deletar usuários do ticket:', { error: err && err.message ? err.message : err, stack: err && err.stack });
                             database.run('ROLLBACK');
                             deleteUsersStmt.finalize();
                             return reject(err);
@@ -595,16 +659,16 @@ class Database {
                         const deleteTicketStmt = database.prepare('DELETE FROM tickets WHERE id = ?');
                         deleteTicketStmt.run([ticketId], function(err) {
                             if (err) {
-                                console.error('Erro ao deletar ticket:', err);
+                                logger.error('Erro ao deletar ticket:', { error: err && err.message ? err.message : err, stack: err && err.stack });
                                 database.run('ROLLBACK');
                                 deleteTicketStmt.finalize();
                                 reject(err);
                             } else {
-                                console.log('✅ Ticket deletado com sucesso, ID:', ticketId, 'Linhas afetadas:', this.changes);
+                                logger.info('Ticket deletado com sucesso', { ticketId, changes: this.changes });
                                 database.run('COMMIT', (commitErr) => {
                                     deleteTicketStmt.finalize();
                                     if (commitErr) {
-                                        console.error('Erro ao fazer commit:', commitErr);
+                                        logger.error('Erro ao fazer commit:', { error: commitErr && commitErr.message ? commitErr.message : commitErr, stack: commitErr && commitErr.stack });
                                         reject(commitErr);
                                     } else {
                                         resolve({ changes: this.changes });
@@ -830,7 +894,7 @@ class Database {
             
             stmt.run(params, function(err) {
                 if (err) {
-                    console.error('[ERROR] ⚠️ Erro ao criar log (não crítico)', {
+                    logger.error('[ERROR] ⚠️ Erro ao criar log (não crítico)', {
                         error: err.message,
                         logData: logData,
                         params: params
@@ -906,7 +970,7 @@ class Database {
                 typeof details === 'object' ? JSON.stringify(details) : details,
                 (err) => {
                     if (err) {
-                        console.error('❌ Erro ao adicionar log:', err);
+                        logger.error('❌ Erro ao adicionar log:', { error: err && err.message ? err.message : err, stack: err && err.stack });
                         reject(err);
                     } else {
                         resolve(stmt.lastID);
@@ -1059,9 +1123,9 @@ class Database {
         if (this.db) {
             this.db.close((err) => {
                 if (err) {
-                    console.error('❌ Erro ao fechar base de dados:', err);
+                    logger.error('❌ Erro ao fechar base de dados:', { error: err && err.message ? err.message : err, stack: err && err.stack });
                 } else {
-                    console.log('✅ Base de dados fechada');
+                    logger.info('Base de dados fechada');
                 }
             });
         }

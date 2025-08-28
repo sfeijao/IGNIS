@@ -6,108 +6,54 @@ const Database = require('../database/database');
 const router = express.Router();
 const db = new Database();
 
-// Função para enviar ticket arquivado via webhook
-async function sendArchivedTicketWebhook(webhookUrl, ticketData, reason = 'Ticket arquivado') {
-    if (!webhookUrl) return;
-    
-    try {
-        const embed = {
-            title: `🗃️ Ticket Arquivado #${ticketData.id}`,
-            description: ticketData.description || 'Sem descrição',
-            color: 0x95a5a6, // Cor cinza para arquivado
-            fields: [
-                {
-                    name: '📝 Título',
-                    value: ticketData.title || 'Sem título',
-                    inline: true
-                },
-                {
-                    name: '👤 Usuário',
-                    value: `<@${ticketData.user_id}>`,
-                    inline: true
-                },
-                {
-                    name: '📊 Severidade',
-                    value: (ticketData.severity || 'medium').toUpperCase(),
-                    inline: true
-                },
-                {
-                    name: '📂 Categoria',
-                    value: ticketData.category || 'Geral',
-                    inline: true
-                },
-                {
-                    name: '📅 Criado em',
-                    value: new Date(ticketData.created_at).toLocaleString('pt-PT'),
-                    inline: true
-                },
-                {
-                    name: '🗃️ Arquivado em',
-                    value: new Date().toLocaleString('pt-PT'),
-                    inline: true
-                },
-                {
-                    name: '📝 Motivo',
-                    value: reason,
-                    inline: false
-                }
-            ],
-            footer: {
-                text: 'Sistema de Tickets YSNM - Arquivo'
-            },
-            timestamp: new Date().toISOString()
-        };
+const { sendArchivedTicketWebhook: sendArchivedWebhookWithRetries } = require('../utils/webhookSender');
 
-        const payload = {
-            embeds: [embed],
-            username: 'YSNM Tickets Archive',
-            avatar_url: 'https://cdn.discordapp.com/emojis/1234567890.png' // Opcional
-        };
+// Use structured project logger (utils/logger.js)
+const logger = require('../../utils/logger');
 
-        const response = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            throw new Error(`Webhook failed: ${response.status} ${response.statusText}`);
-        }
-
-        addDebugLog('info', '✅ Ticket enviado para webhook de arquivo', { 
-            ticketId: ticketData.id, 
-            webhookStatus: response.status 
-        });
-        
-        return true;
-    } catch (error) {
-        addDebugLog('error', '❌ Erro ao enviar ticket para webhook de arquivo', {
-            error: error.message,
-            ticketId: ticketData.id,
-            webhookUrl: webhookUrl.substring(0, 50) + '...'
-        });
-        return false;
-    }
-}
-
-// Sistema de logging temporário para debug
+// In-memory recent logs kept for quick debug/UI access
 const debugLogs = [];
 const MAX_LOGS = 100;
 
 function addDebugLog(level, message, data = null) {
-    const log = {
-        timestamp: new Date().toISOString(),
-        level,
-        message,
-        data: data ? JSON.stringify(data) : null
-    };
-    debugLogs.push(log);
-    if (debugLogs.length > MAX_LOGS) {
-        debugLogs.shift(); // Remove o mais antigo
+    const payload = data && typeof data !== 'string' ? data : { data };
+    // Keep a small in-memory copy for quick UI access
+    try {
+        const entry = { timestamp: new Date().toISOString(), level, message, data };
+        debugLogs.push(entry);
+        if (debugLogs.length > MAX_LOGS) debugLogs.shift();
+    } catch (e) {
+        // ignore
     }
-    console.log(`[${level.toUpperCase()}] ${message}`, data || '');
+
+    // Forward to structured logger
+    try {
+        switch ((level || 'info').toLowerCase()) {
+            case 'error':
+                logger.error(message, payload);
+                break;
+            case 'warn':
+                logger.warn(message, payload);
+                break;
+            case 'debug':
+                logger.debug(message, payload);
+                break;
+            case 'trace':
+                logger.trace ? logger.trace(message, payload) : logger.debug(message, payload);
+                break;
+            default:
+                logger.info(message, payload);
+        }
+    } catch (e) {
+        // Final fallback: try logger's info/warn/error directly but swallow errors
+        try {
+            if ((level || 'info').toLowerCase() === 'error') logger.error(message, payload);
+            else if ((level || 'info').toLowerCase() === 'warn') logger.warn(message, payload);
+            else logger.info(message, payload);
+        } catch (ee) {
+            // swallow
+        }
+    }
 }
 
 // Variável para controlar se a database foi inicializada
@@ -117,10 +63,10 @@ let dbInitialized = false;
 db.initialize()
     .then(() => {
         dbInitialized = true;
-        console.log('✅ Database API routes inicializada');
+    logger.info('✅ Database API routes inicializada');
     })
     .catch(error => {
-        console.error('❌ Erro ao inicializar database API routes:', error);
+    logger.error('❌ Erro ao inicializar database API routes', { error: error && error.message ? error.message : error });
     });
 
 // Middleware para verificar se database está pronta
@@ -147,6 +93,13 @@ const apiLimiter = rateLimit({
 });
 
 router.use(apiLimiter);
+
+// Export-specific rate limiter: prevent mass downloads
+const exportLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 5,
+    message: { error: 'Limite de exportação atingido. Tente novamente em 1 minuto.' }
+});
 
 // Middleware para definir serverId
 router.use((req, res, next) => {
@@ -182,7 +135,7 @@ const requireAuth = (req, res, next) => {
                 isAdmin: true,
                 token: token
             };
-            console.log(`✅ Authenticated with bearer token: ${token.substring(0, 8)}...`);
+            logger.info('✅ Authenticated with bearer token: %s...', token.substring(0, 8));
             return next();
         }
     }
@@ -196,17 +149,17 @@ const requireAuth = (req, res, next) => {
                       
     if (isLocalDev) {
         req.user = { id: '381762006329589760', isAdmin: true };
-        console.log('✅ Authenticated via localhost');
+        logger.info('✅ Authenticated via localhost');
         return next();
     }
     
     // Check Passport OAuth authentication
     if (req.isAuthenticated && req.isAuthenticated() && req.user) {
-        console.log('✅ Authenticated via OAuth session');
+        logger.info('✅ Authenticated via OAuth session');
         return next();
     }
     
-    console.log('❌ Authentication failed:', {
+    logger.warn('❌ Authentication failed', {
         hasAuthHeader: !!authHeader,
         token: authHeader ? authHeader.substring(7, 15) + '...' : 'none',
         host: req.get('host'),
@@ -243,7 +196,7 @@ const requireAdmin = (req, res, next) => {
                 isAdmin: true,
                 token: token
             };
-            console.log(`✅ Authenticated with token: ${token.substring(0, 8)}...`);
+            logger.info('✅ Authenticated with token: %s...', token.substring(0, 8));
             return next();
         }
     }
@@ -257,17 +210,17 @@ const requireAdmin = (req, res, next) => {
                       
     if (isLocalDev) {
         req.user = { id: '381762006329589760', isAdmin: true };
-        console.log('✅ Authenticated via localhost');
+        logger.info('✅ Authenticated via localhost');
         return next();
     }
     
     // Fallback to session authentication
     if (req.isAuthenticated && req.isAuthenticated() && req.user) {
-        console.log('✅ Authenticated via session');
+        logger.info('✅ Authenticated via session');
         return next();
     }
     
-    console.log('❌ Authentication failed:', {
+    logger.warn('❌ Authentication failed', {
         hasAuthHeader: !!authHeader,
         token: authHeader ? authHeader.substring(7, 15) + '...' : 'none',
         host: req.get('host'),
@@ -280,6 +233,57 @@ const requireAdmin = (req, res, next) => {
         details: 'Use um token Bearer válido (dev-token, admin-token) ou acesse via localhost.',
         validTokens: ['dev-token', 'admin-token', 'dashboard-token']
     });
+};
+
+// Middleware: verify user is a guild admin via stored admin_roles or fallback to requireAdmin
+const requireGuildAdmin = async (req, res, next) => {
+    try {
+        // If user is already marked admin by requireAuth session/token, allow
+        if (req.user && req.user.isAdmin) return next();
+
+        const guildId = req.currentServerId;
+        const rolesConfig = await db.getGuildConfig(guildId, 'admin_roles');
+
+        // If no roles configured, fallback to existing token/session admin check
+        if (!rolesConfig || !rolesConfig.value) {
+            return requireAdmin(req, res, next);
+        }
+
+        const adminRoles = rolesConfig.value.split(',').map(r => r.trim()).filter(Boolean);
+
+        // If no discord client available, deny
+        if (!global.discordClient || !global.discordClient.isReady || !global.discordClient.isReady()) {
+            // Fallback to requireAdmin
+            return requireAdmin(req, res, next);
+        }
+
+        // Ensure req.user exists (from OAuth session)
+        if (!req.user || !req.user.id) return res.status(403).json({ error: 'Permissões insuficientes' });
+
+        const guild = global.discordClient.guilds.cache.get(guildId);
+        let member = null;
+        try {
+            if (guild) {
+                member = await guild.members.fetch(req.user.id);
+            } else {
+                // Try REST fetch via client
+                member = await global.discordClient.users.fetch(req.user.id).then(user => null).catch(() => null);
+            }
+        } catch (err) {
+            // If fetching fails, fallback to requireAdmin
+            return requireAdmin(req, res, next);
+        }
+
+        if (!member) return requireAdmin(req, res, next);
+
+        const hasAdminRole = member.roles.cache.some(r => adminRoles.includes(r.id) || adminRoles.includes(r.name));
+        if (hasAdminRole) return next();
+
+        return res.status(403).json({ error: 'Permissões insuficientes. Apenas administradores do servidor podem executar esta ação.' });
+    } catch (err) {
+        logger.error('Erro ao verificar roles de admin', { error: err && err.message ? err.message : err, stack: err && err.stack });
+        return requireAdmin(req, res, next);
+    }
 };
 
 // === ANALYTICS ROUTES ===
@@ -305,8 +309,8 @@ router.get('/analytics/overview', requireAuth, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Erro ao buscar overview analytics:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        logger.error('Erro ao buscar overview analytics', { error: error && error.message ? error.message : error, stack: error && error.stack });
+        return res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
 
@@ -325,8 +329,8 @@ router.get('/analytics/messages', requireAuth, async (req, res) => {
             change: data.change
         });
     } catch (error) {
-        console.error('Erro ao buscar analytics de mensagens:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        logger.error('Erro ao buscar analytics de mensagens', { error: error && error.message ? error.message : error, stack: error && error.stack });
+        return res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
 
@@ -345,8 +349,8 @@ router.get('/analytics/members', requireAuth, async (req, res) => {
             change: data.change
         });
     } catch (error) {
-        console.error('Erro ao buscar analytics de membros:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        logger.error('Erro ao buscar analytics de membros', { error: error && error.message ? error.message : error, stack: error && error.stack });
+        return res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
 
@@ -364,8 +368,8 @@ router.get('/analytics/commands', requireAuth, async (req, res) => {
             values: data.values
         });
     } catch (error) {
-        console.error('Erro ao buscar analytics de comandos:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        logger.error('Erro ao buscar analytics de comandos', { error: error && error.message ? error.message : error, stack: error && error.stack });
+        return res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
 
@@ -383,8 +387,8 @@ router.get('/analytics/hourly', requireAuth, async (req, res) => {
             values: data
         });
     } catch (error) {
-        console.error('Erro ao buscar analytics por hora:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        logger.error('Erro ao buscar analytics por hora', { error: error && error.message ? error.message : error, stack: error && error.stack });
+        return res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
 
@@ -402,8 +406,8 @@ router.get('/analytics/moderation', requireAuth, async (req, res) => {
             values: data.values
         });
     } catch (error) {
-        console.error('Erro ao buscar analytics de moderação:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        logger.error('Erro ao buscar analytics de moderação', { error: error && error.message ? error.message : error, stack: error && error.stack });
+        return res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
 
@@ -418,12 +422,23 @@ router.get('/analytics/activity', requireAuth, async (req, res) => {
             activities
         });
     } catch (error) {
-        console.error('Erro ao buscar atividades:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
+        logger.error('Erro ao buscar atividades', { error: error && error.message ? error.message : error, stack: error && error.stack });
+        return res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
 
 // === TICKETS ROUTES ===
+
+// Current user info (for UI to show admin-only controls)
+router.get('/me', requireAuth, (req, res) => {
+    try {
+        const user = req.user || null;
+        res.json({ success: true, user: { id: user?.id || null, isAdmin: !!user?.isAdmin } });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Unable to retrieve user info' });
+    }
+});
+
 
 // Get all tickets
 router.get('/tickets', requireAuth, ensureDbReady, async (req, res) => {
@@ -431,12 +446,11 @@ router.get('/tickets', requireAuth, ensureDbReady, async (req, res) => {
         const { status, priority, assigned } = req.query;
         const guildId = req.currentServerId;
         
-        console.log('🎫 Buscando tickets para guild:', guildId);
-        console.log('🎫 Parâmetros:', { status, priority, assigned });
+    logger.info('🎫 Buscando tickets para guild', { guildId, params: { status, priority, assigned } });
         
         // Verificar se a database está inicializada
         if (!db.db) {
-            console.error('❌ Database não inicializada');
+            logger.error('❌ Database não inicializada');
             return res.status(500).json({ error: 'Database não inicializada' });
         }
         
@@ -446,7 +460,40 @@ router.get('/tickets', requireAuth, ensureDbReady, async (req, res) => {
         if (priority && priority !== '') filters.priority = priority;
         if (assigned && assigned !== '') filters.assigned_to = assigned;
         
-        const tickets = await db.getTickets(guildId, filters.status);
+        // Paging and search support
+        const page = parseInt(req.query.page || '1', 10) || 1;
+        const pageSize = Math.min(parseInt(req.query.pageSize || '50', 10) || 50, 200);
+        const q = req.query.q ? String(req.query.q).trim() : null;
+
+        let tickets = await db.getTickets(guildId, filters.status);
+
+
+        // Additional server-side filters
+        const severity = req.query.severity ? String(req.query.severity).trim() : null;
+        const userId = req.query.userId ? String(req.query.userId).trim() : null;
+        const from = req.query.from ? new Date(req.query.from) : null;
+        const to = req.query.to ? new Date(req.query.to) : null;
+
+        // Apply server-side search (title, subject, description)
+        if (q) {
+            const qLower = q.toLowerCase();
+            tickets = tickets.filter(t => (
+                (t.title || '').toLowerCase().includes(qLower) ||
+                (t.subject || '').toLowerCase().includes(qLower) ||
+                (t.description || '').toLowerCase().includes(qLower)
+            ));
+        }
+
+        if (severity) tickets = tickets.filter(t => (t.severity || '').toLowerCase() === severity.toLowerCase());
+        if (userId) tickets = tickets.filter(t => t.user_id === userId);
+        if (from) tickets = tickets.filter(t => new Date(t.created_at) >= from);
+        if (to) tickets = tickets.filter(t => new Date(t.created_at) <= to);
+
+        // Pagination
+        const total = tickets.length;
+        const start = (page - 1) * pageSize;
+        const end = start + pageSize;
+        const paged = tickets.slice(start, end);
         
         // Filtrar tickets corrompidos (título null ou vazio) e adicionar limpeza automática
         const validTickets = tickets.filter(ticket => {
@@ -456,14 +503,14 @@ router.get('/tickets', requireAuth, ensureDbReady, async (req, res) => {
                            ticket.title.trim() !== '';
             
             if (!isValid) {
-                console.log(`⚠️ Ticket corrompido encontrado: ID ${ticket.id}, título: "${ticket.title}"`);
+                logger.warn(`⚠️ Ticket corrompido encontrado`, { ticketId: ticket.id, title: ticket.title });
                 // Agendar limpeza assíncrona (não bloqueante)
                 setImmediate(async () => {
                     try {
-                        console.log(`🗑️ Auto-limpeza: removendo ticket corrompido ID ${ticket.id}`);
+                        logger.info('🗑️ Auto-limpeza: removendo ticket corrompido', { ticketId: ticket.id });
                         await db.deleteTicket(ticket.id);
                     } catch (error) {
-                        console.error(`❌ Erro na auto-limpeza do ticket ${ticket.id}:`, error);
+                        logger.error(`❌ Erro na auto-limpeza do ticket ${ticket.id}:`, { error: error && error.message ? error.message : error });
                     }
                 });
             }
@@ -482,11 +529,11 @@ router.get('/tickets', requireAuth, ensureDbReady, async (req, res) => {
         
         res.json({
             success: true,
-            tickets: filteredTickets
+            tickets: filteredTickets,
+            meta: { total, page, pageSize }
         });
     } catch (error) {
-        console.error('Erro ao buscar tickets:', error);
-        console.error('Stack trace:', error.stack);
+    logger.error('Erro ao buscar tickets', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ 
             error: 'Erro interno do servidor',
             details: error.message
@@ -499,7 +546,7 @@ router.get('/tickets/stats', requireAuth, ensureDbReady, async (req, res) => {
     try {
         const guildId = req.currentServerId;
         
-        console.log('📊 Buscando estatísticas de tickets para guild:', guildId);
+    logger.info('📊 Buscando estatísticas de tickets para guild', { guildId });
         
         const stats = await db.getTicketStats(guildId);
         
@@ -508,12 +555,59 @@ router.get('/tickets/stats', requireAuth, ensureDbReady, async (req, res) => {
             stats
         });
     } catch (error) {
-        console.error('Erro ao buscar estatísticas de tickets:', error);
-        console.error('Stack trace:', error.stack);
+    logger.error('Erro ao buscar estatísticas de tickets', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ 
             error: 'Erro interno do servidor',
             details: error.message
         });
+    }
+});
+
+// Export archived tickets as CSV (admin-only)
+router.get('/tickets/export', requireAuth, requireGuildAdmin, exportLimiter, ensureDbReady, async (req, res) => {
+    try {
+        const guildId = req.currentServerId;
+        // Use existing filters: allow q, severity, from, to via query
+        const status = 'archived';
+        // Fetch archived tickets (server-side filtering already handles archived status)
+        const tickets = await db.getTickets(guildId, status);
+
+        // Optional server-side filtering
+        const q = req.query.q ? String(req.query.q).trim().toLowerCase() : null;
+        const severity = req.query.severity ? String(req.query.severity).trim().toLowerCase() : null;
+        const from = req.query.from ? new Date(req.query.from) : null;
+        const to = req.query.to ? new Date(req.query.to) : null;
+
+        let rows = tickets;
+        if (q) {
+            rows = rows.filter(t => ((t.title||'') + ' ' + (t.subject||'') + ' ' + (t.description||'')).toLowerCase().includes(q));
+        }
+        if (severity) rows = rows.filter(t => (t.severity||'').toLowerCase() === severity);
+        if (from) rows = rows.filter(t => new Date(t.created_at) >= from);
+        if (to) rows = rows.filter(t => new Date(t.created_at) <= to);
+
+        // Build CSV
+        const columns = ['id','channel_id','user_id','title','subject','description','severity','category','status','created_at','closed_at','closed_by','closed_reason'];
+        const escape = v => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"';
+        const csv = [columns.join(',')].concat(rows.map(r => columns.map(c => escape(r[c])).join(','))).join('\n');
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="tickets-archived-${guildId}.csv"`);
+        // Audit log: record export action
+        try {
+            await db.createLog(guildId, 'export_tickets', {
+                requestedBy: req.user?.id || null,
+                filters: { q: req.query.q || null, severity: req.query.severity || null, from: req.query.from || null, to: req.query.to || null },
+                exportedAt: new Date().toISOString()
+            });
+        } catch (logErr) {
+            addDebugLog('warn', 'Falha ao registar log de exportação', { error: logErr.message });
+        }
+
+        res.send(csv);
+    } catch (error) {
+        logger.error('Erro ao exportar tickets arquivados', { error: error && error.message ? error.message : error });
+        res.status(500).json({ error: 'Erro ao exportar tickets' });
     }
 });
 
@@ -577,23 +671,23 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
         const missingPermissions = requiredPermissions.filter(perm => !botMember.permissions.has(perm));
         
         if (missingPermissions.length > 0) {
-            console.error('❌ Bot não tem permissões necessárias:', missingPermissions);
+            logger.error('❌ Bot não tem permissões necessárias', { missingPermissions });
             return res.status(403).json({ 
                 error: 'Bot não tem permissões necessárias',
                 missingPermissions 
             });
         }
         
-        console.log('✅ Bot tem todas as permissões necessárias');
+    logger.info('✅ Bot tem todas as permissões necessárias');
 
         // Verificar se o usuário alvo existe no servidor
         let targetMember;
         try {
-            console.log('👤 Procurando usuário:', targetUserId);
+            logger.info('👤 Procurando usuário: %s', targetUserId);
             targetMember = await guild.members.fetch(targetUserId);
-            console.log('✅ Usuário encontrado:', targetMember.displayName);
+            logger.info('✅ Usuário encontrado: %s', targetMember.displayName);
         } catch (error) {
-            console.error('❌ Erro ao buscar usuário:', error.message);
+            logger.error('❌ Erro ao buscar usuário', { error: error && error.message ? error.message : error });
             return res.status(404).json({ error: 'Usuário não encontrado no servidor' });
         }
         
@@ -603,7 +697,7 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
         );
         
         if (!ticketCategory) {
-            console.log('📁 Criando categoria de tickets...');
+            logger.info('📁 Criando categoria de tickets...');
             try {
                 ticketCategory = await guild.channels.create({
                     name: 'Tickets',
@@ -615,21 +709,21 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
                         }
                     ]
                 });
-                console.log('✅ Categoria de tickets criada:', ticketCategory.name);
+                logger.info('✅ Categoria de tickets criada: %s', ticketCategory.name);
             } catch (error) {
-                console.error('❌ Erro ao criar categoria de tickets:', error);
+                logger.error('❌ Erro ao criar categoria de tickets', { error: error && error.message ? error.message : error });
                 return res.status(500).json({ 
                     error: 'Erro ao criar categoria de tickets',
                     details: error.message 
                 });
             }
         } else {
-            console.log('✅ Categoria de tickets encontrada:', ticketCategory.name);
+            logger.info('✅ Categoria de tickets encontrada: %s', ticketCategory.name);
         }
         
         // Criar canal do ticket
         const ticketChannelName = `ticket-${targetMember.displayName.toLowerCase().replace(/[^a-z0-9]/g, '')}-${Date.now().toString().slice(-6)}`;
-        console.log('🎫 Criando canal:', ticketChannelName);
+    logger.info('🎫 Criando canal: %s', ticketChannelName);
         
         let ticketChannel;
         try {
@@ -660,9 +754,9 @@ router.post('/tickets', requireAuth, ensureDbReady, async (req, res) => {
                         }))
                 ]
             });
-            console.log('✅ Canal criado com sucesso:', ticketChannel.name, 'ID:', ticketChannel.id);
+            logger.info('✅ Canal criado com sucesso: %s ID: %s', ticketChannel.name, ticketChannel.id);
         } catch (error) {
-            console.error('❌ Erro ao criar canal do ticket:', error);
+            logger.error('❌ Erro ao criar canal do ticket', { error: error && error.message ? error.message : error });
             return res.status(500).json({ 
                 error: 'Erro ao criar canal do ticket',
                 details: error.message 
@@ -819,7 +913,7 @@ router.put('/tickets/:id', requireAuth, ensureDbReady, async (req, res) => {
             message: 'Ticket atualizado com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao atualizar ticket:', error);
+    logger.error('Erro ao atualizar ticket', { error: error && error.message ? error.message : error });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -853,7 +947,7 @@ router.post('/tickets/:id/messages', requireAuth, ensureDbReady, async (req, res
             message: 'Mensagem adicionada com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao adicionar mensagem ao ticket:', error);
+    logger.error('Erro ao adicionar mensagem ao ticket', { error: error && error.message ? error.message : error });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -865,7 +959,7 @@ router.post('/tickets/:id/assign', requireAuth, ensureDbReady, async (req, res) 
         const userId = req.user.id;
         const username = req.user.username;
         
-        console.log(`👋 Atribuindo ticket #${ticketId} para ${username} (${userId})`);
+    logger.info('👋 Atribuindo ticket #%s para %s (%s)', ticketId, username, userId);
         
         // Buscar ticket na base de dados
         const tickets = await db.getTickets(req.currentServerId);
@@ -898,7 +992,7 @@ router.post('/tickets/:id/assign', requireAuth, ensureDbReady, async (req, res) 
                     };
                     
                     await ticketChannel.send({ embeds: [embed] });
-                    console.log(`✅ Notificação de atribuição enviada no canal ${ticketChannel.name}`);
+                    logger.info('✅ Notificação de atribuição enviada no canal %s', ticketChannel.name);
                 }
             }
         }
@@ -908,7 +1002,7 @@ router.post('/tickets/:id/assign', requireAuth, ensureDbReady, async (req, res) 
             message: 'Ticket atribuído com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao atribuir ticket:', error);
+    logger.error('Erro ao atribuir ticket', { error: error && error.message ? error.message : error });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -921,7 +1015,7 @@ router.post('/tickets/:id/close', requireAuth, ensureDbReady, async (req, res) =
         const userId = req.user.id;
         const username = req.user.username;
         
-        console.log(`🔒 Fechando ticket #${ticketId} por ${username}`);
+    logger.info('🔒 Fechando ticket #%s por %s', ticketId, username);
         
         // Buscar ticket na base de dados
         const tickets = await db.getTickets(req.currentServerId);
@@ -938,7 +1032,7 @@ router.post('/tickets/:id/close', requireAuth, ensureDbReady, async (req, res) =
         try {
             await db.updateTicket(ticketId, { archived: 1 });
         } catch (err) {
-            console.warn('⚠️ Falha ao marcar ticket como arquivado no DB:', err.message);
+            logger.warn('⚠️ Falha ao marcar ticket como arquivado no DB', { error: err && err.message ? err.message : err });
         }
 
         // Recarregar ticket atual para verificar flag do webhook
@@ -948,10 +1042,8 @@ router.post('/tickets/:id/close', requireAuth, ensureDbReady, async (req, res) =
         try {
             const webhookConfig = await db.getGuildConfig(req.currentServerId, 'archive_webhook_url');
             if (webhookConfig?.value && !updatedTicket?.bug_webhook_sent) {
-                const sent = await sendArchivedTicketWebhook(webhookConfig.value, updatedTicket, reason || 'Resolvido');
-                if (sent) {
-                    await db.markTicketWebhookSent(ticketId);
-                }
+                const sent = await sendArchivedWebhookWithRetries(webhookConfig.value, updatedTicket, reason || 'Resolvido');
+                if (sent) await db.markTicketWebhookSent(ticketId);
             }
         } catch (webhookErr) {
             addDebugLog('error', 'Erro ao enviar webhook ao fechar ticket', { error: webhookErr.message, ticketId });
@@ -964,7 +1056,7 @@ router.post('/tickets/:id/close', requireAuth, ensureDbReady, async (req, res) =
                 global.socketManager.broadcastToGuild(req.currentServerId, 'ticket_updated', { ticket: updatedTicket });
             }
         } catch (emitErr) {
-            console.warn('⚠️ Erro ao emitir eventos via socketManager:', emitErr.message);
+            logger.warn('⚠️ Erro ao emitir eventos via socketManager', { error: emitErr && emitErr.message ? emitErr.message : emitErr });
         }
         
         // Notificar no Discord e arquivar canal se bot disponível
@@ -1019,20 +1111,20 @@ router.post('/tickets/:id/close', requireAuth, ensureDbReady, async (req, res) =
                             }
                             
                             // Renomear canal para indicar que está fechado
-                            const newName = `fechado-${ticketChannel.name}`;
-                            await ticketChannel.setName(newName);
-                            await ticketChannel.setParent(archivedCategory.id);
+                const newName = `fechado-${ticketChannel.name}`;
+                await ticketChannel.setName(newName);
+                await ticketChannel.setParent(archivedCategory.id);
                             
-                            // Remover permissões do usuário original
-                            await ticketChannel.permissionOverwrites.delete(ticket.user_id);
+                // Remover permissões do usuário original
+                await ticketChannel.permissionOverwrites.delete(ticket.user_id);
                             
-                            console.log(`📁 Ticket #${ticketId} arquivado como ${newName}`);
+                logger.info('📁 Ticket #%s arquivado como %s', ticketId, newName);
                         } catch (archiveError) {
-                            console.error('Erro ao arquivar ticket:', archiveError);
+                logger.error('Erro ao arquivar ticket', { error: archiveError && archiveError.message ? archiveError.message : archiveError, stack: archiveError && archiveError.stack });
                         }
                     }, 10000);
                     
-                    console.log(`✅ Ticket #${ticketId} fechado com sucesso`);
+            logger.info('✅ Ticket #%s fechado com sucesso', ticketId);
                 }
             }
         }
@@ -1042,7 +1134,7 @@ router.post('/tickets/:id/close', requireAuth, ensureDbReady, async (req, res) =
             message: 'Ticket fechado com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao fechar ticket:', error);
+        logger.error('Erro ao fechar ticket', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1171,7 +1263,7 @@ router.post('/tickets/:id/users', requireAuth, ensureDbReady, async (req, res) =
             user
         });
     } catch (error) {
-        console.error('Erro ao adicionar usuário ao ticket:', error);
+        logger.error('Erro ao adicionar usuário ao ticket', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1208,7 +1300,7 @@ router.delete('/tickets/:id/users/:userId', requireAuth, ensureDbReady, async (r
             message: 'Usuário removido do ticket com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao remover usuário do ticket:', error);
+        logger.error('Erro ao remover usuário do ticket', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1231,7 +1323,7 @@ router.delete('/tickets/:id', requireAuth, ensureDbReady, async (req, res) => {
         
         // Validar se ticketId é um número
         if (isNaN(ticketId)) {
-            console.error('❌ ID de ticket inválido:', ticketId);
+            logger.warn('❌ ID de ticket inválido: %s', ticketId);
             return res.status(400).json({ error: 'ID de ticket inválido' });
         }
         
@@ -1241,7 +1333,7 @@ router.delete('/tickets/:id', requireAuth, ensureDbReady, async (req, res) => {
         const tickets = await db.getTickets(req.currentServerId);
         const ticket = tickets.find(t => t.id == ticketId);
         
-        console.log('🎫 Ticket encontrado:', ticket ? `ID ${ticket.id}` : 'Não encontrado');
+    logger.info('🎫 Ticket encontrado: %s', ticket ? `ID ${ticket.id}` : 'Não encontrado');
         
         if (!ticket) {
             return res.status(404).json({ error: 'Ticket não encontrado' });
@@ -1257,7 +1349,7 @@ router.delete('/tickets/:id', requireAuth, ensureDbReady, async (req, res) => {
                         await channel.delete('Ticket deletado via dashboard');
                     }
                 } catch (error) {
-                    console.warn('Erro ao deletar canal do Discord:', error);
+                    logger.warn('Erro ao deletar canal do Discord', { error: error && error.message ? error.message : error });
                 }
             }
         }
@@ -1266,9 +1358,9 @@ router.delete('/tickets/:id', requireAuth, ensureDbReady, async (req, res) => {
         try {
             const webhookConfig = await db.getGuildConfig(req.currentServerId, 'archive_webhook_url');
             if (webhookConfig?.value) {
-                await sendArchivedTicketWebhook(
-                    webhookConfig.value, 
-                    ticket, 
+                await sendArchivedWebhookWithRetries(
+                    webhookConfig.value,
+                    ticket,
                     `Ticket deletado por ${username}`
                 );
             }
@@ -1294,7 +1386,7 @@ router.delete('/tickets/:id', requireAuth, ensureDbReady, async (req, res) => {
             message: 'Ticket deletado com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao deletar ticket:', error);
+        logger.error('Erro ao deletar ticket', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1338,7 +1430,7 @@ router.get('/discord/users/search', requireAuth, async (req, res) => {
         
         res.json({ users });
     } catch (error) {
-        console.error('Erro ao buscar usuários:', error);
+        logger.error('Erro ao buscar usuários', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1374,7 +1466,7 @@ router.get('/admin/overview', requireAdmin, async (req, res) => {
             stats
         });
     } catch (error) {
-        console.error('Erro ao buscar overview admin:', error);
+        logger.error('Erro ao buscar overview admin', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1399,7 +1491,7 @@ router.get('/admin/members', requireAdmin, async (req, res) => {
             members: memberList.slice(0, 100) // Limit to 100 for performance
         });
     } catch (error) {
-        console.error('Erro ao buscar membros:', error);
+        logger.error('Erro ao buscar membros', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1421,7 +1513,7 @@ router.get('/admin/channels', requireAdmin, async (req, res) => {
             channels: channels.sort((a, b) => a.position - b.position)
         });
     } catch (error) {
-        console.error('Erro ao buscar canais:', error);
+        logger.error('Erro ao buscar canais', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1446,7 +1538,7 @@ router.get('/admin/roles', requireAdmin, async (req, res) => {
             roles: roles.sort((a, b) => b.position - a.position)
         });
     } catch (error) {
-        console.error('Erro ao buscar cargos:', error);
+        logger.error('Erro ao buscar cargos', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1510,7 +1602,7 @@ router.post('/admin/members/action', requireAdmin, async (req, res) => {
                     });
                     result = { success: true };
                 } catch (dmError) {
-                    console.error('Não foi possível enviar DM:', dmError);
+                    logger.warn('Não foi possível enviar DM', { error: dmError && dmError.message ? dmError.message : dmError, stack: dmError && dmError.stack });
                     result = { success: true, note: 'Aviso registrado, mas DM não pôde ser enviada' };
                 }
                 break;
@@ -1555,7 +1647,7 @@ router.post('/admin/members/action', requireAdmin, async (req, res) => {
                 metadata: {}
             });
         } catch (dbError) {
-            console.error('Erro ao registrar ação de moderação no banco de dados:', dbError);
+            logger.error('Erro ao registrar ação de moderação no banco de dados', { error: dbError && dbError.message ? dbError.message : dbError, stack: dbError && dbError.stack });
             // Continue even if logging fails
         }
         
@@ -1564,7 +1656,7 @@ router.post('/admin/members/action', requireAdmin, async (req, res) => {
             message: `Ação ${value.action} executada com sucesso`
         });
     } catch (error) {
-        console.error('Erro ao executar ação de membro:', error);
+        logger.error('Erro ao executar ação de membro', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1607,7 +1699,7 @@ router.post('/admin/channels', requireAdmin, async (req, res) => {
             message: 'Canal criado com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao criar canal:', error);
+        logger.error('Erro ao criar canal', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1648,7 +1740,7 @@ router.post('/admin/roles', requireAdmin, async (req, res) => {
             message: 'Cargo criado com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao criar cargo:', error);
+        logger.error('Erro ao criar cargo', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1666,7 +1758,7 @@ router.get('/admin/logs', requireAdmin, async (req, res) => {
             logs
         });
     } catch (error) {
-        console.error('Erro ao buscar logs:', error);
+        logger.error('Erro ao buscar logs', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1685,7 +1777,7 @@ router.post('/admin/settings', requireAdmin, async (req, res) => {
             message: 'Configurações salvas com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao salvar configurações:', error);
+        logger.error('Erro ao salvar configurações', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1705,7 +1797,7 @@ router.post('/admin/server/lock', requireAdmin, async (req, res) => {
             message: 'Servidor trancado com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao trancar servidor:', error);
+        logger.error('Erro ao trancar servidor', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1724,7 +1816,7 @@ router.post('/admin/server/unlock', requireAdmin, async (req, res) => {
             message: 'Servidor destrancado com sucesso'
         });
     } catch (error) {
-        console.error('Erro ao destrancar servidor:', error);
+        logger.error('Erro ao destrancar servidor', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -1812,7 +1904,7 @@ router.post('/config/archive-webhook/test', requireAuth, ensureDbReady, async (r
         };
         
         // Enviar teste
-        const success = await sendArchivedTicketWebhook(config.value, testTicket, 'Teste de webhook');
+    const success = await sendArchivedWebhookWithRetries(config.value, testTicket, 'Teste de webhook');
         
         if (success) {
             res.json({ success: true, message: 'Webhook testado com sucesso' });
@@ -1904,7 +1996,7 @@ router.get('/diagnostic', async (req, res) => {
 
         res.json(diagnostics);
     } catch (error) {
-        console.error('❌ Erro no diagnóstico:', error);
+        logger.error('❌ Erro no diagnóstico', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ 
             error: 'Erro no diagnóstico',
             details: error.message 

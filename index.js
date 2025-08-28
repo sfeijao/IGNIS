@@ -4,18 +4,21 @@ const path = require('path');
 require('dotenv').config();
 
 const config = require('./utils/config');
+const logger = require('./utils/logger');
 
 // Importar sistema do dashboard APENAS se CLIENT_SECRET estiver disponível
 let server, socketManager, Database;
 if (config.DISCORD.CLIENT_SECRET) {
-    console.log('✅ CLIENT_SECRET disponível - carregando sistema completo (bot + website)');
+    require('./utils/logger');
+    const logger = require('./utils/logger');
+    logger.info('✅ CLIENT_SECRET disponível - carregando sistema completo (bot + website)');
     const websiteServer = require('./website/server');
     server = websiteServer.server;
     socketManager = websiteServer.socketManager;
     Database = require('./website/database/database');
 } else {
-    console.log('⚠️  CLIENT_SECRET não disponível - modo bot-only ativado');
-    console.log('   Website/dashboard desabilitado');
+    logger.warn('⚠️  CLIENT_SECRET não disponível - modo bot-only ativado');
+    logger.info('   Website/dashboard desabilitado');
 }
 
 const client = new Client({
@@ -42,11 +45,12 @@ client.commands = new Collection();
 
 // Configurar componentes do website apenas se disponível
 if (socketManager) {
+    const logger = require('./utils/logger');
     client.socketManager = socketManager;
-    console.log('✅ Socket manager configurado');
+    logger.info('✅ Socket manager configurado');
 } else {
     client.socketManager = null;
-    console.log('⚠️  Socket manager não disponível (modo bot-only)');
+    logger.warn('⚠️  Socket manager não disponível (modo bot-only)');
 }
 
 if (Database) {
@@ -54,13 +58,15 @@ if (Database) {
     
     // Initialize database for bot
     client.database.initialize().then(() => {
-        console.log('✅ Bot database connection established');
+        const logger = require('./utils/logger');
+        logger.info('✅ Bot database connection established');
     }).catch(error => {
-        console.error('❌ Bot database connection failed:', error);
+        const logger = require('./utils/logger');
+        logger.error('❌ Bot database connection failed', { error: error && error.message ? error.message : error, stack: error && error.stack });
     });
 } else {
     client.database = null;
-    console.log('⚠️  Database não disponível (modo bot-only)');
+    logger.warn('⚠️  Database não disponível (modo bot-only)');
 }
 
 const commandsPath = path.join(__dirname, 'commands');
@@ -72,9 +78,10 @@ for (const file of commandFiles) {
     
     if ('data' in command && 'execute' in command) {
         client.commands.set(command.data.name, command);
-        console.log(`✅ Comando carregado: ${command.data.name}`);
+    const logger = require('./utils/logger');
+    logger.info(`✅ Comando carregado: ${command.data.name}`);
     } else {
-        console.log(`⚠️ Comando em ${filePath} está faltando propriedades necessárias.`);
+        logger.warn(`⚠️ Comando em ${filePath} está faltando propriedades necessárias.`);
     }
 }
 
@@ -90,23 +97,27 @@ for (const file of eventFiles) {
     } else {
         client.on(event.name, (...args) => event.execute(...args, client));
     }
-    console.log(`✅ Evento carregado: ${event.name}`);
+    const logger = require('./utils/logger');
+    logger.info(`✅ Evento carregado: ${event.name}`);
 }
 
 // Tratamento de erros
 process.on('unhandledRejection', error => {
-    console.error('❌ Unhandled promise rejection:', error);
+    const logger = require('./utils/logger');
+    logger.error('❌ Unhandled promise rejection', { error: error && error.message ? error.message : error, stack: error && error.stack });
 });
 
 process.on('uncaughtException', error => {
-    console.error('❌ Uncaught exception:', error);
+    const logger = require('./utils/logger');
+    logger.error('❌ Uncaught exception', { error: error && error.message ? error.message : error, stack: error && error.stack });
     process.exit(1);
 });
 
 // Função para registrar comandos automaticamente
 async function registerCommands() {
     try {
-        console.log('🔄 Registrando comandos slash...');
+    const logger = require('./utils/logger');
+    logger.info('🔄 Registrando comandos slash...');
         
         const commands = [];
         for (const file of commandFiles) {
@@ -125,9 +136,11 @@ async function registerCommands() {
             { body: commands }
         );
         
-        console.log(`✅ ${commands.length} comandos registrados com sucesso!`);
+    const logger = require('./utils/logger');
+    logger.info(`✅ ${commands.length} comandos registrados com sucesso!`);
     } catch (error) {
-        console.error('❌ Erro ao registrar comandos:', error);
+    const logger = require('./utils/logger');
+    logger.error('❌ Erro ao registrar comandos', { error: error && error.message ? error.message : error, stack: error && error.stack });
     }
 }
 
@@ -136,18 +149,18 @@ async function registerCommands() {
     await registerCommands();
     
     client.login(config.DISCORD.TOKEN).catch(error => {
-        console.error('❌ Erro ao fazer login:', error);
+        logger.error('❌ Erro ao fazer login:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         process.exit(1);
     });
 })();
 
 // Enhanced ready event (único)
 client.once('ready', () => {
-    console.log(`✅ Bot logado como ${client.user.tag}`);
-    console.log(`🏠 Servidores: ${client.guilds.cache.size}`);
-    console.log(`👥 Usuários: ${client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0)}`);
+    logger.info(`✅ Bot logado como ${client.user.tag}`);
+    logger.info(`🏠 Servidores: ${client.guilds.cache.size}`);
+    logger.info(`👥 Usuários: ${client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0)}`);
     
-    console.log('✅ Integração com dashboard configurada');
+    logger.info('✅ Integração com dashboard configurada');
 });
 
 // Registrar comandos e fazer login
@@ -155,16 +168,16 @@ client.once('ready', () => {
     await registerCommands();
     
     client.login(config.DISCORD.TOKEN).catch(error => {
-        console.error('❌ Erro ao fazer login:', error);
+        logger.error('❌ Erro ao fazer login:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         process.exit(1);
     });
 })();
 
 // Enhanced ready event (único)
 client.once('ready', () => {
-    console.log(`✅ Bot logado como ${client.user.tag}`);
-    console.log(`🏠 Servidores: ${client.guilds.cache.size}`);
-    console.log(`👥 Usuários: ${client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0)}`);
+    logger.info(`✅ Bot logado como ${client.user.tag}`);
+    logger.info(`🏠 Servidores: ${client.guilds.cache.size}`);
+    logger.info(`👥 Usuários: ${client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0)}`);
     
     // Update bot status baseado no modo
     const statusMessage = config.DISCORD.CLIENT_SECRET ? 
@@ -177,21 +190,21 @@ client.once('ready', () => {
     
     // Website já foi inicializado anteriormente se CLIENT_SECRET disponível
     if (config.DISCORD.CLIENT_SECRET) {
-        console.log('✅ Website já inicializado - Dashboard disponível');
+        logger.info('✅ Website já inicializado - Dashboard disponível');
     } else {
-        console.log('⚠️  Modo bot-only - Website não disponível');
+        logger.warn('⚠️  Modo bot-only - Website não disponível');
     }
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-    console.log('🛑 SIGTERM received, shutting down bot gracefully');
+    logger.info('🛑 SIGTERM received, shutting down bot gracefully');
     client.destroy();
     process.exit(0);
 });
 
 process.on('SIGINT', () => {
-    console.log('🛑 SIGINT received, shutting down bot gracefully');
+    logger.info('🛑 SIGINT received, shutting down bot gracefully');
     client.destroy();
     process.exit(0);
 });
