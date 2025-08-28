@@ -1,6 +1,6 @@
 const socketIo = require('socket.io');
 const Database = require('./database/database');
-const logger = require('../../utils/logger');
+const logger = require('../utils/logger');
 
 class SocketManager {
     constructor(server) {
