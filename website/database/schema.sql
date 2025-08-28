@@ -100,6 +100,10 @@ CREATE TABLE IF NOT EXISTS tickets (
     status TEXT DEFAULT 'open', -- open, assigned, closed, archived
     priority TEXT DEFAULT 'normal', -- low, normal, high, urgent
     severity TEXT DEFAULT 'medium', -- low, medium, high, urgent
+    -- Flag to indicate whether a bug/archival webhook has been sent for this ticket (0/1)
+    bug_webhook_sent INTEGER DEFAULT 0,
+    -- Mark tickets that have been archived (0/1)
+    archived INTEGER DEFAULT 0,
     title TEXT,
     subject TEXT,
     description TEXT,

@@ -398,6 +398,28 @@ npm start
 ### Permissões Necessárias
 O bot precisa das seguintes permissões:
 - Ler Mensagens
+
+---
+
+## 📝 Notas importantes (mudanças recentes)
+
+- O esquema da base de dados (`website/database/schema.sql`) foi atualizado para incluir duas colunas na tabela `tickets` usadas pelas novas features de arquivamento e envio de webhook:
+  - `bug_webhook_sent INTEGER DEFAULT 0` — flag para evitar envios duplicados ao bug server
+  - `archived INTEGER DEFAULT 0` — marca tickets arquivados para exclusão de listas ativas
+
+- Logging: o backend foi migrado para usar um logger central (`utils/logger.js`) em vez de `console.*`. Isso melhora rotacionamento e estrutura dos logs.
+
+- Testes: há scripts de testes e2e/unit em `website/tools/`. Execute o mock webhook e depois o e2e para validar o fluxo de arquivar/fechar tickets:
+
+```powershell
+# Em um terminal
+node website/tools/mock-webhook-server.js
+
+# Em outro terminal
+node website/tools/e2e-ticket-test.js
+```
+
+Se quiser que eu execute o e2e agora ou abra um PR com estas alterações, diga-me e eu faço isso.
 - Enviar Mensagens
 - Usar Comandos de Barra
 - Gerenciar Cargos
