@@ -12,11 +12,12 @@ const { EmbedBuilder, WebhookClient, REST, Routes } = require('discord.js');
 const Database = require('./database/database');
 const SocketManager = require('./socket');
 const csrfProtection = require('../utils/csrf');
-const logger = require('../..//utils/logger');
+const logger = require('../utils/logger');
+const config = require('../utils/config');
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || config.WEBSITE.PORT || 4000;
+const PORT = process.env.PORT || config.WEBSITE?.PORT || 4000;
 
 // Trust proxy settings (needed for rate limiting behind proxies)
 app.set('trust proxy', 1);
@@ -121,8 +122,7 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Carregar configuração segura
-const config = require('../utils/config');
+// Carregar configuração segura (moved to top)
 
 // Configuração de sessão segura
 const isProd = process.env.NODE_ENV === 'production' || 
