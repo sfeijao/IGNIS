@@ -174,7 +174,8 @@ function requireWebRole(role) {
 
             next();
         } catch (error) {
-            console.error('Erro na verificação de permissões:', error);
+            const logger = require('./logger');
+            logger.error('Erro na verificação de permissões:', { error });
             return res.status(500).json({ 
                 error: 'Erro interno',
                 message: 'Erro ao verificar permissões' 

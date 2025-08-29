@@ -8,7 +8,7 @@ class YSNMDashboard {
     }
 
     async init() {
-        console.log('🚀 Inicializando YSNM Modern Dashboard...');
+    console.debug('🚀 Inicializando YSNM Modern Dashboard...');
         
         // Verificar autenticação
         if (!(await this.checkAuth())) {
@@ -23,20 +23,20 @@ class YSNMDashboard {
         this.setupRealTimePreview();
         this.addModernAnimations();
         
-        console.log('✨ Dashboard inicializado com sucesso!');
+    console.debug('✨ Dashboard inicializado com sucesso!');
     }
 
     async checkAuth() {
         try {
             const response = await fetch('/api/channels', { credentials: 'include' });
             if (!response.ok) {
-                console.log('❌ Não autenticado, redirecionando...');
+                console.debug('❌ Não autenticado, redirecionando...');
                 window.location.replace('/login');
                 return false;
             }
             return true;
         } catch (error) {
-            console.log('❌ Erro na autenticação:', error);
+            console.debug('❌ Erro na autenticação:', error);
             window.location.replace('/login');
             return false;
         }
@@ -134,8 +134,9 @@ class YSNMDashboard {
                 }
             }
         } catch (error) {
-            console.error('Erro carregando canais:', error);
+            // User-friendly notification + debug trace
             this.showNotification('Erro ao carregar canais', 'error');
+            console.debug('Erro carregando canais:', error);
         }
     }
 
@@ -339,8 +340,8 @@ class YSNMDashboard {
                 this.showNotification(`Erro: ${error}`, 'error');
             }
         } catch (error) {
-            console.error('Erro enviando update:', error);
             this.showNotification('Erro ao enviar update', 'error');
+            console.debug('Erro enviando update:', error);
         } finally {
             this.showLoadingOverlay(false);
         }
@@ -430,10 +431,10 @@ class YSNMDashboard {
         try {
             this.socket = io();
             this.socket.on('connect', () => {
-                console.log('🔌 Socket.IO conectado');
+                console.debug('🔌 Socket.IO conectado');
             });
         } catch (error) {
-            console.log('⚠️ Socket.IO não disponível');
+            console.debug('⚠️ Socket.IO não disponível');
         }
     }
 }

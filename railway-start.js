@@ -10,24 +10,24 @@
 const config = require('./utils/config');
 const logger = require('./utils/logger');
 
-console.log('🚂 === YSNM Bot - Railway Smart Starter ===');
-console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
-console.log(`🌍 NODE_ENV: ${process.env.NODE_ENV}`);
-console.log(`🚂 RAILWAY_ENVIRONMENT: ${process.env.RAILWAY_ENVIRONMENT_NAME}`);
-console.log(`🏷️  RAILWAY_PROJECT: ${process.env.RAILWAY_PROJECT_NAME}`);
+logger.info('🚂 === YSNM Bot - Railway Smart Starter ===');
+logger.info(`⏰ Timestamp: ${new Date().toISOString()}`);
+logger.info('🌍 NODE_ENV', { NODE_ENV: process.env.NODE_ENV });
+logger.info('🚂 RAILWAY_ENVIRONMENT', { RAILWAY_ENVIRONMENT_NAME: process.env.RAILWAY_ENVIRONMENT_NAME });
+logger.info('🏷️  RAILWAY_PROJECT', { RAILWAY_PROJECT_NAME: process.env.RAILWAY_PROJECT_NAME });
 
 async function railwayStart() {
     try {
         // 1. Verificar configuração disponível
-        console.log('\n📋 Verificando configuração...');
+    logger.info('\n📋 Verificando configuração...');
         const botToken = config.DISCORD.TOKEN || config.DISCORD.BOT_TOKEN;
         const hasToken = !!botToken;
         const hasClientId = !!config.DISCORD.CLIENT_ID;
         const hasClientSecret = !!config.DISCORD.CLIENT_SECRET;
         
-        console.log(`   BOT_TOKEN: ${hasToken ? '✅ Presente' : '❌ AUSENTE'}`);
-        console.log(`   CLIENT_ID: ${hasClientId ? '✅ Presente' : '❌ AUSENTE'}`);
-        console.log(`   CLIENT_SECRET: ${hasClientSecret ? '✅ Presente' : '⚠️  Ausente'}`);
+    logger.info(`   BOT_TOKEN: ${hasToken ? '✅ Presente' : '❌ AUSENTE'}`);
+    logger.info(`   CLIENT_ID: ${hasClientId ? '✅ Presente' : '❌ AUSENTE'}`);
+    logger.info(`   CLIENT_SECRET: ${hasClientSecret ? '✅ Presente' : '⚠️  Ausente'}`);
         
         // 2. Validar configuração mínima
         if (!hasToken) {
@@ -42,15 +42,15 @@ async function railwayStart() {
         let startMode;
         if (hasClientSecret) {
             startMode = 'full'; // Bot + Website completo
-            console.log('\n🎯 Modo selecionado: COMPLETO (Bot + Website)');
+            logger.info('\n🎯 Modo selecionado: COMPLETO (Bot + Website)');
         } else {
             startMode = 'bot-only'; // Apenas bot Discord
-            console.log('\n🎯 Modo selecionado: BOT-ONLY (sem website)');
-            console.log('   ℹ️  CLIENT_SECRET não encontrado, website será desabilitado');
+            logger.info('\n🎯 Modo selecionado: BOT-ONLY (sem website)');
+            logger.info('   ℹ️  CLIENT_SECRET não encontrado, website será desabilitado');
         }
         
         // 4. Deploy dos comandos primeiro
-        console.log('\n⚙️  Deploying comandos slash...');
+    logger.info('\n⚙️  Deploying comandos slash...');
         try {
             const deployCommands = require('./scripts/deploy-commands');
             if (typeof deployCommands === 'function') {
@@ -63,21 +63,21 @@ async function railwayStart() {
                     cwd: __dirname 
                 });
             }
-            console.log('✅ Comandos deployados com sucesso');
+            logger.info('✅ Comandos deployados com sucesso');
         } catch (deployError) {
-            console.warn('⚠️  Erro ao deploy comandos:', deployError.message);
-            console.warn('   Continuando mesmo assim...');
+            logger.warn('⚠️  Erro ao deploy comandos:', { error: deployError && deployError.message ? deployError.message : deployError });
+            logger.warn('   Continuando mesmo assim...');
         }
         
         // 5. Iniciar modo apropriado
         if (startMode === 'full') {
-            console.log('\n🚀 Iniciando modo COMPLETO...');
+            logger.info('\n🚀 Iniciando modo COMPLETO...');
             
             // Iniciar o index.js principal (bot + website)
             require('./index.js');
             
         } else {
-            console.log('\n🤖 Iniciando modo BOT-ONLY...');
+            logger.info('\n🤖 Iniciando modo BOT-ONLY...');
             
             // Iniciar apenas o bot
             const { startBotOnly } = require('./bot-only');
@@ -91,16 +91,16 @@ async function railwayStart() {
             environment: process.env.RAILWAY_ENVIRONMENT_NAME
         });
         
-        console.log(`\n🎉 Bot iniciado com sucesso em modo ${startMode.toUpperCase()}!`);
+    logger.info(`\n🎉 Bot iniciado com sucesso em modo ${startMode.toUpperCase()}!`);
         
     } catch (error) {
-        console.error('\n❌ === ERRO FATAL ===');
-        console.error(`❌ ${error.message}`);
-        console.error('\n🔧 Verificações necessárias:');
-        console.error('   1. DISCORD_TOKEN configurado na Railway');
-        console.error('   2. CLIENT_ID configurado na Railway');
-        console.error('   3. CLIENT_SECRET configurado na Railway (opcional para bot-only)');
-        console.error('\n📚 Consulte: RAILWAY_DEPLOYMENT.md');
+    logger.error('\n❌ === ERRO FATAL ===');
+    logger.error(`❌ ${error.message}`);
+    logger.error('\n🔧 Verificações necessárias:');
+    logger.error('   1. DISCORD_TOKEN configurado na Railway');
+    logger.error('   2. CLIENT_ID configurado na Railway');
+    logger.error('   3. CLIENT_SECRET configurado na Railway (opcional para bot-only)');
+    logger.error('\n📚 Consulte: RAILWAY_DEPLOYMENT.md');
         
         logger.error('Railway startup failed', {
             error: error.message,
@@ -128,7 +128,7 @@ if (process.env.RAILWAY_ENVIRONMENT_NAME) {
     });
     
     app.listen(port, () => {
-        console.log(`🏥 Health check endpoint ativo na porta ${port}`);
+        logger.info(`🏥 Health check endpoint ativo na porta ${port}`);
     });
 }
 

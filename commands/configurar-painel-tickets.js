@@ -91,10 +91,11 @@ module.exports = {
 Os utilizadores agora podem clicar nos botões para criar tickets automaticamente!`
             });
 
-            console.log(`✅ Painel de tickets criado por ${interaction.user.tag} em ${targetChannel.name}`);
+            const logger = require('../utils/logger');
+            logger.info(`✅ Painel de tickets criado por ${interaction.user.tag} em ${targetChannel.name}`);
 
         } catch (error) {
-            console.error('❌ Erro ao criar painel de tickets:', error);
+            logger.error('❌ Erro ao criar painel de tickets:', { error });
             
             // Verifica se a interação ainda pode ser respondida
             try {
@@ -109,7 +110,7 @@ Os utilizadores agora podem clicar nos botões para criar tickets automaticament
                     });
                 }
             } catch (responseError) {
-                console.error('❌ Erro ao responder interação:', responseError);
+                logger.error('❌ Erro ao responder interação:', { error: responseError });
             }
         }
     },

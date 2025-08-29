@@ -71,7 +71,8 @@ module.exports = {
                 content: `✅ Sistema de verificação configurado com sucesso!\n📍 Mensagem criada: [Clica aqui para ver](${verificationMessage.url})`
             });
         } catch (error) {
-            console.error('❌ Erro ao configurar verificação:', error);
+            const logger = require('../utils/logger');
+            logger.error('❌ Erro ao configurar verificação:', { error });
             
             if (!interaction.replied) {
                 await interaction.reply({

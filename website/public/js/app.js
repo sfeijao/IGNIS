@@ -27,39 +27,40 @@ async function authenticatedFetch(url, options = {}) {
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async function() {
-    console.log('📄 Página carregada, verificando autenticação...');
-    
+    // At page load logging: use debug instead of console.log for developer traces
+    console.debug('📄 Página carregada, verificando autenticação...');
+
     // Verificar se há token
     const hasLocalToken = localStorage.getItem('authToken');
     const hasCookie = document.cookie.includes('authToken');
-    
-    console.log('🔍 Token localStorage:', !!hasLocalToken);
-    console.log('🔍 Cookie presente:', hasCookie);
-    
+
+    console.debug('🔍 Token localStorage:', !!hasLocalToken);
+    console.debug('🔍 Cookie presente:', hasCookie);
+
     // Se não há nenhum token, redirecionar
     if (!hasLocalToken && !hasCookie) {
-        console.log('❌ Sem autenticação, redirecionando...');
+        console.debug('❌ Sem autenticação, redirecionando...');
         window.location.replace('/login');
         return;
     }
-    
+
     // Verificar se o token é válido fazendo um request
     try {
         const response = await fetch('/api/channels', { credentials: 'include' });
         if (!response.ok) {
-            console.log('❌ Token inválido, redirecionando...');
+            console.debug('❌ Token inválido, redirecionando...');
             localStorage.clear();
             window.location.replace('/login');
             return;
         }
-        console.log('✅ Autenticação válida');
+        console.debug('✅ Autenticação válida');
     } catch (error) {
-        console.log('❌ Erro verificando auth, redirecionando...');
+        console.debug('❌ Erro verificando auth, redirecionando...');
         localStorage.clear();
         window.location.replace('/login');
         return;
     }
-    
+
     // Se chegou aqui, está autenticado - inicializar página
     initializeQuill();
     setupEventListeners();
@@ -72,7 +73,7 @@ async function loadChannels() {
     try {
         const response = await authenticatedFetch('/api/channels');
         if (!response) return; // Redirecionado para login
-        
+
         const channels = await response.json();
         
         const channelSelect = document.getElementById('channelSelect');
@@ -125,7 +126,9 @@ async function loadChannels() {
         }
         
     } catch (error) {
-        console.error('Erro ao carregar canais:', error);
+        // Show user notification and keep debug trace
+        showNotification('Erro ao carregar canais', 'error');
+        console.debug('Erro ao carregar canais:', error);
         document.getElementById('channelSelect').innerHTML = '<option value="">❌ Erro ao carregar canais</option>';
     }
 }
@@ -252,7 +255,9 @@ async function updatePreview() {
         const embedData = await response.json();
         renderEmbedPreview(embedData);
     } catch (error) {
-        console.error('Erro ao gerar preview:', error);
+        // replaced console.error with notification + debug
+        showNotification('Erro ao gerar preview', 'error');
+        console.debug('Erro ao gerar preview:', error);
     }
 }
 
@@ -386,8 +391,9 @@ async function handleSubmit(e) {
         }
         
     } catch (error) {
-        console.error('Erro:', error);
-        showNotification(error.message, 'error');
+        // Use UI notification for users and keep stack in debug
+        showNotification(error.message || 'Erro ao enviar update', 'error');
+        console.debug('Erro ao enviar update:', error);
     } finally {
         // Restaurar botão
         sendBtn.innerHTML = originalText;
@@ -433,7 +439,8 @@ async function loadHistory() {
         `).join('');
         
     } catch (error) {
-        console.error('Erro ao carregar histórico:', error);
+        showNotification('Erro ao carregar histórico', 'error');
+        console.debug('Erro ao carregar histórico:', error);
     }
 }
 
@@ -460,54 +467,60 @@ function showNotification(message, type = 'success') {
 setTimeout(updatePreview, 500);
 
 // Logout
-document.getElementById('logoutBtn').addEventListener('click', async () => {
-    if (confirm('Tem certeza que deseja terminar a sessão?')) {
-        console.log('🚪 Iniciando logout completo...');
-        
-        try {
-            // 1. Fazer request para servidor
-            const response = await fetch('/api/logout', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
+try {
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        if (confirm('Tem certeza que deseja terminar a sessão?')) {
+            console.debug('🚪 Iniciando logout completo...');
             
-            console.log('🌐 Logout response:', response.status);
+            try {
+                // 1. Fazer request para servidor
+                const response = await fetch('/api/logout', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.debug('🌐 Logout response:', response.status);
+                
+            } catch (error) {
+                showNotification('Erro no logout do servidor', 'error');
+                console.debug('❌ Erro no logout do servidor:', error);
+            }
             
-        } catch (error) {
-            console.error('❌ Erro no logout do servidor:', error);
+            // 2. Limpar TODOS os dados locais (independentemente da resposta do servidor)
+            try {
+                // Limpar localStorage
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // Limpar cookies de todas as formas possiveis
+                const cookiesToClear = ['authToken', 'auth_token', 'token'];
+                cookiesToClear.forEach(cookieName => {
+                    document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
+                    document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+                    document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC;`;
+                });
+                
+                console.debug('🧹 Todos os dados locais limpos');
+                
+            } catch (error) {
+                showNotification('Erro limpando dados locais', 'error');
+                console.debug('❌ Erro limpando dados locais:', error);
+            }
+            
+            // 3. Forçar redirecionamento sem cache
+            console.debug('🔄 Forçando redirecionamento para login...');
+            
+            // Prevenir qualquer cache
+            const timestamp = new Date().getTime();
+            const loginUrl = `/login?t=${timestamp}`;
+            
+            // Usar replace para não manter historico
+            window.location.replace(loginUrl);
         }
-        
-        // 2. Limpar TODOS os dados locais (independentemente da resposta do servidor)
-        try {
-            // Limpar localStorage
-            localStorage.clear();
-            sessionStorage.clear();
-            
-            // Limpar cookies de todas as formas possíveis
-            const cookiesToClear = ['authToken', 'auth_token', 'token'];
-            cookiesToClear.forEach(cookieName => {
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC;`;
-            });
-            
-            console.log('🧹 Todos os dados locais limpos');
-            
-        } catch (error) {
-            console.error('❌ Erro limpando dados locais:', error);
-        }
-        
-        // 3. Forçar redirecionamento sem cache
-        console.log('🔄 Forçando redirecionamento para login...');
-        
-        // Prevenir qualquer cache
-        const timestamp = new Date().getTime();
-        const loginUrl = `/login?t=${timestamp}`;
-        
-        // Usar replace para não manter histórico
-        window.location.replace(loginUrl);
-    }
-});
+    });
+} catch (e) {
+    // ignore if logout button not present
+}

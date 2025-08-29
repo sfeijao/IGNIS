@@ -99,7 +99,8 @@ module.exports = {
                         fs.unlinkSync(backup.path);
                         deletedCount++;
                     } catch (error) {
-                        console.error(`Erro ao deletar backup antigo ${backup.name}:`, error);
+                        const logger = require('../utils/logger');
+                        logger.error(`Erro ao deletar backup antigo ${backup.name}:`, { error });
                     }
                 }
             }
@@ -174,16 +175,16 @@ Localização: ./backups/
                                     const currentBackups = fs.readdirSync(backupDir).filter(f => f.endsWith('.db'));
                                     if (currentBackups.length > 1) {
                                         // Não remover, manter backup no servidor
-                                        console.log(`📁 Backup ${backupFileName} mantido no servidor`);
+                                        logger.info(`📁 Backup ${backupFileName} mantido no servidor`);
                                     }
                                 }
                             } catch (error) {
-                                console.error('Erro ao gerenciar arquivo de backup:', error);
+                                logger.error('Erro ao gerenciar arquivo de backup:', { error });
                             }
                         }, 30000); // 30 segundos
                     }
                 } catch (error) {
-                    console.error('Erro ao anexar backup:', error);
+                    logger.error('Erro ao anexar backup:', { error });
                     await interaction.editReply({
                         embeds: [backupEmbed],
                         content: '⚠️ **Backup criado mas erro ao enviar arquivo:** ' + error.message
@@ -194,10 +195,10 @@ Localização: ./backups/
             }
 
             // Log da operação
-            console.log(`💾 Backup criado: ${backupFileName} por ${interaction.user.tag}`);
+            logger.info(`💾 Backup criado: ${backupFileName} por ${interaction.user.tag}`);
 
         } catch (error) {
-            console.error('Erro no comando backup-database:', error);
+            logger.error('Erro no comando backup-database:', { error });
             await interaction.editReply({
                 content: '❌ Erro ao criar backup da base de dados: ' + error.message
             });

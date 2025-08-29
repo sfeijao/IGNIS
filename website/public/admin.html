@@ -899,7 +899,8 @@
                     document.getElementById('botUptime').textContent = data.stats.uptime;
                 }
             } catch (error) {
-                console.error('Erro ao carregar dados gerais:', error);
+                showAlert('danger', 'Erro ao carregar dados gerais');
+                console.debug('Erro ao carregar dados gerais:', error);
             }
         }
 
@@ -935,7 +936,8 @@
                     `).join('');
                 }
             } catch (error) {
-                console.error('Erro ao carregar membros:', error);
+                showAlert('danger', 'Erro ao carregar membros');
+                console.debug('Erro ao carregar membros:', error);
             }
         }
 
@@ -976,7 +978,8 @@
                     `).join('');
                 }
             } catch (error) {
-                console.error('Erro ao carregar canais:', error);
+                showAlert('danger', 'Erro ao carregar canais');
+                console.debug('Erro ao carregar canais:', error);
             }
         }
 
@@ -999,7 +1002,8 @@
                     `).join('');
                 }
             } catch (error) {
-                console.error('Erro ao carregar cargos:', error);
+                showAlert('danger', 'Erro ao carregar cargos');
+                console.debug('Erro ao carregar cargos:', error);
             }
         }
 
@@ -1021,7 +1025,8 @@
                     `).join('');
                 }
             } catch (error) {
-                console.error('Erro ao carregar logs:', error);
+                showAlert('danger', 'Erro ao carregar logs');
+                console.debug('Erro ao carregar logs:', error);
             }
         }
 
@@ -1244,5 +1249,7 @@
             return date.toLocaleString('pt-BR');
         }
     </script>
+    <script src="/js/toast-fallback.js"></script>
+    <script src="/js/event-fallback.js"></script>
 </body>
 </html>

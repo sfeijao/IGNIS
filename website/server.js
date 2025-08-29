@@ -364,6 +364,36 @@ app.get('/dashboard-fixed.html', requireAuth, requireServerAccess, (req, res) =>
     }
 });
 
+// Tickets page (protected)
+app.get('/tickets.html', requireAuth, requireServerAccess, (req, res) => {
+    try {
+        logger.info('\ud83d\udcc3 Usu\u00e1rio acessando tickets: %s', req.user?.username || 'Developer');
+        res.sendFile(path.join(__dirname, 'public', 'tickets.html'));
+    } catch (error) {
+        logger.error('\u274c Erro ao servir tickets.html', { error: error && error.message ? error.message : error });
+        res.status(500).json({ error: 'Erro interno do servidor', details: error.message });
+    }
+});
+
+// Simple debug endpoint to verify server routing
+app.get('/tickets-debug', (req, res) => {
+    logger.info('tickets-debug accessed, headers: %o', { host: req.get('host'), referer: req.get('referer') });
+    res.status(200).send('tickets-debug-ok');
+});
+
+// Development-only unauthenticated route to quickly test the tickets page
+if (process.env.NODE_ENV !== 'production') {
+    app.get('/dev/tickets.html', (req, res) => {
+        try {
+            logger.info('Serving /dev/tickets.html (dev-only)');
+            res.sendFile(path.join(__dirname, 'public', 'tickets.html'));
+        } catch (err) {
+            logger.error('Error serving /dev/tickets.html', { error: err && err.message ? err.message : err });
+            res.status(500).send('dev route error');
+        }
+    });
+}
+
 // Middleware CSRF para rotas autenticadas que modificam dados
 const csrfMiddleware = csrfProtection.middleware();
 
@@ -1590,8 +1620,10 @@ app.get('/api/bot-status', requireAuth, (req, res) => {
 });
 
 // 404 handler
+// 404 handler - improved logging for debugging
 app.use((req, res) => {
-    res.status(404).json({ error: 'Página não encontrada' });
+    logger.warn('404 Not Found for path', { path: req.path, url: req.originalUrl, method: req.method });
+    res.status(404).json({ error: 'Página não encontrada', path: req.path });
 });
 
 // Error handler

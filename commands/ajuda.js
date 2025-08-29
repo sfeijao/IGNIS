@@ -32,9 +32,11 @@ module.exports = {
                 .setFooter({ text: 'YSNM Bot • YSNM COMMUNITY' });
 
             await interaction.reply({ embeds: [embed] });
-            console.log(`✅ Ajuda executada por ${interaction.user.tag}`);
+                const logger = require('../utils/logger');
+                logger.info(`✅ Ajuda executada por ${interaction.user.tag}`, { userId: interaction.user.id });
         } catch (error) {
-            console.error('❌ Erro no comando ajuda:', error);
+                const logger = require('../utils/logger');
+                logger.error('❌ Erro no comando ajuda:', { error: error.message || error });
             await interaction.reply({ content: '❌ Erro interno!', ephemeral: true });
         }
     },

@@ -1,14 +1,15 @@
 const Database = require('./website/database/database.js');
 
 async function testDelete() {
-    console.log('🧪 Testando funcionalidade de delete de tickets...');
+    const logger = require('./utils/logger');
+    logger.info('🧪 Testando funcionalidade de delete de tickets...');
     
     const db = new Database();
     await db.initialize();
     
     try {
         // Criar um ticket de teste
-        console.log('📝 Criando ticket de teste...');
+    logger.info('📝 Criando ticket de teste...');
         const testTicket = await db.createTicket({
             guild_id: 'test-guild',
             user_id: 'test-user',
@@ -20,26 +21,26 @@ async function testDelete() {
             channel_id: 'test-channel-' + Date.now()
         });
         
-        console.log('✅ Ticket criado com ID:', testTicket.id);
+    logger.info('✅ Ticket criado com ID:', { ticketId: testTicket.id });
         
         // Tentar deletar o ticket
-        console.log('🗑️ Tentando deletar ticket...');
+    logger.info('🗑️ Tentando deletar ticket...');
         const result = await db.deleteTicket(testTicket.id);
         
-        console.log('✅ Ticket deletado com sucesso!', result);
+    logger.info('✅ Ticket deletado com sucesso!', { result });
         
         // Verificar se foi realmente deletado
         const tickets = await db.getTickets('test-guild');
         const deletedTicket = tickets.find(t => t.id === testTicket.id);
         
         if (!deletedTicket) {
-            console.log('✅ Confirmado: Ticket foi removido da base de dados');
+            logger.info('✅ Confirmado: Ticket foi removido da base de dados');
         } else {
-            console.log('❌ Erro: Ticket ainda existe na base de dados');
+            logger.warn('❌ Erro: Ticket ainda existe na base de dados');
         }
         
     } catch (error) {
-        console.error('❌ Erro no teste:', error);
+    logger.error('❌ Erro no teste:', { error: error && error.message ? error.message : error });
     } finally {
         if (db.db) {
             db.db.close();
@@ -47,4 +48,4 @@ async function testDelete() {
     }
 }
 
-testDelete().catch(console.error);
+testDelete().catch(err => logger.error('Unhandled rejection in testDelete', { error: err && err.message ? err.message : err }));

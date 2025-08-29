@@ -1,33 +1,35 @@
 // Script de migração para adicionar as novas funcionalidades de tickets
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const logger = require('./utils/logger');
 
-console.log('🔄 Iniciando migração da base de dados...');
+logger.info('🔄 Iniciando migração da base de dados...');
 
 const dbPath = path.join(__dirname, 'website', 'database', 'ysnm_dashboard.db');
 
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
-        console.error('❌ Erro ao conectar à base de dados:', err);
+    const logger = require('./utils/logger');
+    logger.error('❌ Erro ao conectar à base de dados:', { error: err && err.message ? err.message : err });
         return;
     }
     
-    console.log('✅ Conectado à base de dados SQLite');
+    logger.info('✅ Conectado à base de dados SQLite');
     
     // Migração 1: Adicionar coluna title
     db.run("ALTER TABLE tickets ADD COLUMN title TEXT", (err) => {
         if (err && !err.message.includes('duplicate column name')) {
-            console.error('❌ Erro ao adicionar coluna title:', err);
+            logger.error('❌ Erro ao adicionar coluna title:', { error: err.message || err });
         } else {
-            console.log('✅ Coluna title adicionada com sucesso');
+            logger.info('✅ Coluna title adicionada com sucesso');
         }
         
         // Migração 2: Adicionar coluna severity
         db.run("ALTER TABLE tickets ADD COLUMN severity TEXT DEFAULT 'medium'", (err) => {
             if (err && !err.message.includes('duplicate column name')) {
-                console.error('❌ Erro ao adicionar coluna severity:', err);
+                logger.error('❌ Erro ao adicionar coluna severity:', { error: err.message || err });
             } else {
-                console.log('✅ Coluna severity adicionada com sucesso');
+                logger.info('✅ Coluna severity adicionada com sucesso');
             }
             
             // Migração 3: Criar tabela ticket_users
@@ -45,9 +47,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 )
             `, (err) => {
                 if (err) {
-                    console.error('❌ Erro ao criar tabela ticket_users:', err);
+                    logger.error('❌ Erro ao criar tabela ticket_users:', { error: err.message || err });
                 } else {
-                    console.log('✅ Tabela ticket_users criada com sucesso');
+                    logger.info('✅ Tabela ticket_users criada com sucesso');
                 }
                 
                 // Migração 4: Criar índices
@@ -60,39 +62,39 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 indexes.forEach(indexSql => {
                     db.run(indexSql, (err) => {
                         if (err) {
-                            console.error('❌ Erro ao criar índice:', err);
+                            logger.error('❌ Erro ao criar índice:', { error: err.message || err });
                         } else {
                             indexCount++;
-                            console.log(`✅ Índice ${indexCount}/${indexes.length} criado`);
+                            logger.info(`✅ Índice ${indexCount}/${indexes.length} criado`);
                         }
                         
                         if (indexCount === indexes.length) {
                             // Verificação final
-                            console.log('\n🔍 Verificando estrutura após migração...');
+                            logger.info('\n🔍 Verificando estrutura após migração...');
                             
                             db.all("PRAGMA table_info(tickets)", (err, columns) => {
                                 if (err) {
-                                    console.error('❌ Erro na verificação:', err);
+                                    logger.error('❌ Erro na verificação:', { error: err.message || err });
                                     return;
                                 }
                                 
                                 const hasTitle = columns.some(col => col.name === 'title');
                                 const hasSeverity = columns.some(col => col.name === 'severity');
                                 
-                                console.log('📊 Resultado da migração:');
-                                console.log(`  - Coluna 'title': ${hasTitle ? '✅ Presente' : '❌ Ausente'}`);
-                                console.log(`  - Coluna 'severity': ${hasSeverity ? '✅ Presente' : '❌ Ausente'}`);
+                                logger.info('📊 Resultado da migração:');
+                                logger.info(`  - Coluna 'title': ${hasTitle ? '✅ Presente' : '❌ Ausente'}`);
+                                logger.info(`  - Coluna 'severity': ${hasSeverity ? '✅ Presente' : '❌ Ausente'}`);
                                 
                                 // Verificar tabela ticket_users
                                 db.all("SELECT name FROM sqlite_master WHERE type='table' AND name='ticket_users'", (err, rows) => {
                                     if (err) {
-                                        console.error('❌ Erro na verificação da tabela ticket_users:', err);
+                                        logger.error('❌ Erro na verificação da tabela ticket_users:', { error: err.message || err });
                                     } else {
-                                        console.log(`  - Tabela 'ticket_users': ${rows.length > 0 ? '✅ Presente' : '❌ Ausente'}`);
+                                        logger.info(`  - Tabela 'ticket_users': ${rows.length > 0 ? '✅ Presente' : '❌ Ausente'}`);
                                     }
                                     
-                                    console.log('\n🎉 Migração da base de dados concluída!');
-                                    console.log('🚀 O sistema de tickets está agora completamente funcional.');
+                                    logger.info('\n🎉 Migração da base de dados concluída!');
+                                    logger.info('🚀 O sistema de tickets está agora completamente funcional.');
                                     
                                     db.close();
                                 });

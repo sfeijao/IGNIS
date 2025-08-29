@@ -1,5 +1,6 @@
 const { Events } = require('discord.js');
 const Database = require('../website/database/database');
+const logger = require('../utils/logger');
 
 module.exports = {
     name: Events.ChannelDelete,
@@ -11,7 +12,7 @@ module.exports = {
                 
                 // Verificar se é da categoria de tickets
                 if (category && category.name === '📁 TICKETS') {
-                    console.log(`🗑️ Canal de ticket apagado: ${channel.name} (${channel.id})`);
+                    logger.info(`🗑️ Canal de ticket apagado: ${channel.name} (${channel.id})`, { channelId: channel.id, channelName: channel.name });
                     
                     // Atualizar status do ticket na base de dados
                     try {
@@ -24,7 +25,7 @@ module.exports = {
                         if (ticket) {
                             // Marcar como fechado/arquivado
                             await db.updateTicketStatus(ticket.id, 'archived', null, 'Canal apagado automaticamente');
-                            console.log(`✅ Ticket ${ticket.id} marcado como arquivado na base de dados`);
+                            logger.info(`✅ Ticket ${ticket.id} marcado como arquivado na base de dados`, { ticketId: ticket.id });
                             
                             // Notificar dashboard via Socket.IO
                             if (global.socketManager) {
@@ -35,18 +36,18 @@ module.exports = {
                                     guildId: channel.guild.id,
                                     timestamp: new Date().toISOString()
                                 });
-                                console.log('📡 Socket.IO: Ticket deletion enviado para dashboard');
+                logger.info('📡 Socket.IO: Ticket deletion enviado para dashboard', { ticketId: ticket.id });
                             }
                         }
                         
                     } catch (dbError) {
-                        console.error('❌ Erro ao atualizar ticket na base de dados:', dbError);
+            logger.error('❌ Erro ao atualizar ticket na base de dados:', { error: dbError.message || dbError });
                     }
                 }
             }
             
         } catch (error) {
-            console.error('❌ Erro no evento channelDelete:', error);
+        logger.error('❌ Erro no evento channelDelete:', { error: error.message || error });
         }
     }
 };

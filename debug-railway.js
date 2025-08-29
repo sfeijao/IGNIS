@@ -1,43 +1,55 @@
 // Debug script para verificar variáveis no Railway
-console.log('🔍 Verificando configuração do Railway...');
+const logger = require('./utils/logger');
+logger.info('🔍 Verificando configuração do Railway...');
+const logger = require('./utils/logger');
+logger.info('🔎 Verificando configuração do Railway...');
 
 // Verificar se o arquivo config.json existe
 try {
     const config = require('./config.json');
-    console.log('✅ config.json carregado com sucesso');
-    console.log('📊 Dados básicos:');
-    console.log('   - Client ID:', config.clientId ? 'Configurado' : 'FALTANDO');
-    console.log('   - Guild ID:', config.guildId ? 'Configurado' : 'FALTANDO');
-    console.log('   - Token:', config.token ? 'Configurado' : 'FALTANDO');
+        logger.info('✅ config.json carregado com sucesso');
+        logger.info('📊 Dados básicos:');
+        logger.info(`   - Client ID: ${config.clientId ? 'Configurado' : 'FALTANDO'}`);
+        logger.info(`   - Guild ID: ${config.guildId ? 'Configurado' : 'FALTANDO'}`);
+        logger.info(`   - Token: ${config.token ? 'Configurado' : 'FALTANDO'}`);
 } catch (error) {
-    console.error('❌ Erro ao carregar config.json:', error.message);
+    logger.error('❌ Erro ao carregar config.json:', { error: error && error.message ? error.message : error });
+        logger.error('❌ Erro ao carregar config.json:', { error: error.message });
 }
 
 // Verificar variáveis de ambiente
-console.log('\n🌍 Variáveis de ambiente:');
-console.log('   - DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? 'Configurado' : 'FALTANDO');
-console.log('   - CLIENT_ID:', process.env.CLIENT_ID ? 'Configurado' : 'FALTANDO');
-console.log('   - GUILD_ID:', process.env.GUILD_ID ? 'Configurado' : 'FALTANDO');
+logger.info('\n🌍 Variáveis de ambiente:');
+logger.info('\n🌍 Variáveis de ambiente:');
+logger.info(`   - DISCORD_TOKEN: ${process.env.DISCORD_TOKEN ? 'Configurado' : 'FALTANDO'}`);
+logger.info(`   - CLIENT_ID: ${process.env.CLIENT_ID ? 'Configurado' : 'FALTANDO'}`);
+logger.info(`   - GUILD_ID: ${process.env.GUILD_ID ? 'Configurado' : 'FALTANDO'}`);
 
 // Verificar Node.js
-console.log('\n🟢 Node.js:', process.version);
-console.log('🟢 Plataforma:', process.platform);
+logger.info('\n🟢 Node.js:', { version: process.version });
+logger.info(`\n🖥️ Node.js: ${process.version}`);
+logger.info(`🧭 Plataforma: ${process.platform}`);
 
 // Verificar dependências
-console.log('\n📦 Verificando dependências...');
+logger.info('\n📦 Verificando dependências...');
+logger.info('\n📦 Verificando dependências...');
 try {
     require('discord.js');
-    console.log('✅ discord.js carregado');
+    logger.info('✅ discord.js carregado');
+        logger.info('✅ discord.js carregado');
 } catch (error) {
-    console.error('❌ discord.js não encontrado:', error.message);
+    logger.error('❌ discord.js não encontrado:', { error: error && error.message ? error.message : error });
+        logger.error('❌ discord.js não encontrado:', { error: error.message });
 }
 
 try {
     require('dotenv');
-    console.log('✅ dotenv carregado');
+    logger.info('✅ dotenv carregado');
+        logger.info('✅ dotenv carregado');
 } catch (error) {
-    console.error('❌ dotenv não encontrado:', error.message);
+    logger.error('❌ dotenv não encontrado:', { error: error && error.message ? error.message : error });
+        logger.error('❌ dotenv não encontrado:', { error: error.message });
 }
 
-console.log('\n🚀 Verificação completa!');
-console.log('==========================================');
+logger.info('\n🚀 Verificação completa!');
+logger.info('\n🚀 Verificação completa!');
+logger.info('==========================================');

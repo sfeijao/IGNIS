@@ -17,7 +17,8 @@ class ErrorHandler {
         const errorId = this.generateErrorId();
         
         // Log estruturado do erro
-        console.error(`[ERROR ${errorId}] ${context}:`, {
+        const logger = require('./logger');
+        logger.error(`[ERROR ${errorId}] ${context}:`, {
             error: error.message,
             stack: error.stack,
             userId: interaction.user?.id,
@@ -47,7 +48,7 @@ class ErrorHandler {
                 await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
             }
         } catch (replyError) {
-            console.error('Erro ao responder com mensagem de erro:', replyError);
+            logger.error('Erro ao responder com mensagem de erro:', { error: replyError && replyError.message ? replyError.message : replyError });
         }
 
         return errorId;
@@ -62,7 +63,8 @@ class ErrorHandler {
     handleBotError(error, context = 'Bot', metadata = {}) {
         const errorId = this.generateErrorId();
         
-        console.error(`[ERROR ${errorId}] ${context}:`, {
+        const logger = require('./logger');
+        logger.error(`[ERROR ${errorId}] ${context}:`, {
             error: error.message,
             stack: error.stack,
             ...metadata,
@@ -83,7 +85,8 @@ class ErrorHandler {
     handleWebError(error, req, res, next) {
         const errorId = this.generateErrorId();
         
-        console.error(`[WEB ERROR ${errorId}]:`, {
+        const logger = require('./logger');
+        logger.error(`[WEB ERROR ${errorId}]:`, {
             error: error.message,
             stack: error.stack,
             method: req.method,

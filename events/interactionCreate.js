@@ -10,16 +10,16 @@ async function getOrCreateTicketCategory(guild) {
     let ticketCategory = guild.channels.cache.find(c => c.name === '📁 TICKETS' && c.type === ChannelType.GuildCategory);
     
     if (!ticketCategory) {
-        console.log(`🎫 DEBUG: Categoria '📁 TICKETS' não encontrada, criando automaticamente...`);
+        logger.debug(`Categoria '📁 TICKETS' não encontrada, criando automaticamente...`);
         try {
             ticketCategory = await guild.channels.create({
                 name: '📁 TICKETS',
                 type: ChannelType.GuildCategory,
                 reason: 'Categoria criada automaticamente para sistema de tickets'
             });
-            console.log(`🎫 DEBUG: Categoria criada com sucesso: ${ticketCategory.name}`);
+            logger.info(`Categoria criada com sucesso: ${ticketCategory.name}`);
         } catch (error) {
-            console.error(`🎫 ERROR: Erro ao criar categoria:`, error);
+            logger.error(`Erro ao criar categoria:`, { error: error.message || error });
             throw new Error('FAILED_TO_CREATE_TICKET_CATEGORY');
         }
     }
@@ -33,9 +33,9 @@ async function sendTicketWebhook(ticketData) {
         // Verificar se há webhook de tickets configurado
         const webhookUrl = config.WEBHOOKS.TICKETS;
         if (!webhookUrl) {
-            console.log('🔗 DEBUG: Webhook de tickets não configurado');
-            return;
-        }
+            logger.debug('Webhook de tickets não configurado');
+             return;
+         }
 
         const webhook = new WebhookClient({ url: webhookUrl });
         
@@ -54,10 +54,10 @@ async function sendTicketWebhook(ticketData) {
             .setFooter({ text: `Servidor: ${ticketData.guildName}` });
 
         await webhook.send({ embeds: [embed] });
-        console.log('🔗 DEBUG: Ticket enviado via webhook com sucesso');
-        
-    } catch (error) {
-        console.error('🔗 ERROR: Erro ao enviar ticket via webhook:', error);
+        logger.info('Ticket enviado via webhook com sucesso', { guild: ticketData.guildId, channelId: ticketData.channelId });
+         
+     } catch (error) {
+        logger.error('Erro ao enviar ticket via webhook:', { error: error.message || error });
     }
 }
 
@@ -67,7 +67,7 @@ const ticketCreationCache = new Map();
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction, client) {
-        console.log(`🔧 DEBUG: interactionCreate chamado - client exists: ${!!client}, commands exists: ${!!client?.commands}`);
+        logger.debug(`interactionCreate chamado - client exists: ${!!client}, commands exists: ${!!client?.commands}`);
         
         // Verificar se a interação ainda é válida (não expirou)
         const now = Date.now();
@@ -75,7 +75,7 @@ module.exports = {
         const timeDiff = now - interactionTime;
         
         if (timeDiff > 2000) { // Se passou mais de 2 segundos
-            console.log(`🔧 DEBUG: Interação potencialmente expirada (${timeDiff}ms), processando com cuidado`);
+            logger.debug(`Interação potencialmente expirada (${timeDiff}ms), processando com cuidado`);
         }
         
         try {
@@ -120,8 +120,8 @@ module.exports = {
             // Botões
             if (interaction.isButton()) {
                 const customId = interaction.customId;
-                console.log(`🔘 DEBUG: Botão pressionado - ID: "${customId}" por ${interaction.user.tag}`);
-                console.log(`🔘 DEBUG: IDs disponíveis - CLOSE_TICKET: "${BUTTON_IDS.CLOSE_TICKET}", CONFIRM_CLOSE: "${BUTTON_IDS.CONFIRM_CLOSE}"`);
+                logger.debug(`Botão pressionado - ID: "${customId}" por ${interaction.user.tag}`);
+                logger.debug(`IDs disponíveis - CLOSE_TICKET: "${BUTTON_IDS.CLOSE_TICKET}", CONFIRM_CLOSE: "${BUTTON_IDS.CONFIRM_CLOSE}"`);
 
                 // Sistema de Verificação
                 if (customId === BUTTON_IDS.VERIFY_USER) {
@@ -180,18 +180,18 @@ module.exports = {
                         if (ticketCreationCache.has(cacheKey)) {
                             const lastCreation = ticketCreationCache.get(cacheKey);
                             if (Date.now() - lastCreation < 5000) {
-                                console.log(`🎫 DEBUG: Bloqueando criação duplicada de ticket para ${interaction.user.tag}`);
-                                return await interaction.reply({
-                                    content: `${EMOJIS.ERROR} Aguarda um momento antes de criar outro ticket!`,
-                                    flags: MessageFlags.Ephemeral
-                                });
-                            }
+                                logger.debug(`Bloqueando criação duplicada de ticket para ${interaction.user.tag}`);
+                                         return await interaction.reply({
+                                             content: `${EMOJIS.ERROR} Aguarda um momento antes de criar outro ticket!`,
+                                             flags: MessageFlags.Ephemeral
+                                         });
+                                     }
                         }
                         
                         // Marcar no cache
                         ticketCreationCache.set(cacheKey, Date.now());
                         
-                        console.log(`🎫 DEBUG: Criando ticket tipo: "${ticketType}" para ${interaction.user.tag}`);
+                        logger.debug(`Criando ticket tipo: "${ticketType}" para ${interaction.user.tag}`);
                         logger.interaction('button', customId, interaction, true);
                         
                         // Defer a resposta para dar mais tempo (15 minutos)
@@ -286,7 +286,7 @@ module.exports = {
                             };
                             
                             await db.createUser(userData);
-                            console.log(`✅ Utilizador ${interaction.user.username} atualizado na base de dados`);
+                            logger.info(`Utilizador ${interaction.user.username} atualizado na base de dados`, { userId: interaction.user.id });
                             
                             // Depois, criar o ticket
                             const ticketData = {
@@ -301,10 +301,10 @@ module.exports = {
                             };
                             
                             result = await db.createTicket(ticketData);
-                            console.log(`✅ Ticket salvo na base de dados com ID: ${result.id}`);
+                            logger.info(`Ticket salvo na base de dados com ID: ${result.id}`, { ticketId: result.id });
                             
                         } catch (dbError) {
-                            console.error('❌ Erro ao salvar ticket na base de dados:', dbError);
+                            logger.error('Erro ao salvar ticket na base de dados:', { error: dbError.message || dbError });
                         }
 
                         // Log estruturado do ticket
@@ -348,7 +348,7 @@ module.exports = {
                                 createdAt: new Date().toISOString()
                             });
                             
-                            console.log('📡 Socket.IO: Ticket enviado para dashboard em tempo real');
+                            logger.info('Socket.IO: Ticket enviado para dashboard em tempo real', { ticketId: result?.id });
                         }
 
                     } catch (error) {
@@ -360,7 +360,7 @@ module.exports = {
                 // Fechar Ticket
                 if (customId === BUTTON_IDS.CLOSE_TICKET) {
                     try {
-                        console.log(`🎫 DEBUG: Botão fechar ticket clicado por ${interaction.user.tag}`);
+                        logger.debug(`Botão fechar ticket clicado por ${interaction.user.tag}`);
                         logger.interaction('button', customId, interaction, true);
                         
                         const confirmEmbed = new EmbedBuilder()
@@ -380,7 +380,7 @@ module.exports = {
                                     .setStyle(ButtonStyle.Secondary)
                             );
 
-                        console.log(`🎫 DEBUG: Embed de confirmação criado`);
+                        logger.debug(`Embed de confirmação criado`);
                         await interaction.reply({
                             embeds: [confirmEmbed],
                             components: [confirmButtons],
@@ -393,7 +393,7 @@ module.exports = {
                         }, 10000); // 10 segundos
 
                     } catch (error) {
-                        console.error('🎫 ERROR: Erro na criação de ticket:', error);
+                        logger.error('Erro na criação de ticket:', { error: error.message || error });
                         
                         // Limpar cache em caso de erro
                         const cacheKey = `${interaction.user.id}-${interaction.guild.id}-${ticketType}`;
@@ -412,7 +412,7 @@ module.exports = {
                                 });
                             }
                         } catch (responseError) {
-                            console.error('🎫 ERROR: Erro ao responder interação:', responseError);
+                            logger.error('Erro ao responder interação:', { error: responseError.message || responseError });
                         }
                     }
                     return;
@@ -421,7 +421,7 @@ module.exports = {
                 // Confirmar fecho do ticket
                 if (customId === BUTTON_IDS.CONFIRM_CLOSE) {
                     try {
-                        console.log(`🎫 DEBUG: Confirmação de fecho de ticket por ${interaction.user.tag}`);
+                        logger.debug(`Confirmação de fecho de ticket por ${interaction.user.tag}`);
                         logger.interaction('button', customId, interaction, true);
                         
                         const closedEmbed = new EmbedBuilder()
@@ -433,7 +433,7 @@ module.exports = {
                             .setColor(EMBED_COLORS.ERROR)
                             .setTimestamp();
 
-                        console.log(`🎫 DEBUG: Enviando embed de fechamento`);
+                        logger.debug(`Enviando embed de fechamento`);
                         await interaction.channel.send({ embeds: [closedEmbed] });
                         
                         // Log estruturado
@@ -454,29 +454,28 @@ module.exports = {
                             });
                         }
 
-                        console.log(`🎫 DEBUG: Respondendo com confirmação de fechamento`);
+                        logger.debug(`Respondendo com confirmação de fechamento`);
                         await interaction.reply({
                             content: `${EMOJIS.SUCCESS} Ticket será fechado em 5 segundos...`,
                             flags: MessageFlags.Ephemeral
                         });
 
-                        console.log(`🎫 DEBUG: Iniciando timeout para deletar canal em 5 segundos`);
+                        logger.debug(`Iniciando timeout para deletar canal em 5 segundos`);
                         setTimeout(async () => {
                             try {
-                                console.log(`🎫 DEBUG: Tentando deletar canal ${interaction.channel.id}`);
+                                logger.debug(`Tentando deletar canal ${interaction.channel.id}`);
                                 await interaction.channel.delete();
-                                console.log(`🎫 DEBUG: Canal deletado com sucesso`);
+                                logger.info('Canal deletado com sucesso', { channelId: interaction.channel.id });
                             } catch (error) {
-                                console.error(`🎫 ERROR: Erro ao deletar canal:`, error);
                                 logger.error('Erro ao deletar canal de ticket', { 
                                     channelId: interaction.channel.id,
-                                    error: error.message 
+                                    error: error.message || error
                                 });
                             }
                         }, 5000);
 
                     } catch (error) {
-                        console.error(`🎫 ERROR: Erro no processo de fechar ticket:`, error);
+                        logger.error('Erro no processo de fechar ticket:', { error: error.message || error });
                         await errorHandler.handleInteractionError(interaction, error);
                     }
                     return;
@@ -484,13 +483,13 @@ module.exports = {
 
                 // Cancelar fecho
                 if (customId === BUTTON_IDS.CANCEL_CLOSE) {
-                    console.log(`🎫 DEBUG: Cancelar fecho de ticket por ${interaction.user.tag}`);
-                    await interaction.reply({
-                        content: `${EMOJIS.SUCCESS} Fecho cancelado.`,
-                        flags: MessageFlags.Ephemeral
-                    });
-                    return;
-                }
+                    logger.debug(`Cancelar fecho de ticket por ${interaction.user.tag}`);
+                     await interaction.reply({
+                         content: `${EMOJIS.SUCCESS} Fecho cancelado.`,
+                         flags: MessageFlags.Ephemeral
+                     });
+                     return;
+                 }
 
                 // Sistema de Tags
                 if (customId.startsWith('request_tag_')) {

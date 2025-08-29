@@ -1,14 +1,16 @@
 const Database = require('./website/database/database.js');
 
 async function cleanupCorruptedTickets() {
-    console.log('🧹 Limpando tickets corrompidos da base de dados...');
+    const logger = require('./utils/logger');
+    logger.info('🧹 Limpando tickets corrompidos da base de dados...');
+        const logger = require('./utils/logger');
     
     const db = new Database();
     await db.initialize();
     
     try {
         // Primeiro, vamos ver todos os tickets
-        console.log('📋 Listando todos os tickets...');
+    logger.info('📋 Listando todos os tickets...');
         const allTickets = await new Promise((resolve, reject) => {
             db.db.all('SELECT * FROM tickets', (err, rows) => {
                 if (err) reject(err);
@@ -16,10 +18,10 @@ async function cleanupCorruptedTickets() {
             });
         });
         
-        console.log(`📊 Total de tickets encontrados: ${allTickets.length}`);
+    logger.info(`📊 Total de tickets encontrados: ${allTickets.length}`);
         
         allTickets.forEach((ticket, index) => {
-            console.log(`${index + 1}. ID: ${ticket.id}, Título: "${ticket.title}", Status: ${ticket.status}, Guild: ${ticket.guild_id}`);
+            logger.info(`${index + 1}. ID: ${ticket.id}, Título: "${ticket.title}", Status: ${ticket.status}, Guild: ${ticket.guild_id}`);
         });
         
         // Identificar tickets problemáticos (título null ou vazio)
@@ -30,16 +32,16 @@ async function cleanupCorruptedTickets() {
             ticket.title === 'undefined'
         );
         
-        console.log(`\n🔍 Tickets corrompidos encontrados: ${corruptedTickets.length}`);
+    logger.info(`\n🔍 Tickets corrompidos encontrados: ${corruptedTickets.length}`);
         
         if (corruptedTickets.length > 0) {
-            console.log('❓ Deseja deletar os tickets corrompidos? (s/n)');
+            logger.info('❓ Deseja deletar os tickets corrompidos? (s/n)');
             
             // Vamos forçar a limpeza para demonstração
-            console.log('🗑️ Iniciando limpeza automática...');
+            logger.info('🗑️ Iniciando limpeza automática...');
             
             for (const ticket of corruptedTickets) {
-                console.log(`🗑️ Deletando ticket corrompido ID: ${ticket.id}, Título: "${ticket.title}"`);
+                logger.info(`🗑️ Deletando ticket corrompido ID: ${ticket.id}, Título: "${ticket.title}"`);
                 
                 try {
                     // Deletar diretamente do banco sem usar o método que tem bug
@@ -50,7 +52,7 @@ async function cleanupCorruptedTickets() {
                             // Deletar usuários associados
                             db.db.run('DELETE FROM ticket_users WHERE ticket_id = ?', [ticket.id], (err) => {
                                 if (err) {
-                                    console.error('Erro ao deletar usuários:', err);
+                                    logger.error('Erro ao deletar usuários:', { error: err && err.message ? err.message : err });
                                     db.db.run('ROLLBACK');
                                     reject(err);
                                     return;
@@ -59,11 +61,11 @@ async function cleanupCorruptedTickets() {
                                 // Deletar ticket
                                 db.db.run('DELETE FROM tickets WHERE id = ?', [ticket.id], function(err) {
                                     if (err) {
-                                        console.error('Erro ao deletar ticket:', err);
+                                        logger.error('Erro ao deletar ticket:', { error: err && err.message ? err.message : err });
                                         db.db.run('ROLLBACK');
                                         reject(err);
                                     } else {
-                                        console.log(`✅ Ticket ${ticket.id} deletado (${this.changes} linha(s))`);
+                                        logger.info(`✅ Ticket ${ticket.id} deletado (${this.changes} linha(s))`);
                                         db.db.run('COMMIT');
                                         resolve();
                                     }
@@ -72,13 +74,13 @@ async function cleanupCorruptedTickets() {
                         });
                     });
                 } catch (error) {
-                    console.error(`❌ Erro ao deletar ticket ${ticket.id}:`, error);
+                    logger.error(`❌ Erro ao deletar ticket ${ticket.id}:`, { error: error && error.message ? error.message : error });
                 }
             }
             
-            console.log('✅ Limpeza concluída!');
+            logger.info('✅ Limpeza concluída!');
         } else {
-            console.log('✅ Nenhum ticket corrompido encontrado');
+            logger.info('✅ Nenhum ticket corrompido encontrado');
         }
         
         // Verificar estado final
@@ -89,13 +91,13 @@ async function cleanupCorruptedTickets() {
             });
         });
         
-        console.log(`\n📊 Estado final: ${finalTickets.length} tickets na base de dados`);
+    logger.info(`\n📊 Estado final: ${finalTickets.length} tickets na base de dados`);
         finalTickets.forEach((ticket, index) => {
-            console.log(`${index + 1}. ID: ${ticket.id}, Título: "${ticket.title}", Status: ${ticket.status}`);
+            logger.info(`${index + 1}. ID: ${ticket.id}, Título: "${ticket.title}", Status: ${ticket.status}`);
         });
         
     } catch (error) {
-        console.error('❌ Erro na limpeza:', error);
+            logger.error('❌ Erro na limpeza:', { error: error.message || error });
     } finally {
         if (db.db) {
             db.db.close();
@@ -103,4 +105,4 @@ async function cleanupCorruptedTickets() {
     }
 }
 
-cleanupCorruptedTickets().catch(console.error);
+    cleanupCorruptedTickets().catch(err => logger.error('Erro não tratado na limpeza de tickets', { error: err.message || err }));

@@ -169,10 +169,11 @@ module.exports = {
 
             await interaction.editReply({ embeds: [successEmbed] });
 
-            console.log(`⚙️ Servidor de logs configurado: ${targetServer.name} (${serverId}) por ${interaction.user.tag}`);
+            const logger = require('../utils/logger');
+            logger.info(`⚙️ Servidor de logs configurado: ${targetServer.name} (${serverId}) por ${interaction.user.tag}`);
 
         } catch (error) {
-            console.error('❌ Erro no comando configurar-servidor-logs:', error);
+            logger.error('❌ Erro no comando configurar-servidor-logs:', { error });
             
             const errorMessage = '❌ Erro ao configurar servidor de logs.';
             

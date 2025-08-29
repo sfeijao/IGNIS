@@ -2821,10 +2821,10 @@
                     </div>
                     <div class="ticket-description">${ticket.description || 'Sem descrição'}</div>
                     <div class="ticket-actions">
-                        <button class="btn btn-primary" onclick="assignTicket(${ticket.id}); event.stopPropagation();" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                        <button class="btn btn-primary" onclick="assignTicket(${ticket.id}); safeStopPropagation();" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
                             👤 Atribuir a Mim
                         </button>
-                        <button class="btn btn-success" onclick="closeTicket(${ticket.id}); event.stopPropagation();" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                        <button class="btn btn-success" onclick="closeTicket(${ticket.id}); safeStopPropagation();" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
                             ✅ Fechar
                         </button>
                     </div>
@@ -2990,5 +2990,6 @@
         // Initialize
         loadUserData();
     </script>
-</body>
-</html>
+        <script src="/js/toast-fallback.js"></script>
+    </body>
+    </html>

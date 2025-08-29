@@ -7,7 +7,8 @@ let config;
 try {
     config = require('../config.json');
 } catch (error) {
-    console.log('⚠️ Config.json não encontrado no ready, usando valores padrão');
+    const logger = require('../utils/logger');
+    logger.warn('⚠️ Config.json não encontrado no ready, usando valores padrão');
     config = {
         channels: {
             logs: process.env.LOGS_CHANNEL_ID,
@@ -20,12 +21,13 @@ module.exports = {
     name: Events.ClientReady,
     once: true,
     async execute(client) {
-        console.log('==========================================');
-        console.log(`✅ ${client.user.tag} está online!`);
-        console.log(`🎯 Conectado como: ${client.user.username}`);
-        console.log(`🌐 Servidores: ${client.guilds.cache.size}`);
-        console.log(`👥 Utilizadores: ${client.users.cache.size}`);
-        console.log('==========================================');
+    const logger = require('../utils/logger');
+    logger.info('==========================================');
+    logger.info(`✅ ${client.user.tag} está online!`);
+    logger.info(`🎯 Conectado como: ${client.user.username}`);
+    logger.info(`🌐 Servidores: ${client.guilds.cache.size}`);
+    logger.info(`👥 Utilizadores: ${client.users.cache.size}`);
+    logger.info('==========================================');
 
         // Definir status inicial
         client.user.setActivity('YSNM COMMUNITY', { type: ActivityType.Watching });
@@ -38,9 +40,9 @@ module.exports = {
         // Verificar se deve enviar logs de startup (DESATIVADO - usando website para anúncios)
         // await handleStartupLogs(client);
 
-        console.log('🔄 Sistema de auto-atualização de status ativado (2 minutos)');
-        console.log('🏷️ Sistema de tags configurado e pronto para uso');
-        console.log('📢 Mensagens automáticas de startup/deploy DESATIVADAS (usando website)');
+    logger.info('🔄 Sistema de auto-atualização de status ativado (2 minutos)');
+    logger.info('🏷️ Sistema de tags configurado e pronto para uso');
+    logger.info('📢 Mensagens automáticas de startup/deploy DESATIVADAS (usando website)');
     }
 };
 
@@ -51,7 +53,8 @@ async function handleStartupLogs(client) {
         // Só enviar updates no Railway (ambiente de produção)
         const isRailway = process.env.RAILWAY_ENVIRONMENT || process.env.NODE_ENV === 'production';
         if (!isRailway) {
-            console.log('🔧 Ambiente local detectado - não enviando mensagem de update');
+            const logger = require('../utils/logger');
+            logger.info('🔧 Ambiente local detectado - não enviando mensagem de update');
             return;
         }
 
@@ -74,7 +77,7 @@ async function handleStartupLogs(client) {
 
         // Se logs estão pausados, não enviar
         if (!logsState.logsEnabled) {
-            console.log('⏸️ Logs pausados - não enviando mensagem de startup');
+            logger.info('⏸️ Logs pausados - não enviando mensagem de startup');
             return;
         }
 
@@ -119,10 +122,10 @@ async function handleStartupLogs(client) {
                 changelog.lastDeployment = currentDeployTime;
                 fs.writeFileSync(changelogPath, JSON.stringify(changelog, null, 2));
                 
-                console.log('🚀 Deploy notification enviado para canal de updates');
+                logger.info('🚀 Deploy notification enviado para canal de updates');
             }
         } else if (!isNewDeployment) {
-            console.log('🔄 Restart detectado, não é um novo deployment - sem notificação');
+            logger.info('🔄 Restart detectado, não é um novo deployment - sem notificação');
         }
 
         // Sempre enviar para logs (se existir e no Railway)
@@ -144,7 +147,7 @@ async function handleStartupLogs(client) {
         }
 
     } catch (error) {
-        console.error('❌ Erro ao enviar logs de startup:', error);
+    logger.error('❌ Erro ao enviar logs de startup:', { error });
     }
 }
 */

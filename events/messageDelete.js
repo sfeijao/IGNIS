@@ -34,7 +34,8 @@ module.exports = {
                 );
             }
         } catch (error) {
-            console.error('Erro ao processar mensagem deletada:', error);
+            const logger = require('../utils/logger');
+            logger.error('Erro ao processar mensagem deletada:', { error });
         }
     }
 };
