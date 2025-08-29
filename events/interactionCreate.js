@@ -461,14 +461,36 @@ module.exports = {
                         });
 
                         logger.debug(`Iniciando timeout para deletar canal em 5 segundos`);
+                        // Capture channel id now in case interaction.channel becomes null later
+                        const channelIdToDelete = interaction.channel?.id;
                         setTimeout(async () => {
                             try {
-                                logger.debug(`Tentando deletar canal ${interaction.channel.id}`);
-                                await interaction.channel.delete();
-                                logger.info('Canal deletado com sucesso', { channelId: interaction.channel.id });
+                                if (!channelIdToDelete) {
+                                    logger.warn('Nenhum canal para deletar (channelId ausente)');
+                                    return;
+                                }
+
+                                // Try to get a fresh channel reference from the guild cache or via API
+                                let channel = interaction.guild?.channels.cache.get(channelIdToDelete) || null;
+                                if (!channel && client && client.channels) {
+                                    try {
+                                        channel = await client.channels.fetch(channelIdToDelete).catch(() => null);
+                                    } catch (e) {
+                                        channel = null;
+                                    }
+                                }
+
+                                if (!channel) {
+                                    logger.warn('Canal já removido ou não encontrado ao tentar deletar', { channelId: channelIdToDelete });
+                                    return;
+                                }
+
+                                logger.debug(`Tentando deletar canal ${channelIdToDelete}`);
+                                await channel.delete();
+                                logger.info('Canal deletado com sucesso', { channelId: channelIdToDelete });
                             } catch (error) {
                                 logger.error('Erro ao deletar canal de ticket', { 
-                                    channelId: interaction.channel.id,
+                                    channelId: channelIdToDelete,
                                     error: error.message || error
                                 });
                             }
