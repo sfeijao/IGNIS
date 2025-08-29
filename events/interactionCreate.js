@@ -3,6 +3,7 @@ const Database = require('../website/database/database');
 const errorHandler = require('../utils/errorHandler');
 const logger = require('../utils/logger');
 const config = require('../utils/config');
+const { sendArchivedTicketWebhook } = require('../website/utils/webhookSender');
 const { BUTTON_IDS, MODAL_IDS, INPUT_IDS, EMBED_COLORS, EMOJIS, ERROR_MESSAGES } = require('../constants/ui');
 
 // Função auxiliar para obter ou criar categoria de tickets
@@ -435,6 +436,33 @@ module.exports = {
 
                         logger.debug(`Enviando embed de fechamento`);
                         await interaction.channel.send({ embeds: [closedEmbed] });
+                        // Persistir status no DB e enviar webhook de arquivo
+                        try {
+                            const db = new Database();
+                            await db.initialize();
+                            // Buscar ticket pelo channel_id
+                            const ticketRecord = await db.getTicketByChannelId(interaction.channel.id);
+                            if (ticketRecord) {
+                                await db.updateTicketStatus(ticketRecord.id, 'closed', interaction.user.id, `Fechado via interação por ${interaction.user.tag}`);
+                                await db.updateTicket(ticketRecord.id, { archived: 1 });
+
+                                // Enviar webhook de archive se configurado (guild config) ou fallback para env
+                                try {
+                                    const guildId = interaction.guild ? interaction.guild.id : ticketRecord.guild_id;
+                                    let webhookConfig = null;
+                                    if (guildId) webhookConfig = await db.getGuildConfig(guildId, 'archive_webhook_url');
+                                    const webhookUrl = webhookConfig?.value || config.WEBHOOKS.TICKETS || process.env.ARCHIVE_WEBHOOK_URL || null;
+                                    if (webhookUrl && !ticketRecord?.bug_webhook_sent) {
+                                        const sent = await sendArchivedTicketWebhook(webhookUrl, ticketRecord, `Fechado por ${interaction.user.tag}`);
+                                        if (sent) await db.markTicketWebhookSent(ticketRecord.id);
+                                    }
+                                } catch (webErr) {
+                                    logger.warn('Erro ao enviar webhook de arquivo durante fechamento por interação', { error: webErr && webErr.message ? webErr.message : webErr });
+                                }
+                            }
+                        } catch (dbErr) {
+                            logger.warn('Erro ao atualizar ticket no DB durante fechamento por interação', { error: dbErr && dbErr.message ? dbErr.message : dbErr });
+                        }
                         
                         // Log estruturado
                         logger.database('ticket_closed', {
@@ -513,6 +541,133 @@ module.exports = {
                      return;
                  }
 
+                // Painel do ticket - chamar membro
+                if (customId === BUTTON_IDS.TICKET_CALL_MEMBER) {
+                    try {
+                        await interaction.reply({ content: 'Indica o ID ou menção do membro que queres chamar (responde neste chat):', flags: MessageFlags.Ephemeral });
+                    } catch (err) {
+                        logger.warn('Erro ao pedir ID para chamar membro', { error: err && err.message ? err.message : err });
+                    }
+                    return;
+                }
+
+                // Adicionar membro ao ticket (abre modal para inserir ID)
+                if (customId === BUTTON_IDS.TICKET_ADD_MEMBER) {
+                    try {
+                        const modal = new ModalBuilder().setCustomId('modal_add_member').setTitle('Adicionar Membro ao Ticket');
+                        // existing project may not have TextInputBuilder imported here; create if needed
+                        const TextInput = TextInputBuilder;
+                        const input = new TextInput().setCustomId('add_member_id').setLabel('ID ou menção do utilizador').setStyle(TextInputStyle.Short).setRequired(true);
+                        const row = new ActionRowBuilder().addComponents(input);
+                        modal.addComponents(row);
+                        await interaction.showModal(modal);
+                    } catch (err) {
+                        logger.warn('Erro ao abrir modal para adicionar membro', { error: err && err.message ? err.message : err });
+                    }
+                    return;
+                }
+
+                // Remover membro do ticket (abre modal)
+                if (customId === BUTTON_IDS.TICKET_REMOVE_MEMBER) {
+                    try {
+                        const modal = new ModalBuilder().setCustomId('modal_remove_member').setTitle('Remover Membro do Ticket');
+                        const TextInput = TextInputBuilder;
+                        const input = new TextInput().setCustomId('remove_member_id').setLabel('ID ou menção do utilizador').setStyle(TextInputStyle.Short).setRequired(true);
+                        const row = new ActionRowBuilder().addComponents(input);
+                        modal.addComponents(row);
+                        await interaction.showModal(modal);
+                    } catch (err) {
+                        logger.warn('Erro ao abrir modal para remover membro', { error: err && err.message ? err.message : err });
+                    }
+                    return;
+                }
+
+                // Mover ticket (abre modal com nome da categoria alvo)
+                if (customId === BUTTON_IDS.TICKET_MOVE) {
+                    try {
+                        const modal = new ModalBuilder().setCustomId('modal_move_ticket').setTitle('Mover Ticket para Categoria');
+                        const TextInput = TextInputBuilder;
+                        const input = new TextInput().setCustomId('move_category_name').setLabel('Nome da categoria (ex: Tickets-Arquivados)').setStyle(TextInputStyle.Short).setRequired(true);
+                        const row = new ActionRowBuilder().addComponents(input);
+                        modal.addComponents(row);
+                        await interaction.showModal(modal);
+                    } catch (err) {
+                        logger.warn('Erro ao abrir modal para mover ticket', { error: err && err.message ? err.message : err });
+                    }
+                    return;
+                }
+
+                // Trocar nome do canal
+                if (customId === BUTTON_IDS.TICKET_RENAME_CHANNEL) {
+                    try {
+                        const modal = new ModalBuilder().setCustomId('modal_rename_channel').setTitle('Trocar Nome do Canal');
+                        const TextInput = TextInputBuilder;
+                        const input = new TextInput().setCustomId('new_channel_name').setLabel('Novo nome do canal (sem espaços)').setStyle(TextInputStyle.Short).setRequired(true);
+                        const row = new ActionRowBuilder().addComponents(input);
+                        modal.addComponents(row);
+                        await interaction.showModal(modal);
+                    } catch (err) {
+                        logger.warn('Erro ao abrir modal para renomear canal', { error: err && err.message ? err.message : err });
+                    }
+                    return;
+                }
+
+                // Saudar atendimento (mensagem pronta)
+                if (customId === BUTTON_IDS.TICKET_GREET) {
+                    try {
+                        const greeting = `Olá! Bem-vindo ao atendimento — em que posso ajudar hoje?`;
+                        await interaction.channel.send({ content: greeting });
+                        await interaction.reply({ content: `${EMOJIS.SUCCESS} Mensagem de saudação enviada.`, flags: MessageFlags.Ephemeral });
+                    } catch (err) {
+                        logger.warn('Erro ao enviar saudação no ticket', { error: err && err.message ? err.message : err });
+                        await interaction.reply({ content: `${EMOJIS.ERROR} Não foi possível enviar a saudação.`, flags: MessageFlags.Ephemeral });
+                    }
+                    return;
+                }
+
+                // Observação interna (abre modal e grava no DB como log interno)
+                if (customId === BUTTON_IDS.TICKET_INTERNAL_NOTE) {
+                    try {
+                        const modal = new ModalBuilder().setCustomId('modal_internal_note').setTitle('Adicionar Observação Interna');
+                        const TextInput = TextInputBuilder;
+                        const input = new TextInput().setCustomId('internal_note_text').setLabel('Observação').setStyle(TextInputStyle.Paragraph).setRequired(true);
+                        const row = new ActionRowBuilder().addComponents(input);
+                        modal.addComponents(row);
+                        await interaction.showModal(modal);
+                    } catch (err) {
+                        logger.warn('Erro ao abrir modal para observação interna', { error: err && err.message ? err.message : err });
+                    }
+                    return;
+                }
+
+                // Finalizar ticket (equivalente a fechar)
+                if (customId === BUTTON_IDS.TICKET_FINALIZE) {
+                    try {
+                        // Reutilizar fluxo de fechar ticket (abrir confirmação)
+                        const confirmEmbed = new EmbedBuilder()
+                            .setTitle('⚠️ Finalizar Ticket')
+                            .setDescription('Tens a certeza que queres finalizar este ticket?')
+                            .setColor(EMBED_COLORS.WARNING);
+
+                        const confirmButtons = new ActionRowBuilder()
+                            .addComponents(
+                                new ButtonBuilder()
+                                    .setCustomId(BUTTON_IDS.CONFIRM_CLOSE)
+                                    .setLabel(`${EMOJIS.SUCCESS} Sim, Finalizar`)
+                                    .setStyle(ButtonStyle.Danger),
+                                new ButtonBuilder()
+                                    .setCustomId(BUTTON_IDS.CANCEL_CLOSE)
+                                    .setLabel(`${EMOJIS.ERROR} Cancelar`)
+                                    .setStyle(ButtonStyle.Secondary)
+                            );
+
+                        await interaction.reply({ embeds: [confirmEmbed], components: [confirmButtons], flags: MessageFlags.Ephemeral });
+                    } catch (err) {
+                        logger.warn('Erro ao iniciar finalização do ticket', { error: err && err.message ? err.message : err });
+                    }
+                    return;
+                }
+
                 // Sistema de Tags
                 if (customId.startsWith('request_tag_')) {
                     try {
@@ -586,6 +741,112 @@ module.exports = {
 
                     } catch (error) {
                         await errorHandler.handleInteractionError(interaction, error);
+                    }
+                    return;
+                }
+                // Add member modal
+                if (interaction.customId === 'modal_add_member') {
+                    try {
+                        const userInput = interaction.fields.getTextInputValue('add_member_id').trim();
+                        const userId = userInput.replace(/[^0-9]/g, '');
+                        if (!userId) return interaction.reply({ content: `${EMOJIS.ERROR} ID inválido.`, flags: MessageFlags.Ephemeral });
+
+                        const guild = interaction.guild;
+                        if (!guild) return interaction.reply({ content: `${EMOJIS.ERROR} Guild não disponível.`, flags: MessageFlags.Ephemeral });
+
+                        try {
+                            const member = await guild.members.fetch(userId);
+                            // Add permission overwrite for member on this channel
+                            await interaction.channel.permissionOverwrites.edit(member.id, { ViewChannel: true, ReadMessageHistory: true, SendMessages: true });
+                            await interaction.reply({ content: `${EMOJIS.SUCCESS} Membro adicionado ao ticket: ${member.user.tag}`, flags: MessageFlags.Ephemeral });
+                        } catch (err) {
+                            logger.warn('Erro ao buscar/adicionar membro ao ticket', { error: err && err.message ? err.message : err });
+                            await interaction.reply({ content: `${EMOJIS.ERROR} Não foi possível adicionar o membro.`, flags: MessageFlags.Ephemeral });
+                        }
+                    } catch (err) {
+                        await errorHandler.handleInteractionError(interaction, err);
+                    }
+                    return;
+                }
+
+                // Remove member modal
+                if (interaction.customId === 'modal_remove_member') {
+                    try {
+                        const userInput = interaction.fields.getTextInputValue('remove_member_id').trim();
+                        const userId = userInput.replace(/[^0-9]/g, '');
+                        if (!userId) return interaction.reply({ content: `${EMOJIS.ERROR} ID inválido.`, flags: MessageFlags.Ephemeral });
+
+                        try {
+                            await interaction.channel.permissionOverwrites.delete(userId);
+                            await interaction.reply({ content: `${EMOJIS.SUCCESS} Permissões removidas para ${userId}`, flags: MessageFlags.Ephemeral });
+                        } catch (err) {
+                            logger.warn('Erro ao remover permissões do membro', { error: err && err.message ? err.message : err });
+                            await interaction.reply({ content: `${EMOJIS.ERROR} Não foi possível remover o membro.`, flags: MessageFlags.Ephemeral });
+                        }
+                    } catch (err) {
+                        await errorHandler.handleInteractionError(interaction, err);
+                    }
+                    return;
+                }
+
+                // Move ticket modal
+                if (interaction.customId === 'modal_move_ticket') {
+                    try {
+                        const categoryName = interaction.fields.getTextInputValue('move_category_name').trim();
+                        const guild = interaction.guild;
+                        if (!guild) return interaction.reply({ content: `${EMOJIS.ERROR} Guild não disponível.`, flags: MessageFlags.Ephemeral });
+
+                        let target = guild.channels.cache.find(c => c.type === 4 && c.name.toLowerCase() === categoryName.toLowerCase());
+                        if (!target) {
+                            // create category
+                            target = await guild.channels.create({ name: categoryName, type: 4, reason: 'Mover ticket via painel' });
+                        }
+                        await interaction.channel.setParent(target.id);
+                        await interaction.reply({ content: `${EMOJIS.SUCCESS} Ticket movido para categoria ${target.name}`, flags: MessageFlags.Ephemeral });
+                    } catch (err) {
+                        logger.warn('Erro ao mover ticket', { error: err && err.message ? err.message : err });
+                        await interaction.reply({ content: `${EMOJIS.ERROR} Não foi possível mover o ticket.`, flags: MessageFlags.Ephemeral });
+                    }
+                    return;
+                }
+
+                // Rename channel modal
+                if (interaction.customId === 'modal_rename_channel') {
+                    try {
+                        const newName = interaction.fields.getTextInputValue('new_channel_name').trim();
+                        if (!newName) return interaction.reply({ content: `${EMOJIS.ERROR} Nome inválido.`, flags: MessageFlags.Ephemeral });
+                        await interaction.channel.setName(newName);
+                        await interaction.reply({ content: `${EMOJIS.SUCCESS} Canal renomeado para ${newName}`, flags: MessageFlags.Ephemeral });
+                    } catch (err) {
+                        logger.warn('Erro ao renomear canal', { error: err && err.message ? err.message : err });
+                        await interaction.reply({ content: `${EMOJIS.ERROR} Não foi possível renomear o canal.`, flags: MessageFlags.Ephemeral });
+                    }
+                    return;
+                }
+
+                // Internal note modal
+                if (interaction.customId === 'modal_internal_note') {
+                    try {
+                        const note = interaction.fields.getTextInputValue('internal_note_text').trim();
+                        if (!note) return interaction.reply({ content: `${EMOJIS.ERROR} Observação vazia.`, flags: MessageFlags.Ephemeral });
+
+                        // Persistir no DB como log interno (ticket_note)
+                        try {
+                            const db = new Database();
+                            await db.initialize();
+                            const ticket = await db.getTicketByChannelId(interaction.channel.id);
+                            if (ticket) {
+                                await db.createLog(ticket.guild_id, 'ticket_internal_note', { ticketId: ticket.id, note: note.substring(0, 1000), author: interaction.user.id });
+                                await interaction.reply({ content: `${EMOJIS.SUCCESS} Observação interna adicionada.`, flags: MessageFlags.Ephemeral });
+                            } else {
+                                await interaction.reply({ content: `${EMOJIS.ERROR} Ticket não encontrado no DB.`, flags: MessageFlags.Ephemeral });
+                            }
+                        } catch (dbErr) {
+                            logger.warn('Erro ao gravar observação interna', { error: dbErr && dbErr.message ? dbErr.message : dbErr });
+                            await interaction.reply({ content: `${EMOJIS.ERROR} Erro ao gravar observação.`, flags: MessageFlags.Ephemeral });
+                        }
+                    } catch (err) {
+                        await errorHandler.handleInteractionError(interaction, err);
                     }
                     return;
                 }

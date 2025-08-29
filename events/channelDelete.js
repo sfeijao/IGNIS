@@ -1,6 +1,7 @@
 const { Events } = require('discord.js');
 const Database = require('../website/database/database');
 const logger = require('../utils/logger');
+const { sendArchivedTicketWebhook } = require('../website/utils/webhookSender');
 
 module.exports = {
     name: Events.ChannelDelete,
@@ -27,6 +28,21 @@ module.exports = {
                             await db.updateTicketStatus(ticket.id, 'archived', null, 'Canal apagado automaticamente');
                             logger.info(`✅ Ticket ${ticket.id} marcado como arquivado na base de dados`, { ticketId: ticket.id });
                             
+                            // Enviar webhook de arquivo se configurado e ainda nao enviado
+                            try {
+                                const guildId = ticket.guild_id || (channel.guild ? channel.guild.id : null);
+                                const webhookConfig = guildId ? await db.getGuildConfig(guildId, 'archive_webhook_url') : null;
+                                if (webhookConfig?.value && !ticket?.bug_webhook_sent) {
+                                    const sent = await sendArchivedTicketWebhook(webhookConfig.value, ticket, 'Canal apagado automaticamente');
+                                    if (sent) {
+                                        await db.markTicketWebhookSent(ticket.id);
+                                        logger.info('📤 Webhook de arquivo enviado para %s (ticket %s)', webhookConfig.value, ticket.id);
+                                    }
+                                }
+                            } catch (webErr) {
+                                logger.warn('⚠️ Erro ao enviar webhook de arquivo no evento channelDelete', { error: webErr && webErr.message ? webErr.message : webErr, ticketId: ticket.id });
+                            }
+
                             // Notificar dashboard via Socket.IO
                             if (global.socketManager) {
                                 global.socketManager.broadcast('ticket_deleted', {

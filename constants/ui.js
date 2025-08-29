@@ -15,6 +15,15 @@ const BUTTON_IDS = {
     TICKET_REOPEN: 'reopen_ticket',
     TICKET_CLAIM: 'claim_ticket',
     TICKET_ARCHIVE: 'archive_ticket',
+    // Extra ticket panel actions (dashboard / in-channel panel)
+    TICKET_CALL_MEMBER: 'ticket_call_member',
+    TICKET_ADD_MEMBER: 'ticket_add_member',
+    TICKET_REMOVE_MEMBER: 'ticket_remove_member',
+    TICKET_MOVE: 'ticket_move',
+    TICKET_RENAME_CHANNEL: 'ticket_rename_channel',
+    TICKET_GREET: 'ticket_greet',
+    TICKET_INTERNAL_NOTE: 'ticket_internal_note',
+    TICKET_FINALIZE: 'ticket_finalize',
     
     // Sistema de Tags
     TAG_REQUEST: 'request_tag',
