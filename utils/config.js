@@ -113,4 +113,15 @@ console.log(`[CONFIG] URL base: ${config.WEBSITE.BASE_URL}`);
 console.log(`[CONFIG] Porta: ${config.WEBSITE.PORT}`);
 console.log(`[CONFIG] Guild ID: ${config.DISCORD.GUILD_ID}`);
 
+// Helper to return base URL in a stable way for callers
+config.getBaseUrl = function() {
+    try {
+        if (config.WEBSITE && config.WEBSITE.BASE_URL) return config.WEBSITE.BASE_URL;
+        const port = config.WEBSITE && config.WEBSITE.PORT ? config.WEBSITE.PORT : 4000;
+        return `http://localhost:${port}`;
+    } catch (e) {
+        return 'http://localhost:4000';
+    }
+};
+
 module.exports = config;
