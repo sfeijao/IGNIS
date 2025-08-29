@@ -252,18 +252,29 @@ module.exports = {
                             .setColor(typeInfo.color)
                             .setTimestamp();
 
-                        const closeButton = new ActionRowBuilder()
-                            .addComponents(
-                                new ButtonBuilder()
-                                    .setCustomId(BUTTON_IDS.CLOSE_TICKET)
-                                    .setLabel(`${EMOJIS.TICKET} Fechar Ticket`)
-                                    .setStyle(ButtonStyle.Danger)
-                            );
+                        // Build full ticket panel with multiple rows of buttons
+                        const row1 = new ActionRowBuilder().addComponents(
+                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_CALL_MEMBER).setLabel('🔔 Chamar Membro').setStyle(ButtonStyle.Secondary),
+                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_ADD_MEMBER).setLabel('➕ Adicionar Membro').setStyle(ButtonStyle.Primary),
+                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_REMOVE_MEMBER).setLabel('❌ Remover Membro').setStyle(ButtonStyle.Danger)
+                        );
+
+                        const row2 = new ActionRowBuilder().addComponents(
+                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_MOVE).setLabel('🔀 Mover Ticket').setStyle(ButtonStyle.Secondary),
+                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_RENAME_CHANNEL).setLabel('📝 Trocar Nome do Canal').setStyle(ButtonStyle.Secondary),
+                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_GREET).setLabel('👋 Saudar Atendimento').setStyle(ButtonStyle.Primary)
+                        );
+
+                        const row3 = new ActionRowBuilder().addComponents(
+                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_INTERNAL_NOTE).setLabel('📝 Observação Interna').setStyle(ButtonStyle.Primary),
+                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_FINALIZE).setLabel('✅ Finalizar Ticket').setStyle(ButtonStyle.Success),
+                            new ButtonBuilder().setCustomId(BUTTON_IDS.CLOSE_TICKET).setLabel('🔒 Fechar Ticket').setStyle(ButtonStyle.Danger)
+                        );
 
                         await ticketChannel.send({
                             content: `${interaction.user} | <@&${interaction.guild.roles.cache.find(r => r.name === 'Staff')?.id || interaction.guild.roles.cache.find(r => r.permissions.has('MANAGE_MESSAGES'))?.id}>`,
                             embeds: [ticketEmbed],
-                            components: [closeButton]
+                            components: [row1, row2, row3]
                         });
 
                         await interaction.editReply({
