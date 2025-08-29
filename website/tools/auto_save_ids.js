@@ -29,10 +29,13 @@ async function detectAndSaveIds({ guildId, token }) {
                     }
                 }
 
-                // find verify role
-                let verifyRole = guild.roles.cache.find(r => r.name === 'Verificado');
-                // find staff role candidate
-                let staffRole = guild.roles.cache.find(r => r.name === 'Staff') || guild.roles.cache.find(r => r.permissions && r.permissions.has(PermissionsBitField.Flags.ManageMessages));
+                // find verify role (consider Portuguese variants and English)
+                const verifyCandidates = ['Verificado', 'Verificada', 'Membro', 'Membros', 'Member', 'Verified', 'Verificado(a)', 'Não Verificado', 'Nao Verificado', 'Unverified'];
+                let verifyRole = guild.roles.cache.find(r => verifyCandidates.includes(r.name));
+
+                // find staff role candidate (Portuguese + English common names) or fallback to permission-based
+                const staffCandidates = ['Staff', 'Equipa', 'Equipe', 'Mod', 'Moderador', 'Moderadores', 'Admin', 'Administrador', 'Administradores', 'Suporte'];
+                let staffRole = guild.roles.cache.find(r => staffCandidates.includes(r.name)) || guild.roles.cache.find(r => r.permissions && r.permissions.has(PermissionsBitField.Flags.ManageMessages));
 
                 const db = new Database();
                 await db.initialize();

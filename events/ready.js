@@ -40,6 +40,20 @@ module.exports = {
         // Verificar se deve enviar logs de startup (DESATIVADO - usando website para anúncios)
         // await handleStartupLogs(client);
 
+        // Auto-scan existing guilds for configuration
+        try {
+            const { scanGuildAndSave } = require('../website/tools/auto_config');
+            for (const guild of client.guilds.cache.values()) {
+                try {
+                    await scanGuildAndSave(guild, client);
+                } catch (e) {
+                    logger.warn('Auto-scan failed for guild on ready', { guild: guild.id, error: e && e.message ? e.message : e });
+                }
+            }
+        } catch (e) {
+            logger.warn('Auto-scan init failed in ready', { error: e && e.message ? e.message : e });
+        }
+
     logger.info('🔄 Sistema de auto-atualização de status ativado (2 minutos)');
     logger.info('🏷️ Sistema de tags configurado e pronto para uso');
     logger.info('📢 Mensagens automáticas de startup/deploy DESATIVADAS (usando website)');

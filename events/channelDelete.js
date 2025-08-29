@@ -10,9 +10,23 @@ module.exports = {
             // Verificar se é um canal de ticket
             if (channel.type === 0 && channel.parentId) { // GuildText channel com categoria
                 const category = channel.parent;
-                
-                // Verificar se é da categoria de tickets
-                if (category && category.name === '📁 TICKETS') {
+
+                // Verificar se é da categoria de tickets: preferir config com ID
+                let isTicketCategory = false;
+                try {
+                    const db = new Database();
+                    await db.initialize();
+                    const cfg = await db.getGuildConfig(channel.guild.id, 'ticket_category_id');
+                    if (cfg?.value && category && category.id === cfg.value) isTicketCategory = true;
+                } catch (e) {
+                    // fallback
+                }
+
+                if (!isTicketCategory && category && category.name === '📁 TICKETS') {
+                    isTicketCategory = true;
+                }
+
+                if (isTicketCategory) {
                     logger.info(`🗑️ Canal de ticket apagado: ${channel.name} (${channel.id})`, { channelId: channel.id, channelName: channel.name });
                     
                     // Atualizar status do ticket na base de dados

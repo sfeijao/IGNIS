@@ -8,7 +8,22 @@ const { BUTTON_IDS, MODAL_IDS, INPUT_IDS, EMBED_COLORS, EMOJIS, ERROR_MESSAGES }
 
 // Função auxiliar para obter ou criar categoria de tickets
 async function getOrCreateTicketCategory(guild) {
-    let ticketCategory = guild.channels.cache.find(c => c.name === '📁 TICKETS' && c.type === ChannelType.GuildCategory);
+    const Database = require('../website/database/database');
+    let ticketCategory = null;
+    try {
+        const db = new Database();
+        await db.initialize();
+        const cfg = await db.getGuildConfig(guild.id, 'ticket_category_id');
+        if (cfg?.value) {
+            ticketCategory = guild.channels.cache.get(cfg.value) || null;
+        }
+    } catch (e) {
+        // silently fallback to name-based lookup
+    }
+
+    if (!ticketCategory) {
+        ticketCategory = guild.channels.cache.find(c => c.name === '📁 TICKETS' && c.type === ChannelType.GuildCategory);
+    }
     
     if (!ticketCategory) {
         logger.debug(`Categoria '📁 TICKETS' não encontrada, criando automaticamente...`);
@@ -129,7 +144,17 @@ module.exports = {
                     try {
                         logger.interaction('button', customId, interaction, true);
                         
-                        const verifyRole = interaction.guild.roles.cache.find(role => role.name === 'Verificado');
+                        // Prefer role ID from guild config, fallback to role name
+                        let verifyRole = null;
+                        try {
+                            const db = new Database();
+                            await db.initialize();
+                            const cfg = await db.getGuildConfig(interaction.guild.id, 'verify_role_id');
+                            if (cfg?.value) verifyRole = interaction.guild.roles.cache.get(cfg.value) || null;
+                        } catch (e) {
+                            // ignore and fallback
+                        }
+                        if (!verifyRole) verifyRole = interaction.guild.roles.cache.find(role => role.name === 'Verificado');
                         if (!verifyRole) {
                             await errorHandler.handleInteractionError(interaction, new Error('VERIFY_ROLE_NOT_FOUND'));
                             return;
@@ -271,8 +296,20 @@ module.exports = {
                             new ButtonBuilder().setCustomId(BUTTON_IDS.CLOSE_TICKET).setLabel('🔒 Fechar Ticket').setStyle(ButtonStyle.Danger)
                         );
 
+                        // Prefer configured staff role ID for mention, fallback to role name or permission check
+                        let staffRoleId = null;
+                        try {
+                            const db = new Database();
+                            await db.initialize();
+                            const cfg = await db.getGuildConfig(interaction.guild.id, 'staff_role_id');
+                            if (cfg?.value) staffRoleId = cfg.value;
+                        } catch (e) {
+                            // ignore
+                        }
+                        if (!staffRoleId) staffRoleId = interaction.guild.roles.cache.find(r => r.name === 'Staff')?.id || interaction.guild.roles.cache.find(r => r.permissions.has('MANAGE_MESSAGES'))?.id;
+
                         await ticketChannel.send({
-                            content: `${interaction.user} | <@&${interaction.guild.roles.cache.find(r => r.name === 'Staff')?.id || interaction.guild.roles.cache.find(r => r.permissions.has('MANAGE_MESSAGES'))?.id}>`,
+                            content: `${interaction.user} ${staffRoleId ? `| <@&${staffRoleId}>` : ''}`,
                             embeds: [ticketEmbed],
                             components: [row1, row2, row3]
                         });
