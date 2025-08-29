@@ -399,17 +399,30 @@ module.exports = {
                             flags: MessageFlags.Ephemeral
                         });
 
-                        // Limpar cache após sucesso
+                        // Limpar cache após sucesso (remover qualquer entrada para este user+guild)
                         setTimeout(() => {
-                            ticketCreationCache.delete(cacheKey);
+                            try {
+                                const prefix = `${interaction.user.id}-${interaction.guild.id}-`;
+                                for (const key of ticketCreationCache.keys()) {
+                                    if (key.startsWith(prefix)) ticketCreationCache.delete(key);
+                                }
+                            } catch (e) {
+                                logger.warn('Erro ao limpar ticketCreationCache por prefix', { error: e && e.message ? e.message : e });
+                            }
                         }, 10000); // 10 segundos
 
                     } catch (error) {
                         logger.error('Erro na criação de ticket:', { error: error.message || error });
                         
-                        // Limpar cache em caso de erro
-                        const cacheKey = `${interaction.user.id}-${interaction.guild.id}-${ticketType}`;
-                        ticketCreationCache.delete(cacheKey);
+                        // Limpar cache em caso de erro (remover qualquer entrada para este user+guild)
+                        try {
+                            const prefix = `${interaction.user.id}-${interaction.guild.id}-`;
+                            for (const key of ticketCreationCache.keys()) {
+                                if (key.startsWith(prefix)) ticketCreationCache.delete(key);
+                            }
+                        } catch (e) {
+                            logger.warn('Erro ao limpar ticketCreationCache no catch', { error: e && e.message ? e.message : e });
+                        }
                         
                         // Tentar responder apenas se a interação ainda estiver válida
                         try {
