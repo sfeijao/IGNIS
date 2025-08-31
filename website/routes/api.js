@@ -411,6 +411,45 @@ router.get('/analytics/moderation', requireAuth, async (req, res) => {
     }
 });
 
+// ----- Guild config admin endpoints -----
+// Get guild config (selected keys)
+router.get('/admin/guild-config/:guildId', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        const guildId = req.params.guildId;
+        const keys = ['archive_webhook_url', 'log_channel_id', 'ticket_category_id', 'staff_role_id', 'verify_role_id'];
+        const out = {};
+        for (const key of keys) {
+            const cfg = await db.getGuildConfig(guildId, key);
+            out[key] = cfg ? cfg.value : null;
+        }
+        res.json({ success: true, guildId, config: out });
+    } catch (error) {
+        logger.error('Erro ao obter guild config', { error: error && error.message ? error.message : error });
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// Update guild config
+router.post('/admin/guild-config/:guildId', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        const guildId = req.params.guildId;
+        const payload = req.body || {};
+        const allowed = ['archive_webhook_url', 'log_channel_id', 'ticket_category_id', 'staff_role_id', 'verify_role_id'];
+        const updated = {};
+        for (const key of allowed) {
+            if (Object.prototype.hasOwnProperty.call(payload, key)) {
+                const value = payload[key] === null ? null : String(payload[key]);
+                await db.setGuildConfig(guildId, key, value);
+                updated[key] = value;
+            }
+        }
+        res.json({ success: true, guildId, updated });
+    } catch (error) {
+        logger.error('Erro ao atualizar guild config', { error: error && error.message ? error.message : error });
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
 // Activity feed
 router.get('/analytics/activity', requireAuth, async (req, res) => {
     try {

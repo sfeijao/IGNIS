@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Guild Config Admin</title>
+  <style>body{font-family:Arial,Helvetica,sans-serif;padding:24px}label{display:block;margin-top:12px}input{width:100%;padding:8px}</style>
+</head>
+<body>
+  <h2>Guild Config Admin</h2>
+  <p>Access via <em>localhost</em> or provide a Bearer token in DevTools network headers.</p>
+
+  <label>Guild ID <input id="guildId" value="1333820000791691284"></label>
+
+  <label>Archive Webhook URL <input id="archive" placeholder="https://discord.com/api/webhooks/..." /></label>
+  <label>Log Channel ID <input id="logChannel" placeholder="channel id" /></label>
+
+  <button id="load">Load</button>
+  <button id="save">Save</button>
+
+  <pre id="status" style="margin-top:16px;background:#f8f8f8;padding:8px;border:1px solid #ddd"></pre>
+
+  <script>
+    async function api(path, method='GET', body=null) {
+      const guildId = document.getElementById('guildId').value;
+      const url = '/api' + path.replace(':guildId', guildId);
+      const opts = { method, headers: {} };
+      if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+      const res = await fetch(url, opts);
+      return res.json();
+    }
+
+    document.getElementById('load').addEventListener('click', async () => {
+      const status = document.getElementById('status'); status.textContent = 'Loading...';
+      try {
+        const data = await api('/admin/guild-config/:guildId');
+        if (data.success) {
+          document.getElementById('archive').value = data.config.archive_webhook_url || '';
+          document.getElementById('logChannel').value = data.config.log_channel_id || '';
+          status.textContent = 'Loaded';
+        } else {
+          status.textContent = JSON.stringify(data);
+        }
+      } catch (e) { status.textContent = e.message }
+    });
+
+    document.getElementById('save').addEventListener('click', async () => {
+      const status = document.getElementById('status'); status.textContent = 'Saving...';
+      try {
+        const body = { archive_webhook_url: document.getElementById('archive').value || null, log_channel_id: document.getElementById('logChannel').value || null };
+        const data = await api('/admin/guild-config/:guildId', 'POST', body);
+        status.textContent = JSON.stringify(data, null, 2);
+      } catch (e) { status.textContent = e.message }
+    });
+  </script>
+</body>
+</html>
