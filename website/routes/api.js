@@ -2277,13 +2277,43 @@ router.post('/config/archive-webhook/test', requireAuth, ensureDbReady, async (r
         };
         
         // Enviar teste
-    const success = await sendArchivedWebhookWithRetries(config.value, testTicket, 'Teste de webhook');
-        
-        if (success) {
-            res.json({ success: true, message: 'Webhook testado com sucesso' });
-        } else {
-            res.status(500).json({ error: 'Falha ao enviar webhook de teste' });
+    let success = false;
+    try {
+        success = await sendArchivedWebhookWithRetries(config.value, testTicket, 'Teste de webhook');
+    } catch (e) {
+        success = false;
+    }
+
+    if (success) {
+        return res.json({ success: true, message: 'Webhook testado com sucesso' });
+    }
+
+    // If webhookSender failed, try to resolve webhook via discord client and post to its channel
+    try {
+        if (global.discordClient && global.discordClient.isReady && global.discordClient.isReady()) {
+            // Try to fetch webhook by parsing id from URL
+            const match = (config.value || '').match(/webhooks\/(\d+)\//);
+            const webhookId = match ? match[1] : null;
+            if (webhookId) {
+                try {
+                    const wh = await global.discordClient.fetchWebhook(webhookId).catch(() => null);
+                    if (wh && wh.channelId) {
+                        const channel = await global.discordClient.channels.fetch(wh.channelId).catch(() => null);
+                        if (channel && channel.send) {
+                            await channel.send(`🔔 Teste de webhook: envio de teste falhou via webhook, mas enviando via bot para canal <#${wh.channelId}>`);
+                            return res.json({ success: true, message: 'Falha no webhook direta; mensagem enviada via bot para canal associado' });
+                        }
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            }
         }
+    } catch (e) {
+        // ignore
+    }
+
+    res.status(500).json({ error: 'Falha ao enviar webhook de teste e fallback falhou' });
     } catch (error) {
         addDebugLog('error', '❌ Erro ao testar webhook', { error: error.message });
         res.status(500).json({ error: 'Erro interno do servidor' });

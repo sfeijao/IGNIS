@@ -420,6 +420,16 @@ app.get('/admin-roles.html', requireAuth, requireServerAccess, (req, res) => {
     }
 });
 
+// Admin: webhooks UI
+app.get('/admin-webhooks.html', requireAuth, requireServerAccess, (req, res) => {
+    try {
+        res.sendFile(path.join(__dirname, 'public', 'admin-webhooks.html'));
+    } catch (e) {
+        logger.error('Erro ao servir admin-webhooks', { error: e && e.message ? e.message : e });
+        res.status(500).send('Erro');
+    }
+});
+
 // Tickets page (protected)
 app.get('/tickets.html', requireAuth, requireServerAccess, (req, res) => {
     try {

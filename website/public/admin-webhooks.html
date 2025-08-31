@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Webhooks Admin</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;padding:24px}
+    label{display:block;margin-top:12px}
+    input{width:100%;padding:8px}
+    #status{margin-top:16px;background:#f8f8f8;padding:8px;border:1px solid #ddd}
+  </style>
+</head>
+<body>
+  <h2>Webhooks</h2>
+  <p>Configure the archive webhook for ticket archiving and test delivery.</p>
+
+  <label>Guild ID <input id="guildId" value="1333820000791691284"></label>
+  <label>Archive Webhook URL <input id="archive" placeholder="https://discord.com/api/webhooks/..." /></label>
+  <div>
+    <button id="load">Load</button>
+    <button id="save">Save</button>
+    <button id="testWebhook">Test Webhook</button>
+  </div>
+
+  <div id="status"></div>
+
+  <script>
+    async function api(path, method='GET', body=null) {
+      const guildId = document.getElementById('guildId').value;
+      const url = '/api' + path.replace(':guildId', guildId);
+      const opts = { method, headers: {} };
+      if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+      const res = await fetch(url, opts);
+      return res.json();
+    }
+
+    document.getElementById('load').addEventListener('click', async ()=>{
+      const status = document.getElementById('status'); status.textContent = 'Loading...';
+      try{
+        const j = await api('/config/archive-webhook');
+        if (j.success) {
+          document.getElementById('archive').value = j.webhookUrl || '';
+          status.textContent = 'Loaded';
+        } else status.textContent = JSON.stringify(j);
+      } catch (e) { status.textContent = e && e.message ? e.message : JSON.stringify(e) }
+    });
+
+    document.getElementById('save').addEventListener('click', async ()=>{
+      const status = document.getElementById('status'); status.textContent = 'Saving...';
+      try{
+        const webhookUrl = document.getElementById('archive').value || null;
+        const ok = !webhookUrl || /^https:\/\/discord(?:app)?\.com\/api\/webhooks\/.+/.test(webhookUrl);
+        if (!ok) { status.textContent = 'Webhook URL inválida'; return; }
+        const j = await api('/config/archive-webhook', 'POST', { webhookUrl });
+        status.textContent = JSON.stringify(j);
+      } catch(e){ status.textContent = e && e.message ? e.message : JSON.stringify(e) }
+    });
+
+    document.getElementById('testWebhook').addEventListener('click', async ()=>{
+      const status = document.getElementById('status'); status.textContent = 'Testing webhook...';
+      try{
+        const res = await api('/config/archive-webhook/test', 'POST');
+        status.textContent = JSON.stringify(res, null, 2);
+      }catch(e){ status.textContent = e && e.message ? e.message : JSON.stringify(e) }
+    });
+  </script>
+</body>
+</html>
