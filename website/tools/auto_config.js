@@ -35,30 +35,18 @@ async function scanGuildAndSave(guild, client) {
 
         // Detect or create ticket logs channel + webhook
         const logChannelNames = ['tickets-log','ticket-logs','ticket-vlog','tickets_log','logs-tickets'];
-        let logChannel = guild.channels.cache.find(c => c.type === ChannelType.GuildText && logChannelNames.includes(c.name.toLowerCase()));
-        if (!logChannel && guild.members.me.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
-            try {
-                logChannel = await guild.channels.create({ name: 'tickets-log', type: ChannelType.GuildText, reason: 'Ticket logs channel for auto-config' });
-            } catch (e) {
-                // ignore
-            }
-        }
-
-        if (logChannel && guild.members.me.permissions.has(PermissionsBitField.Flags.ManageWebhooks)) {
-            // find webhook named 'Ticket Vlog' or create
-            let webhooks = await logChannel.fetchWebhooks().catch(() => null);
-            let webhook = webhooks ? webhooks.find(w => w.name === 'Ticket Vlog') : null;
-            if (!webhook && guild.members.me.permissions.has(PermissionsBitField.Flags.ManageWebhooks)) {
-                try {
-                    webhook = await logChannel.createWebhook({ name: 'Ticket Vlog', reason: 'Auto-created ticket vlog webhook' });
-                } catch (e) {
-                    webhook = null;
+        // Only detect existing log channel/webhook; do NOT create channels or webhooks automatically.
+        const logChannel = guild.channels.cache.find(c => c.type === ChannelType.GuildText && logChannelNames.includes(c.name.toLowerCase()));
+        if (logChannel) {
+            await db.setGuildConfig(guild.id, 'log_channel_id', logChannel.id);
+            // If there is a webhook in that channel, save it but do not create one.
+            if (guild.members.me.permissions.has(PermissionsBitField.Flags.ManageWebhooks)) {
+                const webhooks = await logChannel.fetchWebhooks().catch(() => null);
+                const webhook = webhooks ? webhooks.first() : null;
+                if (webhook) {
+                    const webhookUrl = await buildWebhookUrl(webhook);
+                    if (webhookUrl) await db.setGuildConfig(guild.id, 'archive_webhook_url', webhookUrl);
                 }
-            }
-
-            const webhookUrl = await buildWebhookUrl(webhook);
-            if (webhookUrl) {
-                await db.setGuildConfig(guild.id, 'archive_webhook_url', webhookUrl);
             }
         }
 

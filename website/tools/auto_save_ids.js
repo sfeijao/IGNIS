@@ -19,15 +19,8 @@ async function detectAndSaveIds({ guildId, token }) {
                 await guild.roles.fetch();
                 await guild.channels.fetch();
 
-                // find or create ticket category
+                // find ticket category if it exists; do not create
                 let ticketCategory = guild.channels.cache.find(c => c.type === ChannelType.GuildCategory && c.name === '📁 TICKETS');
-                if (!ticketCategory) {
-                    try {
-                        ticketCategory = await guild.channels.create({ name: '📁 TICKETS', type: ChannelType.GuildCategory, reason: 'Auto-create ticket category' });
-                    } catch (e) {
-                        // ignore create failures, we'll proceed without it
-                    }
-                }
 
                 // find verify role (consider Portuguese variants and English)
                 const verifyCandidates = ['Verificado', 'Verificada', 'Membro', 'Membros', 'Member', 'Verified', 'Verificado(a)', 'Não Verificado', 'Nao Verificado', 'Unverified'];
