@@ -513,12 +513,60 @@ module.exports = {
                                     let webhookConfig = null;
                                     if (guildId) webhookConfig = await db.getGuildConfig(guildId, 'archive_webhook_url');
                                     const webhookUrl = webhookConfig?.value || config.WEBHOOKS.TICKETS || process.env.ARCHIVE_WEBHOOK_URL || null;
+
+                                    logger.info('Resolved archive webhook for ticket close', { guildId, webhookUrl, ticketId: ticketRecord?.id });
+
                                     if (webhookUrl && !ticketRecord?.bug_webhook_sent) {
+                                        logger.info('Attempting to send archive webhook', { webhookUrl, ticketId: ticketRecord.id });
                                         const sent = await sendArchivedTicketWebhook(webhookUrl, ticketRecord, `Fechado por ${interaction.user.tag}`);
-                                        if (sent) await db.markTicketWebhookSent(ticketRecord.id);
+                                        if (sent) {
+                                            await db.markTicketWebhookSent(ticketRecord.id);
+                                            logger.info('Archive webhook sent and ticket marked as sent', { ticketId: ticketRecord.id, webhookUrl });
+                                        } else {
+                                            logger.warn('Archive webhook sender returned falsy (treat as failure)', { ticketId: ticketRecord.id, webhookUrl });
+                                            // Try fallback to guild log channel if configured
+                                            try {
+                                                const logCfg = guildId ? await db.getGuildConfig(guildId, 'log_channel_id') : null;
+                                                const logChannelId = logCfg?.value || null;
+                                                if (logChannelId) {
+                                                    const logChannel = interaction.guild?.channels.cache.get(logChannelId) || await client.channels.fetch(logChannelId).catch(() => null);
+                                                    if (logChannel && logChannel.send) {
+                                                        await logChannel.send(`📦 Arquivo de ticket (fallback): Ticket ${ticketRecord.id} do servidor ${interaction.guild?.name || guildId} - canal: <#${ticketRecord.channel_id}>`);
+                                                        logger.info('Fallback: posted archive info to log channel', { guildId, logChannelId, ticketId: ticketRecord.id });
+                                                    } else {
+                                                        logger.warn('Fallback log channel not found or not sendable', { guildId, logChannelId });
+                                                    }
+                                                } else {
+                                                    logger.debug('No log_channel_id configured for fallback', { guildId });
+                                                }
+                                            } catch (fbErr) {
+                                                logger.warn('Error during fallback posting to log channel', { error: fbErr && fbErr.message ? fbErr.message : fbErr, ticketId: ticketRecord.id });
+                                            }
+                                        }
+                                    } else {
+                                        logger.debug('No archive webhook configured or already sent for this ticket', { guildId, ticketId: ticketRecord?.id });
                                     }
                                 } catch (webErr) {
-                                    logger.warn('Erro ao enviar webhook de arquivo durante fechamento por interação', { error: webErr && webErr.message ? webErr.message : webErr });
+                                    logger.warn('Erro ao enviar webhook de arquivo durante fechamento por interação', { error: webErr && webErr.message ? webErr.message : webErr, ticketId: ticketRecord?.id });
+                                    // Try fallback to guild log channel if configured
+                                    try {
+                                        const guildId = interaction.guild ? interaction.guild.id : ticketRecord.guild_id;
+                                        const logCfg = guildId ? await db.getGuildConfig(guildId, 'log_channel_id') : null;
+                                        const logChannelId = logCfg?.value || null;
+                                        if (logChannelId) {
+                                            const logChannel = interaction.guild?.channels.cache.get(logChannelId) || await client.channels.fetch(logChannelId).catch(() => null);
+                                            if (logChannel && logChannel.send) {
+                                                await logChannel.send(`📦 Arquivo de ticket (fallback due to error): Ticket ${ticketRecord.id} do servidor ${interaction.guild?.name || guildId} - canal: <#${ticketRecord.channel_id}>`);
+                                                logger.info('Fallback after error: posted archive info to log channel', { guildId, logChannelId, ticketId: ticketRecord.id });
+                                            } else {
+                                                logger.warn('Fallback log channel not found or not sendable (after error)', { guildId, logChannelId });
+                                            }
+                                        } else {
+                                            logger.debug('No log_channel_id configured for fallback (after error)', { guildId });
+                                        }
+                                    } catch (fbErr) {
+                                        logger.error('Error during fallback posting to log channel (after webhook error)', { error: fbErr && fbErr.message ? fbErr.message : fbErr, ticketId: ticketRecord?.id });
+                                    }
                                 }
                             }
                         } catch (dbErr) {
