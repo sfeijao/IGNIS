@@ -395,6 +395,26 @@ app.get('/admin-moderation.html', requireAuth, requireServerAccess, (req, res) =
     }
 });
 
+// Admin: channels UI
+app.get('/admin-channels.html', requireAuth, requireServerAccess, (req, res) => {
+    try {
+        res.sendFile(path.join(__dirname, 'public', 'admin-channels.html'));
+    } catch (e) {
+        logger.error('Erro ao servir admin-channels', { error: e && e.message ? e.message : e });
+        res.status(500).send('Erro');
+    }
+});
+
+// Admin: roles UI
+app.get('/admin-roles.html', requireAuth, requireServerAccess, (req, res) => {
+    try {
+        res.sendFile(path.join(__dirname, 'public', 'admin-roles.html'));
+    } catch (e) {
+        logger.error('Erro ao servir admin-roles', { error: e && e.message ? e.message : e });
+        res.status(500).send('Erro');
+    }
+});
+
 // Tickets page (protected)
 app.get('/tickets.html', requireAuth, requireServerAccess, (req, res) => {
     try {
@@ -429,8 +449,35 @@ if (process.env.NODE_ENV !== 'production') {
 const csrfMiddleware = csrfProtection.middleware();
 
 // Importar e usar rotas de API
-const apiRoutes = require('./routes/api');
-app.use('/api', apiRoutes);
+// We wrap route mounting in a promise so we can delay server.listen until routes are mounted.
+let routesReady = Promise.resolve();
+try {
+    // Prefer CommonJS require when possible
+    const apiFactory = require('./routes/api');
+    const apiRoutes = typeof apiFactory === 'function' ? apiFactory(db) : apiFactory;
+    app.use('/api', apiRoutes);
+    logger.info('✅ API routes mounted via require');
+} catch (err) {
+    // If the routes module is an ESM graph with top-level await, fall back to dynamic import
+    if (err && err.code === 'ERR_REQUIRE_ASYNC_MODULE') {
+        logger.warn('Require failed for API routes due to ESM top-level await, falling back to dynamic import');
+        routesReady = (async () => {
+            try {
+                const imported = await import('./routes/api.js');
+                const factory = imported.default || imported;
+                const routes = typeof factory === 'function' ? factory(db) : factory;
+                app.use('/api', routes);
+                logger.info('✅ API routes imported via dynamic import');
+            } catch (impErr) {
+                logger.error('❌ Failed to import API routes dynamically', { error: impErr && impErr.message ? impErr.message : impErr, stack: impErr && impErr.stack });
+                throw impErr;
+            }
+        })();
+    } else {
+        // Unexpected error - rethrow
+        throw err;
+    }
+}
 
 // API para obter token CSRF
 app.get('/api/csrf-token', requireAuth, (req, res) => {
@@ -1663,8 +1710,8 @@ app.use((error, req, res, next) => {
     res.status(500).json({ error: 'Erro interno do servidor' });
 });
 
-// Routes - Updated to include new API routes
-app.use('/api', require('./routes/api'));
+// Routes - API routes are mounted earlier (dynamic import fallback handled above)
+// (no-op here to avoid double-requiring the module which may use async initialization)
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
@@ -1685,12 +1732,20 @@ process.on('SIGINT', () => {
     });
 });
 
-// Iniciar servidor
-server.listen(PORT, () => {
-    logger.info(`YSNM Dashboard rodando em http://localhost:${PORT}`, { callbackURL, environment: isProduction ? 'Produção' : 'Desenvolvimento' });
-    logger.info('Socket.IO habilitado');
-    logger.info('Sistema completo: Dashboard, Tickets, Analytics, Admin');
-    logger.info('Sistema de segurança ativo');
-});
+// Iniciar servidor only after routes are mounted (routesReady may be a resolved promise)
+(async () => {
+    try {
+        await routesReady;
+        server.listen(PORT, () => {
+            logger.info(`YSNM Dashboard rodando em http://localhost:${PORT}`, { callbackURL, environment: isProduction ? 'Produção' : 'Desenvolvimento' });
+            logger.info('Socket.IO habilitado');
+            logger.info('Sistema completo: Dashboard, Tickets, Analytics, Admin');
+            logger.info('Sistema de segurança ativo');
+        });
+    } catch (e) {
+        logger.error('❌ Failed to mount routes - aborting startup', { error: e && e.message ? e.message : e, stack: e && e.stack });
+        process.exit(1);
+    }
+})();
 
 module.exports = { app, server, socketManager };

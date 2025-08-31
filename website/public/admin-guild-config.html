@@ -3,7 +3,15 @@
 <head>
   <meta charset="utf-8">
   <title>Guild Config Admin</title>
-  <style>body{font-family:Arial,Helvetica,sans-serif;padding:24px}label{display:block;margin-top:12px}input{width:100%;padding:8px}</style>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;padding:24px}
+    label{display:block;margin-top:12px}
+    input{width:100%;padding:8px}
+    #validateMsg{color:#666;display:block;margin-top:6px}
+    #sessionInfo{margin-top:8px;color:#444}
+    #status{margin-top:16px;background:#f8f8f8;padding:8px;border:1px solid #ddd}
+  #adminLogs{margin-top:12px}
+  </style>
 </head>
 <body>
   <h2>Guild Config Admin</h2>
@@ -13,12 +21,24 @@
 
   <label>Archive Webhook URL <input id="archive" placeholder="https://discord.com/api/webhooks/..." /></label>
   <label>Log Channel ID <input id="logChannel" placeholder="channel id" /></label>
-  <small id="validateMsg" style="color:#666;display:block;margin-top:6px"></small>
+  <label>Ticket Category ID <input id="ticketCategory" placeholder="category id" /></label>
+  <label>Staff Role ID <input id="staffRole" placeholder="staff role id" /></label>
+  <label>Verify Role ID <input id="verifyRole" placeholder="verify role id" /></label>
+  <small id="validateMsg"></small>
 
   <button id="load">Load</button>
   <button id="save">Save</button>
+  <button id="testWebhook">Test Webhook</button>
 
-  <pre id="status" style="margin-top:16px;background:#f8f8f8;padding:8px;border:1px solid #ddd"></pre>
+  <div id="sessionInfo"></div>
+
+  <pre id="status"></pre>
+
+  <div id="adminLogs">
+    <h3>Recent Admin Logs</h3>
+    <button id="refreshLogs">Refresh Logs</button>
+    <ul id="logList"></ul>
+  </div>
 
   <script>
     function getQueryParam(name) {
@@ -39,6 +59,18 @@
     const qGuild = getQueryParam('guildId');
     if (qGuild) document.getElementById('guildId').value = qGuild;
 
+    // If guildId present in query, set it into the session so server-side APIs can use req.session.guild
+    async function ensureSessionGuild(guildId) {
+      try {
+        await fetch('/api/session/server', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ guildId }) });
+      } catch (e) {
+        // Ignore session set failures in dev
+        console.warn('Failed to set session guild', e && e.message ? e.message : e);
+      }
+    }
+
+    if (qGuild) ensureSessionGuild(qGuild);
+
     document.getElementById('load').addEventListener('click', async () => {
       const status = document.getElementById('status'); status.textContent = 'Loading...';
       try {
@@ -46,6 +78,13 @@
         if (data.success) {
           document.getElementById('archive').value = data.config.archive_webhook_url || '';
           document.getElementById('logChannel').value = data.config.log_channel_id || '';
+          document.getElementById('ticketCategory').value = data.config.ticket_category_id || '';
+          document.getElementById('staffRole').value = data.config.staff_role_id || '';
+          document.getElementById('verifyRole').value = data.config.verify_role_id || '';
+          // Show session guild info if available
+          try{
+            const s = await fetch('/api/session/server'); const sj = await s.json(); if (sj.guild) document.getElementById('sessionInfo').textContent = `Session guild: ${sj.guild.name} (${sj.guild.id})`;
+          }catch(e){}
           status.textContent = 'Loaded';
         } else {
           status.textContent = JSON.stringify(data);
@@ -72,10 +111,35 @@
           } catch (e) {}
         }
 
-        const body = { archive_webhook_url: archiveVal, log_channel_id: document.getElementById('logChannel').value || null };
+        const body = {
+          archive_webhook_url: archiveVal,
+          log_channel_id: document.getElementById('logChannel').value || null,
+          ticket_category_id: document.getElementById('ticketCategory').value || null,
+          staff_role_id: document.getElementById('staffRole').value || null,
+          verify_role_id: document.getElementById('verifyRole').value || null
+        };
         const data = await api('/admin/guild-config/:guildId', 'POST', body);
         status.textContent = JSON.stringify(data, null, 2);
       } catch (e) { status.textContent = e.message }
+    });
+
+    document.getElementById('testWebhook').addEventListener('click', async ()=>{
+      const status = document.getElementById('status'); status.textContent = 'Testing webhook...';
+      try{
+        const res = await api('/config/archive-webhook/test', 'POST');
+        status.textContent = JSON.stringify(res, null, 2);
+      }catch(e){ status.textContent = e && e.message ? e.message : JSON.stringify(e) }
+    });
+
+    document.getElementById('refreshLogs').addEventListener('click', async ()=>{
+      const ul = document.getElementById('logList'); ul.innerHTML='Loading...';
+      try{
+        const res = await fetch('/api/admin/logs?limit=20', { headers: {'Authorization':'Bearer dev-token'} }); const j = await res.json();
+        ul.innerHTML = '';
+        if (j.logs && j.logs.length) {
+          j.logs.forEach(l=>{ const li = document.createElement('li'); li.textContent = `${l.timestamp} [${l.type}] ${l.message}`; ul.appendChild(li); });
+        } else ul.textContent = 'No logs';
+      }catch(e){ ul.textContent = e && e.message ? e.message : JSON.stringify(e) }
     });
   </script>
 </body>

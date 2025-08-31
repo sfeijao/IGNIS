@@ -12,10 +12,20 @@
       const ul = document.getElementById('list'); ul.innerHTML='';
       if (j.guilds && j.guilds.length) {
         j.guilds.forEach(g => {
-          const li = document.createElement('li');
-          li.innerHTML = `${g} <a href="/admin-guild-config.html?guildId=${g}">Editar</a>`;
-          ul.appendChild(li);
-        });
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.href = `/admin-guild-config.html?guildId=${g}`;
+            a.textContent = 'Editar';
+            a.addEventListener('click', async (ev) => {
+              ev.preventDefault();
+              // set session guild first
+              await fetch('/api/session/server', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ guildId: g }) }).catch(()=>null);
+              window.location.href = a.href;
+            });
+            li.textContent = g + ' ';
+            li.appendChild(a);
+            ul.appendChild(li);
+          });
       } else ul.textContent = 'No guilds found';
     }
     document.getElementById('refresh').addEventListener('click', fetchList);

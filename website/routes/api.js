@@ -4,7 +4,12 @@ const Joi = require('joi');
 const Database = require('../database/database');
 
 const router = express.Router();
-const db = new Database();
+
+// Export a factory that accepts an initialized Database instance to avoid
+// performing async initialization at module top-level (which can turn the
+// module into an async/ESM graph and break require()).
+module.exports = (database) => {
+    const db = database || new Database();
 
 const { sendArchivedTicketWebhook: sendArchivedWebhookWithRetries } = require('../utils/webhookSender');
 
@@ -56,34 +61,29 @@ function addDebugLog(level, message, data = null) {
     }
 }
 
-// Variável para controlar se a database foi inicializada
-let dbInitialized = false;
+    // Variável para controlar se a database foi inicializada
+    let dbInitialized = false;
 
-// Inicializar database
-db.initialize()
-    .then(() => {
-        dbInitialized = true;
-    logger.info('✅ Database API routes inicializada');
-    })
-    .catch(error => {
-    logger.error('❌ Erro ao inicializar database API routes', { error: error && error.message ? error.message : error });
-    });
+    // Note: we do not call db.initialize() here synchronously. The server
+    // startup path should initialize the database earlier and pass the
+    // instance to this factory. If not initialized, ensureDbReady will
+    // initialize lazily on first request.
 
 // Middleware para verificar se database está pronta
-const ensureDbReady = async (req, res, next) => {
-    if (!dbInitialized || !db.db) {
-        try {
-            await db.initialize();
-            dbInitialized = true;
-        } catch (error) {
-            addDebugLog('error', '❌ Erro ao inicializar database', { error: error.message });
-            return res.status(500).json({ error: 'Database não disponível' });
+    const ensureDbReady = async (req, res, next) => {
+        if (!dbInitialized || !db.db) {
+            try {
+                await db.initialize();
+                dbInitialized = true;
+            } catch (error) {
+                addDebugLog('error', '❌ Erro ao inicializar database', { error: error.message });
+                return res.status(500).json({ error: 'Database não disponível' });
+            }
         }
-    }
-    // Passar a instância da database para a requisição
-    req.db = db;
-    next();
-};
+        // Passar a instância da database para a requisição
+        req.db = db;
+        next();
+    };
 
 // Rate limiting
 const apiLimiter = rateLimit({
@@ -172,6 +172,60 @@ const requireAuth = (req, res, next) => {
         hint: 'Use Bearer token ou faça login via Discord OAuth'
     });
 };
+
+// Session server selection endpoints
+// GET /api/session/server -> returns currently selected guild in session
+// POST /api/session/server { guildId } -> sets req.session.guild to a minimal guild object
+router.get('/session/server', requireAuth, async (req, res) => {
+    try {
+        if (req.session && req.session.guild) {
+            return res.json({ success: true, guild: req.session.guild });
+        }
+        return res.json({ success: true, guild: null });
+    } catch (error) {
+        logger.error('Erro ao obter server da sessão', { error: error && error.message ? error.message : error });
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+router.post('/session/server', requireAuth, async (req, res) => {
+    try {
+        const { guildId } = req.body;
+        if (!guildId) return res.status(400).json({ error: 'guildId é obrigatório' });
+
+        // Try to resolve full guild info via bot client
+        let guildObj = null;
+        if (global.discordClient && global.discordClient.isReady()) {
+            let guild = global.discordClient.guilds.cache.get(guildId);
+            if (!guild) {
+                guild = await global.discordClient.guilds.fetch(guildId).catch(() => null);
+            }
+            if (guild) {
+                guildObj = {
+                    id: guild.id,
+                    name: guild.name,
+                    icon: guild.icon || null,
+                    memberCount: guild.memberCount || (guild.members ? guild.members.cache.size : null)
+                };
+            }
+        }
+
+        // Fallback minimal object
+        if (!guildObj) {
+            guildObj = { id: guildId, name: `Guild ${guildId}`, icon: null, memberCount: null };
+        }
+
+        // Persist in session
+        req.session.guild = guildObj;
+        // Also set currentServerId helper for middleware that reads req.currentServerId
+        req.currentServerId = guildId;
+
+        res.json({ success: true, guild: guildObj });
+    } catch (error) {
+        logger.error('Erro ao definir server na sessão', { error: error && error.message ? error.message : error });
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
 
 // Middleware de validação de admin
 const requireAdmin = (req, res, next) => {
@@ -1812,6 +1866,106 @@ router.post('/admin/channels', requireAdmin, async (req, res) => {
     }
 });
 
+// Audit log helper for admin actions
+async function auditAdminAction(guildId, type, message, details = {}, actor = null) {
+    try {
+        const payload = { message, details, actor };
+        await db.createLog(guildId, type, payload);
+    } catch (err) {
+        logger.warn('Falha ao registrar log de admin', { error: err && err.message ? err.message : err });
+    }
+}
+
+// Update channel (rename, move category, change topic)
+router.patch('/admin/channels/:channelId', requireAdmin, async (req, res) => {
+    try {
+        const channelId = req.params.channelId;
+        const { name, category, description } = req.body || {};
+
+        let guild = req.session.guild;
+        // Try to resolve to a real Guild object if session holds a minimal object
+        if (guild && (!guild.channels || !guild.channels.cache)) {
+            if (global.discordClient && global.discordClient.isReady()) {
+                guild = await global.discordClient.guilds.fetch(guild.id).catch(() => null);
+            }
+        }
+
+        if (!guild || !guild.channels) return res.status(503).json({ error: 'Guild object not available on server' });
+
+        const channel = guild.channels.cache.get(channelId) || await guild.channels.fetch(channelId).catch(() => null);
+        if (!channel) return res.status(404).json({ error: 'Channel not found' });
+
+        const opts = {};
+        if (name) opts.name = name;
+        if (typeof description !== 'undefined' && channel.type === 0) opts.topic = description;
+        if (category) opts.parent = category;
+
+        // Apply edits
+        await channel.edit(opts);
+
+    // Audit
+    await auditAdminAction(guild.id || guild, 'channel_updated', `Channel ${channelId} updated`, { changes: opts }, req.user?.id || null);
+
+        res.json({ success: true, message: 'Canal atualizado com sucesso' });
+    } catch (error) {
+        logger.error('Erro ao atualizar canal', { error: error && error.message ? error.message : error, stack: error && error.stack });
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// Delete channel
+router.delete('/admin/channels/:channelId', requireAdmin, async (req, res) => {
+    try {
+        const channelId = req.params.channelId;
+
+        let guild = req.session.guild;
+        if (guild && (!guild.channels || !guild.channels.cache)) {
+            if (global.discordClient && global.discordClient.isReady()) {
+                guild = await global.discordClient.guilds.fetch(guild.id).catch(() => null);
+            }
+        }
+
+        if (!guild || !guild.channels) return res.status(503).json({ error: 'Guild object not available on server' });
+
+        const channel = guild.channels.cache.get(channelId) || await guild.channels.fetch(channelId).catch(() => null);
+        if (!channel) return res.status(404).json({ error: 'Channel not found' });
+
+        // Safety checks: ensure bot can delete and channel is deletable
+        const botMember = guild.members?.me || (global.discordClient ? guild.members.cache.get(global.discordClient.user.id) : null);
+        if (!botMember) return res.status(503).json({ error: 'Bot member not available to perform deletion' });
+
+        // If channel has children (category), require explicit force flag
+        const isCategory = channel.type === 4 || channel.type === 'GUILD_CATEGORY';
+        if (isCategory) {
+            const children = guild.channels.cache.filter(c => c.parentId === channel.id || c.parent === channel.id);
+            if (children && children.size > 0 && !req.body?.force) {
+                return res.status(400).json({ error: 'Category has child channels; provide { force: true } to delete anyway', children: children.map(c=>({ id: c.id, name: c.name })) });
+            }
+        }
+
+        // Check permissions
+        try {
+            if (typeof channel.deletable !== 'undefined' && channel.deletable === false) {
+                return res.status(403).json({ error: 'Bot cannot delete this channel due to permissions' });
+            }
+            // Also check botMember permissions
+            const canManage = botMember.permissions?.has ? botMember.permissions.has('ManageChannels') : true;
+            if (!canManage) return res.status(403).json({ error: 'Bot lacks ManageChannels permission' });
+        } catch (permErr) {
+            // Continue cautiously
+        }
+
+        await channel.delete();
+
+    await auditAdminAction(guild.id || guild, 'channel_deleted', `Channel ${channelId} deleted`, { channelId }, req.user?.id || null);
+
+    res.json({ success: true, message: 'Canal removido com sucesso' });
+    } catch (error) {
+        logger.error('Erro ao deletar canal', { error: error && error.message ? error.message : error, stack: error && error.stack });
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
 // Create role
 router.post('/admin/roles', requireAdmin, async (req, res) => {
     try {
@@ -1841,7 +1995,10 @@ router.post('/admin/roles', requireAdmin, async (req, res) => {
         }
         
         const role = await guild.roles.create(roleOptions);
-        
+
+        // Audit create
+        await auditAdminAction(guild.id || guild, 'role_created', `Role created ${role.id}`, { role: { id: role.id, name: role.name } }, req.user?.id || null);
+
         res.json({
             success: true,
             role_id: role.id,
@@ -1853,20 +2010,122 @@ router.post('/admin/roles', requireAdmin, async (req, res) => {
     }
 });
 
+    // Update role (rename, color, hoist, mentionable)
+    router.patch('/admin/roles/:roleId', requireAdmin, async (req, res) => {
+        try {
+            const roleId = req.params.roleId;
+            const { name, color, hoist, mentionable } = req.body || {};
+
+            let guild = req.session.guild;
+            if (guild && (!guild.roles || !guild.roles.cache)) {
+                if (global.discordClient && global.discordClient.isReady()) {
+                    guild = await global.discordClient.guilds.fetch(guild.id).catch(() => null);
+                }
+            }
+
+            if (!guild || !guild.roles) return res.status(503).json({ error: 'Guild object not available on server' });
+
+            const role = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(() => null);
+            if (!role) return res.status(404).json({ error: 'Role not found' });
+
+            const opts = {};
+            if (name) opts.name = name;
+            if (color) opts.color = color;
+            if (typeof hoist !== 'undefined') opts.hoist = !!hoist;
+            if (typeof mentionable !== 'undefined') opts.mentionable = !!mentionable;
+
+            await role.edit(opts);
+
+    await auditAdminAction(guild.id || guild, 'role_updated', `Role ${roleId} updated`, { changes: opts }, req.user?.id || null);
+
+            res.json({ success: true, message: 'Cargo atualizado com sucesso' });
+        } catch (error) {
+            logger.error('Erro ao atualizar cargo', { error: error && error.message ? error.message : error, stack: error && error.stack });
+            res.status(500).json({ error: 'Erro interno do servidor' });
+        }
+    });
+
+    // Delete role
+    router.delete('/admin/roles/:roleId', requireAdmin, async (req, res) => {
+        try {
+            const roleId = req.params.roleId;
+
+            let guild = req.session.guild;
+            if (guild && (!guild.roles || !guild.roles.cache)) {
+                if (global.discordClient && global.discordClient.isReady()) {
+                    guild = await global.discordClient.guilds.fetch(guild.id).catch(() => null);
+                }
+            }
+
+            if (!guild || !guild.roles) return res.status(503).json({ error: 'Guild object not available on server' });
+
+            const role = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(() => null);
+            if (!role) return res.status(404).json({ error: 'Role not found' });
+
+            // Protect @everyone
+            if (role.id === guild.id) return res.status(400).json({ error: 'Cannot delete @everyone role' });
+
+            // Protect managed roles (integration/system)
+            if (role.managed) return res.status(400).json({ error: 'Cannot delete managed role' });
+
+            // Prevent deleting roles higher or equal to bot's highest role
+            const botMember = guild.members?.me || (global.discordClient ? guild.members.cache.get(global.discordClient.user.id) : null);
+            if (!botMember) return res.status(503).json({ error: 'Bot member not available to perform deletion' });
+
+            const botHighest = botMember.roles?.highest?.position || 0;
+            if (role.position >= botHighest) return res.status(403).json({ error: 'Cannot delete role with equal/higher position than bot' });
+
+            // Require force if role has many members
+            const memberCount = role.members ? role.members.size : 0;
+            if (memberCount > 10 && !req.body?.force) {
+                return res.status(400).json({ error: 'Role has members; provide { force: true } to delete and remove role from members', memberCount });
+            }
+
+            await role.delete();
+
+    await auditAdminAction(guild.id || guild, 'role_deleted', `Role ${roleId} deleted`, { roleId }, req.user?.id || null);
+
+            res.json({ success: true, message: 'Cargo removido com sucesso' });
+        } catch (error) {
+            logger.error('Erro ao deletar cargo', { error: error && error.message ? error.message : error, stack: error && error.stack });
+            res.status(500).json({ error: 'Erro interno do servidor' });
+        }
+    });
+
 // Get logs
-router.get('/admin/logs', requireAdmin, async (req, res) => {
+router.get('/admin/logs', requireAdmin, ensureDbReady, async (req, res) => {
     try {
         const { type, level } = req.query;
-        const guildId = req.session.guild.id;
-        
-        const logs = await db.getLogs(guildId, { type, level, limit: 100 });
-        
-        res.json({
-            success: true,
-            logs
-        });
+        const guildId = req.query.guildId || (req.session && req.session.guild && req.session.guild.id) || req.currentServerId || process.env.GUILD_ID;
+
+        const limit = parseInt(req.query.limit || '50', 10) || 50;
+
+        addDebugLog('debug', 'Fetching admin logs', { guildId, type, level, limit });
+
+        // Defensive checks: ensure req.db exists
+        if (!req.db) {
+            logger.error('Req.db not available when fetching admin logs', { guildId, query: req.query });
+            addDebugLog('error', 'req.db missing when fetching admin logs', { guildId });
+            return res.status(500).json({ error: 'Database não disponível' });
+        }
+
+        const options = { guild_id: guildId, type: type || null, level: level || null, limit, offset: 0 };
+        addDebugLog('debug', 'getLogs options', options);
+
+        let logs;
+        try {
+            logs = await req.db.getLogs(options);
+            addDebugLog('debug', 'getLogs result', { count: Array.isArray(logs) ? logs.length : 0 });
+        } catch (dbErr) {
+            logger.error('Erro ao executar req.db.getLogs', { error: dbErr && dbErr.message ? dbErr.message : dbErr, stack: dbErr && dbErr.stack });
+            addDebugLog('error', 'Erro ao executar getLogs', { error: dbErr && dbErr.message ? dbErr.message : dbErr });
+            return res.status(500).json({ error: 'Erro interno do servidor' });
+        }
+
+        res.json({ success: true, logs });
     } catch (error) {
         logger.error('Erro ao buscar logs', { error: error && error.message ? error.message : error, stack: error && error.stack });
+        addDebugLog('error', 'Erro ao buscar logs (stack)', { error: error && error.message ? error.message : error, stack: error && error.stack });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -2112,4 +2371,5 @@ router.get('/diagnostic', async (req, res) => {
     }
 });
 
-module.exports = router;
+    return router;
+};

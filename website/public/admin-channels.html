@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Admin Channels</title>
+  <style>body{font-family:Arial,Helvetica,sans-serif;padding:16px}label{display:block;margin-top:8px}input,select{padding:6px;width:100%;max-width:500px}</style>
+</head>
+<body>
+  <h2>Channels</h2>
+  <div>
+    <label>Server ID <input id="guildId" placeholder="guild id" /></label>
+    <button id="setSession">Set Session</button>
+  </div>
+
+  <h3>Existing Channels</h3>
+  <button id="refresh">Refresh List</button>
+  <ul id="list"></ul>
+
+  <h3>Create Channel</h3>
+  <label>Name <input id="name" /></label>
+  <label>Type <select id="type"><option value="GUILD_TEXT">Text</option><option value="GUILD_VOICE">Voice</option><option value="GUILD_CATEGORY">Category</option></select></label>
+  <label>Category (optional) <input id="category" placeholder="parent category id" /></label>
+  <label>Description / Topic <input id="description" /></label>
+  <button id="create">Create</button>
+
+  <pre id="out" style="background:#f7f7f7;padding:8px;border:1px solid #ddd;margin-top:12px"></pre>
+
+  <script>
+    async function api(path, method='GET', body=null) {
+      const guildId = document.getElementById('guildId').value || (await getSessionGuild())?.id;
+      if (!guildId) throw new Error('Guild ID not set');
+      const url = path.replace(':serverId', guildId).replace(':guildId', guildId);
+      const opts = { method, headers: {} };
+      if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+      const res = await fetch(url, opts);
+      return res.json();
+    }
+
+    async function getSessionGuild(){
+      try{
+        const r = await fetch('/api/session/server');
+        const j = await r.json();
+        return j.guild || null;
+      }catch(e){return null}
+    }
+
+    document.getElementById('setSession').addEventListener('click', async ()=>{
+      const gid = document.getElementById('guildId').value;
+      if (!gid) return alert('Enter guild id');
+      await fetch('/api/session/server', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ guildId: gid }) });
+      document.getElementById('out').textContent = 'Session set to ' + gid;
+    });
+
+    document.getElementById('refresh').addEventListener('click', load);
+
+    async function load(){
+      const out = document.getElementById('out'); out.textContent = 'Loading...';
+      try{
+        const guild = await getSessionGuild();
+        if (guild) document.getElementById('guildId').value = guild.id;
+        const data = await api('/api/server/:serverId/channels');
+        const ul = document.getElementById('list'); ul.innerHTML='';
+        if (data.channels && data.channels.length){
+          data.channels.forEach(c=>{ 
+            const li = document.createElement('li'); 
+            li.textContent = `${c.name} [${c.type}] (${c.id})`;
+            const editBtn = document.createElement('button'); editBtn.textContent = 'Edit'; editBtn.style.marginLeft='8px';
+            editBtn.addEventListener('click', async ()=>{
+              const newName = prompt('New channel name', c.name);
+              if (newName === null) return;
+              const desc = prompt('New topic/description (leave blank to keep)', '');
+              const body = { name: newName }; if (desc) body.description = desc;
+              const r = await api('/api/admin/channels/' + c.id, 'PATCH', body);
+              document.getElementById('out').textContent = JSON.stringify(r, null, 2);
+              if (r.success) load();
+            });
+            const delBtn = document.createElement('button'); delBtn.textContent = 'Delete'; delBtn.style.marginLeft='4px';
+            delBtn.addEventListener('click', async ()=>{
+              const ok = prompt('Type DELETE to confirm deletion, or type FORCE to force delete category children');
+              if (!ok) return;
+              if (ok !== 'DELETE' && ok !== 'FORCE') return alert('Cancelled');
+              const body = ok === 'FORCE' ? JSON.stringify({ force: true }) : null;
+              const r = await fetch('/api/admin/channels/' + c.id, { method: 'DELETE', headers: body ? {'Content-Type':'application/json'} : {}, body }); const j = await r.json();
+              document.getElementById('out').textContent = JSON.stringify(j, null, 2);
+              if (j.success) load();
+            });
+            li.appendChild(editBtn); li.appendChild(delBtn);
+            ul.appendChild(li); 
+          });
+        } else ul.textContent = 'No channels';
+        out.textContent = 'Loaded ' + (data.channels ? data.channels.length : 0) + ' channels';
+      }catch(e){ out.textContent = e && e.message ? e.message : JSON.stringify(e); }
+    }
+
+    document.getElementById('create').addEventListener('click', async ()=>{
+      const name = document.getElementById('name').value; const type = document.getElementById('type').value; const category = document.getElementById('category').value || null; const desc = document.getElementById('description').value || null;
+      const out = document.getElementById('out'); out.textContent = 'Creating...';
+      try{
+        const res = await api('/api/admin/channels', 'POST', { name, type, category, description: desc });
+        out.textContent = JSON.stringify(res, null, 2);
+        if (res.success) load();
+      }catch(e){ out.textContent = e && e.message ? e.message : JSON.stringify(e); }
+    });
+
+    // auto-load
+    (async ()=>{ const g = await getSessionGuild(); if (g) document.getElementById('guildId').value = g.id; await load(); })();
+  </script>
+</body>
+</html>

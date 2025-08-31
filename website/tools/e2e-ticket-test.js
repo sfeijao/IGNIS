@@ -26,7 +26,6 @@ async function runE2E() {
     });
 
     const ticketId = createRes.id;
-    const logger = require('../utils/logger');
     logger.info('Created ticket id', { ticketId });
 
     // Close ticket: update status, mark archived, reload ticket, send webhook (like API flow)
