@@ -1064,6 +1064,36 @@ class Database {
         });
     }
 
+    async getLogsCount(options = {}) {
+        const { type, level, guild_id } = options;
+        return new Promise((resolve, reject) => {
+            this.db.all("PRAGMA table_info(logs)", (err, columns) => {
+                if (err) return reject(err);
+
+                let query = 'SELECT COUNT(*) as count FROM logs WHERE 1=1';
+                const params = [];
+
+                if (guild_id) {
+                    query += ' AND guild_id = ?';
+                    params.push(guild_id);
+                }
+                if (type) {
+                    query += ' AND type = ?';
+                    params.push(type);
+                }
+                if (level) {
+                    query += ' AND level = ?';
+                    params.push(level);
+                }
+
+                this.db.get(query, params, (err, row) => {
+                    if (err) return reject(err);
+                    resolve(row && row.count ? row.count : 0);
+                });
+            });
+        });
+    }
+
     async clearOldLogs(olderThanDays = 7) {
         return new Promise((resolve, reject) => {
             const stmt = this.db.prepare(`

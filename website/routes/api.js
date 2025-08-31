@@ -2095,7 +2095,9 @@ router.get('/admin/logs', requireAdmin, ensureDbReady, async (req, res) => {
         const { type, level } = req.query;
         const guildId = req.query.guildId || (req.session && req.session.guild && req.session.guild.id) || req.currentServerId || process.env.GUILD_ID;
 
-        const limit = parseInt(req.query.limit || '50', 10) || 50;
+    const limit = Math.min(parseInt(req.query.limit || '50', 10) || 50, 200);
+    const page = Math.max(parseInt(req.query.page || '1', 10) || 1, 1);
+    const offset = (page - 1) * limit;
 
         addDebugLog('debug', 'Fetching admin logs', { guildId, type, level, limit });
 
@@ -2106,10 +2108,10 @@ router.get('/admin/logs', requireAdmin, ensureDbReady, async (req, res) => {
             return res.status(500).json({ error: 'Database não disponível' });
         }
 
-        const options = { guild_id: guildId, type: type || null, level: level || null, limit, offset: 0 };
+    const options = { guild_id: guildId, type: type || null, level: level || null, limit, offset };
         addDebugLog('debug', 'getLogs options', options);
 
-        let logs;
+    let logs;
         try {
             logs = await req.db.getLogs(options);
             addDebugLog('debug', 'getLogs result', { count: Array.isArray(logs) ? logs.length : 0 });
@@ -2119,7 +2121,14 @@ router.get('/admin/logs', requireAdmin, ensureDbReady, async (req, res) => {
             return res.status(500).json({ error: 'Erro interno do servidor' });
         }
 
-        res.json({ success: true, logs });
+        // Also return total count for pagination
+        try {
+            const total = await req.db.getLogsCount({ guild_id: guildId, type: type || null, level: level || null });
+            res.json({ success: true, logs, pagination: { total, page, limit, pages: Math.ceil(total / limit) } });
+        } catch (countErr) {
+            addDebugLog('warn', 'Failed to compute logs total', { error: countErr && countErr.message ? countErr.message : countErr });
+            res.json({ success: true, logs, pagination: { page, limit } });
+        }
     } catch (error) {
         logger.error('Erro ao buscar logs', { error: error && error.message ? error.message : error, stack: error && error.stack });
         addDebugLog('error', 'Erro ao buscar logs (stack)', { error: error && error.message ? error.message : error, stack: error && error.stack });

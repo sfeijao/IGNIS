@@ -36,7 +36,12 @@
 
   <div id="adminLogs">
     <h3>Recent Admin Logs</h3>
-    <button id="refreshLogs">Refresh Logs</button>
+    <div>
+      <button id="refreshLogs">Refresh Logs</button>
+      <button id="prevPage">Previous</button>
+      <span id="pageInfo">Page 1</span>
+      <button id="nextPage">Next</button>
+    </div>
     <ul id="logList"></ul>
   </div>
 
@@ -131,17 +136,33 @@
       }catch(e){ status.textContent = e && e.message ? e.message : JSON.stringify(e) }
     });
 
-    document.getElementById('refreshLogs').addEventListener('click', async ()=>{
+    let currentPage = 1;
+    const pageInfo = document.getElementById('pageInfo');
+
+    async function loadLogs(page = 1) {
       const ul = document.getElementById('logList'); ul.innerHTML='Loading...';
       try{
-        // Use session-based API helper; server in dev mode will allow localhost requests
-        const j = await api('/admin/logs?limit=20');
+        const limit = 10;
+        const j = await api(`/admin/logs?limit=${limit}&page=${page}`);
         ul.innerHTML = '';
         if (j.logs && j.logs.length) {
           j.logs.forEach(l=>{ const li = document.createElement('li'); li.textContent = `${l.timestamp} [${l.type}] ${l.message}`; ul.appendChild(li); });
         } else ul.textContent = 'No logs';
+
+        currentPage = (j.pagination && j.pagination.page) || page;
+        const pages = (j.pagination && j.pagination.pages) || 1;
+        pageInfo.textContent = `Page ${currentPage} / ${pages}`;
+        document.getElementById('prevPage').disabled = currentPage <= 1;
+        document.getElementById('nextPage').disabled = currentPage >= pages;
       }catch(e){ ul.textContent = e && e.message ? e.message : JSON.stringify(e) }
-    });
+    }
+
+    document.getElementById('refreshLogs').addEventListener('click', ()=> loadLogs(currentPage));
+    document.getElementById('prevPage').addEventListener('click', ()=> { if (currentPage>1) loadLogs(currentPage-1); });
+    document.getElementById('nextPage').addEventListener('click', ()=> { loadLogs(currentPage+1); });
+
+    // initial load
+    loadLogs(1);
   </script>
 </body>
 </html>
