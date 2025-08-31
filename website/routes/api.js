@@ -118,22 +118,31 @@ const requireAuth = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
-        
-    // In production, only allow long tokens (assumed legitimate) or explicit ALLOW_DEV_TOKENS
-    const allowDev = (process.env.NODE_ENV !== 'production') || process.env.ALLOW_DEV_TOKENS === 'true';
-    // Accept various valid tokens for development and testing when allowed
-    const validDevTokens = [ 'dev-token', 'admin-token', 'dashboard-token', 'local-dev' ];
-        
-    if (token && ((allowDev && validDevTokens.includes(token)) || token.length > 10)) {
-            req.user = { 
-                id: token === 'dev-token' ? '381762006329589760' : 
-                    token === 'admin-token' ? '381762006329589760' : 
-                    '381762006329589760', // ID de utilizador válido (snowflake)
-                isAdmin: true,
-                token: token
-            };
-            logger.info('✅ Authenticated with bearer token: %s...', token.substring(0, 8));
-            return next();
+
+        // Determine environment
+        const isProd = process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_ENVIRONMENT_NAME || !!process.env.RAILWAY_PROJECT_NAME;
+        const allowDev = !isProd || process.env.ALLOW_DEV_TOKENS === 'true';
+
+        // If an explicit ADMIN_API_TOKEN is set, accept it in any environment
+        const adminApiToken = process.env.ADMIN_API_TOKEN;
+
+        const validDevTokens = [ 'dev-token', 'admin-token', 'dashboard-token', 'local-dev' ];
+
+        if (token) {
+            if (adminApiToken && token === adminApiToken) {
+                req.user = { id: 'admin_token_user', isAdmin: true, token };
+                logger.info('✅ Authenticated with ADMIN_API_TOKEN');
+                return next();
+            }
+
+            if (allowDev && validDevTokens.includes(token)) {
+                req.user = { id: '381762006329589760', isAdmin: true, token };
+                logger.info('✅ Authenticated with dev token: %s...', token.substring(0, 8));
+                return next();
+            }
+
+            // Otherwise, do not accept arbitrary short tokens. Require session or configured ADMIN_API_TOKEN.
+            logger.warn('❌ Bearer token rejected', { tokenPreview: token.substring(0, 8), isProd, allowDev });
         }
     }
     
@@ -226,21 +235,25 @@ const requireAdmin = (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
-        
-    // In production, only allow dev tokens when explicitly enabled
-    const allowDev = (process.env.NODE_ENV !== 'production') || process.env.ALLOW_DEV_TOKENS === 'true';
-    const validDevTokens = [ 'dev-token', 'admin-token', 'dashboard-token', 'local-dev' ];
-        
-    if (token && ((allowDev && validDevTokens.includes(token)) || token.length > 10)) {
-            req.user = { 
-                id: token === 'dev-token' ? 'dev_user' : 
-                    token === 'admin-token' ? '381762006329589760' : 
-                    '381762006329589760', 
-                isAdmin: true,
-                token: token
-            };
-            logger.info('✅ Authenticated with token: %s...', token.substring(0, 8));
-            return next();
+
+        const isProd = process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_ENVIRONMENT_NAME || !!process.env.RAILWAY_PROJECT_NAME;
+        const allowDev = !isProd || process.env.ALLOW_DEV_TOKENS === 'true';
+        const adminApiToken = process.env.ADMIN_API_TOKEN;
+        const validDevTokens = [ 'dev-token', 'admin-token', 'dashboard-token', 'local-dev' ];
+
+        if (token) {
+            if (adminApiToken && token === adminApiToken) {
+                req.user = { id: 'admin_token_user', isAdmin: true, token };
+                logger.info('✅ Authenticated admin with ADMIN_API_TOKEN');
+                return next();
+            }
+            if (allowDev && validDevTokens.includes(token)) {
+                req.user = { id: '381762006329589760', isAdmin: true, token };
+                logger.info('✅ Authenticated via dev token: %s...', token.substring(0, 8));
+                return next();
+            }
+
+            logger.warn('❌ Admin Bearer token rejected', { tokenPreview: token.substring(0, 8), isProd, allowDev });
         }
     }
     
