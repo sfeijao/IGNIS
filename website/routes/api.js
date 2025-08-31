@@ -119,15 +119,12 @@ const requireAuth = (req, res, next) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
         
-        // Accept various valid tokens for development and testing
-        const validTokens = [
-            'dev-token',
-            'admin-token', 
-            'dashboard-token',
-            'local-dev'
-        ];
+    // In production, only allow long tokens (assumed legitimate) or explicit ALLOW_DEV_TOKENS
+    const allowDev = (process.env.NODE_ENV !== 'production') || process.env.ALLOW_DEV_TOKENS === 'true';
+    // Accept various valid tokens for development and testing when allowed
+    const validDevTokens = [ 'dev-token', 'admin-token', 'dashboard-token', 'local-dev' ];
         
-        if (token && (validTokens.includes(token) || token.length > 10)) {
+    if (token && ((allowDev && validDevTokens.includes(token)) || token.length > 10)) {
             req.user = { 
                 id: token === 'dev-token' ? '381762006329589760' : 
                     token === 'admin-token' ? '381762006329589760' : 
@@ -140,16 +137,12 @@ const requireAuth = (req, res, next) => {
         }
     }
     
-    // Check if this is a local development request
-    const isLocalDev = req.get('host')?.includes('localhost') || 
-                      req.get('host')?.includes('127.0.0.1') ||
-                      req.get('referer')?.includes('file://') ||
-                      req.connection?.remoteAddress === '127.0.0.1' ||
-                      req.connection?.remoteAddress === '::1';
-                      
-    if (isLocalDev) {
+    // Only allow an explicit local bypass. This avoids automatically
+    // authenticating requests just because they come from localhost.
+    const allowLocalBypass = process.env.ALLOW_LOCAL_AUTH_BYPASS === 'true';
+    if (allowLocalBypass) {
         req.user = { id: '381762006329589760', isAdmin: true };
-        logger.info('✅ Authenticated via localhost');
+        logger.info('✅ ALLOW_LOCAL_AUTH_BYPASS enabled: authenticated via local bypass');
         return next();
     }
     
@@ -234,15 +227,11 @@ const requireAdmin = (req, res, next) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
         
-        // Accept various valid tokens
-        const validTokens = [
-            'dev-token',
-            'admin-token', 
-            'dashboard-token',
-            'local-dev'
-        ];
+    // In production, only allow dev tokens when explicitly enabled
+    const allowDev = (process.env.NODE_ENV !== 'production') || process.env.ALLOW_DEV_TOKENS === 'true';
+    const validDevTokens = [ 'dev-token', 'admin-token', 'dashboard-token', 'local-dev' ];
         
-        if (token && (validTokens.includes(token) || token.length > 10)) {
+    if (token && ((allowDev && validDevTokens.includes(token)) || token.length > 10)) {
             req.user = { 
                 id: token === 'dev-token' ? 'dev_user' : 
                     token === 'admin-token' ? '381762006329589760' : 
@@ -255,16 +244,11 @@ const requireAdmin = (req, res, next) => {
         }
     }
     
-    // Check if this is a local development request
-    const isLocalDev = req.get('host')?.includes('localhost') || 
-                      req.get('host')?.includes('127.0.0.1') ||
-                      req.get('referer')?.includes('file://') ||
-                      req.connection?.remoteAddress === '127.0.0.1' ||
-                      req.connection?.remoteAddress === '::1';
-                      
-    if (isLocalDev) {
+    // Only allow explicit local bypass for admin actions
+    const allowLocalBypass = process.env.ALLOW_LOCAL_AUTH_BYPASS === 'true';
+    if (allowLocalBypass) {
         req.user = { id: '381762006329589760', isAdmin: true };
-        logger.info('✅ Authenticated via localhost');
+        logger.info('✅ ALLOW_LOCAL_AUTH_BYPASS enabled: authenticated admin via local bypass');
         return next();
     }
     
