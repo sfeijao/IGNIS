@@ -134,7 +134,8 @@
     document.getElementById('refreshLogs').addEventListener('click', async ()=>{
       const ul = document.getElementById('logList'); ul.innerHTML='Loading...';
       try{
-        const res = await fetch('/api/admin/logs?limit=20', { headers: {'Authorization':'Bearer dev-token'} }); const j = await res.json();
+        // Use session-based API helper; server in dev mode will allow localhost requests
+        const j = await api('/admin/logs?limit=20');
         ul.innerHTML = '';
         if (j.logs && j.logs.length) {
           j.logs.forEach(l=>{ const li = document.createElement('li'); li.textContent = `${l.timestamp} [${l.type}] ${l.message}`; ul.appendChild(li); });
