@@ -194,10 +194,11 @@ passport.deserializeUser((user, done) => {
 
 // Middleware de autenticação
 function requireAuth(req, res, next) {
-    // Modo de desenvolvimento - bypass autenticação
-    if (process.env.NODE_ENV !== 'production' && !process.env.RAILWAY_ENVIRONMENT_NAME) {
-    logger.info('🔧 Modo desenvolvimento: Bypass autenticação');
-        // Simular usuário autenticado para desenvolvimento
+    // Require an explicit local bypass flag to enable development simulation.
+    // This prevents accidental bypass in environments where NODE_ENV may be unset.
+    const allowLocalBypass = process.env.ALLOW_LOCAL_AUTH_BYPASS === 'true';
+    if (allowLocalBypass) {
+        logger.info('🔧 ALLOW_LOCAL_AUTH_BYPASS enabled: simulating authenticated user');
         req.user = {
             id: '381762006329589760', // ID de teste válido (snowflake)
             username: 'Developer',
@@ -207,32 +208,36 @@ function requireAuth(req, res, next) {
         };
         return next();
     }
-    
-    if (req.isAuthenticated()) {
+
+    // Fall back to Passport session authentication
+    if (req.isAuthenticated && req.isAuthenticated()) {
         return next();
     }
+
+    // Not authenticated - redirect to Discord login
     res.redirect('/login');
 }
 
 // Middleware para verificar acesso ao servidor
 function requireServerAccess(req, res, next) {
     try {
-        // Modo de desenvolvimento - bypass verificação de servidor
-        if (process.env.NODE_ENV !== 'production' && !process.env.RAILWAY_ENVIRONMENT_NAME) {
-                logger.info('🔧 Modo desenvolvimento: Bypass verificação de servidor');
-                return next();
-            }
-        
-            logger.debug('🔐 Verificando acesso ao servidor para: %s', req.user?.username || 'Usuário desconhecido');
-        
-            if (!req.user) {
-                logger.warn('❌ Usuário não encontrado, redirecionando para login');
-                return res.redirect('/login');
-            }
+        // Allow explicit local bypass when developing locally
+        const allowLocalBypass = process.env.ALLOW_LOCAL_AUTH_BYPASS === 'true';
+        if (allowLocalBypass) {
+            logger.info('🔧 ALLOW_LOCAL_AUTH_BYPASS enabled: bypassing server access check');
+            return next();
+        }
 
-            // Para desenvolvimento, permitir todos os usuários autenticados
-            // TODO: Implementar verificação real dos servidores onde o bot está presente
-            logger.info('✅ Usuário autenticado, permitindo acesso (modo desenvolvimento)');
+        logger.debug('🔐 Verificando acesso ao servidor para: %s', req.user?.username || 'Usuário desconhecido');
+
+        if (!req.user) {
+            logger.warn('❌ Usuário não encontrado, redirecionando para login');
+            return res.redirect('/login');
+        }
+
+        // Para desenvolvimento, permitir todos os usuários autenticados
+        // TODO: Implementar verificação real dos servidores onde o bot está presente
+        logger.info('✅ Usuário autenticado, permitindo acesso');
         next();
     } catch (error) {
         logger.error('❌ Erro no middleware requireServerAccess:', { error: error && error.message ? error.message : error });

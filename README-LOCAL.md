@@ -13,6 +13,7 @@ Environment
   - DISCORD_CLIENT_SECRET
   - WEBSITE_SESSION_SECRET — a long random string
   - (optional) ALLOW_DEV_TOKENS=true to enable the dev-token bypass in non-dev environments
+    - (optional) ALLOW_LOCAL_AUTH_BYPASS=true to enable a local session/auth bypass for quick development (preferred over ALLOW_DEV_TOKENS)
 
 Install and start
 1. Install deps:
@@ -21,9 +22,11 @@ Install and start
 npm install
 ```
 
-2. Start the website server only:
+2. Start the website server only (recommended with local bypass for quick testing):
 
 ```powershell
+# Enable local session bypass for development
+$env:ALLOW_LOCAL_AUTH_BYPASS = 'true';
 node website/server.js
 ```
 
@@ -34,7 +37,8 @@ node index.js
 ```
 
 Local dev notes
-- The dev-token bypass is active when NODE_ENV != 'production' or when `ALLOW_DEV_TOKENS=true` is set.
+- The recommended way to bypass OAuth for local development is to set `ALLOW_LOCAL_AUTH_BYPASS=true` before starting the server.
+- Avoid enabling `ALLOW_DEV_TOKENS` or exposing dev tokens in shared environments.
 - To access admin UI quickly use: `http://localhost:4000/admin-guild-config.html`
 
 Security
