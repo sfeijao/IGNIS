@@ -417,11 +417,14 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        category,
-                        priority,
-                        subject,
-                        description
-                    })
+                            category,
+                            priority,
+                            title: subject,
+                            reason: description,
+                            // keep legacy fields for any server compatibility
+                            subject: subject,
+                            description: description
+                        })
                 });
 
                 const data = await response.json();

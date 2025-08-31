@@ -450,6 +450,75 @@ router.post('/admin/guild-config/:guildId', requireAuth, ensureDbReady, async (r
     }
 });
 
+// List known guilds (simple list from guild_config or guilds table)
+router.get('/admin/guilds', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        // Prefer explicit guilds table if present
+        const rows = await new Promise((resolve, reject) => {
+            db.db.all('SELECT DISTINCT guild_id FROM guild_config', (err, rows) => {
+                if (err) return reject(err);
+                resolve(rows.map(r => r.guild_id));
+            });
+        });
+        res.json({ success: true, guilds: rows });
+    } catch (error) {
+        logger.error('Erro ao listar guilds para admin', { error: error && error.message ? error.message : error });
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// Moderation action endpoint (kick/ban/timeout/role)
+router.post('/admin/moderation/action', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        const { guildId, action, targetId, durationSeconds = 0, roleId, reason = 'Moderation via dashboard' } = req.body;
+
+        if (!global.discordClient || !global.discordClient.isReady || !global.discordClient.isReady()) {
+            return res.status(503).json({ error: 'Discord client não disponível no servidor' });
+        }
+
+        const guild = global.discordClient.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ error: 'Guild não encontrada pelo bot' });
+
+        const member = await guild.members.fetch(targetId).catch(() => null);
+        if (!member) return res.status(404).json({ error: 'Membro não encontrado' });
+
+        if (action === 'kick') {
+            await member.kick(reason);
+            await db.createLog({ guild_id: guildId, type: 'moderation', message: `Kicked ${targetId}`, details: { action, reason, actor: req.user?.id } });
+            return res.json({ success: true });
+        }
+
+        if (action === 'ban') {
+            await guild.bans.create(targetId, { reason });
+            await db.createLog({ guild_id: guildId, type: 'moderation', message: `Banned ${targetId}`, details: { action, reason, actor: req.user?.id } });
+            return res.json({ success: true });
+        }
+
+        if (action === 'timeout') {
+            // timeout is available via member.timeout in newer discord.js
+            if (typeof member.timeout === 'function') {
+                await member.timeout(durationSeconds * 1000, reason);
+                await db.createLog({ guild_id: guildId, type: 'moderation', message: `Timed out ${targetId} for ${durationSeconds}s`, details: { action, reason, actor: req.user?.id } });
+                return res.json({ success: true });
+            }
+            return res.status(400).json({ error: 'Timeout não suportado pela versão do client' });
+        }
+
+        if (action === 'addRole' || action === 'removeRole') {
+            if (!roleId) return res.status(400).json({ error: 'roleId required' });
+            if (action === 'addRole') await member.roles.add(roleId, reason);
+            else await member.roles.remove(roleId, reason);
+            await db.createLog({ guild_id: guildId, type: 'moderation', message: `${action} ${roleId} for ${targetId}`, details: { action, roleId, actor: req.user?.id } });
+            return res.json({ success: true });
+        }
+
+        return res.status(400).json({ error: 'Ação desconhecida' });
+    } catch (error) {
+        logger.error('Erro em admin moderation action', { error: error && error.message ? error.message : error });
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
 // Activity feed
 router.get('/analytics/activity', requireAuth, async (req, res) => {
     try {

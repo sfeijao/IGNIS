@@ -13,6 +13,7 @@
 
   <label>Archive Webhook URL <input id="archive" placeholder="https://discord.com/api/webhooks/..." /></label>
   <label>Log Channel ID <input id="logChannel" placeholder="channel id" /></label>
+  <small id="validateMsg" style="color:#666;display:block;margin-top:6px"></small>
 
   <button id="load">Load</button>
   <button id="save">Save</button>
@@ -20,6 +21,11 @@
   <pre id="status" style="margin-top:16px;background:#f8f8f8;padding:8px;border:1px solid #ddd"></pre>
 
   <script>
+    function getQueryParam(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+
     async function api(path, method='GET', body=null) {
       const guildId = document.getElementById('guildId').value;
       const url = '/api' + path.replace(':guildId', guildId);
@@ -28,6 +34,10 @@
       const res = await fetch(url, opts);
       return res.json();
     }
+
+    // Auto-fill guildId from query string if present
+    const qGuild = getQueryParam('guildId');
+    if (qGuild) document.getElementById('guildId').value = qGuild;
 
     document.getElementById('load').addEventListener('click', async () => {
       const status = document.getElementById('status'); status.textContent = 'Loading...';
@@ -45,8 +55,24 @@
 
     document.getElementById('save').addEventListener('click', async () => {
       const status = document.getElementById('status'); status.textContent = 'Saving...';
+      const validateMsg = document.getElementById('validateMsg'); validateMsg.textContent = '';
       try {
-        const body = { archive_webhook_url: document.getElementById('archive').value || null, log_channel_id: document.getElementById('logChannel').value || null };
+        const archiveVal = document.getElementById('archive').value || null;
+        // Basic webhook URL validation
+        if (archiveVal) {
+          const ok = /^https:\/\/discord(?:app)?\.com\/api\/webhooks\/.+/.test(archiveVal);
+          if (!ok) {
+            validateMsg.textContent = 'Webhook URL não parece válida (espero https://discord.com/api/webhooks/...)';
+            status.textContent = 'Validation failed';
+            return;
+          }
+          // Optional: try a HEAD fetch to see if reachable (non-blocking if fails)
+          try {
+            await fetch(archiveVal, { method: 'HEAD' , mode: 'no-cors'}).catch(()=>null);
+          } catch (e) {}
+        }
+
+        const body = { archive_webhook_url: archiveVal, log_channel_id: document.getElementById('logChannel').value || null };
         const data = await api('/admin/guild-config/:guildId', 'POST', body);
         status.textContent = JSON.stringify(data, null, 2);
       } catch (e) { status.textContent = e.message }

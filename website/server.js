@@ -364,6 +364,37 @@ app.get('/dashboard-fixed.html', requireAuth, requireServerAccess, (req, res) =>
     }
 });
 
+// Admin guild config page (protected)
+app.get('/admin-guild-config.html', requireAuth, requireServerAccess, (req, res) => {
+    try {
+        logger.info('Usuário acessando admin-guild-config: %s', req.user?.username || 'Developer');
+        res.sendFile(path.join(__dirname, 'public', 'admin-guild-config.html'));
+    } catch (error) {
+        logger.error('Erro ao servir admin-guild-config', { error: error && error.message ? error.message : error });
+        res.status(500).json({ error: 'Erro interno ao servir página' });
+    }
+});
+
+// Admin: list of guilds
+app.get('/admin-guilds.html', requireAuth, requireServerAccess, (req, res) => {
+    try {
+        res.sendFile(path.join(__dirname, 'public', 'admin-guilds.html'));
+    } catch (e) {
+        logger.error('Erro ao servir admin-guilds', { error: e && e.message ? e.message : e });
+        res.status(500).send('Erro');
+    }
+});
+
+// Admin: moderation UI
+app.get('/admin-moderation.html', requireAuth, requireServerAccess, (req, res) => {
+    try {
+        res.sendFile(path.join(__dirname, 'public', 'admin-moderation.html'));
+    } catch (e) {
+        logger.error('Erro ao servir admin-moderation', { error: e && e.message ? e.message : e });
+        res.status(500).send('Erro');
+    }
+});
+
 // Tickets page (protected)
 app.get('/tickets.html', requireAuth, requireServerAccess, (req, res) => {
     try {
