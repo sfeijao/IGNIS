@@ -1149,6 +1149,63 @@ class Database {
         });
     }
 
+    // Webhooks: support multiple webhooks per guild
+    async getGuildWebhooks(guildId) {
+        return new Promise((resolve, reject) => {
+            this.db.all(
+                'SELECT id, guild_id, url, name, channel_id, channel_name, created_at, updated_at FROM guild_webhooks WHERE guild_id = ? ORDER BY created_at DESC',
+                [guildId],
+                (err, rows) => {
+                    if (err) return reject(err);
+                    resolve(rows || []);
+                }
+            );
+        });
+    }
+
+    async addGuildWebhook(guildId, webhookUrl, meta = {}) {
+        return new Promise((resolve, reject) => {
+            const stmt = this.db.prepare(`
+                INSERT INTO guild_webhooks (guild_id, url, name, channel_id, channel_name, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            `);
+            const name = meta.name || null;
+            const channel_id = meta.channel_id || null;
+            const channel_name = meta.channel_name || null;
+            stmt.run([guildId, webhookUrl, name, channel_id, channel_name], function(err) {
+                if (err) return reject(err);
+                resolve({ id: this.lastID });
+            });
+            stmt.finalize();
+        });
+    }
+
+    async removeGuildWebhook(id) {
+        return new Promise((resolve, reject) => {
+            const stmt = this.db.prepare('DELETE FROM guild_webhooks WHERE id = ?');
+            stmt.run([id], function(err) {
+                if (err) return reject(err);
+                resolve({ changes: this.changes });
+            });
+            stmt.finalize();
+        });
+    }
+
+    async updateGuildWebhook(id, updates = {}) {
+        const fields = Object.keys(updates);
+        if (fields.length === 0) return Promise.resolve({ changes: 0 });
+        const values = Object.values(updates);
+        const setClause = fields.map(f => `${f} = ?`).join(', ');
+        return new Promise((resolve, reject) => {
+            const stmt = this.db.prepare(`UPDATE guild_webhooks SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`);
+            stmt.run([...values, id], function(err) {
+                if (err) return reject(err);
+                resolve({ changes: this.changes });
+            });
+            stmt.finalize();
+        });
+    }
+
     close() {
         if (this.db) {
             this.db.close((err) => {

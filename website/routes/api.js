@@ -1197,15 +1197,23 @@ router.post('/tickets/:id/close', requireAuth, ensureDbReady, async (req, res) =
         // Recarregar ticket atual para verificar flag do webhook
         const updatedTicket = await db.getTicketById(ticketId);
 
-        // Enviar webhook de arquivo se configurado e ainda nao enviado
+        // Enviar webhooks de arquivo (suporta múltiplos) se configurados e ainda não enviados
         try {
-            const webhookConfig = await db.getGuildConfig(req.currentServerId, 'archive_webhook_url');
-            if (webhookConfig?.value && !updatedTicket?.bug_webhook_sent) {
-                const sent = await sendArchivedWebhookWithRetries(webhookConfig.value, updatedTicket, reason || 'Resolvido');
-                if (sent) await db.markTicketWebhookSent(ticketId);
+            const webhooks = await db.getGuildWebhooks(req.currentServerId);
+            if (webhooks && webhooks.length > 0 && !updatedTicket?.bug_webhook_sent) {
+                let anySent = false;
+                for (const wh of webhooks) {
+                    try {
+                        const sent = await sendArchivedWebhookWithRetries(wh.url, updatedTicket, reason || 'Resolvido');
+                        if (sent) anySent = true;
+                    } catch (e) {
+                        addDebugLog('warn', 'Falha ao enviar webhook específico', { webhookId: wh.id, error: e.message });
+                    }
+                }
+                if (anySent) await db.markTicketWebhookSent(ticketId);
             }
         } catch (webhookErr) {
-            addDebugLog('error', 'Erro ao enviar webhook ao fechar ticket', { error: webhookErr.message, ticketId });
+            addDebugLog('error', 'Erro ao enviar webhooks ao fechar ticket', { error: webhookErr.message, ticketId });
         }
 
         // Emitir atualização via Socket.IO para dashboards/tickets conectados
@@ -1513,21 +1521,20 @@ router.delete('/tickets/:id', requireAuth, ensureDbReady, async (req, res) => {
             }
         }
         
-        // Enviar ticket para webhook de arquivo (antes de deletar)
+        // Enviar ticket para webhooks de arquivo (suporta múltiplos) antes de deletar
         try {
-            const webhookConfig = await db.getGuildConfig(req.currentServerId, 'archive_webhook_url');
-            if (webhookConfig?.value) {
-                await sendArchivedWebhookWithRetries(
-                    webhookConfig.value,
-                    ticket,
-                    `Ticket deletado por ${username}`
-                );
+            const webhooks = await db.getGuildWebhooks(req.currentServerId);
+            if (webhooks && webhooks.length > 0) {
+                for (const wh of webhooks) {
+                    try {
+                        await sendArchivedWebhookWithRetries(wh.url, ticket, `Ticket deletado por ${username}`);
+                    } catch (e) {
+                        addDebugLog('warn', 'Falha ao enviar webhook no delete', { webhookId: wh.id, error: e.message });
+                    }
+                }
             }
         } catch (webhookError) {
-            addDebugLog('error', '⚠️ Erro ao enviar webhook (não crítico)', { 
-                error: webhookError.message, 
-                ticketId 
-            });
+            addDebugLog('error', '⚠️ Erro ao enviar webhooks (não crítico)', { error: webhookError.message, ticketId });
         }
         
         // Deletar ticket da base de dados
@@ -2317,6 +2324,112 @@ router.post('/config/archive-webhook/test', requireAuth, ensureDbReady, async (r
     } catch (error) {
         addDebugLog('error', '❌ Erro ao testar webhook', { error: error.message });
         res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+});
+
+// New: manage multiple webhooks per guild
+router.get('/config/webhooks', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        const guildId = req.currentServerId;
+        const webhooks = await req.db.getGuildWebhooks(guildId);
+        res.json({ success: true, webhooks });
+    } catch (error) {
+        logger.error('Erro ao listar webhooks', { error: error && error.message ? error.message : error });
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+router.post('/config/webhooks', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        const { url, name } = req.body;
+        const guildId = req.currentServerId;
+        if (!url || !url.includes('discord.com/api/webhooks/')) return res.status(400).json({ error: 'URL de webhook inválida' });
+
+        // Optionally try to resolve channel via discord client for UI clarity
+        let meta = { name: name || null };
+        try {
+            const match = url.match(/webhooks\/(\d+)\//);
+            const webhookId = match ? match[1] : null;
+            if (webhookId && global.discordClient && global.discordClient.isReady()) {
+                const wh = await global.discordClient.fetchWebhook(webhookId).catch(() => null);
+                if (wh) {
+                    meta.channel_id = wh.channelId || null;
+                    meta.channel_name = wh.channelId ? `#${wh.channelId}` : null;
+                }
+            }
+        } catch (e) {
+            // ignore resolution errors
+        }
+
+        const result = await req.db.addGuildWebhook(guildId, url, meta);
+        await db.createLog(guildId, 'webhook_added', { webhookId: result.id, url, addedBy: req.user?.id });
+        res.json({ success: true, id: result.id });
+    } catch (error) {
+        logger.error('Erro ao adicionar webhook', { error: error && error.message ? error.message : error });
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+router.delete('/config/webhooks/:id', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        const id = req.params.id;
+        const result = await req.db.removeGuildWebhook(id);
+        res.json({ success: true, removed: result.changes });
+    } catch (error) {
+        logger.error('Erro ao remover webhook', { error: error && error.message ? error.message : error });
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+router.post('/config/webhooks/:id/test', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        const id = req.params.id;
+        const guildId = req.currentServerId;
+        const webhooks = await req.db.getGuildWebhooks(guildId);
+        const wh = webhooks.find(w => String(w.id) === String(id));
+        if (!wh) return res.status(404).json({ error: 'Webhook não encontrado' });
+
+        const testTicket = {
+            id: 999,
+            title: 'Teste de Webhook',
+            description: 'Teste para validar webhook',
+            user_id: req.user?.id || null,
+            severity: 'low',
+            category: 'teste',
+            created_at: new Date().toISOString()
+        };
+
+        let success = false;
+        try {
+            success = await sendArchivedWebhookWithRetries(wh.url, testTicket, 'Teste do webhook específico');
+        } catch (e) {
+            success = false;
+        }
+
+        if (success) return res.json({ success: true, message: 'Webhook testado com sucesso' });
+
+        // Fallback: try to post to channel via bot if webhook send failed
+        try {
+            const match = (wh.url || '').match(/webhooks\/(\d+)\//);
+            const webhookId = match ? match[1] : null;
+            if (webhookId && global.discordClient && global.discordClient.isReady()) {
+                const fetched = await global.discordClient.fetchWebhook(webhookId).catch(() => null);
+                if (fetched && fetched.channelId) {
+                    const channel = await global.discordClient.channels.fetch(fetched.channelId).catch(() => null);
+                    if (channel && channel.send) {
+                        await channel.send(`🔔 Teste de webhook: fallback via bot para canal <#${fetched.channelId}>`);
+                        return res.json({ success: true, message: 'Falha no webhook direta; mensagem enviada via bot para canal associado' });
+                    }
+                }
+            }
+        } catch (e) {
+            // ignore
+        }
+
+        res.status(500).json({ error: 'Falha ao testar webhook e fallback falhou' });
+    } catch (error) {
+        logger.error('Erro ao testar webhook específico', { error: error && error.message ? error.message : error });
+        res.status(500).json({ error: 'Erro interno' });
     }
 });
 

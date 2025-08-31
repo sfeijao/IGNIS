@@ -903,6 +903,12 @@
                                     <span>Logs</span>
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a href="#webhooks" data-section="webhooks">
+                                    <i class="fas fa-link"></i>
+                                    <span>Webhooks</span>
+                                </a>
+                            </li>
                         </ul>
                     </nav>
                 </aside>
@@ -1238,6 +1244,33 @@
                         </div>
                     </div>
 
+                    <!-- Webhooks Section -->
+                    <div id="webhooks-section" class="dashboard-section">
+                        <div class="page-header">
+                            <h1>Webhooks</h1>
+                            <p>Gerir webhooks de arquivo (suporta múltiplos por servidor)</p>
+                        </div>
+
+                        <div class="content-area">
+                            <div class="form-group">
+                                <label>Adicionar Webhook (URL)</label>
+                                <input type="url" id="new-webhook-url" class="form-control" placeholder="https://discord.com/api/webhooks/...">
+                            </div>
+                            <div class="form-group">
+                                <label>Nome (opcional)</label>
+                                <input type="text" id="new-webhook-name" class="form-control" placeholder="Nome amigável para identificação">
+                            </div>
+                            <div class="form-group">
+                                <button class="btn btn-primary" id="add-webhook-btn">Adicionar Webhook</button>
+                            </div>
+
+                            <hr>
+
+                            <h3>Webhooks configurados</h3>
+                            <div id="webhooks-list"></div>
+                        </div>
+                    </div>
+
                     <!-- Embed Builder Section -->
                     <div id="embeds-section" class="dashboard-section">
                         <div class="page-header">
@@ -1524,6 +1557,10 @@
 
                 // Load webhook configuration on page load
                 this.loadWebhookConfig();
+                // Initialize multi-webhook UI
+                const addWebhookBtn = document.getElementById('add-webhook-btn');
+                if (addWebhookBtn) addWebhookBtn.addEventListener('click', this.addWebhook.bind(this));
+                this.loadWebhooks();
             }
 
             showSection(sectionName) {
@@ -2520,6 +2557,96 @@
                     setTimeout(() => {
                         statusDiv.style.display = 'none';
                     }, 5000);
+                }
+            }
+
+            // Multi-webhook helpers
+            async loadWebhooks() {
+                try {
+                    const res = await fetch('/api/config/webhooks', { headers: { 'Authorization': `Bearer ${getAuthToken()}` } });
+                    const data = await res.json();
+                    if (data && data.webhooks) this.renderWebhooksList(data.webhooks);
+                } catch (e) {
+                    console.warn('Erro ao carregar webhooks', e);
+                }
+            }
+
+            renderWebhooksList(webhooks) {
+                const container = document.getElementById('webhooks-list');
+                if (!container) return;
+                container.innerHTML = '';
+                if (!webhooks || webhooks.length === 0) {
+                    container.innerHTML = '<p>Nenhum webhook configurado.</p>';
+                    return;
+                }
+
+                const list = document.createElement('div');
+                list.className = 'webhook-list';
+                webhooks.forEach(wh => {
+                    const item = document.createElement('div');
+                    item.className = 'webhook-item';
+                    item.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.02);';
+                    const left = document.createElement('div');
+                    left.innerHTML = `<strong>${wh.name || 'Webhook ' + wh.id}</strong><div style="font-size:0.85rem;color:var(--text-secondary)">${wh.url}</div><div style="font-size:0.8rem;color:var(--text-secondary)">${wh.channel_id ? 'Canal alvo: #' + wh.channel_id : (wh.channel_name ? wh.channel_name : '')}</div>`;
+                    const right = document.createElement('div');
+                    right.innerHTML = `
+                        <button class="btn btn-secondary btn-sm" data-action="test" data-id="${wh.id}">Testar</button>
+                        <button class="btn btn-danger btn-sm" data-action="delete" data-id="${wh.id}">Remover</button>
+                    `;
+                    item.appendChild(left);
+                    item.appendChild(right);
+                    list.appendChild(item);
+                });
+                container.appendChild(list);
+
+                container.querySelectorAll('button[data-action="test"]').forEach(btn => btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.dataset.id;
+                    e.currentTarget.disabled = true;
+                    try {
+                        const res = await fetch(`/api/config/webhooks/${id}/test`, { method: 'POST', headers: { 'Authorization': `Bearer ${getAuthToken()}` } });
+                        const data = await res.json();
+                        if (data && data.success) this.showMessage(data.message || 'Teste OK', 'success');
+                        else this.showMessage(data.error || 'Teste falhou', 'error');
+                    } catch (err) {
+                        this.showMessage('Erro ao testar webhook', 'error');
+                    } finally { e.currentTarget.disabled = false; }
+                }));
+
+                container.querySelectorAll('button[data-action="delete"]').forEach(btn => btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.dataset.id;
+                    if (!confirm('Remover este webhook?')) return;
+                    try {
+                        const res = await fetch(`/api/config/webhooks/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${getAuthToken()}` } });
+                        const data = await res.json();
+                        if (data && data.success) {
+                            this.showMessage('Webhook removido', 'success');
+                            this.loadWebhooks();
+                        } else {
+                            this.showMessage('Falha ao remover webhook', 'error');
+                        }
+                    } catch (err) {
+                        this.showMessage('Erro ao remover webhook', 'error');
+                    }
+                }));
+            }
+
+            async addWebhook() {
+                const url = document.getElementById('new-webhook-url')?.value?.trim();
+                const name = document.getElementById('new-webhook-name')?.value?.trim();
+                if (!url) return this.showMessage('URL é obrigatória', 'warning');
+                try {
+                    const res = await fetch('/api/config/webhooks', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` }, body: JSON.stringify({ url, name }) });
+                    const data = await res.json();
+                    if (data && data.success) {
+                        this.showMessage('Webhook adicionado', 'success');
+                        document.getElementById('new-webhook-url').value = '';
+                        document.getElementById('new-webhook-name').value = '';
+                        this.loadWebhooks();
+                    } else {
+                        this.showMessage(data.error || 'Falha ao adicionar webhook', 'error');
+                    }
+                } catch (e) {
+                    this.showMessage('Erro ao adicionar webhook', 'error');
                 }
             }
         }

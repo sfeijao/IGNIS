@@ -235,6 +235,19 @@ CREATE TABLE IF NOT EXISTS guild_config (
     UNIQUE(guild_id, config_key)
 );
 
+-- Guild webhooks table: store multiple webhooks per guild and resolved channel info
+CREATE TABLE IF NOT EXISTS guild_webhooks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    url TEXT NOT NULL,
+    name TEXT,
+    channel_id TEXT,
+    channel_name TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (guild_id) REFERENCES guilds(discord_id)
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id);
 CREATE INDEX IF NOT EXISTS idx_guilds_discord_id ON guilds(discord_id);
