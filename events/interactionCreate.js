@@ -629,6 +629,20 @@ module.exports = {
                                                 } catch (fbErr) {
                                                     logger.warn('Error during fallback posting to log channel', { error: fbErr && fbErr.message ? fbErr.message : fbErr, ticketId: ticketRecord.id });
                                                 }
+                                                // Also attempt to send archive payload to a private endpoint if configured
+                                                try {
+                                                    const privateEndpoint = process.env.PRIVATE_LOG_ENDPOINT || null;
+                                                    const privateToken = process.env.PRIVATE_LOG_TOKEN || null;
+                                                    if (privateEndpoint) {
+                                                        const { sendToPrivateEndpoint } = require('../website/utils/privateLogger');
+                                                        const payload = { ticket: ticketRecord, messages, transcriptUrl, event: 'ticket_archived', closedBy: interaction.user?.id || null };
+                                                        const ok = await sendToPrivateEndpoint(privateEndpoint, privateToken, payload).catch(() => false);
+                                                        if (ok) await db.createLog(ticketRecord.guild_id, 'private_log_sent', { ticketId: ticketRecord.id });
+                                                        else await db.createLog(ticketRecord.guild_id, 'private_log_failed', { ticketId: ticketRecord.id });
+                                                    }
+                                                } catch (privateErr) {
+                                                    logger.warn('Error sending to private endpoint', { error: privateErr && privateErr.message ? privateErr.message : privateErr, ticketId: ticketRecord.id });
+                                                }
                                             }
                                         } else {
                                             logger.debug('No archive webhooks configured or already sent for this ticket', { guildId, ticketId: ticketRecord?.id });

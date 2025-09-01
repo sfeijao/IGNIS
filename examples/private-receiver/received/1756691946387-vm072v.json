@@ -1,0 +1,27 @@
+{
+  "receivedAt": "2025-09-01T01:59:06.388Z",
+  "headers": {
+    "authorization": "Bearer testtoken",
+    "user-agent": "Mozilla/5.0 (Windows NT; Windows NT 10.0; pt-PT) WindowsPowerShell/5.1.26100.4768",
+    "content-type": "application/json",
+    "host": "localhost:3001",
+    "content-length": "530",
+    "connection": "Keep-Alive"
+  },
+  "data": {
+    "messages": [
+      {
+        "content": "Teste final payload",
+        "author": "User#0001",
+        "ts": "2025-09-01T01:59:06.3785721+00:00"
+      }
+    ],
+    "transcriptUrl": "http://localhost:3001/transcript/1003",
+    "event": "ticket_closed",
+    "ticket": {
+      "guild_id": "987654321",
+      "id": 1003,
+      "subject": "Teste final"
+    }
+  }
+}

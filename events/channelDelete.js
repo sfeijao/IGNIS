@@ -116,6 +116,20 @@ module.exports = {
                                         } catch (fbErr) {
                                             logger.warn('Error during fallback posting to log channel (channelDelete)', { error: fbErr && fbErr.message ? fbErr.message : fbErr, ticketId: ticket.id });
                                         }
+                                        // Also attempt to send archive payload to a private endpoint if configured
+                                        try {
+                                            const privateEndpoint = process.env.PRIVATE_LOG_ENDPOINT || null;
+                                            const privateToken = process.env.PRIVATE_LOG_TOKEN || null;
+                                            if (privateEndpoint) {
+                                                const { sendToPrivateEndpoint } = require('../website/utils/privateLogger');
+                                                const payload = { ticket, messages, transcriptUrl, event: 'ticket_archived', reason: 'channel_deleted' };
+                                                const ok = await sendToPrivateEndpoint(privateEndpoint, privateToken, payload).catch(() => false);
+                                                if (ok) await db.createLog(ticket.guild_id, 'private_log_sent', { ticketId: ticket.id });
+                                                else await db.createLog(ticket.guild_id, 'private_log_failed', { ticketId: ticket.id });
+                                            }
+                                        } catch (privateErr) {
+                                            logger.warn('Error sending to private endpoint (channelDelete)', { error: privateErr && privateErr.message ? privateErr.message : privateErr, ticketId: ticket.id });
+                                        }
                                     }
                                 } else {
                                     logger.debug('No archive webhooks configured or already sent for this ticket (channelDelete)', { guildId, ticketId: ticket.id });
