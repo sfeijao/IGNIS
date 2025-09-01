@@ -74,3 +74,6 @@ Thumbs.db
 
 # Config files with sensitive data
 config-production.json
+
+# Example receiver received payloads (generated during local tests)
+examples/private-receiver/received/
