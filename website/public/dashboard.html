@@ -748,8 +748,8 @@
                                     <input type="text" class="form-control" value="!" placeholder="Digite o prefixo">
                                 </div>
                                 <div class="form-group">
-                                    <label>Canal de Logs</label>
-                                    <select class="form-control">
+                                    <label for="log-channel-select">Canal de Logs</label>
+                                    <select id="log-channel-select" title="Canal de Logs" class="form-control">
                                         <option>Selecionar canal...</option>
                                         <option>#logs</option>
                                         <option>#admin-logs</option>
@@ -870,12 +870,12 @@
                                 <input type="text" class="form-control" id="target-user" placeholder="Nome ou ID do utilizador">
                             </div>
                             <div class="form-group">
-                                <label>Motivo</label>
+                                <label for="action-reason">Motivo</label>
                                 <textarea class="form-control" id="action-reason" placeholder="Motivo da ação..."></textarea>
                             </div>
                             <div class="form-group duration-group-hidden" id="duration-group">
                                 <label>Duração</label>
-                                <select class="form-control" id="action-duration">
+                                <select title="Duração da ação" class="form-control" id="action-duration">
                                     <option value="60">1 minuto</option>
                                     <option value="300">5 minutos</option>
                                     <option value="3600">1 hora</option>
@@ -1027,6 +1027,7 @@
 
                                 <div class="form-group">
                                     <label>Cor</label>
+                                    <label for="embed-color">Cor do Embed</label>
                                     <input type="color" class="form-control" id="embed-color" value="#4318FF">
                                 </div>
 
@@ -1063,7 +1064,8 @@
                         </div>
 
                         <div class="logs-filters">
-                            <select class="form-control" id="logLevel">
+                            <label for="logLevel">Nível de Log</label>
+                            <select title="Nível de Log" class="form-control" id="logLevel">
                                 <option value="all">Todos os Levels</option>
                                 <option value="info">Info</option>
                                 <option value="warning">Aviso</option>
@@ -1071,7 +1073,8 @@
                                 <option value="success">Sucesso</option>
                             </select>
 
-                            <select class="form-control" id="logFilter">
+                            <label for="logFilter">Filtro de Log</label>
+                            <select title="Filtro de Log" class="form-control" id="logFilter">
                                 <option value="all">Todas as Categorias</option>
                                 <option value="moderation">Moderação</option>
                                 <option value="tickets">Tickets</option>
