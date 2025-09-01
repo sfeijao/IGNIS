@@ -515,11 +515,39 @@ module.exports = {
                                         logger.info('Resolved archive webhooks for ticket close', { guildId, webhooksCount: Array.isArray(webhooks) ? webhooks.length : 0, ticketId: ticketRecord?.id });
 
                                         if (webhooks && webhooks.length > 0 && !ticketRecord?.bug_webhook_sent) {
+                                            // collect ticket messages to include in webhook (if present in DB)
+                                            let messages = [];
+                                            try {
+                                                messages = await db.db ? await new Promise((res, rej) => {
+                                                    db.db.all('SELECT tm.user_id, u.username, tm.message, tm.created_at FROM ticket_messages tm LEFT JOIN users u ON tm.user_id = u.discord_id WHERE tm.ticket_id = ? ORDER BY tm.id ASC', [ticketRecord.id], (err, rows) => {
+                                                        if (err) return rej(err);
+                                                        res(rows || []);
+                                                    });
+                                                }) : [];
+                                            } catch (msgErr) {
+                                                logger.warn('Failed to fetch ticket messages for webhook excerpt', { error: msgErr && msgErr.message ? msgErr.message : msgErr, ticketId: ticketRecord.id });
+                                                messages = [];
+                                            }
+
+                                            // Build transcript URL for dashboard viewer
+                                            const serverHost = (process.env.WEBSITE_HOST || process.env.HOST || null);
+                                            const serverPort = (process.env.WEBSITE_PORT || process.env.PORT || null);
+                                            let transcriptUrl = null;
+                                            try {
+                                                // Prefer to construct from request host if available via config or environment
+                                                // Fallback to using dashboard origin if known
+                                                const base = process.env.WEBSITE_BASE_URL || (serverHost ? `http${process.env.WEBSITE_SSL === 'true' ? 's' : ''}://${serverHost}${serverPort ? `:${serverPort}` : ''}` : null);
+                                                if (base) transcriptUrl = `${base.replace(/\/$/, '')}/transcript/${ticketRecord.id}`;
+                                            } catch (uErr) {
+                                                transcriptUrl = null;
+                                            }
+
                                             let anySent = false;
                                             for (const wh of webhooks) {
                                                 try {
                                                     logger.info('Attempting to send archive webhook', { webhookId: wh.id, webhookUrl: wh.url, ticketId: ticketRecord.id });
-                                                    const sent = await sendArchivedTicketWebhook(wh.url, ticketRecord, `Fechado por ${interaction.user.tag}`);
+                                                    const payloadTicket = Object.assign({}, ticketRecord, { messages, transcriptUrl });
+                                                    const sent = await sendArchivedTicketWebhook(wh.url, payloadTicket, `Fechado por ${interaction.user.tag}`);
                                                     if (sent) {
                                                         anySent = true;
                                                         logger.info('Archive webhook sent', { webhookId: wh.id, ticketId: ticketRecord.id });
@@ -543,10 +571,18 @@ module.exports = {
                                                     const logChannelId = logCfg?.value || null;
                             if (logChannelId) {
                                                         const logChannel = interaction.guild?.channels.cache.get(logChannelId) || await client.channels.fetch(logChannelId).catch(() => null);
-                                                        if (logChannel && logChannel.send) {
-                                                            await logChannel.send(`📦 Arquivo de ticket (fallback): Ticket ${ticketRecord.id} do servidor ${interaction.guild?.name || guildId} - canal: <#${ticketRecord.channel_id}>`);
-                                logger.info('Fallback: posted archive info to log channel', { guildId, logChannelId, ticketId: ticketRecord.id });
-                                try { await db.createLog(guildId, 'webhook_fallback_logchannel', { ticketId: ticketRecord.id, logChannelId }); } catch(_){}
+                                                                if (logChannel && logChannel.send) {
+                                                                    // Skip posting to channels named like 'ticket-log' to avoid duplicate noisy posts
+                                                                    const forbiddenNames = ['ticket-log','tickets-log','ticket-logs','tickets_log','logs-tickets'];
+                                                                    const chName = (logChannel.name || '').toLowerCase();
+                                                                    const isForbidden = forbiddenNames.includes(chName) || forbiddenNames.some(n => chName.includes(n));
+                                                                    if (isForbidden) {
+                                                                        logger.info('Skipping fallback post to log channel due to channel name blacklist', { guildId, logChannelId, channelName: logChannel.name, ticketId: ticketRecord.id });
+                                                                    } else {
+                                                                        await logChannel.send(`📦 Arquivo de ticket (fallback): Ticket ${ticketRecord.id} do servidor ${interaction.guild?.name || guildId} - canal: <#${ticketRecord.channel_id}>`);
+                                                                        logger.info('Fallback: posted archive info to log channel', { guildId, logChannelId, ticketId: ticketRecord.id });
+                                                                        try { await db.createLog(guildId, 'webhook_fallback_logchannel', { ticketId: ticketRecord.id, logChannelId }); } catch(_){ }
+                                                                    }
                                                         } else {
                                                             logger.warn('Fallback log channel not found or not sendable', { guildId, logChannelId });
                                                         }

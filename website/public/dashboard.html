@@ -11,24 +11,27 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https: http:; script-src 'self' 'unsafe-inline' 'unsafe-eval';">
-    <style>
-        /* Dashboard specific styles */
-        .dashboard-container {
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: var(--space-xl);
-        }
-        
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 300px 1fr;
-            gap: var(--space-2xl);
-            min-height: calc(100vh - 200px);
-        }
-        
-        .sidebar {
-            background: rgba(17, 28, 68, 0.6);
-            -webkit-backdrop-filter: blur(20px);
+                    return `
+                        <div class="ticket-item">
+                            <div class="ticket-header">
+                                <span class="ticket-title">
+                                    ${severityEmoji[ticket.severity] || '🟡'} ${ticket.title}
+                                </span>
+                                <span class="ticket-status" style="background: ${statusColor[ticket.status] || '#6B7280'}">
+                                    ${ticket.status}
+                                </span>
+                            </div>
+                            <div class="ticket-meta">
+                                <span>ID: ${ticket.id}</span>
+                                <span>Por: ${ticket.created_by || 'Desconhecido'}</span>
+                                <span>${new Date(ticket.created_at).toLocaleDateString()}</span>
+                                <span>Gravidade: ${ticket.severity}</span>
+                            </div>
+                            <div class="ticket-actions" style="margin-top:8px">
+                                <button type="button" class="btn btn-secondary" onclick="openTranscript('${ticket.id}')">📜 Transcript</button>
+                            </div>
+                        </div>
+                    `;
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: var(--radius-xl);
@@ -2668,6 +2671,13 @@
                     this.showMessage('Erro ao adicionar webhook', 'error');
                 }
             }
+        }
+
+        // Opens the transcript viewer for a ticket in a new tab
+        function openTranscript(ticketId) {
+            if (!ticketId) return;
+            const url = '/api/transcript/' + encodeURIComponent(ticketId);
+            window.open(url, '_blank');
         }
 
         // Moderation functions

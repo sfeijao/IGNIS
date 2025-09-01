@@ -50,11 +50,29 @@ module.exports = {
                                 logger.info('Resolved archive webhooks for channelDelete', { guildId, webhooksCount: Array.isArray(webhooks) ? webhooks.length : 0, ticketId: ticket.id });
 
                                 if (webhooks && webhooks.length > 0 && !ticket?.bug_webhook_sent) {
+                                    // fetch ticket messages for transcript/excerpt
+                                    let messages = [];
+                                    try {
+                                        messages = await db.db ? await new Promise((res, rej) => {
+                                            db.db.all('SELECT tm.user_id, u.username, tm.message, tm.created_at FROM ticket_messages tm LEFT JOIN users u ON tm.user_id = u.discord_id WHERE tm.ticket_id = ? ORDER BY tm.id ASC', [ticket.id], (err, rows) => {
+                                                if (err) return rej(err);
+                                                res(rows || []);
+                                            });
+                                        }) : [];
+                                    } catch (msgErr) {
+                                        logger.warn('Failed to fetch ticket messages for channelDelete webhook excerpt', { error: msgErr && msgErr.message ? msgErr.message : msgErr, ticketId: ticket.id });
+                                        messages = [];
+                                    }
+
+                                    const base = process.env.WEBSITE_BASE_URL || null;
+                                    const transcriptUrl = base ? `${base.replace(/\/$/, '')}/transcript/${ticket.id}` : null;
+
                                     let anySent = false;
                                     for (const wh of webhooks) {
                                         try {
                                             logger.info('Attempting to send archive webhook (channelDelete)', { webhookId: wh.id, webhookUrl: wh.url, ticketId: ticket.id });
-                                            const sent = await sendArchivedTicketWebhook(wh.url, ticket, 'Canal apagado automaticamente');
+                                            const payloadTicket = Object.assign({}, ticket, { messages, transcriptUrl });
+                                            const sent = await sendArchivedTicketWebhook(wh.url, payloadTicket, 'Canal apagado automaticamente');
                                             if (sent) {
                                                 anySent = true;
                                                 logger.info('📤 Webhook de arquivo enviado', { webhookId: wh.id, ticketId: ticket.id });
@@ -79,9 +97,16 @@ module.exports = {
                                                     if (logChannelId && channel.guild) {
                                                 const logChannel = channel.guild.channels.cache.get(logChannelId) || await client.channels.fetch(logChannelId).catch(() => null);
                                                 if (logChannel && logChannel.send) {
-                                                    await logChannel.send(`📦 Arquivo de ticket (fallback): Ticket ${ticket.id} - canal: <#${ticket.channel_id}>`);
-                                                    logger.info('Fallback: posted archive info to log channel', { guildId, logChannelId, ticketId: ticket.id });
-                                                    try { await db.createLog(guildId, 'webhook_fallback_logchannel', { ticketId: ticket.id, logChannelId }); } catch(_){}
+                                                    const forbiddenNames = ['ticket-log','tickets-log','ticket-logs','tickets_log','logs-tickets'];
+                                                    const chName = (logChannel.name || '').toLowerCase();
+                                                    const isForbidden = forbiddenNames.includes(chName) || forbiddenNames.some(n => chName.includes(n));
+                                                    if (isForbidden) {
+                                                        logger.info('Skipping fallback post to log channel due to channel name blacklist', { guildId, logChannelId, channelName: logChannel.name, ticketId: ticket.id });
+                                                    } else {
+                                                        await logChannel.send(`📦 Arquivo de ticket (fallback): Ticket ${ticket.id} - canal: <#${ticket.channel_id}>`);
+                                                        logger.info('Fallback: posted archive info to log channel', { guildId, logChannelId, ticketId: ticket.id });
+                                                        try { await db.createLog(guildId, 'webhook_fallback_logchannel', { ticketId: ticket.id, logChannelId }); } catch(_){ }
+                                                    }
                                                 } else {
                                                     logger.warn('Fallback log channel not found or not sendable (channelDelete)', { guildId, logChannelId });
                                                 }

@@ -14,6 +14,7 @@ async function sendArchivedTicketWebhook(webhookUrl, ticketData, reason = 'Ticke
     const maxAttempts = opts.maxAttempts || 3;
     const timeoutMs = opts.timeoutMs || 8000;
 
+    // Build embed including ticket summary and optionally a transcript link or excerpt
     const embed = {
         title: `🗃️ Ticket Arquivado #${ticketData.id}`,
         description: ticketData.description || 'Sem descrição',
@@ -30,6 +31,18 @@ async function sendArchivedTicketWebhook(webhookUrl, ticketData, reason = 'Ticke
         footer: { text: 'Sistema de Tickets YSNM - Arquivo' },
         timestamp: new Date().toISOString()
     };
+
+    // If ticketData.transcriptUrl is provided, add a field with the link
+    if (ticketData.transcriptUrl) {
+        embed.fields.push({ name: '📜 Transcript', value: `[Ver transcript](${ticketData.transcriptUrl})`, inline: false });
+    }
+
+    // If messages array is provided and short, include an excerpt
+    if (Array.isArray(ticketData.messages) && ticketData.messages.length > 0) {
+        const excerpt = ticketData.messages.slice(-10).map(m => `**${m.username || m.user_id}**: ${m.message}`).join('\n');
+        // Discord embed field max length ~1024
+        embed.fields.push({ name: '📎 Últimas mensagens', value: excerpt.substring(0, 1000), inline: false });
+    }
 
     const payload = { embeds: [embed], username: 'YSNM Tickets Archive' };
 

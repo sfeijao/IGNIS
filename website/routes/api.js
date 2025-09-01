@@ -722,6 +722,32 @@ router.get('/tickets/stats', requireAuth, ensureDbReady, async (req, res) => {
     }
 });
 
+// Transcript viewer - simple HTML page and JSON data endpoint
+router.get('/transcript/:ticketId', requireAuth, ensureDbReady, async (req, res) => {
+    const ticketId = req.params.ticketId;
+    const html = '<!doctype html><html><head><meta charset="utf-8"><title>Transcript #' + ticketId + '</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:Arial,Helvetica,sans-serif;padding:1rem;background:#f6f8fa} .msg{border-bottom:1px solid #ddd;padding:.5rem 0} .user{font-weight:700}</style></head><body><h2>Transcript #' + ticketId + '</h2><div id="messages">Loading...</div><script>async function load(){const r=await fetch("/api/transcript/' + ticketId + '/data");if(!r.ok){document.getElementById("messages").textContent="Failed to load transcript";return;}const data=await r.json();const box=document.getElementById("messages");box.innerHTML="";if(!data.messages||data.messages.length===0){box.textContent="No messages found.";return;}for(const m of data.messages){const el=document.createElement("div");el.className="msg";el.innerHTML="<div class=\"user\">"+(m.username||m.user_id)+" <span style=\"font-weight:400;color:#666\">"+new Date(m.created_at).toLocaleString()+"</span></div><div class=\"content\">"+ (m.message.replace(/</g,'&lt;').replace(/\n/g,'<br>')) +"</div>";box.appendChild(el);} }load();</script></body></html>';
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+});
+
+router.get('/transcript/:ticketId/data', requireAuth, ensureDbReady, async (req, res) => {
+    const ticketId = req.params.ticketId;
+    try {
+        const ticket = await db.getTicketById(ticketId);
+        if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+        const messages = await new Promise((resolve, reject) => {
+            db.db.all('SELECT tm.user_id, u.username, tm.message, tm.created_at FROM ticket_messages tm LEFT JOIN users u ON tm.user_id = u.discord_id WHERE tm.ticket_id = ? ORDER BY tm.id ASC', [ticketId], (err, rows) => {
+                if (err) return reject(err);
+                resolve(rows || []);
+            });
+        });
+        return res.json({ ticket, messages });
+    } catch (err) {
+        logger.error('Erro ao carregar transcript', { error: err && err.message ? err.message : err });
+        return res.status(500).json({ error: 'Failed to load transcript' });
+    }
+});
+
 // Export archived tickets as CSV (admin-only)
 router.get('/tickets/export', requireAuth, requireGuildAdmin, exportLimiter, ensureDbReady, async (req, res) => {
     try {
