@@ -13,9 +13,9 @@ const config = require('../../utils/config');
 
     const db = new Database();
     await db.initialize();
-    await db.setGuildConfig(guildId, 'archive_webhook_url', webhookUrl);
+  await db.addGuildWebhook(guildId, webhookUrl, { name: 'Saved via tool' });
 
-    console.log(`✅ Webhook salvo para guild ${guildId}`);
+  console.log(`✅ Webhook ADICIONADO para guild ${guildId}`);
     process.exit(0);
   } catch (err) {
     console.error('Erro ao salvar webhook:', err && err.message ? err.message : err);

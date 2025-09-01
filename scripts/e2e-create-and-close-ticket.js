@@ -9,12 +9,12 @@ const http = require('http');
     const guildId = process.argv[2] || '1333820000791691284';
 
     // Ensure an archive webhook exists (fallback to httpbin for safe testing)
-    const existing = await db.getGuildConfig(guildId, 'archive_webhook_url');
-    if (!existing || !existing.value) {
-      await db.setGuildConfig(guildId, 'archive_webhook_url', 'https://httpbin.org/post');
-      console.log('⚠️  No archive_webhook_url found for', guildId, '- set fallback to https://httpbin.org/post');
+    const whs = await db.getGuildWebhooks(guildId);
+    if (!whs || whs.length === 0) {
+      await db.addGuildWebhook(guildId, 'https://httpbin.org/post', { name: 'fallback-httpbin' });
+      console.log('⚠️  No webhooks found for', guildId, '- added fallback https://httpbin.org/post');
     } else {
-      console.log('✅ archive_webhook_url already present for', guildId);
+      console.log('✅ webhooks present for', guildId);
     }
 
     // Create a ticket directly in the DB

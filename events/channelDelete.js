@@ -42,31 +42,46 @@ module.exports = {
                             await db.updateTicketStatus(ticket.id, 'archived', null, 'Canal apagado automaticamente');
                             logger.info(`✅ Ticket ${ticket.id} marcado como arquivado na base de dados`, { ticketId: ticket.id });
                             
-                            // Enviar webhook de arquivo se configurado e ainda nao enviado
+                            // Enviar webhooks de arquivo (suporta múltiplos) se configurados e ainda nao enviados
                             try {
                                 const guildId = ticket.guild_id || (channel.guild ? channel.guild.id : null);
-                                const webhookConfig = guildId ? await db.getGuildConfig(guildId, 'archive_webhook_url') : null;
-                                const webhookUrl = webhookConfig?.value || null;
+                                const webhooks = guildId ? await db.getGuildWebhooks(guildId) : [];
 
-                                logger.info('Resolved archive webhook for channelDelete', { guildId, webhookUrl, ticketId: ticket.id });
+                                logger.info('Resolved archive webhooks for channelDelete', { guildId, webhooksCount: Array.isArray(webhooks) ? webhooks.length : 0, ticketId: ticket.id });
 
-                                if (webhookUrl && !ticket?.bug_webhook_sent) {
-                                    logger.info('Attempting to send archive webhook (channelDelete)', { webhookUrl, ticketId: ticket.id });
-                                    const sent = await sendArchivedTicketWebhook(webhookUrl, ticket, 'Canal apagado automaticamente');
-                                    if (sent) {
+                                if (webhooks && webhooks.length > 0 && !ticket?.bug_webhook_sent) {
+                                    let anySent = false;
+                                    for (const wh of webhooks) {
+                                        try {
+                                            logger.info('Attempting to send archive webhook (channelDelete)', { webhookId: wh.id, webhookUrl: wh.url, ticketId: ticket.id });
+                                            const sent = await sendArchivedTicketWebhook(wh.url, ticket, 'Canal apagado automaticamente');
+                                            if (sent) {
+                                                anySent = true;
+                                                logger.info('📤 Webhook de arquivo enviado', { webhookId: wh.id, ticketId: ticket.id });
+                                                try { await db.createLog(ticket.guild_id, 'webhook_sent', { ticketId: ticket.id, webhookId: wh.id, webhookUrl: wh.url }); } catch(_){}
+                                            } else {
+                                                logger.warn('Archive webhook sender returned falsy for webhook id (channelDelete)', { webhookId: wh.id, ticketId: ticket.id });
+                                                try { await db.createLog(ticket.guild_id, 'webhook_failed', { ticketId: ticket.id, webhookId: wh.id, webhookUrl: wh.url }); } catch(_){}
+                                            }
+                                        } catch (e) {
+                                            logger.warn('Falha ao enviar webhook específico durante channelDelete', { webhookId: wh.id, error: e && e.message ? e.message : e });
+                                        }
+                                    }
+
+                                    if (anySent) {
                                         await db.markTicketWebhookSent(ticket.id);
-                                        logger.info('📤 Webhook de arquivo enviado', { webhookUrl, ticketId: ticket.id });
+                                        logger.info('Marked ticket as webhook-sent because at least one webhook succeeded (channelDelete)', { ticketId: ticket.id });
                                     } else {
-                                        logger.warn('Archive webhook sender returned falsy (treat as failure) on channelDelete', { ticketId: ticket.id, webhookUrl });
-                                        // fallback to log channel if configured
+                                        // fallback to log channel
                                         try {
                                             const logCfg = guildId ? await db.getGuildConfig(guildId, 'log_channel_id') : null;
                                             const logChannelId = logCfg?.value || null;
-                                            if (logChannelId && channel.guild) {
+                                                    if (logChannelId && channel.guild) {
                                                 const logChannel = channel.guild.channels.cache.get(logChannelId) || await client.channels.fetch(logChannelId).catch(() => null);
                                                 if (logChannel && logChannel.send) {
                                                     await logChannel.send(`📦 Arquivo de ticket (fallback): Ticket ${ticket.id} - canal: <#${ticket.channel_id}>`);
                                                     logger.info('Fallback: posted archive info to log channel', { guildId, logChannelId, ticketId: ticket.id });
+                                                    try { await db.createLog(guildId, 'webhook_fallback_logchannel', { ticketId: ticket.id, logChannelId }); } catch(_){}
                                                 } else {
                                                     logger.warn('Fallback log channel not found or not sendable (channelDelete)', { guildId, logChannelId });
                                                 }
@@ -78,10 +93,10 @@ module.exports = {
                                         }
                                     }
                                 } else {
-                                    logger.debug('No archive webhook configured or already sent for this ticket (channelDelete)', { guildId, ticketId: ticket.id });
+                                    logger.debug('No archive webhooks configured or already sent for this ticket (channelDelete)', { guildId, ticketId: ticket.id });
                                 }
                             } catch (webErr) {
-                                logger.warn('⚠️ Erro ao enviar webhook de arquivo no evento channelDelete', { error: webErr && webErr.message ? webErr.message : webErr, ticketId: ticket.id });
+                                logger.warn('⚠️ Erro ao enviar webhooks de arquivo no evento channelDelete', { error: webErr && webErr.message ? webErr.message : webErr, ticketId: ticket.id });
                                 // fallback attempt
                                 try {
                                     const guildId = ticket.guild_id || (channel.guild ? channel.guild.id : null);

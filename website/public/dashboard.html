@@ -2591,6 +2591,7 @@
                     const right = document.createElement('div');
                     right.innerHTML = `
                         <button class="btn btn-secondary btn-sm" data-action="test" data-id="${wh.id}">Testar</button>
+                        <button class="btn btn-light btn-sm" data-action="edit" data-id="${wh.id}">Editar</button>
                         <button class="btn btn-danger btn-sm" data-action="delete" data-id="${wh.id}">Remover</button>
                     `;
                     item.appendChild(left);
@@ -2626,6 +2627,24 @@
                         }
                     } catch (err) {
                         this.showMessage('Erro ao remover webhook', 'error');
+                    }
+                }));
+
+                container.querySelectorAll('button[data-action="edit"]').forEach(btn => btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.dataset.id;
+                    // prompt for new name
+                    const newName = prompt('Novo nome para o webhook (deixe vazio para remover):');
+                    if (newName === null) return; // cancelled
+                    try {
+                        const res = await fetch(`/api/config/webhooks/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` }, body: JSON.stringify({ name: newName }) });
+                        const data = await res.json();
+                        if (data && data.success) {
+                            this.loadWebhooks();
+                        } else {
+                            this.showMessage(data.error || 'Erro ao editar webhook', 'error');
+                        }
+                    } catch (err) {
+                        this.showMessage('Erro ao editar webhook', 'error');
                     }
                 }));
             }

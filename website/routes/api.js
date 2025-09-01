@@ -467,7 +467,7 @@ router.get('/analytics/moderation', requireAuth, async (req, res) => {
 router.get('/admin/guild-config/:guildId', requireAuth, ensureDbReady, async (req, res) => {
     try {
         const guildId = req.params.guildId;
-        const keys = ['archive_webhook_url', 'log_channel_id', 'ticket_category_id', 'staff_role_id', 'verify_role_id'];
+    const keys = ['log_channel_id', 'ticket_category_id', 'staff_role_id', 'verify_role_id'];
         const out = {};
         for (const key of keys) {
             const cfg = await db.getGuildConfig(guildId, key);
@@ -484,8 +484,8 @@ router.get('/admin/guild-config/:guildId', requireAuth, ensureDbReady, async (re
 router.post('/admin/guild-config/:guildId', requireAuth, ensureDbReady, async (req, res) => {
     try {
         const guildId = req.params.guildId;
-        const payload = req.body || {};
-        const allowed = ['archive_webhook_url', 'log_channel_id', 'ticket_category_id', 'staff_role_id', 'verify_role_id'];
+    const payload = req.body || {};
+    const allowed = ['log_channel_id', 'ticket_category_id', 'staff_role_id', 'verify_role_id'];
         const updated = {};
         for (const key of allowed) {
             if (Object.prototype.hasOwnProperty.call(payload, key)) {
@@ -2215,114 +2215,70 @@ function formatUptime(seconds) {
     return parts.join(' ') || '0m';
 }
 
-// Configuração de webhook para tickets arquivados
+// Compatibility endpoints: provide bridge for legacy single-webhook routes
 router.get('/config/archive-webhook', requireAuth, ensureDbReady, async (req, res) => {
     try {
         const db = req.db;
         const guildId = req.currentServerId;
-        
-        // Buscar configuração atual do webhook
-        const config = await db.getGuildConfig(guildId, 'archive_webhook_url');
-        
-        res.json({
-            success: true,
-            webhookUrl: config?.value || null
-        });
+        const webhooks = await db.getGuildWebhooks(guildId);
+        res.json({ success: true, webhooks });
     } catch (error) {
-        addDebugLog('error', '❌ Erro ao buscar config de webhook', { error: error.message });
+        addDebugLog('error', '❌ Erro ao buscar webhooks (compat)', { error: error.message });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
 
 router.post('/config/archive-webhook', requireAuth, ensureDbReady, async (req, res) => {
     try {
-        const { webhookUrl } = req.body;
+        const { webhookUrl, name } = req.body || {};
         const db = req.db;
         const guildId = req.currentServerId;
-        
-        // Validar URL do webhook
-        if (webhookUrl && !webhookUrl.includes('discord.com/api/webhooks/')) {
+
+        if (!webhookUrl || !webhookUrl.includes('discord.com/api/webhooks/')) {
             return res.status(400).json({ error: 'URL de webhook inválida' });
         }
-        
-        // Salvar configuração
-        await db.setGuildConfig(guildId, 'archive_webhook_url', webhookUrl);
-        
-        addDebugLog('info', '✅ Webhook de arquivo configurado', { guildId, hasWebhook: !!webhookUrl });
-        
-        res.json({
-            success: true,
-            message: webhookUrl ? 'Webhook configurado com sucesso' : 'Webhook removido com sucesso'
-        });
+
+        const meta = { name: name || null };
+        const result = await db.addGuildWebhook(guildId, webhookUrl, meta);
+        await db.createLog(guildId, 'webhook_added', { webhookId: result.id, url: webhookUrl, addedBy: req.user?.id });
+        res.json({ success: true, id: result.id });
     } catch (error) {
-        addDebugLog('error', '❌ Erro ao configurar webhook', { error: error.message });
+        addDebugLog('error', '❌ Erro ao criar webhook (compat)', { error: error.message });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
 
-// Endpoint para testar webhook
 router.post('/config/archive-webhook/test', requireAuth, ensureDbReady, async (req, res) => {
     try {
         const db = req.db;
+        const { webhookUrl } = req.body || {};
         const guildId = req.currentServerId;
-        
-        // Buscar URL do webhook
-        const config = await db.getGuildConfig(guildId, 'archive_webhook_url');
-        if (!config?.value) {
-            return res.status(400).json({ error: 'Webhook não configurado' });
-        }
-        
-        // Dados de teste
+
         const testTicket = {
             id: 999,
             title: 'Ticket de Teste',
             description: 'Este é um ticket de teste para verificar o webhook',
-            user_id: req.user.id,
+            user_id: req.user ? req.user.id : 'unknown',
             severity: 'medium',
             category: 'teste',
             created_at: new Date().toISOString()
         };
-        
-        // Enviar teste
-    let success = false;
-    try {
-        success = await sendArchivedWebhookWithRetries(config.value, testTicket, 'Teste de webhook');
-    } catch (e) {
-        success = false;
-    }
 
-    if (success) {
-        return res.json({ success: true, message: 'Webhook testado com sucesso' });
-    }
-
-    // If webhookSender failed, try to resolve webhook via discord client and post to its channel
-    try {
-        if (global.discordClient && global.discordClient.isReady && global.discordClient.isReady()) {
-            // Try to fetch webhook by parsing id from URL
-            const match = (config.value || '').match(/webhooks\/(\d+)\//);
-            const webhookId = match ? match[1] : null;
-            if (webhookId) {
-                try {
-                    const wh = await global.discordClient.fetchWebhook(webhookId).catch(() => null);
-                    if (wh && wh.channelId) {
-                        const channel = await global.discordClient.channels.fetch(wh.channelId).catch(() => null);
-                        if (channel && channel.send) {
-                            await channel.send(`🔔 Teste de webhook: envio de teste falhou via webhook, mas enviando via bot para canal <#${wh.channelId}>`);
-                            return res.json({ success: true, message: 'Falha no webhook direta; mensagem enviada via bot para canal associado' });
-                        }
-                    }
-                } catch (e) {
-                    // ignore
-                }
-            }
+        if (webhookUrl) {
+            const ok = await sendArchivedWebhookWithRetries(webhookUrl, testTicket, 'Teste de webhook');
+            return res.json({ success: !!ok, tested: webhookUrl });
         }
-    } catch (e) {
-        // ignore
-    }
 
-    res.status(500).json({ error: 'Falha ao enviar webhook de teste e fallback falhou' });
+        const webhooks = await db.getGuildWebhooks(guildId);
+        const results = [];
+        for (const wh of webhooks) {
+            let ok = false;
+            try { ok = await sendArchivedWebhookWithRetries(wh.url, testTicket, 'Teste de webhook'); } catch (e) { ok = false; }
+            results.push({ id: wh.id, url: wh.url, success: !!ok });
+        }
+        res.json({ success: true, results });
     } catch (error) {
-        addDebugLog('error', '❌ Erro ao testar webhook', { error: error.message });
+        addDebugLog('error', '❌ Erro ao testar webhooks (compat)', { error: error.message });
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
@@ -2345,7 +2301,7 @@ router.post('/config/webhooks', requireAuth, ensureDbReady, async (req, res) => 
         const guildId = req.currentServerId;
         if (!url || !url.includes('discord.com/api/webhooks/')) return res.status(400).json({ error: 'URL de webhook inválida' });
 
-        // Optionally try to resolve channel via discord client for UI clarity
+    // Optionally try to resolve channel via discord client for UI clarity
         let meta = { name: name || null };
         try {
             const match = url.match(/webhooks\/(\d+)\//);
@@ -2361,8 +2317,14 @@ router.post('/config/webhooks', requireAuth, ensureDbReady, async (req, res) => 
             // ignore resolution errors
         }
 
+        // Prevent duplicates per guild
+        const existing = await req.db.getGuildWebhooks(guildId);
+        if (existing && existing.find(w => w.url === url)) {
+            return res.status(409).json({ error: 'Webhook já configurado para este servidor' });
+        }
+
         const result = await req.db.addGuildWebhook(guildId, url, meta);
-        await db.createLog(guildId, 'webhook_added', { webhookId: result.id, url, addedBy: req.user?.id });
+        try { await req.db.createLog(guildId, 'webhook_added', { webhookId: result.id, url, addedBy: req.user?.id }); } catch(_){}
         res.json({ success: true, id: result.id });
     } catch (error) {
         logger.error('Erro ao adicionar webhook', { error: error && error.message ? error.message : error });
@@ -2377,6 +2339,21 @@ router.delete('/config/webhooks/:id', requireAuth, ensureDbReady, async (req, re
         res.json({ success: true, removed: result.changes });
     } catch (error) {
         logger.error('Erro ao remover webhook', { error: error && error.message ? error.message : error });
+        res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+router.patch('/config/webhooks/:id', requireAuth, ensureDbReady, async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { name } = req.body || {};
+        const updates = {};
+        if (typeof name !== 'undefined') updates.name = name || null;
+        if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'Nenhuma atualização fornecida' });
+        const result = await req.db.updateGuildWebhook(id, updates);
+        res.json({ success: true, changes: result.changes });
+    } catch (error) {
+        logger.error('Erro ao atualizar webhook', { error: error && error.message ? error.message : error });
         res.status(500).json({ error: 'Erro interno' });
     }
 });

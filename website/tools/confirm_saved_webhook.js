@@ -7,8 +7,8 @@ const config = require('../../utils/config');
     console.log('Using guildId:', guildId);
     const db = new Database();
     await db.initialize();
-    const cfg = await db.getGuildConfig(guildId, 'archive_webhook_url');
-    console.log('archive_webhook_url row:', cfg);
+  const rows = await db.getGuildWebhooks(guildId);
+  console.log('guild_webhooks rows:', rows);
     process.exit(0);
   } catch (err) {
     console.error('ERROR', err && err.message ? err.message : err);

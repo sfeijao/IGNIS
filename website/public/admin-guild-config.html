@@ -83,7 +83,6 @@
       try {
         const data = await api('/admin/guild-config/:guildId');
         if (data.success) {
-          document.getElementById('archive').value = data.config.archive_webhook_url || '';
           document.getElementById('logChannel').value = data.config.log_channel_id || '';
           document.getElementById('ticketCategory').value = data.config.ticket_category_id || '';
           document.getElementById('staffRole').value = data.config.staff_role_id || '';
@@ -103,23 +102,7 @@
       const status = document.getElementById('status'); status.textContent = 'Saving...';
       const validateMsg = document.getElementById('validateMsg'); validateMsg.textContent = '';
       try {
-        const archiveVal = document.getElementById('archive').value || null;
-        // Basic webhook URL validation
-        if (archiveVal) {
-          const ok = /^https:\/\/discord(?:app)?\.com\/api\/webhooks\/.+/.test(archiveVal);
-          if (!ok) {
-            validateMsg.textContent = 'Webhook URL não parece válida (espero https://discord.com/api/webhooks/...)';
-            status.textContent = 'Validation failed';
-            return;
-          }
-          // Optional: try a HEAD fetch to see if reachable (non-blocking if fails)
-          try {
-            await fetch(archiveVal, { method: 'HEAD' , mode: 'no-cors'}).catch(()=>null);
-          } catch (e) {}
-        }
-
         const body = {
-          archive_webhook_url: archiveVal,
           log_channel_id: document.getElementById('logChannel').value || null,
           ticket_category_id: document.getElementById('ticketCategory').value || null,
           staff_role_id: document.getElementById('staffRole').value || null,
@@ -130,13 +113,7 @@
       } catch (e) { status.textContent = e.message }
     });
 
-    document.getElementById('testWebhook').addEventListener('click', async ()=>{
-      const status = document.getElementById('status'); status.textContent = 'Testing webhook...';
-      try{
-        const res = await api('/config/archive-webhook/test', 'POST');
-        status.textContent = JSON.stringify(res, null, 2);
-      }catch(e){ status.textContent = e && e.message ? e.message : JSON.stringify(e) }
-    });
+  // Webhook testing/mgmt moved to the dedicated Webhooks admin page (/admin-webhooks.html)
 
     let currentPage = 1;
     const pageInfo = document.getElementById('pageInfo');

@@ -10,8 +10,8 @@ async function runE2E() {
 
     const guildId = 'test-guild-e2e';
 
-    // Ensure webhook is set for guild
-    await db.setGuildConfig(guildId, 'archive_webhook_url', mock.url);
+    // Ensure webhook is set for guild (migrated multi-webhook)
+    await db.addGuildWebhook(guildId, mock.url, { name: 'E2E mock' });
 
     // Create ticket
     const createRes = await db.createTicket({
@@ -34,10 +34,13 @@ async function runE2E() {
     const updatedTicket = await db.getTicketById(ticketId);
 
     // Send webhook if configured and not already sent
-    const webhookConfig = await db.getGuildConfig(guildId, 'archive_webhook_url');
+    const webhooks = await db.getGuildWebhooks(guildId);
     let sent = false;
-    if (webhookConfig?.value && !updatedTicket?.bug_webhook_sent) {
-        sent = await sendArchivedTicketWebhook(webhookConfig.value, updatedTicket, 'E2E resolution');
+    if (webhooks && webhooks.length > 0 && !updatedTicket?.bug_webhook_sent) {
+        for (const wh of webhooks) {
+            sent = await sendArchivedTicketWebhook(wh.url, updatedTicket, 'E2E resolution');
+            if (sent) break;
+        }
         if (sent) await db.markTicketWebhookSent(ticketId);
     }
 

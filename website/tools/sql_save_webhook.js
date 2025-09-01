@@ -17,8 +17,8 @@ const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
     process.exit(2);
   }
 
-  const sql = `INSERT OR REPLACE INTO guild_config (guild_id, config_key, value, updated_at) VALUES (?, 'archive_webhook_url', ?, CURRENT_TIMESTAMP)`;
-  db.run(sql, [guildId, webhookUrl], function(err) {
+  const sql = `INSERT INTO guild_webhooks (guild_id, url, name, channel_id, channel_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`;
+  db.run(sql, [guildId, webhookUrl, 'Inserted via sql_save_webhook', null, null], function(err) {
     if (err) {
       console.error('Insert error', err.message);
       db.close();

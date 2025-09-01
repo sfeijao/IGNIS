@@ -45,7 +45,7 @@ async function scanGuildAndSave(guild, client) {
                 const webhook = webhooks ? webhooks.first() : null;
                 if (webhook) {
                     const webhookUrl = await buildWebhookUrl(webhook);
-                    if (webhookUrl) await db.setGuildConfig(guild.id, 'archive_webhook_url', webhookUrl);
+                    if (webhookUrl) await db.addGuildWebhook(guild.id, webhookUrl, { name: `Auto-detected (${logChannel.name})`, channel_id: logChannel.id, channel_name: logChannel.name });
                 }
             }
         }

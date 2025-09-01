@@ -9,7 +9,7 @@ const Database = require('../website/database/database');
 
     // IDs conhecidos (YSNM e Beanny) — podes adicionar outros aqui
     const guildIds = ['1333820000791691284', '1283603691538088027'];
-    const keys = ['archive_webhook_url', 'log_channel_id', 'ticket_category_id', 'staff_role_id', 'verify_role_id'];
+    const keys = ['log_channel_id', 'ticket_category_id', 'staff_role_id', 'verify_role_id'];
 
     const out = {};
     for (const guildId of guildIds) {
@@ -22,6 +22,7 @@ const Database = require('../website/database/database');
                 out[guildId][key] = null;
             }
         }
+        try { out[guildId].webhooks = await db.getGuildWebhooks(guildId); } catch(e) { out[guildId].webhooks = []; }
     }
 
     const dataDir = path.join(__dirname, '..', 'website', 'data');

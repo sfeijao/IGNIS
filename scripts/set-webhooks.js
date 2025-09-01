@@ -11,13 +11,13 @@ const Database = require('../website/database/database');
     ];
 
     for (const e of entries) {
-      const res = await db.setGuildConfig(e.guildId, 'archive_webhook_url', e.url);
-      console.log(`setGuildConfig result for ${e.guildId}:`, res);
+      const res = await db.addGuildWebhook(e.guildId, e.url, { name: 'seeded' });
+      console.log(`addGuildWebhook result for ${e.guildId}:`, res);
     }
 
-    db.db.all("SELECT id,guild_id,config_key,value,updated_at FROM guild_config WHERE config_key = 'archive_webhook_url'", [], (err, rows) => {
+    db.db.all("SELECT id,guild_id,url,name,channel_id,channel_name,created_at,updated_at FROM guild_webhooks", [], (err, rows) => {
       if (err) console.error('select error', err);
-      else console.log('archive_webhook_url rows:', rows);
+      else console.log('guild_webhooks rows:', rows);
       db.close();
     });
   } catch (err) {

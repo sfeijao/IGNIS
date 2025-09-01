@@ -8,7 +8,7 @@ const Database = require('../website/database/database');
     await db.initialize();
 
     // Chaves que nos interessam exportar
-    const keys = ['archive_webhook_url', 'log_channel_id', 'ticket_category_id', 'staff_role_id', 'verify_role_id'];
+    const keys = ['log_channel_id', 'ticket_category_id', 'staff_role_id', 'verify_role_id'];
 
     // Obter todos os guild_ids da tabela guild_config
     db.db.all('SELECT DISTINCT guild_id FROM guild_config', async (err, rows) => {
@@ -29,6 +29,13 @@ const Database = require('../website/database/database');
                 } catch (e) {
                     out[guildId][key] = null;
                 }
+            }
+            // Include webhooks
+            try {
+                const whs = await db.getGuildWebhooks(guildId);
+                out[guildId].webhooks = whs;
+            } catch (e) {
+                out[guildId].webhooks = [];
             }
         }
 

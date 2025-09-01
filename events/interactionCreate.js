@@ -507,67 +507,118 @@ module.exports = {
                                 await db.updateTicketStatus(ticketRecord.id, 'closed', interaction.user.id, `Fechado via interação por ${interaction.user.tag}`);
                                 await db.updateTicket(ticketRecord.id, { archived: 1 });
 
-                                // Enviar webhook de archive se configurado (guild config) ou fallback para env
-                                try {
-                                    const guildId = interaction.guild ? interaction.guild.id : ticketRecord.guild_id;
-                                    let webhookConfig = null;
-                                    if (guildId) webhookConfig = await db.getGuildConfig(guildId, 'archive_webhook_url');
-                                    const webhookUrl = webhookConfig?.value || config.WEBHOOKS.TICKETS || process.env.ARCHIVE_WEBHOOK_URL || null;
-
-                                    logger.info('Resolved archive webhook for ticket close', { guildId, webhookUrl, ticketId: ticketRecord?.id });
-
-                                    if (webhookUrl && !ticketRecord?.bug_webhook_sent) {
-                                        logger.info('Attempting to send archive webhook', { webhookUrl, ticketId: ticketRecord.id });
-                                        const sent = await sendArchivedTicketWebhook(webhookUrl, ticketRecord, `Fechado por ${interaction.user.tag}`);
-                                        if (sent) {
-                                            await db.markTicketWebhookSent(ticketRecord.id);
-                                            logger.info('Archive webhook sent and ticket marked as sent', { ticketId: ticketRecord.id, webhookUrl });
-                                        } else {
-                                            logger.warn('Archive webhook sender returned falsy (treat as failure)', { ticketId: ticketRecord.id, webhookUrl });
-                                            // Try fallback to guild log channel if configured
-                                            try {
-                                                const logCfg = guildId ? await db.getGuildConfig(guildId, 'log_channel_id') : null;
-                                                const logChannelId = logCfg?.value || null;
-                                                if (logChannelId) {
-                                                    const logChannel = interaction.guild?.channels.cache.get(logChannelId) || await client.channels.fetch(logChannelId).catch(() => null);
-                                                    if (logChannel && logChannel.send) {
-                                                        await logChannel.send(`📦 Arquivo de ticket (fallback): Ticket ${ticketRecord.id} do servidor ${interaction.guild?.name || guildId} - canal: <#${ticketRecord.channel_id}>`);
-                                                        logger.info('Fallback: posted archive info to log channel', { guildId, logChannelId, ticketId: ticketRecord.id });
-                                                    } else {
-                                                        logger.warn('Fallback log channel not found or not sendable', { guildId, logChannelId });
-                                                    }
-                                                } else {
-                                                    logger.debug('No log_channel_id configured for fallback', { guildId });
-                                                }
-                                            } catch (fbErr) {
-                                                logger.warn('Error during fallback posting to log channel', { error: fbErr && fbErr.message ? fbErr.message : fbErr, ticketId: ticketRecord.id });
-                                            }
-                                        }
-                                    } else {
-                                        logger.debug('No archive webhook configured or already sent for this ticket', { guildId, ticketId: ticketRecord?.id });
-                                    }
-                                } catch (webErr) {
-                                    logger.warn('Erro ao enviar webhook de arquivo durante fechamento por interação', { error: webErr && webErr.message ? webErr.message : webErr, ticketId: ticketRecord?.id });
-                                    // Try fallback to guild log channel if configured
+                                    // Enviar webhooks de arquivo (suporta múltiplos) se configurados e ainda não enviados
                                     try {
                                         const guildId = interaction.guild ? interaction.guild.id : ticketRecord.guild_id;
-                                        const logCfg = guildId ? await db.getGuildConfig(guildId, 'log_channel_id') : null;
-                                        const logChannelId = logCfg?.value || null;
-                                        if (logChannelId) {
-                                            const logChannel = interaction.guild?.channels.cache.get(logChannelId) || await client.channels.fetch(logChannelId).catch(() => null);
-                                            if (logChannel && logChannel.send) {
-                                                await logChannel.send(`📦 Arquivo de ticket (fallback due to error): Ticket ${ticketRecord.id} do servidor ${interaction.guild?.name || guildId} - canal: <#${ticketRecord.channel_id}>`);
-                                                logger.info('Fallback after error: posted archive info to log channel', { guildId, logChannelId, ticketId: ticketRecord.id });
+                                        const webhooks = guildId ? await db.getGuildWebhooks(guildId) : [];
+
+                                        logger.info('Resolved archive webhooks for ticket close', { guildId, webhooksCount: Array.isArray(webhooks) ? webhooks.length : 0, ticketId: ticketRecord?.id });
+
+                                        if (webhooks && webhooks.length > 0 && !ticketRecord?.bug_webhook_sent) {
+                                            let anySent = false;
+                                            for (const wh of webhooks) {
+                                                try {
+                                                    logger.info('Attempting to send archive webhook', { webhookId: wh.id, webhookUrl: wh.url, ticketId: ticketRecord.id });
+                                                    const sent = await sendArchivedTicketWebhook(wh.url, ticketRecord, `Fechado por ${interaction.user.tag}`);
+                                                    if (sent) {
+                                                        anySent = true;
+                                                        logger.info('Archive webhook sent', { webhookId: wh.id, ticketId: ticketRecord.id });
+                                                        try { await db.createLog(ticketRecord.guild_id, 'webhook_sent', { ticketId: ticketRecord.id, webhookId: wh.id, webhookUrl: wh.url }); } catch(_){}
+                                                    } else {
+                                                        logger.warn('Webhook sender returned falsy for webhook id', { webhookId: wh.id, ticketId: ticketRecord.id });
+                                                        try { await db.createLog(ticketRecord.guild_id, 'webhook_failed', { ticketId: ticketRecord.id, webhookId: wh.id, webhookUrl: wh.url }); } catch(_){}
+                                                    }
+                                                } catch (e) {
+                                                    logger.warn('Falha ao enviar webhook específico', { webhookId: wh.id, error: e && e.message ? e.message : e });
+                                                }
+                                            }
+
+                                            if (anySent) {
+                                                await db.markTicketWebhookSent(ticketRecord.id);
+                                                logger.info('Marked ticket as webhook-sent because at least one webhook succeeded', { ticketId: ticketRecord.id });
                                             } else {
-                                                logger.warn('Fallback log channel not found or not sendable (after error)', { guildId, logChannelId });
+                                                // If none succeeded, fallback to log channel
+                                                try {
+                                                    const logCfg = guildId ? await db.getGuildConfig(guildId, 'log_channel_id') : null;
+                                                    const logChannelId = logCfg?.value || null;
+                            if (logChannelId) {
+                                                        const logChannel = interaction.guild?.channels.cache.get(logChannelId) || await client.channels.fetch(logChannelId).catch(() => null);
+                                                        if (logChannel && logChannel.send) {
+                                                            await logChannel.send(`📦 Arquivo de ticket (fallback): Ticket ${ticketRecord.id} do servidor ${interaction.guild?.name || guildId} - canal: <#${ticketRecord.channel_id}>`);
+                                logger.info('Fallback: posted archive info to log channel', { guildId, logChannelId, ticketId: ticketRecord.id });
+                                try { await db.createLog(guildId, 'webhook_fallback_logchannel', { ticketId: ticketRecord.id, logChannelId }); } catch(_){}
+                                                        } else {
+                                                            logger.warn('Fallback log channel not found or not sendable', { guildId, logChannelId });
+                                                        }
+                                                    } else {
+                                                        logger.debug('No log_channel_id configured for fallback', { guildId });
+                                                        try {
+                                                            // As a last resort, check global config.ticketSystem.logServerId (local config backup)
+                                                            const localCfg = require('../..//config.json') || require('../../config.json.backup');
+                                                            const fallbackServerId = localCfg?.ticketSystem?.logServerId || localCfg?.logServerId || null;
+                                                            if (fallbackServerId) {
+                                                                logger.info('Attempting global-config fallback to logServerId', { fallbackServerId, guildId, ticketId: ticketRecord.id });
+                                                                // Try to find a text channel in that server to post a minimal fallback message
+                                                                const fallbackGuild = client.guilds.cache.get(fallbackServerId) || await client.guilds.fetch(fallbackServerId).catch(() => null);
+                                                                if (fallbackGuild) {
+                                                                    // prefer system channel, then first text channel the bot can send in
+                                                                    let targetChannel = fallbackGuild.systemChannel || null;
+                                                                    if (!targetChannel) {
+                                                                        const channels = await fallbackGuild.channels.fetch().catch(() => null);
+                                                                        if (channels) {
+                                                                            for (const ch of channels.values()) {
+                                                                                if (ch && ch.type === 0 && ch.permissionsFor && ch.permissionsFor(client.user).has('SendMessages')) { // 0 = GuildText in v14 representation
+                                                                                    targetChannel = ch;
+                                                                                    break;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    if (targetChannel && targetChannel.send) {
+                                                                        await targetChannel.send(`📦 Arquivo de ticket (global fallback): Ticket ${ticketRecord.id} do servidor ${interaction.guild?.name || guildId} - canal: <#${ticketRecord.channel_id}>`)
+                                                                        .catch(() => null);
+                                                                        try { await db.createLog(guildId, 'webhook_fallback_global', { ticketId: ticketRecord.id, fallbackServerId }); } catch(_){ }
+                                                                        logger.info('Global fallback posted to configured logServerId', { fallbackServerId, ticketId: ticketRecord.id });
+                                                                    } else {
+                                                                        logger.warn('Global fallback server found but no suitable channel to post', { fallbackServerId, ticketId: ticketRecord.id });
+                                                                    }
+                                                                } else {
+                                                                    logger.warn('Global fallback server not found or bot not a member', { fallbackServerId, ticketId: ticketRecord.id });
+                                                                }
+                                                            }
+                                                        } catch (globalFbErr) {
+                                                            logger.warn('Error during global fallback attempt', { error: globalFbErr && globalFbErr.message ? globalFbErr.message : globalFbErr, ticketId: ticketRecord.id });
+                                                        }
+                                                    }
+                                                } catch (fbErr) {
+                                                    logger.warn('Error during fallback posting to log channel', { error: fbErr && fbErr.message ? fbErr.message : fbErr, ticketId: ticketRecord.id });
+                                                }
                                             }
                                         } else {
-                                            logger.debug('No log_channel_id configured for fallback (after error)', { guildId });
+                                            logger.debug('No archive webhooks configured or already sent for this ticket', { guildId, ticketId: ticketRecord?.id });
                                         }
-                                    } catch (fbErr) {
-                                        logger.error('Error during fallback posting to log channel (after webhook error)', { error: fbErr && fbErr.message ? fbErr.message : fbErr, ticketId: ticketRecord?.id });
+                                    } catch (webErr) {
+                                        logger.warn('Erro ao enviar webhooks de arquivo durante fechamento por interação', { error: webErr && webErr.message ? webErr.message : webErr, ticketId: ticketRecord?.id });
+                                        // Try fallback to guild log channel if configured
+                                        try {
+                                            const guildId = interaction.guild ? interaction.guild.id : ticketRecord.guild_id;
+                                            const logCfg = guildId ? await db.getGuildConfig(guildId, 'log_channel_id') : null;
+                                            const logChannelId = logCfg?.value || null;
+                                            if (logChannelId) {
+                                                const logChannel = interaction.guild?.channels.cache.get(logChannelId) || await client.channels.fetch(logChannelId).catch(() => null);
+                                                if (logChannel && logChannel.send) {
+                                                    await logChannel.send(`📦 Arquivo de ticket (fallback due to error): Ticket ${ticketRecord.id} do servidor ${interaction.guild?.name || guildId} - canal: <#${ticketRecord.channel_id}>`);
+                                                    logger.info('Fallback after error: posted archive info to log channel', { guildId, logChannelId, ticketId: ticketRecord.id });
+                                                } else {
+                                                    logger.warn('Fallback log channel not found or not sendable (after error)', { guildId, logChannelId });
+                                                }
+                                            } else {
+                                                logger.debug('No log_channel_id configured for fallback (after error)', { guildId });
+                                            }
+                                        } catch (fbErr) {
+                                            logger.error('Error during fallback posting to log channel (after webhook error)', { error: fbErr && fbErr.message ? fbErr.message : fbErr, ticketId: ticketRecord?.id });
+                                        }
                                     }
-                                }
                             }
                         } catch (dbErr) {
                             logger.warn('Erro ao atualizar ticket no DB durante fechamento por interação', { error: dbErr && dbErr.message ? dbErr.message : dbErr });

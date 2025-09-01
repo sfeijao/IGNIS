@@ -246,6 +246,7 @@ CREATE TABLE IF NOT EXISTS guild_webhooks (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (guild_id) REFERENCES guilds(discord_id)
+    ,UNIQUE(guild_id, url)
 );
 
 -- Indexes for performance
