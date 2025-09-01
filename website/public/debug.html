@@ -4,87 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🔧 Diagnóstico Dashboard YSNM</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0F1419;
-            color: #FFFFFF;
-            margin: 0;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        .container { max-width: 1200px; margin: 0 auto; }
-        h1 { color: #6B73FF; text-align: center; margin-bottom: 2rem; }
-        .test-section { 
-            background: #1A1F2E; 
-            border-radius: 12px; 
-            padding: 20px; 
-            margin-bottom: 20px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .test-section h3 { color: #8B5CF6; margin-bottom: 15px; }
-        .btn {
-            background: #6B73FF;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            margin: 5px;
-            font-size: 14px;
-        }
-        .btn:hover { background: #5A63E8; }
-        .btn.success { background: #10B981; }
-        .btn.error { background: #EF4444; }
-        .result {
-            background: #252A3A;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 10px;
-            border-left: 4px solid #6B73FF;
-            white-space: pre-wrap;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 12px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .status { 
-            display: inline-block; 
-            padding: 4px 8px; 
-            border-radius: 4px; 
-            font-size: 12px; 
-            font-weight: bold;
-        }
-        .status.success { background: #10B981; }
-        .status.error { background: #EF4444; }
-        .status.loading { background: #F59E0B; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .log { 
-            background: #0F1419; 
-            border: 1px solid #333; 
-            border-radius: 8px; 
-            padding: 15px; 
-            margin-top: 15px; 
-            height: 300px; 
-            overflow-y: auto; 
-            font-family: monospace; 
-            font-size: 11px;
-        }
-        .log-entry {
-            margin-bottom: 8px;
-            padding: 4px 8px;
-            border-radius: 4px;
-        }
-        .log-entry.info { background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3B82F6; }
-        .log-entry.success { background: rgba(16, 185, 129, 0.1); border-left: 3px solid #10B981; }
-        .log-entry.error { background: rgba(239, 68, 68, 0.1); border-left: 3px solid #EF4444; }
-        .log-entry.warning { background: rgba(245, 158, 11, 0.1); border-left: 3px solid #F59E0B; }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Inline debug styles moved to css/style.css -->
 </head>
 <body>
     <div class="container">
         <h1>🔧 Diagnóstico Dashboard YSNM</h1>
-        <p style="text-align: center; color: #94A3B8; margin-bottom: 2rem;">
+    <p class="muted-center">
             Teste profundo para identificar onde o dashboard falha
         </p>
 
@@ -94,7 +20,7 @@
                 <h3>🔐 Teste de Autenticação</h3>
                 <button class="btn" onclick="testAuth()">Testar Auth</button>
                 <span id="auth-status" class="status loading">Aguardando...</span>
-                <div id="auth-result" class="result" style="display: none;"></div>
+                <div id="auth-result" class="result hidden"></div>
             </div>
 
             <!-- Teste de Guilds -->
@@ -102,7 +28,7 @@
                 <h3>🏠 Teste de Guilds</h3>
                 <button class="btn" onclick="testGuilds()">Testar Guilds</button>
                 <span id="guilds-status" class="status loading">Aguardando...</span>
-                <div id="guilds-result" class="result" style="display: none;"></div>
+                <div id="guilds-result" class="result hidden"></div>
             </div>
 
             <!-- Teste de JavaScript -->
@@ -110,7 +36,7 @@
                 <h3>⚙️ Teste JavaScript</h3>
                 <button class="btn" onclick="testJavaScript()">Testar JS</button>
                 <span id="js-status" class="status loading">Aguardando...</span>
-                <div id="js-result" class="result" style="display: none;"></div>
+                <div id="js-result" class="result hidden"></div>
             </div>
 
             <!-- Teste de Console -->
@@ -133,7 +59,7 @@
             <h3>🎮 Simulação Dashboard</h3>
             <button class="btn" onclick="simulateDashboard()">Simular Carregamento</button>
             <span id="sim-status" class="status loading">Aguardando...</span>
-            <div id="sim-result" class="result" style="display: none;"></div>
+            <div id="sim-result" class="result hidden"></div>
         </div>
     </div>
 

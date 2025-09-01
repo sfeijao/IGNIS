@@ -1,14 +1,15 @@
 <!doctype html>
 <html>
-<head>
+  <head>
   <meta charset="utf-8">
   <title>Admin Channels</title>
-  <style>body{font-family:Arial,Helvetica,sans-serif;padding:16px}label{display:block;margin-top:8px}input,select{padding:6px;width:100%;max-width:500px}</style>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- admin small page styles moved to css/style.css (.admin-small) -->
 </head>
 <body>
   <h2>Channels</h2>
   <div>
-    <label>Server ID <input id="guildId" placeholder="guild id" /></label>
+    <label class="admin-small">Server ID <input id="guildId" placeholder="guild id" /></label>
     <button id="setSession">Set Session</button>
   </div>
 
@@ -23,7 +24,7 @@
   <label>Description / Topic <input id="description" /></label>
   <button id="create">Create</button>
 
-  <pre id="out" style="background:#f7f7f7;padding:8px;border:1px solid #ddd;margin-top:12px"></pre>
+  <pre id="out" class="pre-out"></pre>
 
   <script>
     async function api(path, method='GET', body=null) {

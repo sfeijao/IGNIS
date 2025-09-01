@@ -1,0 +1,16 @@
+{
+  "receivedAt": "2025-09-01T23:17:34.468Z",
+  "headers": {
+    "content-type": "application/json",
+    "content-length": "47",
+    "authorization": "Bearer testtoken",
+    "x-signature": "sha256=f044f846dbce7544ae2d49d42d38b0e76d651d008880bcbbbcbb840c6d84e8b0",
+    "x-timestamp": "1756768654468",
+    "host": "127.0.0.1:3001",
+    "connection": "keep-alive"
+  },
+  "data": {
+    "event": "replay_test",
+    "v": 0.22810800892774896
+  }
+}

@@ -20,7 +20,9 @@
     "logs:clean": "node -e \"require('./utils/logger').cleanOldLogs()\"",
     "restart": "taskkill /f /im node.exe >nul 2>&1 & timeout /t 2 /nobreak >nul & node index.js",
     "clean-start": "restart-bot.bat",
-    "test": "echo \"✅ No tests specified\" && exit 0"
+  "test": "echo \"✅ No tests specified\" && exit 0",
+  "test:private-receiver": "mocha ./examples/private-receiver/tests --timeout 10000",
+  "test:ci": "npm run test:private-receiver"
   },
   "repository": {
     "type": "git",
@@ -63,10 +65,12 @@
     "passport-discord": "^0.1.4",
     "rate-limiter-flexible": "^7.2.0",
     "socket.io": "^4.8.1",
-    "sqlite3": "^5.1.7"
+  "sqlite3": "^5.1.7",
+  "better-sqlite3": "^8.3.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
+  ,"mocha": "^10.2.0"
   },
   "engines": {
     "node": ">=16.9.0",

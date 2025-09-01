@@ -1,0 +1,27 @@
+{
+  "receivedAt": "2025-09-01T22:12:17.471Z",
+  "headers": {
+    "content-type": "application/json",
+    "content-length": "193",
+    "authorization": "Bearer testtoken",
+    "x-signature": "sha256=a52db567e01da0c551364135090bcefd5a6fafdd55cfe75cec6b37901ac691c7",
+    "x-timestamp": "1756764737455",
+    "host": "127.0.0.1:3001",
+    "connection": "keep-alive"
+  },
+  "data": {
+    "event": "ticket_closed",
+    "ticket": {
+      "id": 1003,
+      "guild_id": "987654321",
+      "subject": "Teste final"
+    },
+    "messages": [
+      {
+        "content": "Teste final payload",
+        "author": "User#0001",
+        "ts": "2025-09-01T22:12:17.453Z"
+      }
+    ]
+  }
+}

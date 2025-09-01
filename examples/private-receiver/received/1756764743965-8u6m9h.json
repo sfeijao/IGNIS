@@ -1,0 +1,25 @@
+{
+  "receivedAt": "2025-09-01T22:12:23.965Z",
+  "headers": {
+    "content-type": "application/json",
+    "content-length": "128",
+    "authorization": "Bearer testtoken",
+    "x-signature": "sha256=00ed1a851bb0801e39ac4cc4f37d30747d644e7b7de350fb953a98697945ac15",
+    "x-timestamp": "1756764743963",
+    "host": "127.0.0.1:3001",
+    "connection": "keep-alive"
+  },
+  "data": {
+    "event": "replay_test",
+    "ticket": {
+      "id": 9001
+    },
+    "messages": [
+      {
+        "content": "replay",
+        "author": "tester",
+        "ts": "2025-09-01T22:12:23.729Z"
+      }
+    ]
+  }
+}

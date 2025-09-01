@@ -4,500 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Administração - YSNM Bot</title>
-    <style>
-        :root {
-            --primary: #6B73FF;
-            --primary-dark: #5A63E8;
-            --primary-light: rgba(107, 115, 255, 0.1);
-            --bg: #0F1419;
-            --bg-secondary: #1A1F2E;
-            --bg-card: #252A3A;
-            --text: #FFFFFF;
-            --text-muted: #94A3B8;
-            --border: rgba(255, 255, 255, 0.1);
-            --success: #10B981;
-            --warning: #F59E0B;
-            --danger: #EF4444;
-            --info: #3B82F6;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-            background-image: 
-                radial-gradient(circle at 20% 80%, rgba(107, 115, 255, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 3rem;
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, var(--primary) 0%, #8B5CF6 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .admin-tabs {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-        }
-
-        .tab-btn {
-            padding: 0.75rem 1.5rem;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text);
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 500;
-        }
-
-        .tab-btn.active {
-            background: var(--primary);
-            border-color: var(--primary);
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .admin-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 2rem;
-        }
-
-        .admin-card {
-            background: var(--bg-card);
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            padding: 1.5rem;
-        }
-
-        .card-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: var(--text-muted);
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 0.75rem;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text);
-            font-size: 0.875rem;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px var(--primary-light);
-        }
-
-        .form-select {
-            width: 100%;
-            padding: 0.75rem;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text);
-            font-size: 0.875rem;
-        }
-
-        .form-textarea {
-            width: 100%;
-            min-height: 80px;
-            padding: 0.75rem;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text);
-            font-size: 0.875rem;
-            resize: vertical;
-        }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.875rem;
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-dark);
-        }
-
-        .btn-success {
-            background: var(--success);
-            color: white;
-        }
-
-        .btn-warning {
-            background: var(--warning);
-            color: white;
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
-
-        .btn-secondary {
-            background: var(--bg-secondary);
-            color: var(--text);
-            border: 1px solid var(--border);
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .setting-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem;
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            margin-bottom: 0.5rem;
-        }
-
-        .setting-info {
-            flex: 1;
-        }
-
-        .setting-title {
-            font-weight: 500;
-            margin-bottom: 0.25rem;
-        }
-
-        .setting-description {
-            font-size: 0.875rem;
-            color: var(--text-muted);
-        }
-
-        .toggle-switch {
-            position: relative;
-            width: 48px;
-            height: 24px;
-            background: var(--bg);
-            border-radius: 12px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .toggle-switch.active {
-            background: var(--primary);
-        }
-
-        .toggle-slider {
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 20px;
-            height: 20px;
-            background: white;
-            border-radius: 50%;
-            transition: transform 0.3s;
-        }
-
-        .toggle-switch.active .toggle-slider {
-            transform: translateX(24px);
-        }
-
-        .member-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .member-item {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 0.75rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .member-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-        }
-
-        .member-info {
-            flex: 1;
-        }
-
-        .member-name {
-            font-weight: 500;
-        }
-
-        .member-role {
-            font-size: 0.875rem;
-            color: var(--text-muted);
-        }
-
-        .log-item {
-            padding: 0.75rem;
-            background: var(--bg-secondary);
-            border-left: 4px solid var(--info);
-            border-radius: 0 8px 8px 0;
-            margin-bottom: 0.5rem;
-        }
-
-        .log-item.warning {
-            border-left-color: var(--warning);
-        }
-
-        .log-item.error {
-            border-left-color: var(--danger);
-        }
-
-        .log-item.success {
-            border-left-color: var(--success);
-        }
-
-        .log-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.25rem;
-        }
-
-        .log-type {
-            font-weight: 500;
-        }
-
-        .log-time {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        .log-message {
-            font-size: 0.875rem;
-            color: var(--text-muted);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: var(--bg-secondary);
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            padding: 1rem;
-            text-align: center;
-        }
-
-        .stat-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            margin: 0 auto 0.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 0.25rem;
-        }
-
-        .stat-label {
-            color: var(--text-muted);
-            font-size: 0.875rem;
-        }
-
-        .search-box {
-            position: relative;
-            margin-bottom: 1rem;
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 0.75rem 2.5rem 0.75rem 1rem;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text);
-            font-size: 0.875rem;
-        }
-
-        .search-icon {
-            position: absolute;
-            right: 0.75rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: var(--bg-card);
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            padding: 2rem;
-            max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .modal-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-size: 1.5rem;
-            cursor: pointer;
-        }
-
-        .alert {
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-        }
-
-        .alert-success {
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid var(--success);
-            color: var(--success);
-        }
-
-        .alert-danger {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid var(--danger);
-            color: var(--danger);
-        }
-
-        .alert-warning {
-            background: rgba(245, 158, 11, 0.1);
-            border: 1px solid var(--warning);
-            color: var(--warning);
-        }
-
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid var(--text-muted);
-            border-radius: 50%;
-            border-top-color: var(--primary);
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 768px) {
-            .admin-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .btn-group {
-                flex-direction: column;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Admin page styles moved to css/style.css -->
 </head>
 <body>
     <div class="container">
@@ -519,22 +27,22 @@
         <div id="overview" class="tab-content active">
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: var(--success);">👥</div>
+                    <div class="stat-icon bg-success">👥</div>
                     <div class="stat-value" id="totalMembers">-</div>
                     <div class="stat-label">Total de Membros</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: var(--info);">🟢</div>
+                    <div class="stat-icon bg-info">🟢</div>
                     <div class="stat-value" id="onlineMembers">-</div>
                     <div class="stat-label">Membros Online</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: var(--warning);">📝</div>
+                    <div class="stat-icon bg-warning">📝</div>
                     <div class="stat-value" id="totalChannels">-</div>
                     <div class="stat-label">Canais</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: var(--primary);">🎭</div>
+                    <div class="stat-icon bg-primary">🎭</div>
                     <div class="stat-value" id="totalRoles">-</div>
                     <div class="stat-label">Cargos</div>
                 </div>
@@ -557,7 +65,7 @@
                             <div class="setting-title">Bot Online</div>
                             <div class="setting-description">Status atual do bot</div>
                         </div>
-                        <div id="botStatus" style="color: var(--success);">🟢 Online</div>
+                        <div id="botStatus" class="text-success">🟢 Online</div>
                     </div>
                     <div class="setting-item">
                         <div class="setting-info">
@@ -669,9 +177,9 @@
                     </div>
 
                     <div class="member-list" id="memberList">
-                        <div style="text-align: center; padding: 2rem;">
+                        <div class="center-pad">
                             <div class="loading"></div>
-                            <p style="margin-top: 1rem;">Carregando membros...</p>
+                            <p class="mt-1">Carregando membros...</p>
                         </div>
                     </div>
                 </div>
@@ -747,9 +255,9 @@
                     <div class="card-title">🗂️ Canais Existentes</div>
                     
                     <div id="channelsList">
-                        <div style="text-align: center; padding: 2rem;">
+                        <div class="center-pad">
                             <div class="loading"></div>
-                            <p style="margin-top: 1rem;">Carregando canais...</p>
+                            <p class="mt-1">Carregando canais...</p>
                         </div>
                     </div>
                 </div>
@@ -774,28 +282,28 @@
 
                     <div class="form-group">
                         <label class="form-label">Permissões</label>
-                        <div style="max-height: 200px; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 1rem;">
-                            <div class="setting-item" style="margin-bottom: 0.5rem;">
+                        <div class="scroll-box">
+                            <div class="setting-item mb-sm">
                                 <span>Administrador</span>
                                 <input type="checkbox" id="perm_administrator">
                             </div>
-                            <div class="setting-item" style="margin-bottom: 0.5rem;">
+                            <div class="setting-item mb-sm">
                                 <span>Gerenciar Servidor</span>
                                 <input type="checkbox" id="perm_manage_guild">
                             </div>
-                            <div class="setting-item" style="margin-bottom: 0.5rem;">
+                            <div class="setting-item mb-sm">
                                 <span>Gerenciar Canais</span>
                                 <input type="checkbox" id="perm_manage_channels">
                             </div>
-                            <div class="setting-item" style="margin-bottom: 0.5rem;">
+                            <div class="setting-item mb-sm">
                                 <span>Gerenciar Cargos</span>
                                 <input type="checkbox" id="perm_manage_roles">
                             </div>
-                            <div class="setting-item" style="margin-bottom: 0.5rem;">
+                            <div class="setting-item mb-sm">
                                 <span>Expulsar Membros</span>
                                 <input type="checkbox" id="perm_kick_members">
                             </div>
-                            <div class="setting-item" style="margin-bottom: 0.5rem;">
+                            <div class="setting-item mb-sm">
                                 <span>Banir Membros</span>
                                 <input type="checkbox" id="perm_ban_members">
                             </div>
@@ -809,9 +317,9 @@
                     <div class="card-title">📋 Cargos Existentes</div>
                     
                     <div id="rolesList">
-                        <div style="text-align: center; padding: 2rem;">
+                        <div class="center-pad">
                             <div class="loading"></div>
-                            <p style="margin-top: 1rem;">Carregando cargos...</p>
+                            <p class="mt-1">Carregando cargos...</p>
                         </div>
                     </div>
                 </div>
@@ -823,17 +331,16 @@
             <div class="admin-card">
                 <div class="card-title">📋 Logs do Sistema</div>
                 
-                <div class="btn-group" style="margin-bottom: 1rem;">
+                <div class="btn-group mb-1">
                     <button class="btn btn-secondary" onclick="filterLogs('all')">Todos</button>
                     <button class="btn btn-secondary" onclick="filterLogs('info')">Info</button>
                     <button class="btn btn-secondary" onclick="filterLogs('warning')">Avisos</button>
                     <button class="btn btn-secondary" onclick="filterLogs('error')">Erros</button>
                 </div>
-
-                <div id="logsList" style="max-height: 500px; overflow-y: auto;">
-                    <div style="text-align: center; padding: 2rem;">
+                <div id="logsList" class="logs-list">
+                    <div class="center-pad">
                         <div class="loading"></div>
-                        <p style="margin-top: 1rem;">Carregando logs...</p>
+                        <p class="mt-1">Carregando logs...</p>
                     </div>
                 </div>
             </div>

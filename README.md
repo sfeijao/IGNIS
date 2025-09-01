@@ -190,7 +190,27 @@ YSNM-Discord-Bot/
 
 ---
 
-## 📋 Passo a Passo para Discord Developer
+## � Private delivery (PRIVATE_LOG_ENDPOINT)
+
+The bot supports sending archived ticket payloads to a private endpoint under your control. Use the following environment variables:
+
+- `PRIVATE_LOG_ENDPOINT` — URL to POST ticket payloads (example: `https://example.com/hooks/tickets`).
+- `PRIVATE_LOG_TOKEN` — optional Bearer token the receiver should expect.
+- `PRIVATE_LOG_HMAC_SECRET` — optional HMAC secret; when set the bot will sign payloads with HMAC-SHA256 using a timestamped scheme.
+- `PRIVATE_LOG_HMAC_TTL` — TTL in seconds for timestamped signatures (default 300).
+
+Security recommendations:
+
+- Use HTTPS and a trusted certificate for any public endpoint.
+- Use `PRIVATE_LOG_HMAC_SECRET` and verify signatures server-side; prefer timestamped signatures to avoid replay attacks.
+- Rotate shared secrets periodically and store them in a secure secret manager.
+- Consider additional authentication layers (mutual TLS, IP allow lists) for production.
+
+The repo includes an example local receiver under `examples/private-receiver/` with tests and a small helper `website/utils/privateLogger.js` that signs payloads and retries on failure.
+
+---
+
+## �📋 Passo a Passo para Discord Developer
 
 ### 1. **Criar Aplicação Discord**
 1. Acesse [Discord Developer Portal](https://discord.com/developers/applications)

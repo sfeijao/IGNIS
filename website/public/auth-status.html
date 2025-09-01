@@ -2,38 +2,13 @@
 <html>
 <head>
     <title>YSNM - Status de Autenticação</title>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            max-width: 600px; 
-            margin: 50px auto; 
-            padding: 20px; 
-            background: #2f3136; 
-            color: white;
-        }
-        .status { 
-            padding: 15px; 
-            margin: 10px 0; 
-            border-radius: 5px; 
-            background: #40444b; 
-        }
-        .success { background: #3ba55d; }
-        .error { background: #ed4245; }
-        button { 
-            padding: 10px 20px; 
-            margin: 5px; 
-            border: none; 
-            border-radius: 5px; 
-            background: #9932CC; 
-            color: white; 
-            cursor: pointer; 
-        }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- auth-status styles moved to css/style.css (.auth-status) -->
 </head>
 <body>
     <h2>🔐 YSNM - Status de Autenticação</h2>
     
-    <div id="cookieStatus" class="status">
+    <div id="cookieStatus" class="status auth-status">
         <h3>🍪 Cookie Status</h3>
         <p id="cookieInfo">Verificando...</p>
     </div>

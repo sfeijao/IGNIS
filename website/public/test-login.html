@@ -2,38 +2,12 @@
 <html>
 <head>
     <title>YSNM - Teste de Login</title>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            max-width: 400px; 
-            margin: 50px auto; 
-            padding: 20px; 
-            background: #2f3136; 
-            color: white;
-        }
-        input, button { 
-            width: 100%; 
-            padding: 10px; 
-            margin: 10px 0; 
-            border: none; 
-            border-radius: 5px; 
-        }
-        button { 
-            background: #9932CC; 
-            color: white; 
-            cursor: pointer; 
-        }
-        .result { 
-            margin-top: 20px; 
-            padding: 10px; 
-            border-radius: 5px; 
-            background: #40444b; 
-        }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- local test-login styles moved to css/style.css (.test-login) -->
 </head>
 <body>
     <h2>🔐 YSNM Login Test</h2>
-    <form id="testForm">
+    <form id="testForm" class="test-login">
         <input type="password" id="pass" placeholder="Password: YSNM2024!" value="YSNM2024!">
         <button type="submit">Test Login</button>
     </form>

@@ -4,68 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🧪 YSNM API Test Dashboard</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0F1419;
-            color: #FFFFFF;
-            margin: 0;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        .container { max-width: 1200px; margin: 0 auto; }
-        h1 { color: #6B73FF; text-align: center; margin-bottom: 2rem; }
-        .test-section { 
-            background: #1A1F2E; 
-            border-radius: 12px; 
-            padding: 20px; 
-            margin-bottom: 20px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .test-section h3 { color: #8B5CF6; margin-bottom: 15px; }
-        .btn {
-            background: #6B73FF;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            margin: 5px;
-            font-size: 14px;
-        }
-        .btn:hover { background: #5A63E8; }
-        .btn.success { background: #10B981; }
-        .btn.error { background: #EF4444; }
-        .result {
-            background: #252A3A;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 10px;
-            border-left: 4px solid #6B73FF;
-            white-space: pre-wrap;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 12px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .status { 
-            display: inline-block; 
-            padding: 4px 8px; 
-            border-radius: 4px; 
-            font-size: 12px; 
-            font-weight: bold;
-        }
-        .status.success { background: #10B981; }
-        .status.error { background: #EF4444; }
-        .status.loading { background: #F59E0B; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .api-info { font-size: 12px; color: #94A3B8; margin-bottom: 10px; }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- test-api styles moved to css/style.css (.test-api, .test-section, .status, etc) -->
 </head>
 <body>
     <div class="container">
         <h1>🧪 YSNM API Test Dashboard</h1>
-        <p style="text-align: center; color: #94A3B8; margin-bottom: 2rem;">
+    <p class="muted-center mb-1">
             Teste completo de todas as APIs do sistema YSNM
         </p>
 
@@ -76,7 +21,7 @@
                 <div class="api-info">GET /api/guilds</div>
                 <button class="btn" onclick="testGuilds()">Testar Guilds</button>
                 <span id="guilds-status" class="status loading">Aguardando...</span>
-                <div id="guilds-result" class="result" style="display: none;"></div>
+                <div id="guilds-result" class="result hidden"></div>
             </div>
 
             <!-- Channels API -->
@@ -85,7 +30,7 @@
                 <div class="api-info">GET /api/server/{serverId}/channels</div>
                 <button class="btn" onclick="testChannels()">Testar Channels</button>
                 <span id="channels-status" class="status loading">Aguardando...</span>
-                <div id="channels-result" class="result" style="display: none;"></div>
+                <div id="channels-result" class="result hidden"></div>
             </div>
 
             <!-- Roles API -->
@@ -94,7 +39,7 @@
                 <div class="api-info">GET /api/server/{serverId}/roles</div>
                 <button class="btn" onclick="testRoles()">Testar Roles</button>
                 <span id="roles-status" class="status loading">Aguardando...</span>
-                <div id="roles-result" class="result" style="display: none;"></div>
+                <div id="roles-result" class="result hidden"></div>
             </div>
 
             <!-- Members API -->
@@ -103,7 +48,7 @@
                 <div class="api-info">GET /api/server/{serverId}/members</div>
                 <button class="btn" onclick="testMembers()">Testar Members</button>
                 <span id="members-status" class="status loading">Aguardando...</span>
-                <div id="members-result" class="result" style="display: none;"></div>
+                <div id="members-result" class="result hidden"></div>
             </div>
 
             <!-- Tickets API -->
@@ -112,7 +57,7 @@
                 <div class="api-info">GET /api/tickets</div>
                 <button class="btn" onclick="testTickets()">Testar Tickets</button>
                 <span id="tickets-status" class="status loading">Aguardando...</span>
-                <div id="tickets-result" class="result" style="display: none;"></div>
+                <div id="tickets-result" class="result hidden"></div>
             </div>
 
             <!-- Logs API -->
@@ -121,7 +66,7 @@
                 <div class="api-info">GET /api/logs</div>
                 <button class="btn" onclick="testLogs()">Testar Logs</button>
                 <span id="logs-status" class="status loading">Aguardando...</span>
-                <div id="logs-result" class="result" style="display: none;"></div>
+                <div id="logs-result" class="result hidden"></div>
             </div>
 
             <!-- Moderation APIs -->
@@ -130,7 +75,7 @@
                 <div class="api-info">POST /api/server/{serverId}/timeout (dry-run)</div>
                 <button class="btn" onclick="testModeration()">Testar Moderação</button>
                 <span id="moderation-status" class="status loading">Aguardando...</span>
-                <div id="moderation-result" class="result" style="display: none;"></div>
+                <div id="moderation-result" class="result hidden"></div>
             </div>
 
             <!-- System Status -->
@@ -139,16 +84,16 @@
                 <div class="api-info">Informações do sistema</div>
                 <button class="btn" onclick="testSystemStatus()">Verificar Sistema</button>
                 <span id="system-status" class="status loading">Aguardando...</span>
-                <div id="system-result" class="result" style="display: none;"></div>
+                <div id="system-result" class="result hidden"></div>
             </div>
         </div>
 
-        <div class="test-section" style="margin-top: 30px;">
+    <div class="test-section mb-1">
             <h3>🔄 Teste Completo</h3>
-            <button class="btn" onclick="runAllTests()" style="font-size: 16px; padding: 15px 30px;">
+            <button class="btn btn-lg" onclick="runAllTests()">
                 ▶️ Executar Todos os Testes
             </button>
-            <div id="overall-status" style="margin-top: 15px; font-size: 18px; text-align: center;"></div>
+            <div id="overall-status" class="overall-status"></div>
         </div>
     </div>
 

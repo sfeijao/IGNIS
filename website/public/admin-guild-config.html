@@ -1,25 +1,18 @@
 <!doctype html>
 <html>
-<head>
+  <head>
   <meta charset="utf-8">
   <title>Guild Config Admin</title>
-  <style>
-    body{font-family:Arial,Helvetica,sans-serif;padding:24px}
-    label{display:block;margin-top:12px}
-    input{width:100%;padding:8px}
-    #validateMsg{color:#666;display:block;margin-top:6px}
-    #sessionInfo{margin-top:8px;color:#444}
-    #status{margin-top:16px;background:#f8f8f8;padding:8px;border:1px solid #ddd}
-  #adminLogs{margin-top:12px}
-  </style>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- admin-guild-config small styles moved to css/style.css (.admin-small/.admin-webhooks) -->
 </head>
-<body>
+<body class="admin-small">
   <h2>Guild Config Admin</h2>
   <p>Access via <em>localhost</em> or provide a Bearer token in DevTools network headers.</p>
 
   <label>Guild ID <input id="guildId" value="1333820000791691284"></label>
 
-  <div style="margin-top:12px">
+  <div class="mb-1">
     <a href="/admin-webhooks.html">Configurar Webhooks (mover)</a>
   </div>
   <label>Log Channel ID <input id="logChannel" placeholder="channel id" /></label>

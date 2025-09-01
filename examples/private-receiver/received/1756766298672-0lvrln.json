@@ -1,0 +1,16 @@
+{
+  "receivedAt": "2025-09-01T22:38:18.672Z",
+  "headers": {
+    "content-type": "application/json",
+    "content-length": "27",
+    "authorization": "Bearer testtoken",
+    "x-signature": "sha256=3f0aeaafe1cbe010d37d5d4d661265ba83e22f7a0135dddbef286863733733ac",
+    "x-timestamp": "1756766298629",
+    "host": "127.0.0.1:3001",
+    "connection": "keep-alive"
+  },
+  "data": {
+    "event": "hmac_test",
+    "x": 1
+  }
+}

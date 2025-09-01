@@ -1,0 +1,32 @@
+{
+  "receivedAt": "2025-09-01T22:24:25.400Z",
+  "headers": {
+    "host": "127.0.0.1:3001",
+    "connection": "keep-alive",
+    "content-type": "application/json",
+    "authorization": "Bearer testtoken",
+    "x-timestamp": "1756765465221",
+    "x-signature": "sha256=836695b2f5246be9d45c0f86447557f95e7dbd181faa73973d1251ee8935fcbd",
+    "accept": "*/*",
+    "accept-language": "*",
+    "sec-fetch-mode": "cors",
+    "user-agent": "node",
+    "accept-encoding": "gzip, deflate",
+    "content-length": "168"
+  },
+  "data": {
+    "event": "ticket_archived",
+    "ticket": {
+      "id": 2001,
+      "guild_id": "555",
+      "subject": "BotTest"
+    },
+    "messages": [
+      {
+        "content": "from bot",
+        "author": "bot",
+        "ts": "2025-09-01T22:24:25.220Z"
+      }
+    ]
+  }
+}
