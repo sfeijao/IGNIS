@@ -2,6 +2,7 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
+    <script src="/js/frontend-helpers.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YSNM Bot - Modern Dashboard</title>
     <link rel="stylesheet" href="css/style.css">
@@ -498,7 +499,7 @@
             async loadStats() {
                 try {
                     // Load member count
-                    const guildsResponse = await fetch('/api/guilds', { credentials: 'include' });
+                        const guildsResponse = await fetch('/api/guilds', { credentials: 'include' });
                     if (guildsResponse.ok) {
                         const guilds = await guildsResponse.json();
                         if (guilds.length > 0) {
@@ -507,14 +508,14 @@
                     }
 
                     // Load channels
-                    const channelsResponse = await fetch('/api/channels', { credentials: 'include' });
+                        const channelsResponse = await fetch('/api/channels', { credentials: 'include' });
                     if (channelsResponse.ok) {
                         const channels = await channelsResponse.json();
                         document.getElementById('channelCount').textContent = channels.length || '60';
                     }
 
                     // Load roles
-                    const rolesResponse = await fetch('/api/roles', { credentials: 'include' });
+                        const rolesResponse = await fetch('/api/roles', { credentials: 'include' });
                     if (rolesResponse.ok) {
                         const roles = await rolesResponse.json();
                         document.getElementById('roleCount').textContent = roles.length || '46';
@@ -527,7 +528,7 @@
 
             startRealTimeUpdates() {
                 // Update stats every 30 seconds
-                setInterval(() => {
+                    setInterval(() => {
                     this.loadStats();
                 }, 30000);
                 
@@ -557,7 +558,7 @@
 
             handleNavigation(event) {
                 // Update active state
-                document.querySelectorAll('.nav-item').forEach(item => {
+                    document.querySelectorAll('.nav-item').forEach(item => {
                     item.classList.remove('active');
                 });
                 
@@ -1673,27 +1674,62 @@
             transition: all 0.3s ease;
         }
 
-        .toast.success {
-            border-left: 4px solid var(--success);
-        }
+                if (data.success) {
+                    // Build results using DOM nodes to avoid template placeholders
+                    if (resultsContainer) { while (resultsContainer.firstChild) resultsContainer.removeChild(resultsContainer.firstChild); }
+                    data.members.forEach(member => {
+                        const logEl = document.createElement('div');
+                        logEl.className = `log-entry log-${logData.level || 'info'}`;
 
-        .toast.error {
-            border-left: 4px solid var(--danger);
-        }
+                        const header = document.createElement('div'); header.className = 'log-header';
+                        const timeSpan = document.createElement('span'); timeSpan.className = 'log-time'; timeSpan.textContent = new Date(logData.timestamp).toLocaleTimeString('pt-BR');
+                        const typeSpan = document.createElement('span'); typeSpan.className = 'log-type'; typeSpan.textContent = getLogTypeLabel(logData.type);
+                        const levelSpan = document.createElement('span'); levelSpan.className = `log-level log-level-${logData.level || 'info'}`; levelSpan.textContent = getLogLevelLabel(logData.level);
+                        header.appendChild(timeSpan); header.appendChild(typeSpan); header.appendChild(levelSpan);
 
-        .toast.warning {
-            border-left: 4px solid var(--warning);
-        }
+                        const msgDiv = document.createElement('div'); msgDiv.className = 'log-message'; msgDiv.textContent = logData.message || '';
 
-        .toast.info {
-            border-left: 4px solid var(--info);
-        }
+                        logEl.appendChild(header); logEl.appendChild(msgDiv);
 
-        .toast.removing {
-            animation: toastSlideOut 0.3s ease-in forwards;
-        }
+                        if (logData.username) {
+                            const userDiv = document.createElement('div'); userDiv.className = 'log-user'; userDiv.textContent = `👤 ${logData.username}`;
+                            logEl.appendChild(userDiv);
+                        }
+                        if (logData.channel_name) {
+                            const chanDiv = document.createElement('div'); chanDiv.className = 'log-channel'; chanDiv.textContent = `📺 ${logData.channel_name}`;
+                            logEl.appendChild(chanDiv);
+                        }
 
-        @keyframes toastSlideIn {
+                        // Adicionar no topo
+                        listEl.insertBefore(logEl, listEl.firstChild);
+                        }
+
+                        const info = document.createElement('div'); info.className = 'user-info';
+                        const name = document.createElement('div'); name.className = 'user-name'; name.textContent = member.displayName || '';
+                        const tag = document.createElement('div'); tag.className = 'user-tag'; tag.textContent = member.tag || '';
+
+                        const rolesDiv = document.createElement('div'); rolesDiv.className = 'user-roles';
+                        (member.roles || []).slice(0,2).forEach(role => {
+                            const span = document.createElement('span');
+                            span.className = 'user-role';
+                            span.style.background = `${role.color}20`;
+                            span.style.color = role.color || '';
+                            span.textContent = role.name || '';
+                            rolesDiv.appendChild(span);
+                        });
+                        if (member.isOwner) {
+                            const ownerSpan = document.createElement('span'); ownerSpan.className = 'user-role'; ownerSpan.style.background = '#f59e0b'; ownerSpan.style.color = 'white'; ownerSpan.textContent = '👑 DONO'; rolesDiv.appendChild(ownerSpan);
+                        }
+
+                        info.appendChild(name);
+                        info.appendChild(tag);
+                        info.appendChild(rolesDiv);
+
+                        item.appendChild(avatar);
+                        item.appendChild(info);
+
+                        resultsContainer.appendChild(item);
+                    });
             from {
                 opacity: 0;
                 transform: translateX(100%);
@@ -2291,13 +2327,13 @@
                                 <button class="btn btn-success" id="newTicketBtn">➕ Novo Ticket</button>
                             </div>
                             <div class="filters-row">
-                                <select id="statusFilter" class="form-select">
+                                <select id="statusFilter" class="form-select" title="Filtrar por status">
                                     <option value="">Todos os Status</option>
                                     <option value="open">Abertos</option>
                                     <option value="assigned">Atribuídos</option>
                                     <option value="closed">Fechados</option>
                                 </select>
-                                <select id="priorityFilter" class="form-select">
+                                <select id="priorityFilter" class="form-select" title="Filtrar por prioridade">
                                     <option value="">Todas as Prioridades</option>
                                     <option value="low">Baixa</option>
                                     <option value="normal">Normal</option>
@@ -2437,7 +2473,7 @@
 
                     <div class="config-form">
                         <div class="logs-controls">
-                            <select id="logFilter">
+                            <select id="logFilter" title="Filtrar logs por tipo">
                                 <option value="">Todos os Logs</option>
                                 <option value="moderation">Moderação</option>
                                 <option value="message">Mensagens</option>
@@ -2445,7 +2481,7 @@
                                 <option value="bot">Bot</option>
                                 <option value="error">Erros</option>
                             </select>
-                            <select id="logLevel">
+                            <select id="logLevel" title="Filtrar logs por nível">
                                 <option value="">Todos os Níveis</option>
                                 <option value="info">Info</option>
                                 <option value="warn">Aviso</option>
@@ -2520,31 +2556,72 @@
         function displayServers() {
             const serverGrid = document.getElementById('serverGrid');
             
+            if (serverGrid) { while (serverGrid.firstChild) serverGrid.removeChild(serverGrid.firstChild); } // clear
             if (userGuilds.length === 0) {
                 console.log('⚠️ Nenhum servidor encontrado - exibindo opção de teste');
-                serverGrid.innerHTML = `
-                    <div class="server-card" data-server-id="test-server">
-                        <div class="server-icon">T</div>
-                        <div class="server-name">Servidor de Teste</div>
-                        <div class="server-members">Modo de Desenvolvimento 🔧</div>
-                    </div>
-                    <p style="margin-top: 1rem; color: var(--text-muted);">
-                        💡 Não tens acesso a nenhum servidor com o bot instalado, mas podes testar as funcionalidades.
-                    </p>
-                `;
+                const card = document.createElement('div');
+                card.className = 'server-card';
+                card.setAttribute('data-server-id', 'test-server');
+
+                const icon = document.createElement('div');
+                icon.className = 'server-icon';
+                icon.textContent = 'T';
+                card.appendChild(icon);
+
+                const name = document.createElement('div');
+                name.className = 'server-name';
+                name.textContent = 'Servidor de Teste';
+                card.appendChild(name);
+
+                const members = document.createElement('div');
+                members.className = 'server-members';
+                members.textContent = 'Modo de Desenvolvimento 🔧';
+                card.appendChild(members);
+
+                serverGrid.appendChild(card);
+
+                const info = document.createElement('p');
+                info.style.marginTop = '1rem';
+                info.style.color = 'var(--text-muted)';
+                info.textContent = '💡 Não tens acesso a nenhum servidor com o bot instalado, mas podes testar as funcionalidades.';
+                serverGrid.appendChild(info);
             } else {
-                serverGrid.innerHTML = userGuilds.map(guild => `
-                    <div class="server-card" data-server-id="${guild.id}">
-                        <div class="server-icon">
-                            ${guild.icon ? 
-                                `<img src="https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png" alt="${guild.name}">` :
-                                guild.name.charAt(0).toUpperCase()
-                            }
-                        </div>
-                        <div class="server-name">${guild.name}</div>
-                        <div class="server-members">${guild.memberCount || '?'} membros ${guild.botPresent ? '🟢' : '🔴'}</div>
-                    </div>
-                `).join('');
+                userGuilds.forEach(guild => {
+                    const card = document.createElement('div');
+                    card.className = 'server-card';
+                    card.setAttribute('data-server-id', guild.id);
+
+                    const icon = document.createElement('div');
+                    icon.className = 'server-icon';
+
+                    if (guild.icon) {
+                        const img = document.createElement('img');
+                        img.alt = guild.name || '';
+                        img.src = `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`;
+                        img.onerror = function() {
+                            // fallback to initial letter if image fails
+                            if (img.parentNode) img.parentNode.removeChild(img);
+                            icon.textContent = (guild.name || '?').charAt(0).toUpperCase();
+                        };
+                        icon.appendChild(img);
+                    } else {
+                        icon.textContent = (guild.name || '?').charAt(0).toUpperCase();
+                    }
+
+                    card.appendChild(icon);
+
+                    const name = document.createElement('div');
+                    name.className = 'server-name';
+                    name.textContent = guild.name || '';
+                    card.appendChild(name);
+
+                    const members = document.createElement('div');
+                    members.className = 'server-members';
+                    members.textContent = `${guild.memberCount || '?'} membros ${guild.botPresent ? '🟢' : '🔴'}`;
+                    card.appendChild(members);
+
+                    serverGrid.appendChild(card);
+                });
             }
 
             // Add click listeners to server cards
@@ -2722,7 +2799,7 @@
                 const select = document.getElementById(selectId);
                 if (select) {
                     // Clear existing options except first
-                    select.innerHTML = '<option value="">Seleciona um canal...</option>';
+                    if (select) { while (select.firstChild) select.removeChild(select.firstChild); const opt = document.createElement('option'); opt.value = ''; opt.textContent = 'Seleciona um canal...'; select.appendChild(opt); }
                     
                     // Add channels
                     textChannels.forEach(channel => {
@@ -2753,7 +2830,7 @@
                 const select = document.getElementById(selectId);
                 if (select) {
                     // Clear existing options except first
-                    select.innerHTML = '<option value="">Seleciona um cargo...</option>';
+                    if (select) { while (select.firstChild) select.removeChild(select.firstChild); const optc = document.createElement('option'); optc.value = ''; optc.textContent = 'Seleciona um cargo...'; select.appendChild(optc); }
                     
                     // Add roles
                     assignableRoles.forEach(role => {
@@ -2827,7 +2904,8 @@
         // User Search Functions
         async function searchUsers(query, resultsContainer, type) {
             if (query.length < 2) {
-                resultsContainer.innerHTML = '';
+                // clear results safely
+                while (resultsContainer.firstChild) resultsContainer.removeChild(resultsContainer.firstChild);
                 return;
             }
 
@@ -2835,33 +2913,59 @@
                 const response = await fetch(`/api/server/${currentServerId}/members?search=${encodeURIComponent(query)}&limit=10`);
                 const data = await response.json();
 
-                if (data.success) {
-                    resultsContainer.innerHTML = data.members.map(member => `
-                        <div class="user-result" data-user-id="${member.id}" data-type="${type}">>
-                            <div class="user-avatar">
-                                ${member.avatar ? 
-                                    `<img src="${member.avatar}" alt="${member.displayName}" style="width: 100%; height: 100%; border-radius: 50%;">` :
-                                    member.displayName.charAt(0).toUpperCase()
-                                }
-                            </div>
-                            <div class="user-info">
-                                <div class="user-name">${member.displayName}</div>
-                                <div class="user-tag">${member.tag}</div>
-                                <div class="user-roles">
-                                    ${member.roles.slice(0, 2).map(role => 
-                                        `<span class="user-role" style="background: ${role.color}20; color: ${role.color}">${role.name}</span>`
-                                    ).join('')}
-                                    ${member.isOwner ? '<span class="user-role" style="background: #f59e0b; color: white;">👑 DONO</span>' : ''}
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
+                // clear previous results
+                while (resultsContainer.firstChild) resultsContainer.removeChild(resultsContainer.firstChild);
+
+                if (data.success && Array.isArray(data.members) && data.members.length) {
+                    data.members.forEach(member => {
+                        const item = document.createElement('div');
+                        item.className = 'user-result';
+                        item.dataset.userId = member.id;
+                        item.dataset.type = type;
+                        item.addEventListener('click', () => selectUser(member.id, type));
+
+                        const avatarDiv = document.createElement('div'); avatarDiv.className = 'user-avatar';
+                        if (member.avatar && !member.avatar.includes('${') && !member.avatar.toLowerCase().includes('%24%7b')) {
+                            const img = document.createElement('img');
+                            img.src = member.avatar;
+                            img.alt = member.displayName || '';
+                            img.style.width = '100%'; img.style.height = '100%'; img.style.borderRadius = '50%';
+                            img.onerror = function() { this.remove(); avatarDiv.textContent = (member.displayName || '').charAt(0).toUpperCase(); };
+                            avatarDiv.appendChild(img);
+                        } else {
+                            avatarDiv.textContent = (member.displayName || '').charAt(0).toUpperCase();
+                        }
+
+                        const infoDiv = document.createElement('div'); infoDiv.className = 'user-info';
+                        const nameDiv = document.createElement('div'); nameDiv.className = 'user-name'; nameDiv.textContent = member.displayName || '';
+                        const tagDiv = document.createElement('div'); tagDiv.className = 'user-tag'; tagDiv.textContent = member.tag || '';
+
+                        const rolesDiv = document.createElement('div'); rolesDiv.className = 'user-roles';
+                        (member.roles || []).slice(0,2).forEach(role => {
+                            const span = document.createElement('span'); span.className = 'user-role';
+                            if (role.color) { span.style.background = `${role.color}20`; span.style.color = role.color; }
+                            span.textContent = role.name || '';
+                            rolesDiv.appendChild(span);
+                        });
+                        if (member.isOwner) {
+                            const ownerSpan = document.createElement('span'); ownerSpan.className = 'user-role'; ownerSpan.style.background = '#f59e0b'; ownerSpan.style.color = 'white'; ownerSpan.textContent = '👑 DONO';
+                            rolesDiv.appendChild(ownerSpan);
+                        }
+
+                        infoDiv.appendChild(nameDiv); infoDiv.appendChild(tagDiv); infoDiv.appendChild(rolesDiv);
+                        item.appendChild(avatarDiv); item.appendChild(infoDiv);
+                        resultsContainer.appendChild(item);
+                    });
                 } else {
-                    resultsContainer.innerHTML = '<div class="empty-state">Nenhum usuário encontrado</div>';
+                    const empty = document.createElement('div'); empty.className = 'empty-state'; empty.textContent = 'Nenhum usuário encontrado';
+                    resultsContainer.appendChild(empty);
                 }
             } catch (error) {
                 console.error('Erro ao buscar usuários:', error);
-                resultsContainer.innerHTML = '<div class="empty-state">Erro ao buscar usuários</div>';
+                const err = document.createElement('div'); err.className = 'empty-state'; err.textContent = 'Erro ao buscar usuários';
+                // clear and show error
+                while (resultsContainer.firstChild) resultsContainer.removeChild(resultsContainer.firstChild);
+                resultsContainer.appendChild(err);
             }
         }
 
@@ -2886,7 +2990,7 @@
             }
 
             // Clear search results
-            document.getElementById(`${type}UserResults`).innerHTML = '';
+            const _rElx = document.getElementById(`${type}UserResults`); if (_rElx) { while (_rElx.firstChild) _rElx.removeChild(_rElx.firstChild); }
             document.getElementById(`${type}UserSearch`).value = member.displayName;
         }
 
@@ -2894,50 +2998,54 @@
             const cardContainer = document.getElementById(`${type}SelectedUser`);
             const card = document.getElementById(`${type}UserCard`);
             
-            const permissionBadges = [];
-            if (member.isOwner) {
-                permissionBadges.push('<span class="permission-badge owner">👑 Proprietário</span>');
+            // Build card content safely using DOM APIs
+            if (card) { while (card.firstChild) card.removeChild(card.firstChild); }
+
+            const avatarDiv = document.createElement('div'); avatarDiv.className = 'user-avatar';
+            if (member.avatar && !member.avatar.includes('${') && !member.avatar.toLowerCase().includes('%24%7b')) {
+                const img = document.createElement('img');
+                img.src = member.avatar;
+                img.alt = member.displayName || '';
+                img.style.width = '100%'; img.style.height = '100%'; img.style.borderRadius = '50%';
+                img.onerror = function() { this.remove(); avatarDiv.textContent = (member.displayName || '').charAt(0).toUpperCase(); };
+                avatarDiv.appendChild(img);
             } else {
-                if (type === 'timeout' && member.moderatable) {
-                    permissionBadges.push('<span class="permission-badge can">✅ Pode dar timeout</span>');
-                } else if (type === 'timeout') {
-                    permissionBadges.push('<span class="permission-badge cannot">❌ Não pode dar timeout</span>');
+                avatarDiv.textContent = (member.displayName || '').charAt(0).toUpperCase();
+            }
+
+            const infoDiv = document.createElement('div'); infoDiv.className = 'user-info';
+            const nameDiv = document.createElement('div'); nameDiv.className = 'user-name'; nameDiv.textContent = member.displayName || '';
+            const tagDiv = document.createElement('div'); tagDiv.className = 'user-tag'; tagDiv.textContent = member.tag || '';
+
+            const rolesDiv = document.createElement('div'); rolesDiv.className = 'user-roles';
+            (member.roles || []).forEach(role => {
+                const span = document.createElement('span'); span.className = 'user-role'; span.style.background = `${role.color}20`; span.style.color = role.color || ''; span.textContent = role.name || '';
+                rolesDiv.appendChild(span);
+            });
+
+            const permsDiv = document.createElement('div'); permsDiv.className = 'user-permissions';
+            if (member.isOwner) {
+                const sp = document.createElement('span'); sp.className = 'permission-badge owner'; sp.textContent = '👑 Proprietário'; permsDiv.appendChild(sp);
+            } else {
+                if (type === 'timeout') {
+                    const sp = document.createElement('span'); sp.className = member.moderatable ? 'permission-badge can' : 'permission-badge cannot'; sp.textContent = member.moderatable ? '✅ Pode dar timeout' : '❌ Não pode dar timeout'; permsDiv.appendChild(sp);
                 }
-                
-                if (type === 'kick' && member.kickable) {
-                    permissionBadges.push('<span class="permission-badge can">✅ Pode expulsar</span>');
-                } else if (type === 'kick') {
-                    permissionBadges.push('<span class="permission-badge cannot">❌ Não pode expulsar</span>');
+                if (type === 'kick') {
+                    const sp = document.createElement('span'); sp.className = member.kickable ? 'permission-badge can' : 'permission-badge cannot'; sp.textContent = member.kickable ? '✅ Pode expulsar' : '❌ Não pode expulsar'; permsDiv.appendChild(sp);
                 }
-                
-                if (type === 'ban' && member.bannable) {
-                    permissionBadges.push('<span class="permission-badge can">✅ Pode banir</span>');
-                } else if (type === 'ban') {
-                    permissionBadges.push('<span class="permission-badge cannot">❌ Não pode banir</span>');
+                if (type === 'ban') {
+                    const sp = document.createElement('span'); sp.className = member.bannable ? 'permission-badge can' : 'permission-badge cannot'; sp.textContent = member.bannable ? '✅ Pode banir' : '❌ Não pode banir'; permsDiv.appendChild(sp);
                 }
             }
 
-            card.innerHTML = `
-                <div class="user-avatar">
-                    ${member.avatar ? 
-                        `<img src="${member.avatar}" alt="${member.displayName}" style="width: 100%; height: 100%; border-radius: 50%;">` :
-                        member.displayName.charAt(0).toUpperCase()
-                    }
-                </div>
-                <div class="user-info">
-                    <div class="user-name">${member.displayName}</div>
-                    <div class="user-tag">${member.tag}</div>
-                    <div class="user-roles">
-                        ${member.roles.map(role => 
-                            `<span class="user-role" style="background: ${role.color}20; color: ${role.color}">${role.name}</span>`
-                        ).join('')}
-                    </div>
-                    <div class="user-permissions">
-                        ${permissionBadges.join('')}
-                    </div>
-                </div>
-            `;
-            
+            infoDiv.appendChild(nameDiv);
+            infoDiv.appendChild(tagDiv);
+            infoDiv.appendChild(rolesDiv);
+            infoDiv.appendChild(permsDiv);
+
+            card.appendChild(avatarDiv);
+            card.appendChild(infoDiv);
+
             cardContainer.style.display = 'block';
         }
 
@@ -2959,7 +3067,7 @@
         function resetTimeoutForm() {
             selectedTimeoutUser = null;
             document.getElementById('timeoutUserSearch').value = '';
-            document.getElementById('timeoutUserResults').innerHTML = '';
+            const _toElx = document.getElementById('timeoutUserResults'); if (_toElx) { while (_toElx.firstChild) _toElx.removeChild(_toElx.firstChild); }
             document.getElementById('timeoutSelectedUser').style.display = 'none';
             document.getElementById('timeoutDuration').value = '60';
             document.getElementById('timeoutReason').value = 'Timeout via dashboard';
@@ -2976,7 +3084,7 @@
 
             const timeoutBtn = document.getElementById('executeTimeoutBtn');
             timeoutBtn.disabled = true;
-            timeoutBtn.innerHTML = '<span class="loading"></span> Aplicando...';
+            while (timeoutBtn.firstChild) timeoutBtn.removeChild(timeoutBtn.firstChild); const _spto = document.createElement('span'); _spto.className = 'loading'; timeoutBtn.appendChild(_spto); timeoutBtn.appendChild(document.createTextNode(' Aplicando...'));
 
             try {
                 const response = await fetch(`/api/server/${currentServerId}/timeout`, {
@@ -3003,7 +3111,7 @@
                 alert('❌ Erro ao aplicar timeout');
             } finally {
                 timeoutBtn.disabled = false;
-                timeoutBtn.innerHTML = 'Aplicar Timeout';
+                while (timeoutBtn.firstChild) timeoutBtn.removeChild(timeoutBtn.firstChild); timeoutBtn.appendChild(document.createTextNode('Aplicar Timeout'));
             }
         }
 
@@ -3025,7 +3133,7 @@
         function resetKickForm() {
             selectedKickUser = null;
             document.getElementById('kickUserSearch').value = '';
-            document.getElementById('kickUserResults').innerHTML = '';
+            const _kElx = document.getElementById('kickUserResults'); if (_kElx) { while (_kElx.firstChild) _kElx.removeChild(_kElx.firstChild); }
             document.getElementById('kickSelectedUser').style.display = 'none';
             document.getElementById('kickReason').value = 'Expulsão via dashboard';
             document.getElementById('confirmKick').checked = false;
@@ -3039,7 +3147,7 @@
 
             const executeKickBtn = document.getElementById('executeKickBtn');
             executeKickBtn.disabled = true;
-            executeKickBtn.innerHTML = '<span class="loading"></span> Expulsando...';
+            while (executeKickBtn.firstChild) executeKickBtn.removeChild(executeKickBtn.firstChild); const _spkk = document.createElement('span'); _spkk.className = 'loading'; executeKickBtn.appendChild(_spkk); executeKickBtn.appendChild(document.createTextNode(' Expulsando...'));
 
             try {
                 const response = await fetch(`/api/server/${currentServerId}/kick`, {
@@ -3065,7 +3173,7 @@
                 alert('❌ Erro ao expulsar usuário');
             } finally {
                 executeKickBtn.disabled = false;
-                executeKickBtn.innerHTML = 'Expulsar Usuário';
+                while (executeKickBtn.firstChild) executeKickBtn.removeChild(executeKickBtn.firstChild); executeKickBtn.appendChild(document.createTextNode('Expulsar Usuário'));
             }
         }
 
@@ -3087,7 +3195,7 @@
         function resetBanForm() {
             selectedBanUser = null;
             document.getElementById('banUserSearch').value = '';
-            document.getElementById('banUserResults').innerHTML = '';
+            const _bElx = document.getElementById('banUserResults'); if (_bElx) { while (_bElx.firstChild) _bElx.removeChild(_bElx.firstChild); }
             document.getElementById('banSelectedUser').style.display = 'none';
             document.getElementById('banReason').value = 'Banimento via dashboard';
             document.getElementById('deleteMessageDays').value = '0';
@@ -3105,7 +3213,7 @@
 
             const executeBanBtn = document.getElementById('executeBanBtn');
             executeBanBtn.disabled = true;
-            executeBanBtn.innerHTML = '<span class="loading"></span> Banindo...';
+            while (executeBanBtn.firstChild) executeBanBtn.removeChild(executeBanBtn.firstChild); const _spbb = document.createElement('span'); _spbb.className = 'loading'; executeBanBtn.appendChild(_spbb); executeBanBtn.appendChild(document.createTextNode(' Banindo...'));
 
             try {
                 const response = await fetch(`/api/server/${currentServerId}/ban`, {
@@ -3134,7 +3242,7 @@
                 alert('❌ Erro ao banir usuário');
             } finally {
                 executeBanBtn.disabled = false;
-                executeBanBtn.innerHTML = 'Banir Usuário';
+                while (executeBanBtn.firstChild) executeBanBtn.removeChild(executeBanBtn.firstChild); executeBanBtn.appendChild(document.createTextNode('Banir Usuário'));
             }
         }
 
@@ -3195,35 +3303,38 @@
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
-            
+
             const toastId = 'toast_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             toast.id = toastId;
-            
+
             const icons = {
                 success: '✅',
                 error: '❌',
                 warning: '⚠️',
                 info: 'ℹ️'
             };
-            
-            toast.innerHTML = `
-                <div class="toast-header">
-                    <div class="toast-title">
-                        <span>${icons[type] || 'ℹ️'}</span>
-                        ${title}
-                    </div>
-                    <button class="toast-close" data-toast-id="${toastId}">&times;</button>
-                </div>
-                <div class="toast-message">${message}</div>
-            `;
-            
+
+            const header = document.createElement('div'); header.className = 'toast-header';
+            const titleWrap = document.createElement('div'); titleWrap.className = 'toast-title';
+            const iconSpan = document.createElement('span'); iconSpan.textContent = icons[type] || 'ℹ️';
+            const titleText = document.createElement('span'); titleText.textContent = title || '';
+            titleWrap.appendChild(iconSpan); titleWrap.appendChild(titleText);
+
+            const closeBtn = document.createElement('button'); closeBtn.className = 'toast-close'; closeBtn.setAttribute('data-toast-id', toastId); closeBtn.textContent = '×';
+            closeBtn.addEventListener('click', () => removeToast(toastId));
+
+            header.appendChild(titleWrap); header.appendChild(closeBtn);
+
+            const msgDiv = document.createElement('div'); msgDiv.className = 'toast-message'; msgDiv.textContent = message || '';
+
+            toast.appendChild(header); toast.appendChild(msgDiv);
             container.appendChild(toast);
-            
+
             // Auto remove after duration
             if (duration > 0) {
                 setTimeout(() => removeToast(toastId), duration);
             }
-            
+
             return toastId;
         }
 
@@ -3286,7 +3397,7 @@
 
         async function loadServerChannels() {
             const channelSelect = document.getElementById('channelSelect');
-            channelSelect.innerHTML = '<option value="">Carregando canais...</option>';
+            if (channelSelect) { while (channelSelect.firstChild) channelSelect.removeChild(channelSelect.firstChild); const o = document.createElement('option'); o.value = ''; o.textContent = 'Carregando canais...'; channelSelect.appendChild(o); }
             
             // Se estiver em modo de teste, usar dados de teste
             if (currentServerId === 'test-server-123') {
@@ -3294,7 +3405,7 @@
                     populateTestChannelsAndRoles(); // Garantir que os dados de teste estão carregados
                 }
                 
-                channelSelect.innerHTML = '<option value="">Selecione um canal</option>';
+                if (channelSelect) { while (channelSelect.firstChild) channelSelect.removeChild(channelSelect.firstChild); const o2 = document.createElement('option'); o2.value = ''; o2.textContent = 'Selecione um canal'; channelSelect.appendChild(o2); }
                 serverChannels.forEach(channel => {
                     const option = document.createElement('option');
                     option.value = channel.id;
@@ -3310,7 +3421,7 @@
                 
                 if (data.success) {
                     serverChannels = data.channels;
-                    channelSelect.innerHTML = '<option value="">Selecione um canal</option>';
+                    if (channelSelect) { while (channelSelect.firstChild) channelSelect.removeChild(channelSelect.firstChild); const o3 = document.createElement('option'); o3.value = ''; o3.textContent = 'Selecione um canal'; channelSelect.appendChild(o3); }
                     
                     // Group channels by category
                     const channelsByCategory = {};
@@ -3342,11 +3453,11 @@
                         channelSelect.appendChild(optgroup);
                     });
                 } else {
-                    channelSelect.innerHTML = '<option value="">Erro ao carregar canais</option>';
+                    if (channelSelect) { while (channelSelect.firstChild) channelSelect.removeChild(channelSelect.firstChild); const er = document.createElement('option'); er.value = ''; er.textContent = 'Erro ao carregar canais'; channelSelect.appendChild(er); }
                 }
             } catch (error) {
                 console.error('Erro ao carregar canais:', error);
-                channelSelect.innerHTML = '<option value="">Erro ao carregar canais</option>';
+                if (channelSelect) { while (channelSelect.firstChild) channelSelect.removeChild(channelSelect.firstChild); const er2 = document.createElement('option'); er2.value = ''; er2.textContent = 'Erro ao carregar canais'; channelSelect.appendChild(er2); }
             }
         }
 
@@ -3363,7 +3474,7 @@
             
             const clearBtn = document.getElementById('clearChatBtn');
             clearBtn.disabled = true;
-            clearBtn.innerHTML = '<span class="loading"></span> Limpando...';
+            while (clearBtn.firstChild) clearBtn.removeChild(clearBtn.firstChild); const _spc2 = document.createElement('span'); _spc2.className = 'loading'; clearBtn.appendChild(_spc2); clearBtn.appendChild(document.createTextNode(' Limpando...'));
             
             try {
                 const response = await fetch(`/api/server/${currentServerId}/channels/${channelId}/clear`, {
@@ -3391,7 +3502,7 @@
                 alert('❌ Erro ao limpar chat');
             } finally {
                 clearBtn.disabled = false;
-                clearBtn.innerHTML = 'Limpar Chat';
+                while (clearBtn.firstChild) clearBtn.removeChild(clearBtn.firstChild); clearBtn.appendChild(document.createTextNode('Limpar Chat'));
             }
         }
 
@@ -3476,7 +3587,7 @@
                     
                     // Update button text
                     const lockBtn = document.getElementById('toggleServerLockBtn');
-                    lockBtn.innerHTML = isServerLocked ? '🔓 Desbloquear Servidor' : '🔒 Bloquear Servidor';
+                    lockBtn.textContent = isServerLocked ? '🔓 Desbloquear Servidor' : '🔒 Bloquear Servidor';
                     lockBtn.className = isServerLocked ? 'btn btn-success' : 'btn btn-danger';
                     
                     refreshModerationLogs();
@@ -3498,26 +3609,37 @@
 
         function refreshModerationLogs() {
             const logsContainer = document.getElementById('moderationLogs');
-            logsContainer.innerHTML = '<div class="loading"></div> Carregando logs...';
+            if (logsContainer) {
+                while (logsContainer.firstChild) logsContainer.removeChild(logsContainer.firstChild);
+                const loadWrap = document.createElement('div');
+                const loading = document.createElement('div'); loading.className = 'loading';
+                loadWrap.appendChild(loading);
+                const txt = document.createTextNode(' Carregando logs...');
+                loadWrap.appendChild(txt);
+                logsContainer.appendChild(loadWrap);
+            }
             
             // Simulate loading logs (replace with real API call)
             setTimeout(() => {
-                logsContainer.innerHTML = `
-                    <div style="font-size: 14px; line-height: 1.6;">
-                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg); border-radius: 8px;">
-                            <strong>🧹 Limpeza de Canal</strong> - há 2 minutos<br>
-                            <small style="color: var(--text-muted);">Canal #geral: 15 mensagens removidas</small>
-                        </div>
-                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg); border-radius: 8px;">
-                            <strong>🔓 Desbanimento em Massa</strong> - há 1 hora<br>
-                            <small style="color: var(--text-muted);">3 usuários desbanidos</small>
-                        </div>
-                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg); border-radius: 8px;">
-                            <strong>🔒 Servidor Bloqueado</strong> - há 2 horas<br>
-                            <small style="color: var(--text-muted);">12 canais modificados</small>
-                        </div>
-                    </div>
-                `;
+                if (logsContainer) {
+                    while (logsContainer.firstChild) logsContainer.removeChild(logsContainer.firstChild);
+                    const root = document.createElement('div'); root.style.fontSize = '14px'; root.style.lineHeight = '1.6';
+
+                    const makeEntry = (strongText, whenText, smallText) => {
+                        const wrap = document.createElement('div'); wrap.style.marginBottom = '0.5rem'; wrap.style.padding = '0.5rem'; wrap.style.background = 'var(--bg)'; wrap.style.borderRadius = '8px';
+                        const strong = document.createElement('strong'); strong.textContent = strongText; wrap.appendChild(strong);
+                        wrap.appendChild(document.createTextNode(' - ' + whenText));
+                        wrap.appendChild(document.createElement('br'));
+                        const small = document.createElement('small'); small.style.color = 'var(--text-muted)'; small.textContent = smallText; wrap.appendChild(small);
+                        return wrap;
+                    };
+
+                    root.appendChild(makeEntry('🧹 Limpeza de Canal', 'há 2 minutos', 'Canal #geral: 15 mensagens removidas'));
+                    root.appendChild(makeEntry('🔓 Desbanimento em Massa', 'há 1 hora', '3 usuários desbanidos'));
+                    root.appendChild(makeEntry('🔒 Servidor Bloqueado', 'há 2 horas', '12 canais modificados'));
+
+                    logsContainer.appendChild(root);
+                }
             }, 1000);
         }
 
@@ -3683,19 +3805,29 @@
             const placeholder = listEl.querySelector('.logs-placeholder');
             if (placeholder) placeholder.remove();
 
-            // Criar elemento do log
+            // Criar elemento do log (DOM-safe)
             const logEl = document.createElement('div');
             logEl.className = `log-entry log-${logData.level || 'info'}`;
-            logEl.innerHTML = `
-                <div class="log-header">
-                    <span class="log-time">${new Date(logData.timestamp).toLocaleTimeString('pt-BR')}</span>
-                    <span class="log-type">${getLogTypeLabel(logData.type)}</span>
-                    <span class="log-level log-level-${logData.level || 'info'}">${getLogLevelLabel(logData.level)}</span>
-                </div>
-                <div class="log-message">${logData.message}</div>
-                ${logData.username ? `<div class="log-user">👤 ${logData.username}</div>` : ''}
-                ${logData.channel_name ? `<div class="log-channel">📺 ${logData.channel_name}</div>` : ''}
-            `;
+
+            const header = document.createElement('div'); header.className = 'log-header';
+            const timeSpan = document.createElement('span'); timeSpan.className = 'log-time'; timeSpan.textContent = new Date(logData.timestamp).toLocaleTimeString('pt-BR');
+            const typeSpan = document.createElement('span'); typeSpan.className = 'log-type'; typeSpan.textContent = getLogTypeLabel(logData.type);
+            const levelSpan = document.createElement('span'); levelSpan.className = `log-level log-level-${logData.level || 'info'}`; levelSpan.textContent = getLogLevelLabel(logData.level);
+            header.appendChild(timeSpan); header.appendChild(typeSpan); header.appendChild(levelSpan);
+            logEl.appendChild(header);
+
+            const msgDiv = document.createElement('div'); msgDiv.className = 'log-message'; msgDiv.textContent = logData.message || '';
+            logEl.appendChild(msgDiv);
+
+            if (logData.username) {
+                const userDiv = document.createElement('div'); userDiv.className = 'log-user'; userDiv.textContent = '👤 ' + String(logData.username);
+                logEl.appendChild(userDiv);
+            }
+
+            if (logData.channel_name) {
+                const chanDiv = document.createElement('div'); chanDiv.className = 'log-channel'; chanDiv.textContent = '📺 ' + String(logData.channel_name);
+                logEl.appendChild(chanDiv);
+            }
 
             // Adicionar no topo
             listEl.insertBefore(logEl, listEl.firstChild);
@@ -3747,7 +3879,7 @@
                 // Recarregar logs com filtros
                 const listEl = document.getElementById('logsList');
                 if (listEl) {
-                    listEl.innerHTML = '<div class="logs-placeholder">🔄 Aplicando filtros...</div>';
+                    while (listEl.firstChild) listEl.removeChild(listEl.firstChild); const ph = document.createElement('div'); ph.className = 'logs-placeholder'; ph.textContent = '🔄 Aplicando filtros...'; listEl.appendChild(ph);
                 }
                 
                 // Se está conectado via SSE, apenas os novos logs serão filtrados
@@ -3766,10 +3898,10 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    listEl.innerHTML = '';
+                    while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
                     
                     if (data.logs.length === 0) {
-                        listEl.innerHTML = '<div class="logs-placeholder">📭 Nenhum log encontrado</div>';
+                        while (listEl.firstChild) listEl.removeChild(listEl.firstChild); const ph2 = document.createElement('div'); ph2.className = 'logs-placeholder'; ph2.textContent = '📭 Nenhum log encontrado'; listEl.appendChild(ph2);
                         return;
                     }
 
@@ -3779,12 +3911,12 @@
                     
                     updateLogsCount();
                 } else {
-                    listEl.innerHTML = '<div class="logs-placeholder">❌ Erro ao carregar logs</div>';
+                    while (listEl.firstChild) listEl.removeChild(listEl.firstChild); const ph3 = document.createElement('div'); ph3.className = 'logs-placeholder'; ph3.textContent = '❌ Erro ao carregar logs'; listEl.appendChild(ph3);
                 }
             } catch (error) {
                 console.error('Erro ao carregar logs:', error);
                 if (listEl) {
-                    listEl.innerHTML = '<div class="logs-placeholder">❌ Erro de conexão</div>';
+                    while (listEl.firstChild) listEl.removeChild(listEl.firstChild); const ph4 = document.createElement('div'); ph4.className = 'logs-placeholder'; ph4.textContent = '❌ Erro de conexão'; listEl.appendChild(ph4);
                 }
             }
         }
@@ -3865,11 +3997,11 @@
                     }
                 } else {
                     console.error('Erro ao carregar tickets:', data.error);
-                    loadingEl.innerHTML = '<p>❌ Erro ao carregar tickets</p>';
+                    while (loadingEl.firstChild) loadingEl.removeChild(loadingEl.firstChild); const pErr = document.createElement('p'); pErr.textContent = '❌ Erro ao carregar tickets'; loadingEl.appendChild(pErr);
                 }
             } catch (error) {
                 console.error('Erro ao carregar tickets:', error.message);
-                loadingEl.innerHTML = '<p>📱 Sistema de tickets temporariamente indisponível</p>';
+                while (loadingEl.firstChild) loadingEl.removeChild(loadingEl.firstChild); const pTmp = document.createElement('p'); pTmp.textContent = '📱 Sistema de tickets temporariamente indisponível'; loadingEl.appendChild(pTmp);
             }
         }
 
@@ -3928,37 +4060,75 @@
             if (!listEl) return;
             
             if (tickets.length === 0) {
-                listEl.innerHTML = '<div class="empty-state"><p>📭 Nenhum ticket encontrado</p></div>';
+                while (listEl.firstChild) listEl.removeChild(listEl.firstChild); const emptyDiv = document.createElement('div'); emptyDiv.className = 'empty-state'; const pEmpty = document.createElement('p'); pEmpty.textContent = '📭 Nenhum ticket encontrado'; emptyDiv.appendChild(pEmpty); listEl.appendChild(emptyDiv);
                 return;
             }
-            
-            listEl.innerHTML = tickets.map(ticket => `
-                <div class="ticket-card" data-ticket-id="${ticket.id}">>
-                    <div class="ticket-header">
-                        <div>
-                            <h4 class="ticket-title">#${ticket.id} - ${ticket.subject || 'Sem título'}</h4>
-                            <div class="ticket-meta">
-                                Por: ${ticket.username || 'Usuário desconhecido'} • 
-                                ${new Date(ticket.created_at).toLocaleDateString('pt-BR')}
-                                ${ticket.assigned_name ? ` • Atribuído a: ${ticket.assigned_name}` : ''}
-                            </div>
-                        </div>
-                        <div class="ticket-badges">
-                            <span class="ticket-badge badge-status-${ticket.status || 'open'}">${getStatusLabel(ticket.status)}</span>
-                            <span class="ticket-badge badge-priority-${ticket.priority || 'normal'}">${getPriorityLabel(ticket.priority)}</span>
-                        </div>
-                    </div>
-                    <div class="ticket-description">${ticket.description || 'Sem descrição'}</div>
-                    <div class="ticket-actions">
-                        <button class="btn btn-primary assign-ticket-btn" data-ticket-id="${ticket.id}" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
-                            👤 Atribuir a Mim
-                        </button>
-                        <button class="btn btn-success close-ticket-btn" data-ticket-id="${ticket.id}" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
-                            ✅ Fechar
-                        </button>
-                    </div>
-                </div>
-            `).join('');
+
+            // Clear list
+            while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
+            tickets.forEach(ticket => {
+                const card = document.createElement('div');
+                card.className = 'ticket-card';
+                card.setAttribute('data-ticket-id', ticket.id);
+
+                const header = document.createElement('div');
+                header.className = 'ticket-header';
+
+                const left = document.createElement('div');
+                const title = document.createElement('h4');
+                title.className = 'ticket-title';
+                title.textContent = `#${ticket.id} - ${ticket.subject || 'Sem título'}`;
+                left.appendChild(title);
+
+                const meta = document.createElement('div');
+                meta.className = 'ticket-meta';
+                const createdDate = new Date(ticket.created_at).toLocaleDateString('pt-BR');
+                meta.textContent = `Por: ${ticket.username || 'Usuário desconhecido'} • ${createdDate}`;
+                if (ticket.assigned_name) meta.textContent += ` • Atribuído a: ${ticket.assigned_name}`;
+                left.appendChild(meta);
+
+                header.appendChild(left);
+
+                const badges = document.createElement('div');
+                badges.className = 'ticket-badges';
+                const status = document.createElement('span');
+                status.className = `ticket-badge badge-status-${ticket.status || 'open'}`;
+                status.textContent = getStatusLabel(ticket.status);
+                badges.appendChild(status);
+                const priority = document.createElement('span');
+                priority.className = `ticket-badge badge-priority-${ticket.priority || 'normal'}`;
+                priority.textContent = getPriorityLabel(ticket.priority);
+                badges.appendChild(priority);
+
+                header.appendChild(badges);
+                card.appendChild(header);
+
+                const desc = document.createElement('div');
+                desc.className = 'ticket-description';
+                desc.textContent = ticket.description || 'Sem descrição';
+                card.appendChild(desc);
+
+                const actions = document.createElement('div');
+                actions.className = 'ticket-actions';
+                const assignBtn = document.createElement('button');
+                assignBtn.className = 'btn btn-primary assign-ticket-btn';
+                assignBtn.style.padding = '0.5rem 1rem';
+                assignBtn.style.fontSize = '0.85rem';
+                assignBtn.setAttribute('data-ticket-id', ticket.id);
+                assignBtn.textContent = '👤 Atribuir a Mim';
+                actions.appendChild(assignBtn);
+
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'btn btn-success close-ticket-btn';
+                closeBtn.style.padding = '0.5rem 1rem';
+                closeBtn.style.fontSize = '0.85rem';
+                closeBtn.setAttribute('data-ticket-id', ticket.id);
+                closeBtn.textContent = 'Fechar Ticket';
+                actions.appendChild(closeBtn);
+
+                card.appendChild(actions);
+                listEl.appendChild(card);
+            });
         }
 
         function getStatusLabel(status) {
@@ -4234,7 +4404,7 @@
             dropdowns.forEach(id => {
                 const select = document.getElementById(id);
                 if (select) {
-                    select.innerHTML = '<option value="">Seleciona uma opção...</option>';
+                    if (select) { while (select.firstChild) select.removeChild(select.firstChild); const o = document.createElement('option'); o.value = ''; o.textContent = 'Seleciona uma opção...'; select.appendChild(o); }
                 }
             });
         }

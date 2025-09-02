@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="/js/frontend-helpers.js"></script>
     <title>Dashboard - YSNM Bot</title>
     <style>
         * {
@@ -411,12 +412,16 @@
                 warning: '#ff0'
             };
             
-            console.innerHTML += `<div style="color: ${colors[type] || '#0ff'}">[${timestamp}] ${message}</div>`;
+            // Append log entry safely
+            const entry = document.createElement('div');
+            entry.style.color = colors[type] || '#0ff';
+            entry.textContent = `[${timestamp}] ${String(message)}`;
+            console.appendChild(entry);
             console.scrollTop = console.scrollHeight;
         }
 
         function clearDebugConsole() {
-            document.getElementById('console-debug').innerHTML = '';
+            const c = document.getElementById('console-debug'); if (c) { while (c.firstChild) c.removeChild(c.firstChild); }
             addDebugLog('Console limpo', 'info');
         }
 
@@ -464,35 +469,36 @@
 
         function displayServers() {
             const serverGrid = document.getElementById('serverGrid');
-            
+            if (serverGrid) while (serverGrid.firstChild) serverGrid.removeChild(serverGrid.firstChild);
             if (userGuilds.length === 0) {
-                serverGrid.innerHTML = '<p>Não tens acesso a nenhum servidor com o bot instalado.</p>';
+                const p = document.createElement('p'); p.textContent = 'Não tens acesso a nenhum servidor com o bot instalado.'; serverGrid.appendChild(p);
                 return;
             }
 
             addDebugLog(`📊 Exibindo ${userGuilds.length} servidor(es)`, 'info');
 
-            serverGrid.innerHTML = userGuilds.map(guild => `
-                <div class="server-card" data-server-id="${guild.id}">
-                    <div class="server-icon">
-                        ${guild.icon ? 
-                            `<img src="https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png" alt="${guild.name}">` :
-                            guild.name.charAt(0).toUpperCase()
-                        }
-                    </div>
-                    <div class="server-info">
-                        <div class="server-name">${guild.name}</div>
-                        <div class="server-members">${guild.memberCount || '?'} membros ${guild.botPresent ? '🟢' : '🔴'}</div>
-                    </div>
-                </div>
-            `).join('');
+            userGuilds.forEach(guild => {
+                const card = document.createElement('div'); card.className = 'server-card'; card.setAttribute('data-server-id', guild.id);
+                const iconWrap = document.createElement('div'); iconWrap.className = 'server-icon';
+                if (guild.icon) {
+                    const img = document.createElement('img');
+                    img.src = `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`;
+                    img.alt = guild.name || '';
+                    img.addEventListener('error', () => { img.src = '/default-avatar.png'; });
+                    iconWrap.appendChild(img);
+                } else {
+                    iconWrap.textContent = (guild.name || '?').charAt(0).toUpperCase();
+                }
 
-            // Add click listeners to server cards
-            document.querySelectorAll('.server-card').forEach(card => {
-                card.addEventListener('click', function() {
-                    const serverId = this.getAttribute('data-server-id');
-                    selectServer(serverId, this);
-                });
+                const info = document.createElement('div'); info.className = 'server-info';
+                const name = document.createElement('div'); name.className = 'server-name'; name.textContent = guild.name || '';
+                const members = document.createElement('div'); members.className = 'server-members'; members.textContent = `${guild.memberCount || '?'} membros ${guild.botPresent ? '🟢' : '🔴'}`;
+
+                info.appendChild(name); info.appendChild(members);
+                card.appendChild(iconWrap); card.appendChild(info);
+                serverGrid.appendChild(card);
+
+                card.addEventListener('click', function() { selectServer(guild.id, card); });
             });
         }
 
@@ -560,33 +566,72 @@
                 const response = await fetch('/api/tickets');
                 const data = await response.json();
                 
-                addDebugLog(`Status /api/tickets: ${response.status}`, 'info');
-                
-                const ticketsList = document.getElementById('ticketsList');
-                
                 if (data.success && data.tickets) {
                     const tickets = data.tickets;
                     
                     if (tickets.length > 0) {
-                        ticketsList.innerHTML = tickets.map(ticket => `
-                            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin: 0.5rem 0;">
-                                <strong>#${ticket.id}</strong> - ${ticket.title || 'Sem título'}
-                                <br><small>Status: ${ticket.status || 'Aberto'}</small>
-                            </div>
-                        `).join('');
-                        
+                        if (ticketsList) { while (ticketsList.firstChild) ticketsList.removeChild(ticketsList.firstChild); }
+                        tickets.forEach(ticket => {
+                            const el = document.createElement('div');
+                            el.style.background = 'var(--bg-secondary)';
+                            el.style.padding = '1rem';
+                            el.style.borderRadius = '8px';
+                            el.style.margin = '0.5rem 0';
+                            const strong = document.createElement('strong'); strong.textContent = '#' + (ticket.id || '');
+                            el.appendChild(strong);
+                            el.appendChild(document.createTextNode(' - ' + (ticket.title || 'Sem título')));
+                            el.appendChild(document.createElement('br'));
+                            const small = document.createElement('small'); small.textContent = 'Status: ' + (ticket.status || 'Aberto');
+                            el.appendChild(small);
+                            ticketsList.appendChild(el);
+                        });
                         addDebugLog(`✅ ${tickets.length} ticket(s) carregado(s)`, 'success');
                     } else {
-                        ticketsList.innerHTML = '<p>Nenhum ticket encontrado</p>';
+                        if (ticketsList) { while (ticketsList.firstChild) ticketsList.removeChild(ticketsList.firstChild); }
+                        const p = document.createElement('p'); p.textContent = 'Nenhum ticket encontrado'; ticketsList.appendChild(p);
                         addDebugLog('ℹ️ Nenhum ticket encontrado', 'info');
                     }
                 } else {
-                    ticketsList.innerHTML = '<p>Erro ao carregar tickets</p>';
+                    while (ticketsList.firstChild) ticketsList.removeChild(ticketsList.firstChild);
+                    const errP = document.createElement('p'); errP.textContent = 'Erro ao carregar tickets'; ticketsList.appendChild(errP);
                     addDebugLog('❌ Erro ao carregar tickets', 'error');
                 }
+                    addDebugLog(`Status /api/tickets: ${response.status}`, 'info');
+                    const ticketsList = document.getElementById('ticketsList');
+                
+                    if (data.success && data.tickets) {
+                        const tickets = data.tickets;
+                    
+                        if (tickets.length > 0) {
+                            while (ticketsList.firstChild) ticketsList.removeChild(ticketsList.firstChild);
+                            tickets.forEach(ticket => {
+                                const el = document.createElement('div');
+                                el.style.background = 'var(--bg-secondary)';
+                                el.style.padding = '1rem';
+                                el.style.borderRadius = '8px';
+                                el.style.margin = '0.5rem 0';
+                                const strong = document.createElement('strong'); strong.textContent = '#' + (ticket.id || '');
+                                el.appendChild(strong);
+                                el.appendChild(document.createTextNode(' - ' + (ticket.title || 'Sem título')));
+                                el.appendChild(document.createElement('br'));
+                                const small = document.createElement('small'); small.textContent = 'Status: ' + (ticket.status || 'Aberto');
+                                el.appendChild(small);
+                                ticketsList.appendChild(el);
+                            });
+                            addDebugLog(`✅ ${tickets.length} ticket(s) carregado(s)`, 'success');
+                        } else {
+                            while (ticketsList.firstChild) ticketsList.removeChild(ticketsList.firstChild);
+                            const p = document.createElement('p'); p.textContent = 'Nenhum ticket encontrado'; ticketsList.appendChild(p);
+                            addDebugLog('ℹ️ Nenhum ticket encontrado', 'info');
+                        }
+                    } else {
+                        while (ticketsList.firstChild) ticketsList.removeChild(ticketsList.firstChild);
+                        const p = document.createElement('p'); p.textContent = 'Erro ao carregar tickets'; ticketsList.appendChild(p);
+                        addDebugLog('❌ Erro ao carregar tickets', 'error');
+                    }
             } catch (error) {
                 addDebugLog(`❌ Erro nos tickets: ${error.message}`, 'error');
-                document.getElementById('ticketsList').innerHTML = '<p>Erro ao carregar tickets</p>';
+                const tlist = document.getElementById('ticketsList'); if (tlist) { while (tlist.firstChild) tlist.removeChild(tlist.firstChild); const errP2 = document.createElement('p'); errP2.textContent = 'Erro ao carregar tickets'; tlist.appendChild(errP2); }
             }
         }
 

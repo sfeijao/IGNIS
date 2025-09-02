@@ -42,6 +42,7 @@
     </style>
 </head>
 <body>
+    <script src="/js/frontend-helpers.js"></script>
     <div class="login-container">
         <img src="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" alt="YSNM Logo" class="login-logo">
         
@@ -94,13 +95,19 @@
             const loginBtn = document.querySelector('.discord-login-btn');
             
             loginBtn.addEventListener('click', function(e) {
-                const originalText = this.innerHTML;
-                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Conectando...';
+                // Preserve original nodes
+                if (this._origNodes) return; // already loading
+                this._origNodes = Array.from(this.childNodes);
+                // Clear and insert spinner + text
+                while (this.firstChild) this.removeChild(this.firstChild);
+                const spin = document.createElement('i'); spin.className = 'fas fa-spinner fa-spin'; this.appendChild(spin); this.appendChild(document.createTextNode(' Conectando...'));
                 this.style.pointerEvents = 'none';
-                
+
                 // Reset after 5 seconds in case of error
                 setTimeout(() => {
-                    this.innerHTML = originalText;
+                    while (this.firstChild) this.removeChild(this.firstChild);
+                    this._origNodes.forEach(n => this.appendChild(n));
+                    this._origNodes = null;
                     this.style.pointerEvents = 'auto';
                 }, 5000);
             });

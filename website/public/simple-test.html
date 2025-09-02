@@ -8,6 +8,7 @@
     <!-- simple-test styles moved to css/style.css (.test-page) -->
 </head>
 <body>
+    <script src="/js/frontend-helpers.js"></script>
     <div class="container test-page">
         <h1>🔧 Teste Simples YSNM</h1>
         <p>Teste básico para verificar JavaScript e APIs</p>
@@ -34,7 +35,17 @@
         function logToDiv(message, type = 'log') {
             const timestamp = new Date().toLocaleTimeString();
             const color = type === 'error' ? '#ff6666' : '#66ff66';
-            consoleDiv.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
+            const entry = document.createElement('div');
+            entry.style.color = color;
+            entry.textContent = `[${timestamp}] ${message}`;
+            consoleDiv.appendChild(entry);
+        }
+
+        function appendResult(el, text, clear = false) {
+            if (clear) { while (el.firstChild) el.removeChild(el.firstChild); }
+            const line = document.createElement('div');
+            line.textContent = text;
+            el.appendChild(line);
         }
         
         console.log = function(...args) {
@@ -55,75 +66,74 @@
         function testeBasico() {
             const resultado = document.getElementById('resultado1');
             resultado.className = 'result';
-            resultado.innerHTML = 'Executando teste básico...\n';
-            
+            appendResult(resultado, 'Executando teste básico...', true);
             try {
                 // Teste 1: Variáveis
                 const teste = 'Olá mundo!';
-                resultado.innerHTML += `✅ Variáveis: ${teste}\n`;
+                appendResult(resultado, `✅ Variáveis: ${teste}`);
                 
                 // Teste 2: Funções
                 function soma(a, b) { return a + b; }
                 const resultadoSoma = soma(2, 3);
-                resultado.innerHTML += `✅ Funções: 2 + 3 = ${resultadoSoma}\n`;
+                appendResult(resultado, `✅ Funções: 2 + 3 = ${resultadoSoma}`);
                 
                 // Teste 3: DOM
                 const elemento = document.getElementById('resultado1');
-                resultado.innerHTML += `✅ DOM: Elemento encontrado = ${elemento ? 'Sim' : 'Não'}\n`;
+                appendResult(resultado, `✅ DOM: Elemento encontrado = ${elemento ? 'Sim' : 'Não'}`);
                 
                 // Teste 4: Fetch disponível
-                resultado.innerHTML += `✅ Fetch API: ${typeof fetch === 'function' ? 'Disponível' : 'Não disponível'}\n`;
+                appendResult(resultado, `✅ Fetch API: ${typeof fetch === 'function' ? 'Disponível' : 'Não disponível'}`);
                 
                 console.log('✅ Teste básico completado com sucesso');
                 resultado.className = 'result success';
-                resultado.innerHTML += '\n🎉 TESTE BÁSICO: SUCESSO!';
+                appendResult(resultado, '🎉 TESTE BÁSICO: SUCESSO!');
                 
             } catch (error) {
                 console.error('❌ Erro no teste básico:', error);
                 resultado.className = 'result error';
-                resultado.innerHTML += `\n❌ ERRO: ${error.message}`;
+                appendResult(resultado, `❌ ERRO: ${error.message}`);
             }
         }
 
         function testeAPI() {
             const resultado = document.getElementById('resultado2');
             resultado.className = 'result';
-            resultado.innerHTML = 'Testando APIs...\n';
+            appendResult(resultado, 'Testando APIs...', true);
             
             // Teste API de usuário
             fetch('/api/user')
                 .then(response => {
-                    resultado.innerHTML += `Status /api/user: ${response.status}\n`;
+                    appendResult(resultado, `Status /api/user: ${response.status}`);
                     return response.json();
                 })
                 .then(data => {
-                    resultado.innerHTML += `Resposta /api/user:\n${JSON.stringify(data, null, 2)}\n`;
+                    appendResult(resultado, `Resposta /api/user: ${JSON.stringify(data, null, 2)}`);
                     console.log('✅ API /api/user funcionando');
                     
                     // Teste API de guilds
                     return fetch('/api/guilds');
                 })
                 .then(response => {
-                    resultado.innerHTML += `\nStatus /api/guilds: ${response.status}\n`;
+                    appendResult(resultado, `Status /api/guilds: ${response.status}`);
                     return response.json();
                 })
                 .then(data => {
-                    resultado.innerHTML += `Resposta /api/guilds:\n${JSON.stringify(data, null, 2)}\n`;
+                    appendResult(resultado, `Resposta /api/guilds: ${JSON.stringify(data, null, 2)}`);
                     console.log('✅ API /api/guilds funcionando');
                     resultado.className = 'result success';
-                    resultado.innerHTML += '\n🎉 TESTE API: SUCESSO!';
+                    appendResult(resultado, '🎉 TESTE API: SUCESSO!');
                 })
                 .catch(error => {
                     console.error('❌ Erro na API:', error);
                     resultado.className = 'result error';
-                    resultado.innerHTML += `\n❌ ERRO API: ${error.message}`;
+                    appendResult(resultado, `❌ ERRO API: ${error.message}`);
                 });
         }
 
         function testeCompleto() {
             const resultado = document.getElementById('resultado3');
             resultado.className = 'result';
-            resultado.innerHTML = 'Executando teste completo...\n';
+            appendResult(resultado, 'Executando teste completo...', true);
             
             console.log('🚀 Iniciando teste completo');
             
@@ -133,25 +143,25 @@
                 fetch('/api/guilds')
             ])
             .then(responses => {
-                resultado.innerHTML += `Respostas recebidas: ${responses.length}\n`;
+                appendResult(resultado, `Respostas recebidas: ${responses.length}`);
                 
                 const statusCodes = responses.map(r => r.status);
-                resultado.innerHTML += `Status codes: ${statusCodes.join(', ')}\n`;
+                appendResult(resultado, `Status codes: ${statusCodes.join(', ')}`);
                 
                 return Promise.all(responses.map(r => r.json()));
             })
             .then(([userData, guildsData]) => {
-                resultado.innerHTML += '\nDados recebidos:\n';
-                resultado.innerHTML += `User success: ${userData.success}\n`;
-                resultado.innerHTML += `Guilds success: ${guildsData.success}\n`;
+                appendResult(resultado, 'Dados recebidos:');
+                appendResult(resultado, `User success: ${userData.success}`);
+                appendResult(resultado, `Guilds success: ${guildsData.success}`);
                 
-                if (userData.success && guildsData.success) {
-                    resultado.innerHTML += `Username: ${userData.user?.username || 'Developer'}\n`;
-                    resultado.innerHTML += `Guilds count: ${guildsData.guilds?.length || 0}\n`;
+                    if (userData.success && guildsData.success) {
+                    appendResult(resultado, `Username: ${userData.user?.username || 'Developer'}`);
+                    appendResult(resultado, `Guilds count: ${guildsData.guilds?.length || 0}`);
                     
                     if (guildsData.guilds && guildsData.guilds.length > 0) {
                         const firstGuild = guildsData.guilds[0];
-                        resultado.innerHTML += `\nTestando primeiro servidor: ${firstGuild.name}\n`;
+                        appendResult(resultado, `Testando primeiro servidor: ${firstGuild.name}`);
                         
                         return fetch(`/api/server/${firstGuild.id}/stats`);
                     } else {
@@ -162,17 +172,17 @@
                 }
             })
             .then(response => {
-                resultado.innerHTML += `Status stats: ${response.status}\n`;
+                appendResult(resultado, `Status stats: ${response.status}`);
                 return response.json();
             })
             .then(statsData => {
-                resultado.innerHTML += `Stats success: ${statsData.success}\n`;
+                appendResult(resultado, `Stats success: ${statsData.success}`);
                 
                 if (statsData.success) {
-                    resultado.innerHTML += `Stats: ${JSON.stringify(statsData.stats, null, 2)}\n`;
+                    appendResult(resultado, `Stats: ${JSON.stringify(statsData.stats, null, 2)}`);
                     console.log('✅ Teste completo bem-sucedido');
                     resultado.className = 'result success';
-                    resultado.innerHTML += '\n🎉 TESTE COMPLETO: SUCESSO!';
+                    appendResult(resultado, '🎉 TESTE COMPLETO: SUCESSO!');
                 } else {
                     throw new Error(`Falha nas stats: ${statsData.error}`);
                 }
@@ -180,7 +190,7 @@
             .catch(error => {
                 console.error('❌ Erro no teste completo:', error);
                 resultado.className = 'result error';
-                resultado.innerHTML += `\n❌ ERRO COMPLETO: ${error.message}`;
+                appendResult(resultado, `❌ ERRO COMPLETO: ${error.message}`);
             });
         }
 

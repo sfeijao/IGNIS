@@ -8,7 +8,9 @@
     <!-- Admin page styles moved to css/style.css -->
 </head>
 <body>
+    <script src="/js/frontend-helpers.js"></script>
     <div class="container">
+    <script src="/js/frontend-helpers.js"></script>
         <div class="header">
             <h1>⚙️ Administração</h1>
             <p>Painel de controle completo do servidor</p>
@@ -373,6 +375,8 @@
             loadRoles();
             loadMembers();
             loadLogs();
+            try { sanitizeTemplatePlaceholders(); } catch(e) { console.debug('sanitize error', e); }
+            try { attachImageFallbacks(); } catch(e) { console.debug('attachImageFallbacks error', e); }
         });
 
         function switchTab(tabName) {
@@ -418,29 +422,49 @@
                 
                 if (data.success) {
                     const memberList = document.getElementById('memberList');
-                    
-                    if (data.members.length === 0) {
-                        memberList.innerHTML = '<div style="text-align: center; color: var(--text-muted);">Nenhum membro encontrado</div>';
+                    if (memberList) { while (memberList.firstChild) memberList.removeChild(memberList.firstChild); }
+                    if (!data.members || data.members.length === 0) {
+                        const none = document.createElement('div');
+                        none.style.textAlign = 'center';
+                        none.style.color = 'var(--text-muted)';
+                        none.textContent = 'Nenhum membro encontrado';
+                        memberList.appendChild(none);
                         return;
                     }
-                    
-                    memberList.innerHTML = data.members.map(member => `
-                        <div class="member-item" onclick="selectMember('${member.id}', '${member.username}')">
-                            <div class="member-avatar">
-                                ${member.avatar ? 
-                                    `<img src="${member.avatar}" style="width: 100%; height: 100%; border-radius: 50%;">` :
-                                    member.username.charAt(0).toUpperCase()
-                                }
-                            </div>
-                            <div class="member-info">
-                                <div class="member-name">${member.username}</div>
-                                <div class="member-role">${member.roles.join(', ') || 'Sem cargos'}</div>
-                            </div>
-                            <div style="color: ${member.status === 'online' ? 'var(--success)' : 'var(--text-muted)'};">
-                                ${member.status === 'online' ? '🟢' : '⚫'}
-                            </div>
-                        </div>
-                    `).join('');
+
+                    data.members.forEach(member => {
+                        const item = document.createElement('div');
+                        item.className = 'member-item';
+                        item.addEventListener('click', () => selectMember(String(member.id), String(member.username)));
+
+                        const avatar = document.createElement('div');
+                        avatar.className = 'member-avatar';
+                        if (member.avatar) {
+                            const img = document.createElement('img');
+                            img.style.width = '100%'; img.style.height = '100%'; img.style.borderRadius = '50%';
+                            img.src = sanitizeAttr(member.avatar) || '/default-avatar.png';
+                            img.alt = member.username || '';
+                            img.onerror = function() { this.onerror = null; this.src = '/default-avatar.png'; };
+                            avatar.appendChild(img);
+                        } else {
+                            avatar.textContent = (member.username || '').charAt(0).toUpperCase();
+                        }
+
+                        const info = document.createElement('div');
+                        info.className = 'member-info';
+                        const name = document.createElement('div'); name.className = 'member-name'; name.textContent = safeText(member.username || '');
+                        const role = document.createElement('div'); role.className = 'member-role'; role.textContent = (member.roles || []).join(', ') || 'Sem cargos';
+                        info.appendChild(name); info.appendChild(role);
+
+                        const statusDiv = document.createElement('div');
+                        statusDiv.style.color = (member.status === 'online') ? 'var(--success)' : 'var(--text-muted)';
+                        statusDiv.textContent = (member.status === 'online') ? '🟢' : '⚫';
+
+                        item.appendChild(avatar);
+                        item.appendChild(info);
+                        item.appendChild(statusDiv);
+                        memberList.appendChild(item);
+                    });
                 }
             } catch (error) {
                 showAlert('danger', 'Erro ao carregar membros');
@@ -458,31 +482,33 @@
                     const selects = ['welcomeChannel', 'logChannel', 'modChannel', 'channelCategory'];
                     selects.forEach(selectId => {
                         const select = document.getElementById(selectId);
-                        select.innerHTML = '<option value="">Selecionar canal...</option>';
-                        
+                        if (select) { while (select.firstChild) select.removeChild(select.firstChild); }
+                        const defaultOpt = document.createElement('option'); defaultOpt.value = ''; defaultOpt.textContent = 'Selecionar canal...';
+                        select.appendChild(defaultOpt);
+
                         data.channels.forEach(channel => {
                             if (selectId === 'channelCategory' && channel.type !== 'GUILD_CATEGORY') return;
                             if (selectId !== 'channelCategory' && channel.type === 'GUILD_CATEGORY') return;
-                            
-                            select.innerHTML += `<option value="${channel.id}">${channel.name}</option>`;
+                            const opt = document.createElement('option'); opt.value = String(channel.id); opt.textContent = safeText(channel.name);
+                            select.appendChild(opt);
                         });
                     });
                     
                     // Update channels list
                     const channelsList = document.getElementById('channelsList');
-                    channelsList.innerHTML = data.channels.map(channel => `
-                        <div class="member-item">
-                            <div style="font-size: 1.2rem;">
-                                ${channel.type === 'GUILD_TEXT' ? '📝' : 
-                                  channel.type === 'GUILD_VOICE' ? '🎤' : '📁'}
-                            </div>
-                            <div class="member-info">
-                                <div class="member-name">${channel.name}</div>
-                                <div class="member-role">${channel.type}</div>
-                            </div>
-                            <button class="btn btn-danger" onclick="deleteChannel('${channel.id}')">🗑️</button>
-                        </div>
-                    `).join('');
+                    if (channelsList) { while (channelsList.firstChild) channelsList.removeChild(channelsList.firstChild); }
+                    data.channels.forEach(channel => {
+                        const item = document.createElement('div'); item.className = 'member-item';
+                        const icon = document.createElement('div'); icon.style.fontSize = '1.2rem';
+                        icon.textContent = (channel.type === 'GUILD_TEXT') ? '📝' : (channel.type === 'GUILD_VOICE' ? '🎤' : '📁');
+                        const info = document.createElement('div'); info.className = 'member-info';
+                        const name = document.createElement('div'); name.className = 'member-name'; name.textContent = safeText(channel.name);
+                        const role = document.createElement('div'); role.className = 'member-role'; role.textContent = channel.type;
+                        info.appendChild(name); info.appendChild(role);
+                        const btn = document.createElement('button'); btn.className = 'btn btn-danger'; btn.textContent = '🗑️'; btn.addEventListener('click', () => deleteChannel(String(channel.id)));
+                        item.appendChild(icon); item.appendChild(info); item.appendChild(btn);
+                        channelsList.appendChild(item);
+                    });
                 }
             } catch (error) {
                 showAlert('danger', 'Erro ao carregar canais');
@@ -497,16 +523,18 @@
                 
                 if (data.success) {
                     const rolesList = document.getElementById('rolesList');
-                    rolesList.innerHTML = data.roles.map(role => `
-                        <div class="member-item">
-                            <div style="width: 20px; height: 20px; border-radius: 50%; background: ${role.color};"></div>
-                            <div class="member-info">
-                                <div class="member-name">${role.name}</div>
-                                <div class="member-role">${role.members} membros</div>
-                            </div>
-                            <button class="btn btn-danger" onclick="deleteRole('${role.id}')">🗑️</button>
-                        </div>
-                    `).join('');
+                    if (rolesList) { while (rolesList.firstChild) rolesList.removeChild(rolesList.firstChild); }
+                    data.roles.forEach(role => {
+                        const item = document.createElement('div'); item.className = 'member-item';
+                        const colorDiv = document.createElement('div'); colorDiv.style.width = '20px'; colorDiv.style.height = '20px'; colorDiv.style.borderRadius = '50%'; colorDiv.style.background = safeText(role.color || '#ccc');
+                        const info = document.createElement('div'); info.className = 'member-info';
+                        const name = document.createElement('div'); name.className = 'member-name'; name.textContent = safeText(role.name);
+                        const membersDiv = document.createElement('div'); membersDiv.className = 'member-role'; membersDiv.textContent = `${role.members} membros`;
+                        info.appendChild(name); info.appendChild(membersDiv);
+                        const btn = document.createElement('button'); btn.className = 'btn btn-danger'; btn.textContent = '🗑️'; btn.addEventListener('click', () => deleteRole(String(role.id)));
+                        item.appendChild(colorDiv); item.appendChild(info); item.appendChild(btn);
+                        rolesList.appendChild(item);
+                    });
                 }
             } catch (error) {
                 showAlert('danger', 'Erro ao carregar cargos');
@@ -521,21 +549,67 @@
                 
                 if (data.success) {
                     const logsList = document.getElementById('logsList');
-                    logsList.innerHTML = data.logs.map(log => `
-                        <div class="log-item ${log.level}">
-                            <div class="log-header">
-                                <div class="log-type">${log.type}</div>
-                                <div class="log-time">${formatDate(log.timestamp)}</div>
-                            </div>
-                            <div class="log-message">${log.message}</div>
-                        </div>
-                    `).join('');
+                    if (logsList) { while (logsList.firstChild) logsList.removeChild(logsList.firstChild); }
+                    data.logs.forEach(log => {
+                        const item = document.createElement('div'); item.className = `log-item ${sanitizeAttr(log.level)}`;
+                        const header = document.createElement('div'); header.className = 'log-header';
+                        const typeDiv = document.createElement('div'); typeDiv.className = 'log-type'; typeDiv.textContent = safeText(log.type);
+                        const timeDiv = document.createElement('div'); timeDiv.className = 'log-time'; timeDiv.textContent = formatDate(log.timestamp);
+                        header.appendChild(typeDiv); header.appendChild(timeDiv);
+                        const messageDiv = document.createElement('div'); messageDiv.className = 'log-message'; messageDiv.textContent = safeText(log.message);
+                        item.appendChild(header); item.appendChild(messageDiv);
+                        logsList.appendChild(item);
+                    });
                 }
             } catch (error) {
                 showAlert('danger', 'Erro ao carregar logs');
                 console.debug('Erro ao carregar logs:', error);
             }
         }
+
+        // ------------------ frontend hygiene helpers ------------------
+        function sanitizeTemplatePlaceholders(root = document.body) {
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null, false);
+            const placeholderPattern = /\$\{[^}]*\}/g;
+            let node = walker.currentNode;
+            while (node) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    if (placeholderPattern.test(node.textContent)) {
+                        node.textContent = node.textContent.replace(placeholderPattern, '');
+                    }
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                    ['src', 'href', 'data-src', 'alt', 'title', 'style'].forEach(attr => {
+                        if (node.hasAttribute && node.hasAttribute(attr)) {
+                            let val = node.getAttribute(attr) || '';
+                            if (placeholderPattern.test(val) || val.includes('%24%7B')) {
+                                val = val.replace(placeholderPattern, '');
+                                val = val.replace(/%24%7B/g, '');
+                                try { node.setAttribute(attr, val || ''); } catch(e) { }
+                            }
+                        }
+                    });
+                }
+                node = walker.nextNode();
+            }
+        }
+
+        function attachImageFallbacks(root = document.body) {
+            const imgs = root.querySelectorAll ? root.querySelectorAll('img') : [];
+            imgs.forEach(img => {
+                try {
+                    const src = img.getAttribute('src') || '';
+                    if (!src || src.includes('${') || src.includes('%24%7B')) {
+                        img.src = '/default-avatar.png';
+                    }
+                } catch(e) { }
+                if (!img.onerror) {
+                    img.onerror = function() { this.onerror = null; this.src = '/default-avatar.png'; };
+                }
+            });
+        }
+
+        function safeText(v) { if (v === null || v === undefined) return ''; return String(v).replace(/\$\{[^}]*\}/g, ''); }
+        function sanitizeAttr(v) { if (!v) return ''; return String(v).replace(/\$\{[^}]*\}/g, '').replace(/%24%7B/g, ''); }
 
         function selectMember(memberId, username) {
             selectedMember = { id: memberId, username: username };

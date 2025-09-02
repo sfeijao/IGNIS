@@ -7,6 +7,7 @@
   <!-- admin small page styles moved to css/style.css (.admin-small) -->
 </head>
 <body>
+  <script src="/js/frontend-helpers.js"></script>
   <h2>Channels</h2>
   <div>
     <label class="admin-small">Server ID <input id="guildId" placeholder="guild id" /></label>
@@ -60,7 +61,7 @@
         const guild = await getSessionGuild();
         if (guild) document.getElementById('guildId').value = guild.id;
         const data = await api('/api/server/:serverId/channels');
-        const ul = document.getElementById('list'); ul.innerHTML='';
+  const ul = document.getElementById('list'); if (ul) { while (ul.firstChild) ul.removeChild(ul.firstChild); }
         if (data.channels && data.channels.length){
           data.channels.forEach(c=>{ 
             const li = document.createElement('li'); 

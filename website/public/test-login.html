@@ -6,6 +6,7 @@
     <!-- local test-login styles moved to css/style.css (.test-login) -->
 </head>
 <body>
+    <script src="/js/frontend-helpers.js"></script>
     <h2>🔐 YSNM Login Test</h2>
     <form id="testForm" class="test-login">
         <input type="password" id="pass" placeholder="Password: YSNM2024!" value="YSNM2024!">
@@ -21,7 +22,7 @@
             const result = document.getElementById('result');
             const password = document.getElementById('pass').value;
             
-            result.innerHTML = '⏳ Testing...';
+            result.textContent = '⏳ Testing...';
             
             try {
                 console.log('Testing with password:', password);
@@ -40,7 +41,7 @@
                 console.log('Response data:', data);
                 
                 if (data.success) {
-                    result.innerHTML = '✅ SUCCESS! Token received. Redirecting in 3 seconds...';
+                    result.textContent = '✅ SUCCESS! Token received. Redirecting in 3 seconds...';
                     result.style.background = '#3ba55d';
                     
                     // Guardar token também no localStorage como backup
@@ -55,13 +56,13 @@
                         window.location.href = '/';
                     }, 3000);
                 } else {
-                    result.innerHTML = '❌ FAILED: ' + data.message;
+                    result.textContent = '❌ FAILED: ' + (data.message || '');
                     result.style.background = '#ed4245';
                 }
                 
             } catch (error) {
                 console.error('Error:', error);
-                result.innerHTML = '💥 ERROR: ' + error.message;
+                result.textContent = '💥 ERROR: ' + (error.message || '');
                 result.style.background = '#ed4245';
             }
         });

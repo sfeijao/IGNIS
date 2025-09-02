@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="/js/frontend-helpers.js"></script>
     <title>Dashboard - YSNM Bot</title>
     <style>
         * {
@@ -1135,6 +1136,7 @@
     </style>
 </head>
 <body>
+    <script src="/js/frontend-helpers.js"></script>
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-brand">
@@ -1759,29 +1761,55 @@
             const serverGrid = document.getElementById('serverGrid');
             
             if (userGuilds.length === 0) {
-                serverGrid.innerHTML = '<p>Não tens acesso a nenhum servidor com o bot instalado.</p>';
+                while (serverGrid.firstChild) serverGrid.removeChild(serverGrid.firstChild);
+                const msg = document.createElement('p'); msg.textContent = 'Não tens acesso a nenhum servidor com o bot instalado.'; serverGrid.appendChild(msg);
                 return;
             }
 
-            serverGrid.innerHTML = userGuilds.map(guild => `
-                <div class="server-card" data-server-id="${guild.id}">
-                    <div class="server-icon">
-                        ${guild.icon ? 
-                            `<img src="https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png" alt="${guild.name}">` :
-                            guild.name.charAt(0).toUpperCase()
-                        }
-                    </div>
-                    <div class="server-name">${guild.name}</div>
-                    <div class="server-members">${guild.memberCount || '?'} membros ${guild.botPresent ? '🟢' : '🔴'}</div>
-                </div>
-            `).join('');
+            // Render servers using DOM APIs to avoid template placeholders and unsafe innerHTML
+            while (serverGrid.firstChild) serverGrid.removeChild(serverGrid.firstChild);
+            userGuilds.forEach(guild => {
+                const card = document.createElement('div');
+                card.className = 'server-card';
+                card.setAttribute('data-server-id', guild.id);
 
-            // Add click listeners to server cards
-            document.querySelectorAll('.server-card').forEach(card => {
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'server-icon';
+
+                if (guild.icon) {
+                    const img = document.createElement('img');
+                    const src = `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`;
+                    // avoid obvious placeholder values
+                    if (!src.includes('${') && !src.toLowerCase().includes('%24%7b')) {
+                        img.src = src;
+                        img.alt = guild.name || '';
+                        img.onerror = function() { this.remove(); iconDiv.textContent = (guild.name || '').charAt(0).toUpperCase(); };
+                        iconDiv.appendChild(img);
+                    } else {
+                        iconDiv.textContent = (guild.name || '').charAt(0).toUpperCase();
+                    }
+                } else {
+                    iconDiv.textContent = (guild.name || '').charAt(0).toUpperCase();
+                }
+
+                card.appendChild(iconDiv);
+
+                const name = document.createElement('div');
+                name.className = 'server-name';
+                name.textContent = guild.name || '';
+                card.appendChild(name);
+
+                const members = document.createElement('div');
+                members.className = 'server-members';
+                members.textContent = `${guild.memberCount || '?'} membros ${guild.botPresent ? '🟢' : '🔴'}`;
+                card.appendChild(members);
+
                 card.addEventListener('click', function() {
                     const serverId = this.getAttribute('data-server-id');
                     selectServer(serverId, this);
                 });
+
+                serverGrid.appendChild(card);
             });
         }
 
@@ -1912,7 +1940,7 @@
         // User Search Functions
         async function searchUsers(query, resultsContainer, type) {
             if (query.length < 2) {
-                resultsContainer.innerHTML = '';
+                while (resultsContainer.firstChild) resultsContainer.removeChild(resultsContainer.firstChild);
                 return;
             }
 
@@ -1920,33 +1948,39 @@
                 const response = await fetch(`/api/server/${currentServerId}/members?search=${encodeURIComponent(query)}&limit=10`);
                 const data = await response.json();
 
-                if (data.success) {
-                    resultsContainer.innerHTML = data.members.map(member => `
-                        <div class="user-result" onclick="selectUser('${member.id}', '${type}')">
-                            <div class="user-avatar">
-                                ${member.avatar ? 
-                                    `<img src="${member.avatar}" alt="${member.displayName}" style="width: 100%; height: 100%; border-radius: 50%;">` :
-                                    member.displayName.charAt(0).toUpperCase()
-                                }
-                            </div>
-                            <div class="user-info">
-                                <div class="user-name">${member.displayName}</div>
-                                <div class="user-tag">${member.tag}</div>
-                                <div class="user-roles">
-                                    ${member.roles.slice(0, 2).map(role => 
-                                        `<span class="user-role" style="background: ${role.color}20; color: ${role.color}">${role.name}</span>`
-                                    ).join('')}
-                                    ${member.isOwner ? '<span class="user-role" style="background: #f59e0b; color: white;">👑 DONO</span>' : ''}
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
+                // clear
+                while (resultsContainer.firstChild) resultsContainer.removeChild(resultsContainer.firstChild);
+                if (data.success && Array.isArray(data.members) && data.members.length) {
+                    data.members.forEach(member => {
+                        const item = document.createElement('div'); item.className = 'user-result';
+                        item.addEventListener('click', () => selectUser(member.id, type));
+
+                        const avatarDiv = document.createElement('div'); avatarDiv.className = 'user-avatar';
+                        if (member.avatar && !member.avatar.includes('${') && !member.avatar.toLowerCase().includes('%24%7b')) {
+                            const img = document.createElement('img'); img.src = member.avatar; img.alt = member.displayName || ''; img.style.width='100%'; img.style.height='100%'; img.style.borderRadius='50%';
+                            img.onerror = function(){ this.remove(); avatarDiv.textContent = (member.displayName||'').charAt(0).toUpperCase(); };
+                            avatarDiv.appendChild(img);
+                        } else {
+                            avatarDiv.textContent = (member.displayName||'').charAt(0).toUpperCase();
+                        }
+
+                        const infoDiv = document.createElement('div'); infoDiv.className = 'user-info';
+                        const nameDiv = document.createElement('div'); nameDiv.className = 'user-name'; nameDiv.textContent = member.displayName || '';
+                        const tagDiv = document.createElement('div'); tagDiv.className = 'user-tag'; tagDiv.textContent = member.tag || '';
+                        const rolesDiv = document.createElement('div'); rolesDiv.className = 'user-roles';
+                        (member.roles||[]).slice(0,2).forEach(role => { const span = document.createElement('span'); span.className='user-role'; if(role.color){ span.style.background = `${role.color}20`; span.style.color = role.color; } span.textContent = role.name||''; rolesDiv.appendChild(span); });
+                        if (member.isOwner) { const os = document.createElement('span'); os.className='user-role'; os.style.background='#f59e0b'; os.style.color='white'; os.textContent='👑 DONO'; rolesDiv.appendChild(os); }
+                        infoDiv.appendChild(nameDiv); infoDiv.appendChild(tagDiv); infoDiv.appendChild(rolesDiv);
+                        item.appendChild(avatarDiv); item.appendChild(infoDiv);
+                        resultsContainer.appendChild(item);
+                    });
                 } else {
-                    resultsContainer.innerHTML = '<div class="empty-state">Nenhum usuário encontrado</div>';
+                    const empty = document.createElement('div'); empty.className = 'empty-state'; empty.textContent = 'Nenhum usuário encontrado'; resultsContainer.appendChild(empty);
                 }
             } catch (error) {
                 console.error('Erro ao buscar usuários:', error);
-                resultsContainer.innerHTML = '<div class="empty-state">Erro ao buscar usuários</div>';
+                while (resultsContainer.firstChild) resultsContainer.removeChild(resultsContainer.firstChild);
+                const err = document.createElement('div'); err.className='empty-state'; err.textContent='Erro ao buscar usuários'; resultsContainer.appendChild(err);
             }
         }
 
@@ -1971,7 +2005,8 @@
             }
 
             // Clear search results
-            document.getElementById(`${type}UserResults`).innerHTML = '';
+            const rEl = document.getElementById(`${type}UserResults`);
+            if (rEl) while (rEl.firstChild) rEl.removeChild(rEl.firstChild);
             document.getElementById(`${type}UserSearch`).value = member.displayName;
         }
 
@@ -1979,49 +2014,32 @@
             const cardContainer = document.getElementById(`${type}SelectedUser`);
             const card = document.getElementById(`${type}UserCard`);
             
-            const permissionBadges = [];
-            if (member.isOwner) {
-                permissionBadges.push('<span class="permission-badge owner">👑 Proprietário</span>');
+            // Build card via DOM APIs
+            while (card.firstChild) card.removeChild(card.firstChild);
+
+            const avatarDiv = document.createElement('div'); avatarDiv.className = 'user-avatar';
+            if (member.avatar && !member.avatar.includes('${') && !member.avatar.toLowerCase().includes('%24%7b')) {
+                const img = document.createElement('img'); img.src = member.avatar; img.alt = member.displayName || ''; img.style.width='100%'; img.style.height='100%'; img.style.borderRadius='50%'; img.onerror = function(){ this.remove(); avatarDiv.textContent = (member.displayName||'').charAt(0).toUpperCase(); };
+                avatarDiv.appendChild(img);
             } else {
-                if (type === 'timeout' && member.moderatable) {
-                    permissionBadges.push('<span class="permission-badge can">✅ Pode dar timeout</span>');
-                } else if (type === 'timeout') {
-                    permissionBadges.push('<span class="permission-badge cannot">❌ Não pode dar timeout</span>');
-                }
-                
-                if (type === 'kick' && member.kickable) {
-                    permissionBadges.push('<span class="permission-badge can">✅ Pode expulsar</span>');
-                } else if (type === 'kick') {
-                    permissionBadges.push('<span class="permission-badge cannot">❌ Não pode expulsar</span>');
-                }
-                
-                if (type === 'ban' && member.bannable) {
-                    permissionBadges.push('<span class="permission-badge can">✅ Pode banir</span>');
-                } else if (type === 'ban') {
-                    permissionBadges.push('<span class="permission-badge cannot">❌ Não pode banir</span>');
-                }
+                avatarDiv.textContent = (member.displayName||'').charAt(0).toUpperCase();
             }
 
-            card.innerHTML = `
-                <div class="user-avatar">
-                    ${member.avatar ? 
-                        `<img src="${member.avatar}" alt="${member.displayName}" style="width: 100%; height: 100%; border-radius: 50%;">` :
-                        member.displayName.charAt(0).toUpperCase()
-                    }
-                </div>
-                <div class="user-info">
-                    <div class="user-name">${member.displayName}</div>
-                    <div class="user-tag">${member.tag}</div>
-                    <div class="user-roles">
-                        ${member.roles.map(role => 
-                            `<span class="user-role" style="background: ${role.color}20; color: ${role.color}">${role.name}</span>`
-                        ).join('')}
-                    </div>
-                    <div class="user-permissions">
-                        ${permissionBadges.join('')}
-                    </div>
-                </div>
-            `;
+            const infoDiv = document.createElement('div'); infoDiv.className = 'user-info';
+            const nameDiv = document.createElement('div'); nameDiv.className = 'user-name'; nameDiv.textContent = member.displayName || '';
+            const tagDiv = document.createElement('div'); tagDiv.className = 'user-tag'; tagDiv.textContent = member.tag || '';
+            const rolesDiv = document.createElement('div'); rolesDiv.className = 'user-roles';
+            (member.roles||[]).forEach(role => { const span = document.createElement('span'); span.className='user-role'; if(role.color){ span.style.background = `${role.color}20`; span.style.color = role.color; } span.textContent = role.name||''; rolesDiv.appendChild(span); });
+            const permsDiv = document.createElement('div'); permsDiv.className = 'user-permissions';
+            if (member.isOwner) { const sp = document.createElement('span'); sp.className='permission-badge owner'; sp.textContent='👑 Proprietário'; permsDiv.appendChild(sp); }
+            else {
+                if (type === 'timeout') { const sp = document.createElement('span'); sp.className = member.moderatable ? 'permission-badge can' : 'permission-badge cannot'; sp.textContent = member.moderatable ? '✅ Pode dar timeout' : '❌ Não pode dar timeout'; permsDiv.appendChild(sp); }
+                if (type === 'kick') { const sp = document.createElement('span'); sp.className = member.kickable ? 'permission-badge can' : 'permission-badge cannot'; sp.textContent = member.kickable ? '✅ Pode expulsar' : '❌ Não pode expulsar'; permsDiv.appendChild(sp); }
+                if (type === 'ban') { const sp = document.createElement('span'); sp.className = member.bannable ? 'permission-badge can' : 'permission-badge cannot'; sp.textContent = member.bannable ? '✅ Pode banir' : '❌ Não pode banir'; permsDiv.appendChild(sp); }
+            }
+
+            infoDiv.appendChild(nameDiv); infoDiv.appendChild(tagDiv); infoDiv.appendChild(rolesDiv); infoDiv.appendChild(permsDiv);
+            card.appendChild(avatarDiv); card.appendChild(infoDiv);
             
             cardContainer.style.display = 'block';
         }
@@ -2040,7 +2058,7 @@
         function resetTimeoutForm() {
             selectedTimeoutUser = null;
             document.getElementById('timeoutUserSearch').value = '';
-            document.getElementById('timeoutUserResults').innerHTML = '';
+            const tRes = document.getElementById('timeoutUserResults'); if (tRes) while (tRes.firstChild) tRes.removeChild(tRes.firstChild);
             document.getElementById('timeoutSelectedUser').style.display = 'none';
             document.getElementById('timeoutDuration').value = '60';
             document.getElementById('timeoutReason').value = 'Timeout via dashboard';
@@ -2055,7 +2073,8 @@
 
             const timeoutBtn = document.getElementById('timeoutBtn');
             timeoutBtn.disabled = true;
-            timeoutBtn.innerHTML = '<span class="loading"></span> Aplicando...';
+            while (timeoutBtn.firstChild) timeoutBtn.removeChild(timeoutBtn.firstChild);
+            const tbLoad = document.createElement('span'); tbLoad.className='loading'; timeoutBtn.appendChild(tbLoad); timeoutBtn.appendChild(document.createTextNode(' Aplicando...'));
 
             try {
                 const response = await fetch(`/api/server/${currentServerId}/timeout`, {
@@ -2082,7 +2101,8 @@
                 alert('❌ Erro ao aplicar timeout');
             } finally {
                 timeoutBtn.disabled = false;
-                timeoutBtn.innerHTML = 'Aplicar Timeout';
+                while (timeoutBtn.firstChild) timeoutBtn.removeChild(timeoutBtn.firstChild);
+                timeoutBtn.appendChild(document.createTextNode('Aplicar Timeout'));
             }
         }
 
@@ -2100,7 +2120,7 @@
         function resetKickForm() {
             selectedKickUser = null;
             document.getElementById('kickUserSearch').value = '';
-            document.getElementById('kickUserResults').innerHTML = '';
+            const kRes = document.getElementById('kickUserResults'); if (kRes) while (kRes.firstChild) kRes.removeChild(kRes.firstChild);
             document.getElementById('kickSelectedUser').style.display = 'none';
             document.getElementById('kickReason').value = 'Expulsão via dashboard';
             document.getElementById('confirmKick').checked = false;
@@ -2114,7 +2134,8 @@
 
             const kickBtn = document.getElementById('kickBtn');
             kickBtn.disabled = true;
-            kickBtn.innerHTML = '<span class="loading"></span> Expulsando...';
+            while (kickBtn.firstChild) kickBtn.removeChild(kickBtn.firstChild);
+            const kbLoad = document.createElement('span'); kbLoad.className='loading'; kickBtn.appendChild(kbLoad); kickBtn.appendChild(document.createTextNode(' Expulsando...'));
 
             try {
                 const response = await fetch(`/api/server/${currentServerId}/kick`, {
@@ -2140,7 +2161,8 @@
                 alert('❌ Erro ao expulsar usuário');
             } finally {
                 kickBtn.disabled = false;
-                kickBtn.innerHTML = 'Expulsar Usuário';
+                while (kickBtn.firstChild) kickBtn.removeChild(kickBtn.firstChild);
+                kickBtn.appendChild(document.createTextNode('Expulsar Usuário'));
             }
         }
 
@@ -2158,7 +2180,7 @@
         function resetBanForm() {
             selectedBanUser = null;
             document.getElementById('banUserSearch').value = '';
-            document.getElementById('banUserResults').innerHTML = '';
+            const bRes = document.getElementById('banUserResults'); if (bRes) while (bRes.firstChild) bRes.removeChild(bRes.firstChild);
             document.getElementById('banSelectedUser').style.display = 'none';
             document.getElementById('banReason').value = 'Banimento via dashboard';
             document.getElementById('deleteMessageDays').value = '0';
@@ -2176,7 +2198,8 @@
 
             const banBtn = document.getElementById('banBtn');
             banBtn.disabled = true;
-            banBtn.innerHTML = '<span class="loading"></span> Banindo...';
+            while (banBtn.firstChild) banBtn.removeChild(banBtn.firstChild);
+            const bbLoad = document.createElement('span'); bbLoad.className='loading'; banBtn.appendChild(bbLoad); banBtn.appendChild(document.createTextNode(' Banindo...'));
 
             try {
                 const response = await fetch(`/api/server/${currentServerId}/ban`, {
@@ -2205,7 +2228,8 @@
                 alert('❌ Erro ao banir usuário');
             } finally {
                 banBtn.disabled = false;
-                banBtn.innerHTML = 'Banir Usuário';
+                while (banBtn.firstChild) banBtn.removeChild(banBtn.firstChild);
+                banBtn.appendChild(document.createTextNode('Banir Usuário'));
             }
         }
 
@@ -2244,7 +2268,8 @@
 
         async function loadServerChannels() {
             const channelSelect = document.getElementById('channelSelect');
-            channelSelect.innerHTML = '<option value="">Carregando canais...</option>';
+            while (channelSelect.firstChild) channelSelect.removeChild(channelSelect.firstChild);
+            const optLoad = document.createElement('option'); optLoad.value=''; optLoad.textContent='Carregando canais...'; channelSelect.appendChild(optLoad);
             
             try {
                 const response = await fetch(`/api/server/${currentServerId}/channels`);
@@ -2252,7 +2277,8 @@
                 
                 if (data.success) {
                     serverChannels = data.channels;
-                    channelSelect.innerHTML = '<option value="">Selecione um canal</option>';
+                    while (channelSelect.firstChild) channelSelect.removeChild(channelSelect.firstChild);
+                    const optSel = document.createElement('option'); optSel.value=''; optSel.textContent='Selecione um canal'; channelSelect.appendChild(optSel);
                     
                     // Group channels by category
                     const channelsByCategory = {};
@@ -2284,11 +2310,13 @@
                         channelSelect.appendChild(optgroup);
                     });
                 } else {
-                    channelSelect.innerHTML = '<option value="">Erro ao carregar canais</option>';
+                    while (channelSelect.firstChild) channelSelect.removeChild(channelSelect.firstChild);
+                    const optErr = document.createElement('option'); optErr.value=''; optErr.textContent='Erro ao carregar canais'; channelSelect.appendChild(optErr);
                 }
             } catch (error) {
                 console.error('Erro ao carregar canais:', error);
-                channelSelect.innerHTML = '<option value="">Erro ao carregar canais</option>';
+                while (channelSelect.firstChild) channelSelect.removeChild(channelSelect.firstChild);
+                const optErr2 = document.createElement('option'); optErr2.value=''; optErr2.textContent='Erro ao carregar canais'; channelSelect.appendChild(optErr2);
             }
         }
 
@@ -2305,7 +2333,8 @@
             
             const clearBtn = document.getElementById('clearChatBtn');
             clearBtn.disabled = true;
-            clearBtn.innerHTML = '<span class="loading"></span> Limpando...';
+            while (clearBtn.firstChild) clearBtn.removeChild(clearBtn.firstChild);
+            const cbLoad = document.createElement('span'); cbLoad.className='loading'; clearBtn.appendChild(cbLoad); clearBtn.appendChild(document.createTextNode(' Limpando...'));
             
             try {
                 const response = await fetch(`/api/server/${currentServerId}/channels/${channelId}/clear`, {
@@ -2333,7 +2362,8 @@
                 alert('❌ Erro ao limpar chat');
             } finally {
                 clearBtn.disabled = false;
-                clearBtn.innerHTML = 'Limpar Chat';
+                while (clearBtn.firstChild) clearBtn.removeChild(clearBtn.firstChild);
+                clearBtn.appendChild(document.createTextNode('Limpar Chat'));
             }
         }
 
@@ -2396,9 +2426,10 @@
                     const statusText = isServerLocked ? 'bloqueado' : 'desbloqueado';
                     alert(`✅ Servidor ${statusText} com sucesso! ${data.modifiedChannels} canais foram modificados.`);
                     
-                    // Update button text
+                    // Update button text safely
                     const lockBtn = document.querySelector('button[onclick="toggleServerLock()"]');
-                    lockBtn.innerHTML = isServerLocked ? '🔓 Desbloquear Servidor' : '🔒 Bloquear Servidor';
+                    while (lockBtn.firstChild) lockBtn.removeChild(lockBtn.firstChild);
+                    lockBtn.appendChild(document.createTextNode(isServerLocked ? '🔓 Desbloquear Servidor' : '🔒 Bloquear Servidor'));
                     lockBtn.className = isServerLocked ? 'btn btn-success' : 'btn btn-danger';
                     
                     refreshModerationLogs();
@@ -2432,26 +2463,36 @@
 
         function refreshModerationLogs() {
             const logsContainer = document.getElementById('moderationLogs');
-            logsContainer.innerHTML = '<div class="loading"></div> Carregando logs...';
-            
+            while (logsContainer.firstChild) logsContainer.removeChild(logsContainer.firstChild);
+            const loadingNode = document.createElement('div'); loadingNode.className = 'loading'; logsContainer.appendChild(loadingNode); logsContainer.appendChild(document.createTextNode(' Carregando logs...'));
+
             // Simulate loading logs (replace with real API call)
             setTimeout(() => {
-                logsContainer.innerHTML = `
-                    <div style="font-size: 14px; line-height: 1.6;">
-                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg); border-radius: 8px;">
-                            <strong>🧹 Limpeza de Canal</strong> - há 2 minutos<br>
-                            <small style="color: var(--text-muted);">Canal #geral: 15 mensagens removidas</small>
-                        </div>
-                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg); border-radius: 8px;">
-                            <strong>🔓 Desbanimento em Massa</strong> - há 1 hora<br>
-                            <small style="color: var(--text-muted);">3 usuários desbanidos</small>
-                        </div>
-                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg); border-radius: 8px;">
-                            <strong>🔒 Servidor Bloqueado</strong> - há 2 horas<br>
-                            <small style="color: var(--text-muted);">12 canais modificados</small>
-                        </div>
-                    </div>
-                `;
+                // Clear and add sample log entries
+                while (logsContainer.firstChild) logsContainer.removeChild(logsContainer.firstChild);
+                const wrapper = document.createElement('div'); wrapper.style.fontSize='14px'; wrapper.style.lineHeight='1.6';
+                const entry = document.createElement('div'); entry.style.marginBottom='0.5rem'; entry.style.padding='0.5rem'; entry.style.background='var(--bg)'; entry.style.borderRadius='8px';
+                const strong = document.createElement('strong'); strong.textContent = '🧹 Limpeza de Canal';
+                entry.appendChild(strong); entry.appendChild(document.createTextNode(' - há 2 minutos'));
+                const small = document.createElement('small'); small.style.color='var(--text-muted)'; small.textContent = 'Canal #geral: 15 mensagens removidas';
+                entry.appendChild(document.createElement('br'));
+                entry.appendChild(small);
+                wrapper.appendChild(entry);
+
+                // Additional sample entries
+                const entry2 = document.createElement('div'); entry2.style.marginBottom='0.5rem'; entry2.style.padding='0.5rem'; entry2.style.background='var(--bg)'; entry2.style.borderRadius='8px';
+                const strong2 = document.createElement('strong'); strong2.textContent = '🔓 Desbanimento em Massa'; entry2.appendChild(strong2); entry2.appendChild(document.createTextNode(' - há 1 hora'));
+                entry2.appendChild(document.createElement('br'));
+                const small2 = document.createElement('small'); small2.style.color='var(--text-muted)'; small2.textContent = '3 usuários desbanidos'; entry2.appendChild(small2);
+                wrapper.appendChild(entry2);
+
+                const entry3 = document.createElement('div'); entry3.style.marginBottom='0.5rem'; entry3.style.padding='0.5rem'; entry3.style.background='var(--bg)'; entry3.style.borderRadius='8px';
+                const strong3 = document.createElement('strong'); strong3.textContent = '🔒 Servidor Bloqueado'; entry3.appendChild(strong3); entry3.appendChild(document.createTextNode(' - há 2 horas'));
+                entry3.appendChild(document.createElement('br'));
+                const small3 = document.createElement('small'); small3.style.color='var(--text-muted)'; small3.textContent = '12 canais modificados'; entry3.appendChild(small3);
+                wrapper.appendChild(entry3);
+
+                logsContainer.appendChild(wrapper);
             }, 1000);
         }
 
@@ -2616,19 +2657,23 @@
             const placeholder = listEl.querySelector('.logs-placeholder');
             if (placeholder) placeholder.remove();
 
-            // Criar elemento do log
+            // Criar elemento do log (DOM-safe)
             const logEl = document.createElement('div');
-            logEl.className = `log-entry log-${logData.level || 'info'}`;
-            logEl.innerHTML = `
-                <div class="log-header">
-                    <span class="log-time">${new Date(logData.timestamp).toLocaleTimeString('pt-BR')}</span>
-                    <span class="log-type">${getLogTypeLabel(logData.type)}</span>
-                    <span class="log-level log-level-${logData.level || 'info'}">${getLogLevelLabel(logData.level)}</span>
-                </div>
-                <div class="log-message">${logData.message}</div>
-                ${logData.username ? `<div class="log-user">👤 ${logData.username}</div>` : ''}
-                ${logData.channel_name ? `<div class="log-channel">📺 ${logData.channel_name}</div>` : ''}
-            `;
+            logEl.className = 'log-entry log-' + (logData.level || 'info');
+
+            const header = document.createElement('div'); header.className = 'log-header';
+            const timeSpan = document.createElement('span'); timeSpan.className = 'log-time'; timeSpan.textContent = new Date(logData.timestamp).toLocaleTimeString('pt-BR');
+            const typeSpan = document.createElement('span'); typeSpan.className = 'log-type'; typeSpan.textContent = getLogTypeLabel(logData.type);
+            const levelSpan = document.createElement('span'); levelSpan.className = 'log-level log-level-' + (logData.level || 'info'); levelSpan.textContent = getLogLevelLabel(logData.level);
+            header.appendChild(timeSpan); header.appendChild(typeSpan); header.appendChild(levelSpan);
+
+            const msgDiv = document.createElement('div'); msgDiv.className = 'log-message'; msgDiv.textContent = logData.message || '';
+
+            logEl.appendChild(header);
+            logEl.appendChild(msgDiv);
+
+            if (logData.username) { const u = document.createElement('div'); u.className = 'log-user'; u.textContent = '👤 ' + logData.username; logEl.appendChild(u); }
+            if (logData.channel_name) { const c = document.createElement('div'); c.className = 'log-channel'; c.textContent = '📺 ' + logData.channel_name; logEl.appendChild(c); }
 
             // Adicionar no topo
             listEl.insertBefore(logEl, listEl.firstChild);
@@ -2680,7 +2725,8 @@
                 // Recarregar logs com filtros
                 const listEl = document.getElementById('logsList');
                 if (listEl) {
-                    listEl.innerHTML = '<div class="logs-placeholder">🔄 Aplicando filtros...</div>';
+                    while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
+                    const ph = document.createElement('div'); ph.className='logs-placeholder'; ph.textContent='🔄 Aplicando filtros...'; listEl.appendChild(ph);
                 }
                 
                 // Se está conectado via SSE, apenas os novos logs serão filtrados
@@ -2699,25 +2745,24 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    listEl.innerHTML = '';
-                    
-                    if (data.logs.length === 0) {
-                        listEl.innerHTML = '<div class="logs-placeholder">📭 Nenhum log encontrado</div>';
+                    while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
+
+                    if (!Array.isArray(data.logs) || data.logs.length === 0) {
+                        const no = document.createElement('div'); no.className='logs-placeholder'; no.textContent='📭 Nenhum log encontrado'; listEl.appendChild(no);
                         return;
                     }
 
-                    data.logs.forEach(log => {
-                        addLogToDisplay(log);
-                    });
-                    
+                    data.logs.forEach(log => addLogToDisplay(log));
                     updateLogsCount();
                 } else {
-                    listEl.innerHTML = '<div class="logs-placeholder">❌ Erro ao carregar logs</div>';
+                    while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
+                    const err = document.createElement('div'); err.className='logs-placeholder'; err.textContent='❌ Erro ao carregar logs'; listEl.appendChild(err);
                 }
             } catch (error) {
                 console.error('Erro ao carregar logs:', error);
                 if (listEl) {
-                    listEl.innerHTML = '<div class="logs-placeholder">❌ Erro de conexão</div>';
+                    while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
+                    const err = document.createElement('div'); err.className='logs-placeholder'; err.textContent='❌ Erro de conexão'; listEl.appendChild(err);
                 }
             }
         }
@@ -2764,11 +2809,13 @@
                     }
                 } else {
                     console.error('Erro ao carregar tickets:', data.error);
-                    loadingEl.innerHTML = '<p>❌ Erro ao carregar tickets</p>';
+                    while (loadingEl.firstChild) loadingEl.removeChild(loadingEl.firstChild);
+                    const eP = document.createElement('p'); eP.textContent='❌ Erro ao carregar tickets'; loadingEl.appendChild(eP);
                 }
             } catch (error) {
                 console.error('Erro ao carregar tickets:', error);
-                loadingEl.innerHTML = '<p>❌ Erro de conexão</p>';
+                while (loadingEl.firstChild) loadingEl.removeChild(loadingEl.firstChild);
+                const eC = document.createElement('p'); eC.textContent='❌ Erro de conexão'; loadingEl.appendChild(eC);
             }
         }
 
@@ -2797,39 +2844,45 @@
         function renderTickets(tickets) {
             const listEl = document.getElementById('ticketsList');
             if (!listEl) return;
-            
-            if (tickets.length === 0) {
-                listEl.innerHTML = '<div class="empty-state"><p>📭 Nenhum ticket encontrado</p></div>';
-                return;
+
+            while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
+
+            if (!Array.isArray(tickets) || tickets.length === 0) {
+                const empty = document.createElement('div'); empty.className='empty-state'; const p = document.createElement('p'); p.textContent='📭 Nenhum ticket encontrado'; empty.appendChild(p); listEl.appendChild(empty); return;
             }
-            
-            listEl.innerHTML = tickets.map(ticket => `
-                <div class="ticket-card" onclick="openTicketDetails(${ticket.id})">
-                    <div class="ticket-header">
-                        <div>
-                            <h4 class="ticket-title">#${ticket.id} - ${ticket.subject || 'Sem título'}</h4>
-                            <div class="ticket-meta">
-                                Por: ${ticket.username || 'Usuário desconhecido'} • 
-                                ${new Date(ticket.created_at).toLocaleDateString('pt-BR')}
-                                ${ticket.assigned_name ? ` • Atribuído a: ${ticket.assigned_name}` : ''}
-                            </div>
-                        </div>
-                        <div class="ticket-badges">
-                            <span class="ticket-badge badge-status-${ticket.status || 'open'}">${getStatusLabel(ticket.status)}</span>
-                            <span class="ticket-badge badge-priority-${ticket.priority || 'normal'}">${getPriorityLabel(ticket.priority)}</span>
-                        </div>
-                    </div>
-                    <div class="ticket-description">${ticket.description || 'Sem descrição'}</div>
-                    <div class="ticket-actions">
-                        <button class="btn btn-primary" onclick="assignTicket(${ticket.id}); safeStopPropagation();" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
-                            👤 Atribuir a Mim
-                        </button>
-                        <button class="btn btn-success" onclick="closeTicket(${ticket.id}); safeStopPropagation();" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
-                            ✅ Fechar
-                        </button>
-                    </div>
-                </div>
-            `).join('');
+
+            tickets.forEach(ticket => {
+                const card = document.createElement('div'); card.className='ticket-card';
+                card.addEventListener('click', () => openTicketDetails(ticket.id));
+
+                const header = document.createElement('div'); header.className='ticket-header';
+                const left = document.createElement('div');
+                const title = document.createElement('h4'); title.className='ticket-title'; title.textContent = '#' + (ticket.id||'') + ' - ' + (ticket.subject || 'Sem título');
+                const meta = document.createElement('div'); meta.className='ticket-meta';
+                const authorText = document.createTextNode('Por: ' + (ticket.username || 'Usuário desconhecido') + ' • ' + new Date(ticket.created_at).toLocaleDateString('pt-BR'));
+                meta.appendChild(authorText);
+                if (ticket.assigned_name) { meta.appendChild(document.createTextNode(' • Atribuído a: ' + ticket.assigned_name)); }
+
+                left.appendChild(title); left.appendChild(meta);
+
+                const badges = document.createElement('div'); badges.className='ticket-badges';
+                const statusSpan = document.createElement('span'); statusSpan.className = 'ticket-badge badge-status-' + (ticket.status || 'open'); statusSpan.textContent = getStatusLabel(ticket.status); badges.appendChild(statusSpan);
+                const prioSpan = document.createElement('span'); prioSpan.className = 'ticket-badge badge-priority-' + (ticket.priority || 'normal'); prioSpan.textContent = getPriorityLabel(ticket.priority); badges.appendChild(prioSpan);
+
+                header.appendChild(left); header.appendChild(badges);
+
+                const desc = document.createElement('div'); desc.className='ticket-description'; desc.textContent = ticket.description || 'Sem descrição';
+
+                const actions = document.createElement('div'); actions.className='ticket-actions';
+                const btnAssign = document.createElement('button'); btnAssign.className='btn btn-primary'; btnAssign.style.padding='0.5rem 1rem'; btnAssign.style.fontSize='0.85rem'; btnAssign.textContent='👤 Atribuir a Mim';
+                btnAssign.addEventListener('click', (ev) => { safeStopPropagation(); assignTicket(ticket.id); });
+                const btnClose = document.createElement('button'); btnClose.className='btn btn-success'; btnClose.style.padding='0.5rem 1rem'; btnClose.style.fontSize='0.85rem'; btnClose.textContent='✅ Fechar';
+                btnClose.addEventListener('click', (ev) => { safeStopPropagation(); closeTicket(ticket.id); });
+                actions.appendChild(btnAssign); actions.appendChild(btnClose);
+
+                card.appendChild(header); card.appendChild(desc); card.appendChild(actions);
+                listEl.appendChild(card);
+            });
         }
 
         function getStatusLabel(status) {

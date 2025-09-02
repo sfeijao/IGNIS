@@ -9,6 +9,7 @@
     <!-- analytics styles moved to css/style.css (.analytics-root) -->
 </head>
 <body class="analytics-root">
+    <script src="/js/frontend-helpers.js"></script>
     <div class="container">
         <div class="header">
             <h1>📊 Analytics Dashboard</h1>
@@ -478,24 +479,36 @@
                     const feed = document.getElementById('activityFeed');
                     
                     if (data.activities.length === 0) {
-                        feed.innerHTML = '<div style="text-align: center; color: var(--text-muted);">Nenhuma atividade recente</div>';
+                        const none = document.createElement('div'); none.style.textAlign = 'center'; none.style.color = 'var(--text-muted)'; none.textContent = 'Nenhuma atividade recente';
+                        while (feed.firstChild) feed.removeChild(feed.firstChild);
+                        feed.appendChild(none);
                         return;
                     }
-                    
-                    feed.innerHTML = data.activities.map(activity => `
-                        <div class="activity-item">
-                            <div class="activity-avatar">
-                                ${activity.avatar ? 
-                                    `<img src="${activity.avatar}" style="width: 100%; height: 100%; border-radius: 50%;">` :
-                                    activity.username.charAt(0).toUpperCase()
-                                }
-                            </div>
-                            <div class="activity-content">
-                                <div class="activity-text">${formatActivityText(activity)}</div>
-                                <div class="activity-time">${formatDate(activity.created_at)}</div>
-                            </div>
-                        </div>
-                    `).join('');
+
+                    // Build feed items safely
+                    while (feed.firstChild) feed.removeChild(feed.firstChild);
+                    data.activities.forEach(activity => {
+                        const item = document.createElement('div'); item.className = 'activity-item';
+
+                        const avatarWrap = document.createElement('div'); avatarWrap.className = 'activity-avatar';
+                        if (activity.avatar && typeof activity.avatar === 'string' && !activity.avatar.includes('${') && !activity.avatar.toLowerCase().includes('%24%7b')) {
+                            const img = document.createElement('img');
+                            img.style.width = '100%'; img.style.height = '100%'; img.style.borderRadius = '50%';
+                            img.src = activity.avatar;
+                            img.onerror = () => { img.src = '/default-avatar.png'; };
+                            avatarWrap.appendChild(img);
+                        } else {
+                            const letter = document.createElement('div'); letter.textContent = (activity.username||'?').charAt(0).toUpperCase(); avatarWrap.appendChild(letter);
+                        }
+
+                        const contentDiv = document.createElement('div'); contentDiv.className = 'activity-content';
+                        const textDiv = document.createElement('div'); textDiv.className = 'activity-text'; textDiv.textContent = formatActivityText(activity);
+                        const timeDiv = document.createElement('div'); timeDiv.className = 'activity-time'; timeDiv.textContent = formatDate(activity.created_at);
+
+                        contentDiv.appendChild(textDiv); contentDiv.appendChild(timeDiv);
+                        item.appendChild(avatarWrap); item.appendChild(contentDiv);
+                        feed.appendChild(item);
+                    });
                 }
             } catch (error) {
                 console.error('Erro ao carregar feed de atividade:', error);

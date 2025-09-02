@@ -8,6 +8,7 @@
     <!-- Inline debug styles moved to css/style.css -->
 </head>
 <body>
+    <script src="/js/frontend-helpers.js"></script>
     <div class="container">
         <h1>🔧 Diagnóstico Dashboard YSNM</h1>
     <p class="muted-center">
@@ -70,13 +71,18 @@
             const timestamp = new Date().toLocaleTimeString();
             const entry = document.createElement('div');
             entry.className = `log-entry ${type}`;
-            entry.innerHTML = `<span style="color: #64748B">[${timestamp}]</span> ${message}`;
+            const timeSpan = document.createElement('span');
+            timeSpan.style.color = '#64748B';
+            timeSpan.textContent = `[${timestamp}] `;
+            entry.appendChild(timeSpan);
+            const msgNode = document.createTextNode(message);
+            entry.appendChild(msgNode);
             log.appendChild(entry);
             log.scrollTop = log.scrollHeight;
         }
 
         function clearLog() {
-            document.getElementById('activity-log').innerHTML = '';
+            const _act = document.getElementById('activity-log'); if (_act) { while (_act.firstChild) _act.removeChild(_act.firstChild); }
             addLog('Log limpo', 'info');
         }
 

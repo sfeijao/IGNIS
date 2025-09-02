@@ -2,6 +2,7 @@
 <html lang="pt">
 <head><meta charset="utf-8"><title>Admin Guilds</title></head>
 <body>
+  <script src="/js/frontend-helpers.js"></script>
   <h2>Guilds</h2>
   <button id="refresh">Refresh</button>
   <ul id="list"></ul>
@@ -9,7 +10,7 @@
     async function fetchList(){
       const res = await fetch('/api/admin/guilds');
       const j = await res.json();
-      const ul = document.getElementById('list'); ul.innerHTML='';
+  const ul = document.getElementById('list'); if (ul) { while (ul.firstChild) ul.removeChild(ul.firstChild); }
       if (j.guilds && j.guilds.length) {
         j.guilds.forEach(g => {
             const li = document.createElement('li');

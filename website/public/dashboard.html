@@ -13,6 +13,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https: http:; script-src 'self' 'unsafe-inline' 'unsafe-eval';">
 </head>
 <body>
+    <script src="/js/frontend-helpers.js"></script>
     <div class="container">
         <header class="header">
             <div class="header-content">
@@ -809,24 +810,40 @@
                     animation: slideIn 0.3s ease-out;
                 `;
                 
-                messageEl.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>${message}</span>
-                        <button class="message-close-btn" style="
-                            background: none; 
-                            border: none; 
-                            color: white; 
-                            font-size: 18px; 
-                            cursor: pointer;
-                            margin-left: 10px;
-                        ">&times;</button>
-                    </div>
-                `;
+                // Build content safely to avoid inserting raw HTML
+                const sanitize = (s) => {
+                    if (!s && s !== 0) return '';
+                    let text = String(s);
+                    if (window.FrontendHelpers && typeof FrontendHelpers.stripHtml === 'function') {
+                        text = FrontendHelpers.stripHtml(text);
+                    } else {
+                        text = text.replace(/<[^>]+>/g, '');
+                    }
+                    return text;
+                };
 
-                // Add event listener for close button
-                messageEl.querySelector('.message-close-btn').addEventListener('click', () => {
-                    messageEl.remove();
+                const wrapper = document.createElement('div');
+                wrapper.style.display = 'flex';
+                wrapper.style.justifyContent = 'space-between';
+                wrapper.style.alignItems = 'center';
+
+                const textSpan = document.createElement('span');
+                // Preserve simple newlines by converting to nodes
+                const safeText = sanitize(message);
+                safeText.split('\n').forEach((line, idx) => {
+                    if (idx > 0) wrapper.appendChild(document.createElement('br'));
+                    textSpan.appendChild(document.createTextNode(line));
                 });
+
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'message-close-btn';
+                closeBtn.style.cssText = 'background: none; border: none; color: white; font-size: 18px; cursor: pointer; margin-left: 10px;';
+                closeBtn.innerText = '\u00d7';
+                closeBtn.addEventListener('click', () => { messageEl.remove(); });
+
+                wrapper.appendChild(textSpan);
+                wrapper.appendChild(closeBtn);
+                messageEl.appendChild(wrapper);
 
                 messageContainer.appendChild(messageEl);
 
@@ -857,59 +874,61 @@
             showCreateTicketModal() {
                 const modal = document.createElement('div');
                 modal.className = 'ticket-modal';
-                modal.innerHTML = `
-                    <div class="ticket-modal-content">
-                        <h3><i class="fas fa-ticket-alt"></i> Criar Novo Ticket</h3>
-                        
-                        <div class="ticket-form-group">
-                            <label for="ticket-title">Nome do Ticket *</label>
-                            <input type="text" id="ticket-title" placeholder="Digite o título do ticket" required>
-                        </div>
 
-                        <div class="ticket-form-group">
-                            <label for="ticket-reason">Motivo/Descrição</label>
-                            <textarea id="ticket-reason" placeholder="Descreva o problema ou motivo do ticket (opcional)"></textarea>
-                        </div>
+                const content = document.createElement('div');
+                content.className = 'ticket-modal-content';
 
-                        <div class="ticket-form-group">
-                            <label>Gravidade do Ticket</label>
-                            <div class="severity-options">
-                                <div class="severity-option" data-severity="low">
-                                    <span class="severity-icon severity-low">🟢</span>
-                                    <span>Baixa</span>
-                                </div>
-                                <div class="severity-option selected" data-severity="medium">
-                                    <span class="severity-icon severity-medium">🟡</span>
-                                    <span>Média</span>
-                                </div>
-                                <div class="severity-option" data-severity="high">
-                                    <span class="severity-icon severity-high">🔴</span>
-                                    <span>Alta</span>
-                                </div>
-                                <div class="severity-option" data-severity="urgent">
-                                    <span class="severity-icon severity-urgent">🟣</span>
-                                    <span>Urgente</span>
-                                </div>
-                            </div>
-                        </div>
+                // Header
+                const h3 = document.createElement('h3');
+                const hIcon = document.createElement('i'); hIcon.className = 'fas fa-ticket-alt'; h3.appendChild(hIcon); h3.appendChild(document.createTextNode(' Criar Novo Ticket'));
+                content.appendChild(h3);
 
-                        <div class="ticket-form-group">
-                            <label for="ticket-user">Adicionar Utilizador (opcional)</label>
-                            <input type="text" id="ticket-user" placeholder="Nome de utilizador ou ID do Discord">
-                            <div id="user-search-results" class="user-search-results" style="display: none;"></div>
-                        </div>
+                // Title group
+                const grpTitle = document.createElement('div'); grpTitle.className = 'ticket-form-group';
+                const lblTitle = document.createElement('label'); lblTitle.setAttribute('for','ticket-title'); lblTitle.textContent = 'Nome do Ticket *';
+                const inTitle = document.createElement('input'); inTitle.type = 'text'; inTitle.id = 'ticket-title'; inTitle.placeholder = 'Digite o título do ticket'; inTitle.required = true;
+                grpTitle.appendChild(lblTitle); grpTitle.appendChild(inTitle);
+                content.appendChild(grpTitle);
 
-                        <div class="ticket-actions">
-                            <button type="button" class="btn btn-secondary" id="cancel-ticket-btn">
-                                <i class="fas fa-times"></i> Cancelar
-                            </button>
-                            <button type="button" class="btn btn-primary" id="create-ticket-submit-btn">
-                                <i class="fas fa-check"></i> Criar Ticket
-                            </button>
-                        </div>
-                    </div>
-                `;
+                // Reason group
+                const grpReason = document.createElement('div'); grpReason.className = 'ticket-form-group';
+                const lblReason = document.createElement('label'); lblReason.setAttribute('for','ticket-reason'); lblReason.textContent = 'Motivo/Descrição';
+                const ta = document.createElement('textarea'); ta.id = 'ticket-reason'; ta.placeholder = 'Descreva o problema ou motivo do ticket (opcional)';
+                grpReason.appendChild(lblReason); grpReason.appendChild(ta);
+                content.appendChild(grpReason);
 
+                // Severity
+                const grpSev = document.createElement('div'); grpSev.className = 'ticket-form-group';
+                const lblSev = document.createElement('label'); lblSev.textContent = 'Gravidade do Ticket';
+                const sevWrap = document.createElement('div'); sevWrap.className = 'severity-options';
+                const severityDefs = [ ['low','🟢','Baixa'], ['medium','🟡','Média'], ['high','🔴','Alta'], ['urgent','🟣','Urgente'] ];
+                severityDefs.forEach(([key,emoji,label], idx) => {
+                    const opt = document.createElement('div'); opt.className = 'severity-option'; opt.dataset.severity = key;
+                    if (key === 'medium') opt.classList.add('selected');
+                    const icon = document.createElement('span'); icon.className = `severity-icon severity-${key}`; icon.textContent = emoji;
+                    const lbl = document.createElement('span'); lbl.textContent = label;
+                    opt.appendChild(icon); opt.appendChild(lbl);
+                    sevWrap.appendChild(opt);
+                });
+                grpSev.appendChild(lblSev); grpSev.appendChild(sevWrap); content.appendChild(grpSev);
+
+                // User search
+                const grpUser = document.createElement('div'); grpUser.className = 'ticket-form-group';
+                const lblUser = document.createElement('label'); lblUser.setAttribute('for','ticket-user'); lblUser.textContent = 'Adicionar Utilizador (opcional)';
+                const inUser = document.createElement('input'); inUser.type = 'text'; inUser.id = 'ticket-user'; inUser.placeholder = 'Nome de utilizador ou ID do Discord';
+                const resultsDiv = document.createElement('div'); resultsDiv.id = 'user-search-results'; resultsDiv.className = 'user-search-results'; resultsDiv.style.display = 'none';
+                grpUser.appendChild(lblUser); grpUser.appendChild(inUser); grpUser.appendChild(resultsDiv); content.appendChild(grpUser);
+
+                // Actions
+                const actions = document.createElement('div'); actions.className = 'ticket-actions';
+                const btnCancel = document.createElement('button'); btnCancel.type = 'button'; btnCancel.className = 'btn btn-secondary'; btnCancel.id = 'cancel-ticket-btn';
+                const btnCancelI = document.createElement('i'); btnCancelI.className = 'fas fa-times'; btnCancel.appendChild(btnCancelI); btnCancel.appendChild(document.createTextNode(' Cancelar'));
+                const btnCreate = document.createElement('button'); btnCreate.type = 'button'; btnCreate.className = 'btn btn-primary'; btnCreate.id = 'create-ticket-submit-btn';
+                const btnCreateI = document.createElement('i'); btnCreateI.className = 'fas fa-check'; btnCreate.appendChild(btnCreateI); btnCreate.appendChild(document.createTextNode(' Criar Ticket'));
+                actions.appendChild(btnCancel); actions.appendChild(btnCreate);
+                content.appendChild(actions);
+
+                modal.appendChild(content);
                 document.body.appendChild(modal);
                 this.setupCreateTicketModal(modal);
             }
@@ -978,28 +997,54 @@
                     return;
                 }
 
-                container.innerHTML = users.map(user => `
-                    <div class="user-search-item" data-user-id="${user.id}" data-username="${user.username}">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <img src="${user.avatarURL || '/default-avatar.png'}" style="width: 24px; height: 24px; border-radius: 50%;">
-                            <div>
-                                <div style="color: var(--text-white); font-weight: 500;">${user.displayName || user.username}</div>
-                                <div style="color: var(--text-secondary); font-size: 0.8rem;">${user.id}</div>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
+                // Clear previous results
+                if (container) { while (container.firstChild) container.removeChild(container.firstChild); }
 
-                container.style.display = 'block';
+                users.slice(0, 10).forEach(user => {
+                    const item = document.createElement('div');
+                    item.className = 'user-search-item';
+                    item.setAttribute('data-user-id', String(user.id || ''));
+                    item.setAttribute('data-username', String(user.username || ''));
 
-                // Add click handlers
-                container.querySelectorAll('.user-search-item').forEach(item => {
+                    const holder = document.createElement('div');
+                    holder.style.display = 'flex';
+                    holder.style.alignItems = 'center';
+                    holder.style.gap = '10px';
+
+                    const img = document.createElement('img');
+                    img.style.width = '24px';
+                    img.style.height = '24px';
+                    img.style.borderRadius = '50%';
+                    img.src = user.avatarURL || '/default-avatar.png';
+                    img.addEventListener('error', () => { img.src = '/default-avatar.png'; });
+
+                    const info = document.createElement('div');
+                    const nameDiv = document.createElement('div');
+                    nameDiv.style.color = 'var(--text-white)';
+                    nameDiv.style.fontWeight = '500';
+                    nameDiv.textContent = user.displayName || user.username || '';
+                    const idDiv = document.createElement('div');
+                    idDiv.style.color = 'var(--text-secondary)';
+                    idDiv.style.fontSize = '0.8rem';
+                    idDiv.textContent = user.id || '';
+
+                    info.appendChild(nameDiv);
+                    info.appendChild(idDiv);
+
+                    holder.appendChild(img);
+                    holder.appendChild(info);
+                    item.appendChild(holder);
+
                     item.addEventListener('click', () => {
                         const userInput = document.querySelector('#ticket-user');
-                        userInput.value = `${item.dataset.username} (${item.dataset.userId})`;
+                        if (userInput) userInput.value = `${user.username || ''} (${user.id || ''})`;
                         container.style.display = 'none';
                     });
+
+                    container.appendChild(item);
                 });
+
+                container.style.display = 'block';
             }
 
             async createTicket(modal) {
@@ -1068,43 +1113,51 @@
             showManageTicketModal() {
                 const modal = document.createElement('div');
                 modal.className = 'ticket-modal';
-                modal.innerHTML = `
-                    <div class="ticket-modal-content">
-                        <h3><i class="fas fa-cog"></i> Gerir Ticket</h3>
-                        
-                        <div class="ticket-form-group">
-                            <label for="manage-ticket-id">ID do Ticket ou Canal</label>
-                            <input type="text" id="manage-ticket-id" placeholder="Digite o ID do ticket ou canal">
-                        </div>
 
-                        <div class="ticket-form-group">
-                            <label>Ações Disponíveis</label>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md); margin-top: var(--space-sm);">
-                                <button type="button" class="btn btn-primary" id="add-user-ticket-btn">
-                                    <i class="fas fa-user-plus"></i> Adicionar Utilizador
-                                </button>
-                                <button type="button" class="btn btn-warning" id="remove-user-ticket-btn">
-                                    <i class="fas fa-user-minus"></i> Remover Utilizador
-                                </button>
-                                <button type="button" class="btn btn-info" id="update-severity-btn">
-                                    <i class="fas fa-exclamation-triangle"></i> Mudar Gravidade
-                                </button>
-                                <button type="button" class="btn btn-danger" id="delete-ticket-btn">
-                                    <i class="fas fa-trash"></i> Eliminar Ticket
-                                </button>
-                            </div>
-                        </div>
+                const content = document.createElement('div');
+                content.className = 'ticket-modal-content';
 
-                        <div id="manage-action-area" style="display: none; margin-top: var(--space-lg);"></div>
+                const h3 = document.createElement('h3');
+                const icon = document.createElement('i'); icon.className = 'fas fa-cog';
+                h3.appendChild(icon); h3.appendChild(document.createTextNode(' Gerir Ticket'));
+                content.appendChild(h3);
 
-                        <div class="ticket-actions">
-                            <button type="button" class="btn btn-secondary" id="cancel-manage-btn">
-                                <i class="fas fa-times"></i> Fechar
-                            </button>
-                        </div>
-                    </div>
-                `;
+                const idGroup = document.createElement('div'); idGroup.className = 'ticket-form-group';
+                const idLabel = document.createElement('label'); idLabel.htmlFor = 'manage-ticket-id'; idLabel.textContent = 'ID do Ticket ou Canal';
+                const idInput = document.createElement('input'); idInput.type = 'text'; idInput.id = 'manage-ticket-id'; idInput.placeholder = 'Digite o ID do ticket ou canal';
+                idGroup.appendChild(idLabel); idGroup.appendChild(idInput);
+                content.appendChild(idGroup);
 
+                const actionsGroup = document.createElement('div'); actionsGroup.className = 'ticket-form-group';
+                const actionsLabel = document.createElement('label'); actionsLabel.textContent = 'Ações Disponíveis';
+                actionsGroup.appendChild(actionsLabel);
+
+                const grid = document.createElement('div'); grid.style.display = 'grid'; grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(200px, 1fr))'; grid.style.gap = 'var(--space-md)'; grid.style.marginTop = 'var(--space-sm)';
+
+                const makeBtn = (cls, id, iconCls, text) => {
+                    const btn = document.createElement('button'); btn.type = 'button'; btn.className = cls; btn.id = id;
+                    const i = document.createElement('i'); i.className = iconCls; btn.appendChild(i); btn.appendChild(document.createTextNode(' ' + text));
+                    return btn;
+                };
+
+                grid.appendChild(makeBtn('btn btn-primary', 'add-user-ticket-btn', 'fas fa-user-plus', 'Adicionar Utilizador'));
+                grid.appendChild(makeBtn('btn btn-warning', 'remove-user-ticket-btn', 'fas fa-user-minus', 'Remover Utilizador'));
+                grid.appendChild(makeBtn('btn btn-info', 'update-severity-btn', 'fas fa-exclamation-triangle', 'Mudar Gravidade'));
+                grid.appendChild(makeBtn('btn btn-danger', 'delete-ticket-btn', 'fas fa-trash', 'Eliminar Ticket'));
+
+                actionsGroup.appendChild(grid);
+                content.appendChild(actionsGroup);
+
+                const actionArea = document.createElement('div'); actionArea.id = 'manage-action-area'; actionArea.style.display = 'none'; actionArea.style.marginTop = 'var(--space-lg)';
+                content.appendChild(actionArea);
+
+                const actionsFooter = document.createElement('div'); actionsFooter.className = 'ticket-actions';
+                const cancelBtn = document.createElement('button'); cancelBtn.type = 'button'; cancelBtn.className = 'btn btn-secondary'; cancelBtn.id = 'cancel-manage-btn';
+                const cancelI = document.createElement('i'); cancelI.className = 'fas fa-times'; cancelBtn.appendChild(cancelI); cancelBtn.appendChild(document.createTextNode(' Fechar'));
+                actionsFooter.appendChild(cancelBtn);
+                content.appendChild(actionsFooter);
+
+                modal.appendChild(content);
                 document.body.appendChild(modal);
                 this.setupManageTicketModal(modal);
             }
@@ -1114,107 +1167,86 @@
                 
                 // Add user button
                 modal.querySelector('#add-user-ticket-btn').addEventListener('click', () => {
-                    actionArea.innerHTML = `
-                        <div class="ticket-form-group">
-                            <label for="add-user-input">Utilizador para Adicionar</label>
-                            <input type="text" id="add-user-input" placeholder="Nome de utilizador ou ID do Discord">
-                            <div id="add-user-search-results" class="user-search-results" style="display: none;"></div>
-                        </div>
-                        <button type="button" class="btn btn-primary" id="confirm-add-user">
-                            <i class="fas fa-check"></i> Adicionar ao Ticket
-                        </button>
-                    `;
+                    // clear and build form
+                    while (actionArea.firstChild) actionArea.removeChild(actionArea.firstChild);
+                    const group = document.createElement('div'); group.className = 'ticket-form-group';
+                    const label = document.createElement('label'); label.htmlFor = 'add-user-input'; label.textContent = 'Utilizador para Adicionar';
+                    const input = document.createElement('input'); input.type = 'text'; input.id = 'add-user-input'; input.placeholder = 'Nome de utilizador ou ID do Discord';
+                    const results = document.createElement('div'); results.id = 'add-user-search-results'; results.className = 'user-search-results'; results.style.display = 'none';
+                    group.appendChild(label); group.appendChild(input); group.appendChild(results);
+                    actionArea.appendChild(group);
+                    const confirm = document.createElement('button'); confirm.type = 'button'; confirm.className = 'btn btn-primary'; confirm.id = 'confirm-add-user';
+                    const ci = document.createElement('i'); ci.className = 'fas fa-check'; confirm.appendChild(ci); confirm.appendChild(document.createTextNode(' Adicionar ao Ticket'));
+                    actionArea.appendChild(confirm);
                     actionArea.style.display = 'block';
                     this.setupUserSearch(modal, 'add-user-input', 'add-user-search-results');
-                    
-                    modal.querySelector('#confirm-add-user').addEventListener('click', () => {
-                        this.addUserToTicket(modal);
-                    });
+                    confirm.addEventListener('click', () => { this.addUserToTicket(modal); });
                 });
 
                 // Remove user button
                 modal.querySelector('#remove-user-ticket-btn').addEventListener('click', () => {
-                    actionArea.innerHTML = `
-                        <div class="ticket-form-group">
-                            <label for="remove-user-input">Utilizador para Remover</label>
-                            <input type="text" id="remove-user-input" placeholder="Nome de utilizador ou ID do Discord">
-                            <div id="remove-user-search-results" class="user-search-results" style="display: none;"></div>
-                        </div>
-                        <button type="button" class="btn btn-warning" id="confirm-remove-user">
-                            <i class="fas fa-check"></i> Remover do Ticket
-                        </button>
-                    `;
+                    while (actionArea.firstChild) actionArea.removeChild(actionArea.firstChild);
+                    const group = document.createElement('div'); group.className = 'ticket-form-group';
+                    const label = document.createElement('label'); label.htmlFor = 'remove-user-input'; label.textContent = 'Utilizador para Remover';
+                    const input = document.createElement('input'); input.type = 'text'; input.id = 'remove-user-input'; input.placeholder = 'Nome de utilizador ou ID do Discord';
+                    const results = document.createElement('div'); results.id = 'remove-user-search-results'; results.className = 'user-search-results'; results.style.display = 'none';
+                    group.appendChild(label); group.appendChild(input); group.appendChild(results);
+                    actionArea.appendChild(group);
+                    const confirm = document.createElement('button'); confirm.type = 'button'; confirm.className = 'btn btn-warning'; confirm.id = 'confirm-remove-user';
+                    const ci = document.createElement('i'); ci.className = 'fas fa-check'; confirm.appendChild(ci); confirm.appendChild(document.createTextNode(' Remover do Ticket'));
+                    actionArea.appendChild(confirm);
                     actionArea.style.display = 'block';
                     this.setupUserSearch(modal, 'remove-user-input', 'remove-user-search-results');
-                    
-                    modal.querySelector('#confirm-remove-user').addEventListener('click', () => {
-                        this.removeUserFromTicket(modal);
-                    });
+                    confirm.addEventListener('click', () => { this.removeUserFromTicket(modal); });
                 });
 
                 // Update severity button
                 modal.querySelector('#update-severity-btn').addEventListener('click', () => {
-                    actionArea.innerHTML = `
-                        <div class="ticket-form-group">
-                            <label>Nova Gravidade</label>
-                            <div class="severity-options">
-                                <div class="severity-option" data-severity="low">
-                                    <span class="severity-icon severity-low">🟢</span>
-                                    <span>Baixa</span>
-                                </div>
-                                <div class="severity-option" data-severity="normal">
-                                    <span class="severity-icon severity-medium">🟡</span>
-                                    <span>Média</span>
-                                </div>
-                                <div class="severity-option" data-severity="high">
-                                    <span class="severity-icon severity-high">🔴</span>
-                                    <span>Alta</span>
-                                </div>
-                                <div class="severity-option" data-severity="critical">
-                                    <span class="severity-icon severity-urgent">🟣</span>
-                                    <span>Urgente</span>
-                                </div>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-info" id="confirm-update-severity">
-                            <i class="fas fa-check"></i> Atualizar Gravidade
-                        </button>
-                    `;
-                    actionArea.style.display = 'block';
-                    
-                    // Setup severity selection
-                    actionArea.querySelectorAll('.severity-option').forEach(option => {
-                        option.addEventListener('click', () => {
-                            actionArea.querySelectorAll('.severity-option').forEach(opt => opt.classList.remove('selected'));
-                            option.classList.add('selected');
+                    while (actionArea.firstChild) actionArea.removeChild(actionArea.firstChild);
+                    const group = document.createElement('div'); group.className = 'ticket-form-group';
+                    const label = document.createElement('label'); label.textContent = 'Nova Gravidade';
+                    group.appendChild(label);
+
+                    const opts = document.createElement('div'); opts.className = 'severity-options';
+                    const makeOpt = (sev, emoji, text) => {
+                        const div = document.createElement('div'); div.className = 'severity-option'; div.dataset.severity = sev;
+                        const sspan = document.createElement('span'); sspan.className = 'severity-icon severity-' + (sev === 'low' ? 'low' : sev === 'normal' ? 'medium' : sev === 'high' ? 'high' : 'urgent'); sspan.textContent = emoji;
+                        const tspan = document.createElement('span'); tspan.textContent = text;
+                        div.appendChild(sspan); div.appendChild(tspan);
+                        div.addEventListener('click', () => {
+                            opts.querySelectorAll('.severity-option').forEach(opt => opt.classList.remove('selected'));
+                            div.classList.add('selected');
                         });
-                    });
-                    
-                    modal.querySelector('#confirm-update-severity').addEventListener('click', () => {
-                        this.updateTicketSeverity(modal);
-                    });
+                        return div;
+                    };
+                    opts.appendChild(makeOpt('low','🟢','Baixa'));
+                    opts.appendChild(makeOpt('normal','🟡','Média'));
+                    opts.appendChild(makeOpt('high','🔴','Alta'));
+                    opts.appendChild(makeOpt('critical','🟣','Urgente'));
+
+                    group.appendChild(opts);
+                    actionArea.appendChild(group);
+
+                    const confirm = document.createElement('button'); confirm.type = 'button'; confirm.className = 'btn btn-info'; confirm.id = 'confirm-update-severity';
+                    const ci2 = document.createElement('i'); ci2.className = 'fas fa-check'; confirm.appendChild(ci2); confirm.appendChild(document.createTextNode(' Atualizar Gravidade'));
+                    actionArea.appendChild(confirm);
+                    actionArea.style.display = 'block';
+
+                    confirm.addEventListener('click', () => { this.updateTicketSeverity(modal); });
                 });
 
                 // Delete ticket button
                 modal.querySelector('#delete-ticket-btn').addEventListener('click', () => {
-                    actionArea.innerHTML = `
-                        <div style="text-align: center; padding: var(--space-lg);">
-                            <div style="color: var(--text-white); font-size: 1.1rem; margin-bottom: var(--space-md);">
-                                ⚠️ Tem a certeza que quer eliminar este ticket?
-                            </div>
-                            <div style="color: var(--text-secondary); margin-bottom: var(--space-lg);">
-                                Esta ação não pode ser desfeita.
-                            </div>
-                            <button type="button" class="btn btn-danger" id="confirm-delete-ticket">
-                                <i class="fas fa-trash"></i> Confirmar Eliminação
-                            </button>
-                        </div>
-                    `;
+                    while (actionArea.firstChild) actionArea.removeChild(actionArea.firstChild);
+                    const wrapper = document.createElement('div'); wrapper.style.textAlign = 'center'; wrapper.style.padding = 'var(--space-lg)';
+                    const warn = document.createElement('div'); warn.style.color = 'var(--text-white)'; warn.style.fontSize = '1.1rem'; warn.style.marginBottom = 'var(--space-md)'; warn.textContent = '⚠️ Tem a certeza que quer eliminar este ticket?';
+                    const sub = document.createElement('div'); sub.style.color = 'var(--text-secondary)'; sub.style.marginBottom = 'var(--space-lg)'; sub.textContent = 'Esta ação não pode ser desfeita.';
+                    const confirm = document.createElement('button'); confirm.type = 'button'; confirm.className = 'btn btn-danger'; confirm.id = 'confirm-delete-ticket';
+                    const ci3 = document.createElement('i'); ci3.className = 'fas fa-trash'; confirm.appendChild(ci3); confirm.appendChild(document.createTextNode(' Confirmar Eliminação'));
+                    wrapper.appendChild(warn); wrapper.appendChild(sub); wrapper.appendChild(confirm);
+                    actionArea.appendChild(wrapper);
                     actionArea.style.display = 'block';
-                    
-                    modal.querySelector('#confirm-delete-ticket').addEventListener('click', () => {
-                        this.deleteTicket(modal);
-                    });
+                    confirm.addEventListener('click', () => { this.deleteTicket(modal); });
                 });
 
                 // Cancel button
@@ -1472,96 +1504,137 @@
                 }
 
                 if (tickets.length === 0) {
-                    ticketsList.innerHTML = `
-                        <div style="text-align: center; padding: var(--space-xl); color: var(--text-secondary);">
-                            <i class="fas fa-ticket-alt" style="font-size: 3rem; margin-bottom: var(--space-md); opacity: 0.5;"></i>
-                            <div>Nenhum ticket encontrado</div>
-                        </div>
-                    `;
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.style.textAlign = 'center';
+                    emptyDiv.style.padding = 'var(--space-xl)';
+                    emptyDiv.style.color = 'var(--text-secondary)';
+
+                    const icon = document.createElement('i');
+                    icon.className = 'fas fa-ticket-alt';
+                    icon.style.fontSize = '3rem';
+                    icon.style.marginBottom = 'var(--space-md)';
+                    icon.style.opacity = '0.5';
+
+                    const messageDiv = document.createElement('div');
+                    messageDiv.textContent = 'Nenhum ticket encontrado';
+
+                    emptyDiv.appendChild(icon);
+                    emptyDiv.appendChild(messageDiv);
+                    if (ticketsList) { while (ticketsList.firstChild) ticketsList.removeChild(ticketsList.firstChild); ticketsList.appendChild(emptyDiv); }
                     return;
                 }
 
-                ticketsList.innerHTML = tickets.map(ticket => {
-                    const severityEmoji = {
-                        'low': '🟢',
-                        'normal': '🟡',
-                        'high': '🔴',
-                        'critical': '🟣'
-                    };
+                // Clear previous
+                if (ticketsList) { while (ticketsList.firstChild) ticketsList.removeChild(ticketsList.firstChild); }
 
-                    const statusColor = {
-                        'open': '#10B981',
-                        'pending': '#F59E0B',
-                        'closed': '#6B7280'
-                    };
+                const severityEmoji = { 'low': '🟢', 'normal': '🟡', 'high': '🔴', 'critical': '🟣' };
+                const statusColor = { 'open': '#10B981', 'pending': '#F59E0B', 'closed': '#6B7280' };
 
-                    return `
-                        <div class="ticket-item">
-                            <div class="ticket-header">
-                                <span class="ticket-title">
-                                    ${severityEmoji[ticket.severity] || '🟡'} ${ticket.title}
-                                </span>
-                                <span class="ticket-status" style="background: ${statusColor[ticket.status] || '#6B7280'}">
-                                    ${ticket.status}
-                                </span>
-                            </div>
-                            <div class="ticket-meta">
-                                <span>ID: ${ticket.id}</span>
-                                <span>Por: ${ticket.created_by || 'Desconhecido'}</span>
-                                <span>${new Date(ticket.created_at).toLocaleDateString()}</span>
-                                <span>Gravidade: ${ticket.severity}</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+                tickets.forEach(ticket => {
+                    const item = document.createElement('div');
+                    item.className = 'ticket-item';
+
+                    const header = document.createElement('div');
+                    header.className = 'ticket-header';
+
+                    const title = document.createElement('span');
+                    title.className = 'ticket-title';
+                    const titleText = `${severityEmoji[ticket.severity] || '🟡'} ${ticket.title || ''}`;
+                    title.textContent = titleText;
+
+                    const status = document.createElement('span');
+                    status.className = 'ticket-status';
+                    status.style.background = statusColor[ticket.status] || '#6B7280';
+                    status.textContent = ticket.status || '';
+
+                    header.appendChild(title);
+                    header.appendChild(status);
+
+                    const meta = document.createElement('div');
+                    meta.className = 'ticket-meta';
+                    const idSpan = document.createElement('span'); idSpan.textContent = 'ID: ' + (ticket.id || '');
+                    const bySpan = document.createElement('span'); bySpan.textContent = 'Por: ' + (ticket.created_by || 'Desconhecido');
+                    const dateSpan = document.createElement('span'); dateSpan.textContent = ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : '';
+                    const sevSpan = document.createElement('span'); sevSpan.textContent = 'Gravidade: ' + (ticket.severity || '');
+
+                    meta.appendChild(idSpan);
+                    meta.appendChild(bySpan);
+                    meta.appendChild(dateSpan);
+                    meta.appendChild(sevSpan);
+
+                    item.appendChild(header);
+                    item.appendChild(meta);
+                    ticketsList.appendChild(item);
+                });
             }
             
             showTokenConfig() {
                 const modal = document.createElement('div');
                 modal.className = 'modal';
-                modal.innerHTML = `
-                    <div class="modal-content">
-                        <h3><i class="fas fa-key"></i> Configurar Token de Acesso</h3>
-                        <div class="form-group">
-                            <label>Token atual:</label>
-                            <div class="current-token">${getAuthToken() || 'Nenhum token configurado'}</div>
-                        </div>
-                        <div class="form-group">
-                            <label>Escolha uma opção:</label>
-                            <div class="form-actions">
-                                <button type="button" class="btn btn-primary" id="setDevTokenBtn">
-                                    <i class="fas fa-code"></i> Dev Token
-                                </button>
-                                <button type="button" class="btn btn-secondary" id="setAdminTokenBtn">
-                                    <i class="fas fa-shield-alt"></i> Admin Token
-                                </button>
-                                <button type="button" class="btn btn-secondary" id="setCustomTokenBtn">
-                                    <i class="fas fa-edit"></i> Token Personalizado
-                                </button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <small>
-                                <strong>Tokens válidos:</strong><br>
-                                • <code>dev-token</code> - Para desenvolvimento local<br>
-                                • <code>admin-token</code> - Para administração<br>
-                                • <code>dashboard-token</code> - Para painel<br>
-                                • Qualquer token Discord válido
-                            </small>
-                        </div>
-                        <div class="form-actions">
-                            <button type="button" class="btn btn-success" id="testAuthBtn">
-                                <i class="fas fa-check"></i> Testar Autenticação
-                            </button>
-                            <button type="button" class="btn btn-secondary" id="closeModalBtn">
-                                <i class="fas fa-times"></i> Fechar
-                            </button>
-                        </div>
-                    </div>
-                `;
-                
+
+                const modalContent = document.createElement('div');
+                modalContent.className = 'modal-content';
+
+                const header = document.createElement('h3');
+                const keyIcon = document.createElement('i'); keyIcon.className = 'fas fa-key';
+                header.appendChild(keyIcon); header.appendChild(document.createTextNode(' Configurar Token de Acesso'));
+                modalContent.appendChild(header);
+
+                // Current token
+                const fgCurrent = document.createElement('div'); fgCurrent.className = 'form-group';
+                const lblCurrent = document.createElement('label'); lblCurrent.textContent = 'Token atual:';
+                const currentDiv = document.createElement('div'); currentDiv.className = 'current-token'; currentDiv.textContent = (getAuthToken() || 'Nenhum token configurado');
+                fgCurrent.appendChild(lblCurrent); fgCurrent.appendChild(currentDiv);
+                modalContent.appendChild(fgCurrent);
+
+                // Options
+                const fgOptions = document.createElement('div'); fgOptions.className = 'form-group';
+                const lblOptions = document.createElement('label'); lblOptions.textContent = 'Escolha uma opção:';
+                const actionsWrap = document.createElement('div'); actionsWrap.className = 'form-actions';
+
+                const makeBtn = (cls, id, iconCls, text) => {
+                    const btn = document.createElement('button'); btn.type = 'button'; btn.className = cls; btn.id = id;
+                    const i = document.createElement('i'); i.className = iconCls; btn.appendChild(i); btn.appendChild(document.createTextNode(' ' + text));
+                    return btn;
+                };
+
+                actionsWrap.appendChild(makeBtn('btn btn-primary', 'setDevTokenBtn', 'fas fa-code', 'Dev Token'));
+                actionsWrap.appendChild(makeBtn('btn btn-secondary', 'setAdminTokenBtn', 'fas fa-shield-alt', 'Admin Token'));
+                actionsWrap.appendChild(makeBtn('btn btn-secondary', 'setCustomTokenBtn', 'fas fa-edit', 'Token Personalizado'));
+
+                fgOptions.appendChild(lblOptions); fgOptions.appendChild(actionsWrap);
+                modalContent.appendChild(fgOptions);
+
+                // Tokens info
+                const fgInfo = document.createElement('div'); fgInfo.className = 'form-group';
+                const small = document.createElement('small');
+                const strong = document.createElement('strong'); strong.textContent = 'Tokens válidos:';
+                small.appendChild(strong);
+                small.appendChild(document.createElement('br'));
+                const addTokenLine = (codeText, desc) => {
+                    small.appendChild(document.createTextNode(' • '));
+                    const codeEl = document.createElement('code'); codeEl.textContent = codeText;
+                    small.appendChild(codeEl);
+                    small.appendChild(document.createTextNode(' - ' + desc));
+                    small.appendChild(document.createElement('br'));
+                };
+                addTokenLine('dev-token', 'Para desenvolvimento local');
+                addTokenLine('admin-token', 'Para administração');
+                addTokenLine('dashboard-token', 'Para painel');
+                small.appendChild(document.createTextNode(' • Qualquer token Discord válido'));
+
+                fgInfo.appendChild(small);
+                modalContent.appendChild(fgInfo);
+
+                // Footer actions
+                const fgFooter = document.createElement('div'); fgFooter.className = 'form-actions';
+                fgFooter.appendChild(makeBtn('btn btn-success', 'testAuthBtn', 'fas fa-check', 'Testar Autenticação'));
+                fgFooter.appendChild(makeBtn('btn btn-secondary', 'closeModalBtn', 'fas fa-times', 'Fechar'));
+                modalContent.appendChild(fgFooter);
+
+                modal.appendChild(modalContent);
                 document.body.appendChild(modal);
-                
+
                 // Add event listeners to modal buttons
                 modal.querySelector('#setDevTokenBtn').addEventListener('click', () => {
                     localStorage.setItem('authToken', 'dev-token');
@@ -1755,9 +1828,9 @@
             renderWebhooksList(webhooks) {
                 const container = document.getElementById('webhooks-list');
                 if (!container) return;
-                container.innerHTML = '';
+                while (container.firstChild) container.removeChild(container.firstChild);
                 if (!webhooks || webhooks.length === 0) {
-                    container.innerHTML = '<p>Nenhum webhook configurado.</p>';
+                    const p = document.createElement('p'); p.textContent = 'Nenhum webhook configurado.'; container.appendChild(p);
                     return;
                 }
 
@@ -1768,13 +1841,32 @@
                     item.className = 'webhook-item';
                     item.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.02);';
                     const left = document.createElement('div');
-                    left.innerHTML = `<strong>${wh.name || 'Webhook ' + wh.id}</strong><div style="font-size:0.85rem;color:var(--text-secondary)">${wh.url}</div><div style="font-size:0.8rem;color:var(--text-secondary)">${wh.channel_id ? 'Canal alvo: #' + wh.channel_id : (wh.channel_name ? wh.channel_name : '')}</div>`;
+                    const title = document.createElement('strong');
+                    title.textContent = wh.name || ('Webhook ' + wh.id);
+                    const urlDiv = document.createElement('div');
+                    urlDiv.style.fontSize = '0.85rem';
+                    urlDiv.style.color = 'var(--text-secondary)';
+                    urlDiv.textContent = wh.url || '';
+                    const channelDiv = document.createElement('div');
+                    channelDiv.style.fontSize = '0.8rem';
+                    channelDiv.style.color = 'var(--text-secondary)';
+                    channelDiv.textContent = wh.channel_id ? ('Canal alvo: #' + wh.channel_id) : (wh.channel_name ? wh.channel_name : '');
+                    left.appendChild(title);
+                    left.appendChild(urlDiv);
+                    left.appendChild(channelDiv);
+
                     const right = document.createElement('div');
-                    right.innerHTML = `
-                        <button class="btn btn-secondary btn-sm" data-action="test" data-id="${wh.id}">Testar</button>
-                        <button class="btn btn-light btn-sm" data-action="edit" data-id="${wh.id}">Editar</button>
-                        <button class="btn btn-danger btn-sm" data-action="delete" data-id="${wh.id}">Remover</button>
-                    `;
+                    const mkBtn = (cls, action, id, text) => {
+                        const b = document.createElement('button');
+                        b.className = cls;
+                        b.setAttribute('data-action', action);
+                        b.setAttribute('data-id', id);
+                        b.textContent = text;
+                        return b;
+                    };
+                    right.appendChild(mkBtn('btn btn-secondary btn-sm', 'test', wh.id, 'Testar'));
+                    right.appendChild(mkBtn('btn btn-light btn-sm', 'edit', wh.id, 'Editar'));
+                    right.appendChild(mkBtn('btn btn-danger btn-sm', 'delete', wh.id, 'Remover'));
                     item.appendChild(left);
                     item.appendChild(right);
                     list.appendChild(item);
@@ -2074,11 +2166,14 @@
                 
                 const newLog = document.createElement('div');
                 newLog.className = logClass;
-                newLog.innerHTML = `
-                    <span class="log-time">[${currentTime}]</span>
-                    <span class="log-message">${icon} ${actionNames[action] || action} - ${user}: ${reason}</span>
-                `;
-                
+                const time = document.createElement('span');
+                time.className = 'log-time';
+                time.textContent = `[${currentTime}]`;
+                const msg = document.createElement('span');
+                msg.className = 'log-message';
+                msg.textContent = `${icon} ${actionNames[action] || action} - ${user}: ${reason}`;
+                newLog.appendChild(time);
+                newLog.appendChild(msg);
                 container.insertBefore(newLog, container.firstChild);
                 
                 // Limit to 50 logs
@@ -2096,11 +2191,14 @@
             const footer = document.getElementById('embed-footer').value || 'Footer do embed';
             
             const preview = document.getElementById('embed-preview-content');
-            preview.innerHTML = `
-                <div class="embed-title">${title}</div>
-                <div class="embed-description">${description}</div>
-                <div class="embed-footer">${footer}</div>
-            `;
+            // Clear previous preview
+            while (preview.firstChild) preview.removeChild(preview.firstChild);
+            const t = document.createElement('div'); t.className = 'embed-title'; t.textContent = title;
+            const d = document.createElement('div'); d.className = 'embed-description'; d.textContent = description;
+            const f = document.createElement('div'); f.className = 'embed-footer'; f.textContent = footer;
+            preview.appendChild(t);
+            preview.appendChild(d);
+            preview.appendChild(f);
             
             // Use CSS custom properties for dynamic colors
             preview.style.setProperty('--embed-color', color);
@@ -2129,11 +2227,10 @@
             
             const newLog = document.createElement('div');
             newLog.className = 'log-entry info';
-            newLog.innerHTML = `
-                <span class="log-time">[${currentTime}]</span>
-                <span class="log-message">Logs atualizados pelo utilizador</span>
-            `;
-            
+            const time = document.createElement('span'); time.className = 'log-time'; time.textContent = `[${currentTime}]`;
+            const msg = document.createElement('span'); msg.className = 'log-message'; msg.textContent = 'Logs atualizados pelo utilizador';
+            newLog.appendChild(time);
+            newLog.appendChild(msg);
             container.insertBefore(newLog, container.firstChild);
             
             // Limitar a 50 logs
@@ -2145,19 +2242,22 @@
         function clearLogs() {
             if (confirm('Tens a certeza de que queres limpar todos os logs?')) {
                 const currentTime = new Date().toLocaleTimeString();
-                document.getElementById('logsContainer').innerHTML = `
-                    <div class="log-entry info">
-                        <span class="log-time">[${currentTime}]</span>
-                        <span class="log-message">Logs limpos pelo utilizador</span>
-                    </div>
-                `;
+                const container = document.getElementById('logsContainer');
+                while (container.firstChild) container.removeChild(container.firstChild);
+                const newLog = document.createElement('div');
+                newLog.className = 'log-entry info';
+                const time = document.createElement('span'); time.className = 'log-time'; time.textContent = `[${currentTime}]`;
+                const msg = document.createElement('span'); msg.className = 'log-message'; msg.textContent = 'Logs limpos pelo utilizador';
+                newLog.appendChild(time);
+                newLog.appendChild(msg);
+                container.appendChild(newLog);
             }
         }
 
         // Initialize dashboard when page loads
         document.addEventListener('DOMContentLoaded', () => {
             new YSNMDashboard();
-            
+
             // Auto-update embed preview when typing
             const embedInputs = ['embed-title', 'embed-description', 'embed-color', 'embed-footer'];
             embedInputs.forEach(id => {
@@ -2166,9 +2266,116 @@
                     element.addEventListener('input', updateEmbedPreview);
                 }
             });
+
+            // Run lightweight DOM sanitation and attach image fallbacks early
+            try {
+                sanitizeTemplatePlaceholders();
+                attachImageFallbacks();
+            } catch (e) {
+                // Don't break dashboard init if sanitation fails
+                console.warn('DOM sanitation failed:', e);
+            }
         });
     </script>
-    
+
+    <script>
+        // UI and runtime fixes (sanitization + debug wrapper)
+        (function(){
+            // Simple debug flag persisted in localStorage (user toggle available)
+            function isDebug() { return localStorage.getItem('YSNM_DEBUG') === '1'; }
+            function setDebug(v) { localStorage.setItem('YSNM_DEBUG', v ? '1' : '0'); }
+
+            // Wrap console.* so it only logs when debug is enabled
+            const _console = { log: console.log.bind(console), warn: console.warn.bind(console), error: console.error.bind(console), info: console.info.bind(console) };
+            ['log','warn','error','info'].forEach(fn => {
+                console[fn] = function(...args){ if (isDebug()) _console[fn](...args); };
+            });
+
+            // Replace any visible template placeholders like ${...} in text nodes and attributes
+            window.sanitizeTemplatePlaceholders = function(){
+                const placeholderRegex = /\$\{[^}]+\}/g;
+
+                // Fix attributes (src, href, data-*)
+                document.querySelectorAll('[src],[href],[data-src]').forEach(el => {
+                    ['src','href','data-src'].forEach(attr => {
+                        if (!el.hasAttribute(attr)) return;
+                        const val = el.getAttribute(attr);
+                        if (!val) return;
+                        // encoded forms sometimes appear (e.g. %24%7B)
+                        if (val.includes('${') || val.includes('%24%7B')) {
+                            // If it's an image, set a safe default
+                            if (el.tagName.toLowerCase() === 'img') {
+                                el.setAttribute('src','/default-avatar.png');
+                                el.removeAttribute('srcset');
+                            } else {
+                                el.removeAttribute(attr);
+                            }
+                        }
+                    });
+                });
+
+                // Clean text nodes containing placeholders
+                const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+                const toChange = [];
+                while(walker.nextNode()){
+                    const node = walker.currentNode;
+                    if (node.nodeValue && placeholderRegex.test(node.nodeValue)) {
+                        toChange.push(node);
+                    }
+                }
+                toChange.forEach(n => n.nodeValue = n.nodeValue.replace(placeholderRegex, ''));
+            };
+
+            // Attach robust fallback handler to images
+            window.attachImageFallbacks = function(){
+                const defaultSrc = '/default-avatar.png';
+                document.querySelectorAll('img').forEach(img => {
+                    // If src looks like an unprocessed template, fix it now
+                    const src = img.getAttribute('src') || '';
+                    if (src.includes('${') || src.includes('%24%7B')) {
+                        img.src = defaultSrc;
+                    }
+
+                    // Avoid infinite loops
+                    img.addEventListener('error', function onErr(){
+                        try { img.removeEventListener('error', onErr); } catch(e){}
+                        // Replace with inline SVG fallback for crispness
+                        img.src = defaultSrc;
+                        img.style.objectFit = 'cover';
+                    });
+                });
+            };
+
+            // Small floating control for toggling debug mode and running sanitizers
+            function createDebuggerWidget(){
+                if (document.getElementById('ysnm-debug-widget')) return;
+                const w = document.createElement('div');
+                w.id = 'ysnm-debug-widget';
+                w.style.cssText = 'position:fixed;right:12px;bottom:12px;background:rgba(0,0,0,0.6);color:#fff;padding:8px;border-radius:8px;font-size:12px;z-index:10001;backdrop-filter:blur(4px);';
+                const inner = document.createElement('div'); inner.style.display = 'flex'; inner.style.gap = '8px'; inner.style.alignItems = 'center';
+                const toggleBtn = document.createElement('button'); toggleBtn.id = 'ysnm-debug-toggle'; toggleBtn.title = 'Toggle debug'; toggleBtn.style.cssText = 'background:#111;color:#fff;border:0;padding:6px;border-radius:6px;cursor:pointer;'; toggleBtn.textContent = isDebug() ? 'DEBUG ON' : 'debug';
+                const fixBtn = document.createElement('button'); fixBtn.id = 'ysnm-sanitize-btn'; fixBtn.title = 'Fix placeholders'; fixBtn.style.cssText = 'background:#0b78d1;color:#fff;border:0;padding:6px;border-radius:6px;cursor:pointer;'; fixBtn.textContent = 'Fix';
+                inner.appendChild(toggleBtn); inner.appendChild(fixBtn);
+                w.appendChild(inner);
+                document.body.appendChild(w);
+                toggleBtn.addEventListener('click', ()=>{
+                    setDebug(!isDebug());
+                    toggleBtn.textContent = isDebug() ? 'DEBUG ON' : 'debug';
+                    location.reload();
+                });
+                fixBtn.addEventListener('click', ()=>{ sanitizeTemplatePlaceholders(); attachImageFallbacks(); alert('Sanitização aplicada'); });
+            }
+
+            // Run on load (non-blocking)
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => { createDebuggerWidget(); });
+            } else {
+                createDebuggerWidget();
+            }
+        })();
+
+    </script>
+
     <script>
         // Production authentication helper functions
         function promptForToken() {
@@ -2191,13 +2398,10 @@
                 // Add production token input to top nav
                 const navbar = document.querySelector('.navbar');
                 if (navbar) {
-                    const tokenInput = document.createElement('div');
-                    tokenInput.className = 'ml-auto mr-3';
-                    tokenInput.innerHTML = `
-                        <input type="password" id="prodToken" placeholder="Token de Acesso" class="form-control form-control-sm" style="width: 200px; display: inline-block;">
-                        <button onclick="setProductionToken()" class="btn btn-primary btn-sm ml-2">Definir</button>
-                    `;
-                    navbar.appendChild(tokenInput);
+                    const tokenInput = document.createElement('div'); tokenInput.className = 'ml-auto mr-3';
+                    const prodInput = document.createElement('input'); prodInput.type = 'password'; prodInput.id = 'prodToken'; prodInput.placeholder = 'Token de Acesso'; prodInput.className = 'form-control form-control-sm'; prodInput.style.cssText = 'width:200px;display:inline-block;';
+                    const setBtn = document.createElement('button'); setBtn.className = 'btn btn-primary btn-sm ml-2'; setBtn.textContent = 'Definir'; setBtn.addEventListener('click', setProductionToken);
+                    tokenInput.appendChild(prodInput); tokenInput.appendChild(setBtn); navbar.appendChild(tokenInput);
                 }
             });
         }

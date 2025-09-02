@@ -103,7 +103,11 @@ class YSNMDashboard {
             const channelSelect = document.getElementById('channelSelect');
             
             if (channels.length > 0) {
-                channelSelect.innerHTML = '<option value="">🎯 Seleciona o canal perfeito...</option>';
+                // add a safe placeholder option
+                const placeholderOpt = document.createElement('option');
+                placeholderOpt.value = '';
+                placeholderOpt.textContent = '🎯 Seleciona o canal perfeito...';
+                channelSelect.appendChild(placeholderOpt);
                 
                 // Agrupar por categoria
                 const grouped = this.groupChannelsByCategory(channels);
@@ -166,16 +170,37 @@ class YSNMDashboard {
         previewEmbed.style.borderLeftColor = color;
         
         // Atualizar descrição
-        const previewDesc = document.getElementById('previewDescription');
-        const htmlContent = this.quill.root.innerHTML;
-        if (htmlContent.trim() === '<p><br></p>' || htmlContent.trim() === '') {
-            previewDesc.innerHTML = `
-                <p>A descrição do teu update será mostrada aqui em tempo real enquanto escreves...</p>
-                <p>✨ <strong>Dica:</strong> Usa formatação Markdown para deixar o texto mais atrativo!</p>
-            `;
-        } else {
-            previewDesc.innerHTML = htmlContent;
-        }
+            const previewDesc = document.getElementById('previewDescription');
+            const htmlContent = this.quill.root.innerHTML;
+            // Prefer DOMPurify if available
+            let safeHtml;
+            try {
+                if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
+                    safeHtml = window.DOMPurify.sanitize(htmlContent, {ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|ftp|data):|[^\s]*$)/i});
+                } else {
+                    safeHtml = this.sanitizeHtmlForPreview(htmlContent);
+                }
+            } catch (purgeErr) {
+                console.warn('DOMPurify sanitize failed, falling back to basic sanitizer', purgeErr);
+                safeHtml = this.sanitizeHtmlForPreview(htmlContent);
+            }
+
+            // Parse sanitized HTML in an inert template, sanitize attributes on parsed nodes, then attach
+            const tmp = document.createElement('template');
+            tmp.innerHTML = safeHtml || '';
+            // Clean attributes on parsed elements before insertion
+            const walkerTmp = document.createTreeWalker(tmp.content, NodeFilter.SHOW_ELEMENT, null, false);
+            while (walkerTmp.nextNode()) {
+                const el = walkerTmp.currentNode;
+                [...el.attributes].forEach(attr => {
+                    if (attr.name.startsWith('on')) el.removeAttribute(attr.name);
+                    if (typeof attr.value === 'string' && (attr.value.includes('${') || attr.value.toLowerCase().includes('%24%7b'))) el.removeAttribute(attr.name);
+                    if ((attr.name === 'href' || attr.name === 'src') && attr.value && attr.value.toLowerCase().startsWith('javascript:')) el.removeAttribute(attr.name);
+                });
+            }
+            // Replace content safely
+            while (previewDesc.firstChild) previewDesc.removeChild(previewDesc.firstChild);
+            previewDesc.appendChild(tmp.content.cloneNode(true));
         
         // Atualizar banner
         const previewBanner = document.getElementById('previewBanner');
@@ -192,6 +217,20 @@ class YSNMDashboard {
         
         // Atualizar campos customizados
         this.updatePreviewFields();
+        }
+
+    sanitizeHtmlForPreview(html) {
+        if (!html || typeof html !== 'string') return '';
+        // Remove unresolved template placeholders like ${...} and encoded %24%7B
+        html = html.replace(/\$\{[^}]*\}/g, '');
+        html = html.replace(/%24%7B/gi, '');
+        // Remove event handler attributes like onclick, onerror, onmouseover etc.
+        html = html.replace(/\s+on[a-zA-Z]+\s*=\s*"[^"]*"/g, '');
+        html = html.replace(/\s+on[a-zA-Z]+\s*=\s*'[^']*'/g, '');
+        // Remove javascript: URLs
+        html = html.replace(/href\s*=\s*"javascript:[^\"]*"/gi, '');
+        html = html.replace(/src\s*=\s*"javascript:[^\"]*"/gi, '');
+        return html;
     }
 
     updateCounters() {
@@ -218,33 +257,64 @@ class YSNMDashboard {
 
         this.fieldsCount++;
         const fieldsContainer = document.getElementById('fieldsContainer');
-        
+
         const fieldDiv = document.createElement('div');
         fieldDiv.className = 'field-item fade-in';
-        fieldDiv.innerHTML = `
-            <div class="field-header">
-                <h4><i class="fas fa-tag"></i> Campo ${this.fieldsCount}</h4>
-                <button type="button" class="btn-remove" onclick="dashboard.removeField(this)">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-            <div class="field-inputs">
-                <div class="form-group">
-                    <label><i class="fas fa-heading"></i> Nome do Campo</label>
-                    <input type="text" placeholder="Ex: Nova Feature" class="field-name" onchange="dashboard.updatePreview()">
-                </div>
-                <div class="form-group">
-                    <label><i class="fas fa-align-left"></i> Valor do Campo</label>
-                    <textarea placeholder="Descrição da nova feature..." class="field-value" rows="3" onchange="dashboard.updatePreview()"></textarea>
-                </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" class="field-inline"> Inline (lado a lado)
-                    </label>
-                </div>
-            </div>
-        `;
-        
+
+        // header
+        const header = document.createElement('div'); header.className = 'field-header';
+        const h4 = document.createElement('h4');
+        h4.style.display = 'flex'; h4.style.alignItems = 'center'; h4.style.gap = '8px';
+        const icon = document.createElement('i'); icon.className = 'fas fa-tag';
+        const titleText = document.createTextNode(' Campo ' + this.fieldsCount);
+        h4.appendChild(icon); h4.appendChild(titleText);
+
+    const removeBtn = document.createElement('button'); removeBtn.type = 'button'; removeBtn.className = 'btn-remove';
+    removeBtn.style.marginLeft = '8px';
+    const trashIcon = document.createElement('i'); trashIcon.className = 'fas fa-trash';
+    removeBtn.appendChild(trashIcon);
+        removeBtn.addEventListener('click', () => { this.removeField(removeBtn); });
+
+        header.appendChild(h4); header.appendChild(removeBtn);
+
+        // inputs container
+        const inputs = document.createElement('div'); inputs.className = 'field-inputs';
+
+        const makeFormGroup = (labelText, inputEl) => {
+            const g = document.createElement('div'); g.className = 'form-group';
+            const label = document.createElement('label');
+            const labelIcon = document.createElement('i');
+            // small heuristic to match previous icons
+            labelIcon.className = labelText.includes('Nome') ? 'fas fa-heading' : 'fas fa-align-left';
+            label.appendChild(labelIcon);
+            label.appendChild(document.createTextNode(' ' + labelText));
+            g.appendChild(label);
+            g.appendChild(inputEl);
+            return g;
+        };
+
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text'; nameInput.placeholder = 'Ex: Nova Feature'; nameInput.className = 'field-name';
+        nameInput.addEventListener('change', () => this.updatePreview());
+
+        const valueTextarea = document.createElement('textarea');
+        valueTextarea.placeholder = 'Descrição da nova feature...'; valueTextarea.className = 'field-value'; valueTextarea.rows = 3;
+        valueTextarea.addEventListener('change', () => this.updatePreview());
+
+        const inlineWrapper = document.createElement('div'); inlineWrapper.className = 'form-group';
+        const inlineLabel = document.createElement('label');
+        const inlineInput = document.createElement('input'); inlineInput.type = 'checkbox'; inlineInput.className = 'field-inline';
+        inlineInput.style.marginRight = '6px';
+        inlineLabel.appendChild(inlineInput); inlineLabel.appendChild(document.createTextNode(' Inline (lado a lado)'));
+        inlineWrapper.appendChild(inlineLabel);
+
+        inputs.appendChild(makeFormGroup('Nome do Campo', nameInput));
+        inputs.appendChild(makeFormGroup('Valor do Campo', valueTextarea));
+        inputs.appendChild(inlineWrapper);
+
+        fieldDiv.appendChild(header);
+        fieldDiv.appendChild(inputs);
+
         fieldsContainer.appendChild(fieldDiv);
         this.updatePreview();
     }
@@ -262,27 +332,27 @@ class YSNMDashboard {
     updatePreviewFields() {
         const previewFields = document.getElementById('previewFields');
         const fieldItems = document.querySelectorAll('.field-item');
-        
-        if (fieldItems.length === 0) {
-            previewFields.innerHTML = '';
-            return;
-        }
 
-        let fieldsHTML = '';
+        // Clear current fields
+        while (previewFields.firstChild) previewFields.removeChild(previewFields.firstChild);
+
+        if (fieldItems.length === 0) return;
+
         fieldItems.forEach((item, index) => {
             const name = item.querySelector('.field-name').value || `Campo ${index + 1}`;
             const value = item.querySelector('.field-value').value || 'Valor do campo...';
             const inline = item.querySelector('.field-inline').checked;
-            
-            fieldsHTML += `
-                <div class="embed-field ${inline ? 'inline' : ''}">
-                    <div class="embed-field-name">${name}</div>
-                    <div class="embed-field-value">${value}</div>
-                </div>
-            `;
+
+            const fieldWrap = document.createElement('div');
+            fieldWrap.className = 'embed-field' + (inline ? ' inline' : '');
+
+            const nameDiv = document.createElement('div'); nameDiv.className = 'embed-field-name'; nameDiv.textContent = name;
+            const valueDiv = document.createElement('div'); valueDiv.className = 'embed-field-value'; valueDiv.textContent = value;
+
+            fieldWrap.appendChild(nameDiv);
+            fieldWrap.appendChild(valueDiv);
+            previewFields.appendChild(fieldWrap);
         });
-        
-        previewFields.innerHTML = fieldsHTML;
     }
 
     insertEmoji(event) {
@@ -367,7 +437,7 @@ class YSNMDashboard {
     resetForm() {
         document.getElementById('updateForm').reset();
         this.quill.setContents([]);
-        document.getElementById('fieldsContainer').innerHTML = '';
+        const fc = document.getElementById('fieldsContainer'); if (fc) { while (fc.firstChild) fc.removeChild(fc.firstChild); }
         this.fieldsCount = 0;
         this.updatePreview();
     }
@@ -381,16 +451,18 @@ class YSNMDashboard {
     }
 
     showNotification(message, type = 'info') {
-        // Criar notificação moderna
+        // Criar notificação moderna (DOM-safe)
         const notification = document.createElement('div');
         notification.className = `notification notification-${type} slide-up`;
-        notification.innerHTML = `
-            <i class="fas fa-${type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
-            <span>${message}</span>
-        `;
-        
+
+        const icon = document.createElement('i');
+        icon.className = `fas fa-${type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}`;
+        const span = document.createElement('span'); span.textContent = message;
+
+        notification.appendChild(icon);
+        notification.appendChild(span);
         document.body.appendChild(notification);
-        
+
         setTimeout(() => {
             notification.style.animation = 'slideDown 0.3s ease-in';
             setTimeout(() => notification.remove(), 300);
@@ -405,10 +477,15 @@ class YSNMDashboard {
                 hour: '2-digit', 
                 minute: '2-digit' 
             });
-            document.getElementById('previewFooter').innerHTML = `
-                <img src="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" alt="Bot Icon">
-                <span>YSNM Bot • ${timeString}</span>
-            `;
+            const footer = document.getElementById('previewFooter');
+            if (!footer) return;
+            // Clear and construct DOM-safe footer
+            while (footer.firstChild) footer.removeChild(footer.firstChild);
+            const img = document.createElement('img');
+            img.src = 'https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif';
+            img.alt = 'Bot Icon';
+            const span = document.createElement('span'); span.textContent = 'YSNM Bot • ' + timeString;
+            footer.appendChild(img); footer.appendChild(span);
         }, 1000);
     }
 

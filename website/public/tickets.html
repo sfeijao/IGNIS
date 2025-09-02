@@ -14,6 +14,7 @@
     <script src="/js/toast-fallback.js"></script>
     <script src="/js/event-fallback.js"></script>
     <script src="/js/tickets-fallbacks.js"></script>
+    <script src="/js/frontend-helpers.js"></script>
 
     <div class="container">
         <div class="header">
@@ -158,7 +159,7 @@
 
         // Load tickets on page load
         document.addEventListener('DOMContentLoaded', function() {
-                (async () => {
+                    (async () => {
                     // Fetch current user info to enable admin-only UI
                             try {
                                 const meR = await fetch('/api/me');
@@ -182,6 +183,9 @@
 
                     loadTickets();
                     loadStats();
+                    // frontend hygiene: remove obvious template placeholders and attach image fallbacks
+                    try { sanitizeTemplatePlaceholders(); } catch(e) { console.debug('sanitize error', e); }
+                    try { attachImageFallbacks(); } catch(e) { console.debug('attachImageFallbacks error', e); }
                 })();
         });
 
@@ -234,46 +238,92 @@
 
         function renderTickets() {
             const ticketList = document.getElementById('ticketList');
-            
+
             let filteredTickets = currentTickets;
             if (currentFilter !== 'all') {
                 filteredTickets = currentTickets.filter(ticket => ticket.status === currentFilter);
             }
 
+            // empty
             if (filteredTickets.length === 0) {
-                ticketList.innerHTML = `
-                    <div class="empty-state">
-                        <p>Nenhum ticket encontrado</p>
-                    </div>
-                `;
+                if (ticketList) { while (ticketList.firstChild) ticketList.removeChild(ticketList.firstChild); }
+                const empty = document.createElement('div');
+                empty.className = 'empty-state';
+                const p = document.createElement('p');
+                p.textContent = 'Nenhum ticket encontrado';
+                empty.appendChild(p);
+                ticketList.appendChild(empty);
                 return;
             }
-            ticketList.innerHTML = filteredTickets.map(ticket => {
+
+            // build nodes safely
+            if (ticketList) { while (ticketList.firstChild) ticketList.removeChild(ticketList.firstChild); }
+            const frag = document.createDocumentFragment();
+            filteredTickets.forEach(ticket => {
                 const id = ticket.id || ticket._id || '';
-                const avatarHtml = ticket.avatar ? `<img src="${ticket.avatar}" class="ticket-avatar-img"/>` : ((ticket.username || ticket.user) ? `<div class="ticket-avatar">${String((ticket.username || ticket.user).charAt(0)).toUpperCase()}</div>` : '?');
-                const subject = ticket.subject || ticket.title || 'Sem assunto';
-                const username = ticket.username || ticket.user || 'Usuário';
+                const subject = safeText(ticket.subject || ticket.title || 'Sem assunto');
+                const username = safeText(ticket.username || ticket.user || 'Usuário');
                 const created = ticket.created_at || ticket.createdAt || null;
                 const status = ticket.status || 'open';
                 const priority = ticket.priority || 'normal';
 
-                return `
-                    <div class="ticket-item" onclick="viewTicket('${id}')">
-                        <div class="ticket-avatar">
-                            ${avatarHtml}
-                        </div>
-                        <div class="ticket-info">
-                            <div class="ticket-title">${subject}</div>
-                            <div class="ticket-meta">
-                                Por ${username} • ${formatDate(created)}
-                                ${ticket.assigned_name ? ` • Atribuído a ${ticket.assigned_name}` : ''}
-                            </div>
-                        </div>
-                        <div class="ticket-status status-${status}">${getStatusText(status)}</div>
-                        <div class="priority-badge priority-${priority}">${getPriorityText(priority)}</div>
-                    </div>
-                `;
-            }).join('');
+                const item = document.createElement('div');
+                item.className = 'ticket-item';
+                item.tabIndex = 0;
+                item.addEventListener('click', () => viewTicket(String(id)));
+
+                const avatarWrap = document.createElement('div');
+                avatarWrap.className = 'ticket-avatar';
+
+                if (ticket.avatar) {
+                    const img = document.createElement('img');
+                    img.className = 'ticket-avatar-img';
+                    img.src = sanitizeAttr(ticket.avatar) || '/default-avatar.png';
+                    img.alt = username;
+                    img.onerror = function() { this.onerror = null; this.src = '/default-avatar.png'; };
+                    avatarWrap.appendChild(img);
+                } else if (ticket.username || ticket.user) {
+                    const div = document.createElement('div');
+                    div.className = 'ticket-avatar';
+                    div.textContent = String((ticket.username || ticket.user).charAt(0)).toUpperCase();
+                    avatarWrap.appendChild(div);
+                } else {
+                    avatarWrap.textContent = '?';
+                }
+
+                const info = document.createElement('div');
+                info.className = 'ticket-info';
+
+                const titleEl = document.createElement('div');
+                titleEl.className = 'ticket-title';
+                titleEl.textContent = subject;
+
+                const metaEl = document.createElement('div');
+                metaEl.className = 'ticket-meta';
+                let metaText = `Por ${username} • ${formatDate(created)}`;
+                if (ticket.assigned_name) metaText += ` • Atribuído a ${safeText(ticket.assigned_name)}`;
+                metaEl.textContent = metaText;
+
+                info.appendChild(titleEl);
+                info.appendChild(metaEl);
+
+                const statusEl = document.createElement('div');
+                statusEl.className = `ticket-status status-${sanitizeAttr(status)}`;
+                statusEl.textContent = getStatusText(status);
+
+                const prEl = document.createElement('div');
+                prEl.className = `priority-badge priority-${sanitizeAttr(priority)}`;
+                prEl.textContent = getPriorityText(priority);
+
+                item.appendChild(avatarWrap);
+                item.appendChild(info);
+                item.appendChild(statusEl);
+                item.appendChild(prEl);
+
+                frag.appendChild(item);
+            });
+
+            ticketList.appendChild(frag);
         }
 
     function filterTickets(filter, btnEl) {
@@ -321,13 +371,13 @@
             const pageSizeLocal = meta.pageSize || pageSize;
             const totalPages = Math.max(1, Math.ceil(total / pageSizeLocal));
 
-            pagination.innerHTML = `
-                <div class="pagination-controls">
-                    <button onclick="changePage(${Math.max(1, page-1)})">← Anterior</button>
-                    <span> Página ${page} de ${totalPages} </span>
-                    <button onclick="changePage(${Math.min(totalPages, page+1)})">Próxima →</button>
-                </div>
-            `;
+            while (pagination.firstChild) pagination.removeChild(pagination.firstChild);
+            const controls = document.createElement('div'); controls.className='pagination-controls';
+            const btnPrev = document.createElement('button'); btnPrev.textContent = '← Anterior'; btnPrev.addEventListener('click', () => changePage(Math.max(1, page-1)));
+            const span = document.createElement('span'); span.textContent = ` Página ${page} de ${totalPages} `;
+            const btnNext = document.createElement('button'); btnNext.textContent = 'Próxima →'; btnNext.addEventListener('click', () => changePage(Math.min(totalPages, page+1)));
+            controls.appendChild(btnPrev); controls.appendChild(span); controls.appendChild(btnNext);
+            pagination.appendChild(controls);
         }
 
         function changePage(newPage) {
@@ -446,29 +496,28 @@
             const titleEl = document.getElementById('ticketTitle'); if (titleEl) titleEl.textContent = `Ticket #${selectedTicket.id || ''} - ${subj}`;
             
             const details = document.getElementById('ticketDetails');
-            if (details) details.innerHTML = `
-                <div class="mb-1">
-                    <strong>Status:</strong> <span class="ticket-status status-${st}">${getStatusText(st)}</span>
-                    <strong class="ml-1">Prioridade:</strong> <span class="priority-badge priority-${pr}">${getPriorityText(pr)}</span>
-                </div>
-                <div class="mb-1">
-                    <strong>Categoria:</strong> ${getCategoryText(selectedTicket.category)}
-                </div>
-                <div class="mb-1">
-                    <strong>Criado por:</strong> ${uname} em ${formatDate(created)}
-                </div>
-                ${selectedTicket.assigned_name ? `
-                <div class="mb-1">
-                    <strong>Atribuído a:</strong> ${selectedTicket.assigned_name}
-                </div>
-                ` : ''}
-                <div class="mb-1">
-                    <strong>Descrição:</strong>
-                    <div class="detail-box">
-                        ${selectedTicket.description || 'Sem descrição fornecida'}
-                    </div>
-                </div>
-            `;
+            if (details) {
+                while (details.firstChild) details.removeChild(details.firstChild);
+
+                const row1 = document.createElement('div'); row1.className='mb-1';
+                const stStrong = document.createElement('strong'); stStrong.textContent='Status:'; row1.appendChild(stStrong);
+                const stSpan = document.createElement('span'); stSpan.className = 'ticket-status status-' + st; stSpan.textContent = getStatusText(st); row1.appendChild(document.createTextNode(' ')); row1.appendChild(stSpan);
+                const prStrong = document.createElement('strong'); prStrong.className='ml-1'; prStrong.textContent=' Prioridade:'; row1.appendChild(prStrong);
+                const prSpan = document.createElement('span'); prSpan.className = 'priority-badge priority-' + pr; prSpan.textContent = getPriorityText(pr); row1.appendChild(document.createTextNode(' ')); row1.appendChild(prSpan);
+                details.appendChild(row1);
+
+                const rowCat = document.createElement('div'); rowCat.className='mb-1'; const catStrong = document.createElement('strong'); catStrong.textContent='Categoria:'; rowCat.appendChild(catStrong); rowCat.appendChild(document.createTextNode(' ' + getCategoryText(selectedTicket.category))); details.appendChild(rowCat);
+
+                const rowCreated = document.createElement('div'); rowCreated.className='mb-1'; const cStrong = document.createElement('strong'); cStrong.textContent='Criado por:'; rowCreated.appendChild(cStrong); rowCreated.appendChild(document.createTextNode(' ' + uname + ' em ' + formatDate(created))); details.appendChild(rowCreated);
+
+                if (selectedTicket.assigned_name) {
+                    const rowAssigned = document.createElement('div'); rowAssigned.className='mb-1'; const aStrong = document.createElement('strong'); aStrong.textContent='Atribuído a:'; rowAssigned.appendChild(aStrong); rowAssigned.appendChild(document.createTextNode(' ' + selectedTicket.assigned_name)); details.appendChild(rowAssigned);
+                }
+
+                const rowDesc = document.createElement('div'); rowDesc.className='mb-1'; const dStrong = document.createElement('strong'); dStrong.textContent='Descrição:'; rowDesc.appendChild(dStrong);
+                const box = document.createElement('div'); box.className='detail-box'; box.textContent = selectedTicket.description || 'Sem descrição fornecida'; rowDesc.appendChild(box);
+                details.appendChild(rowDesc);
+            }
 
             const viewModal = document.getElementById('viewTicketModal'); if (viewModal) viewModal.style.display = 'flex';
         }
@@ -582,12 +631,70 @@
 
         function showError(message) {
             const el = document.getElementById('ticketList');
-            if (el) el.innerHTML = `
-                <div class="empty-state">
-                    <p class="text-danger">${message}</p>
-                </div>
-            `;
+            if (!el) return;
+            // clear
+            while (el.firstChild) el.removeChild(el.firstChild);
+            const empty = document.createElement('div');
+            empty.className = 'empty-state';
+            const p = document.createElement('p');
+            p.className = 'text-danger';
+            p.textContent = String(message || 'Erro');
+            empty.appendChild(p);
+            el.appendChild(empty);
         }
+
+            // ------------------ frontend hygiene helpers ------------------
+            // remove obvious template placeholders from attributes and text nodes
+            function sanitizeTemplatePlaceholders(root = document.body) {
+                const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null, false);
+                const placeholderPattern = /\$\{[^}]*\}/g;
+                let node = walker.currentNode;
+                while (node) {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        if (placeholderPattern.test(node.textContent)) {
+                            node.textContent = node.textContent.replace(placeholderPattern, '');
+                        }
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        // common attributes that may contain templates
+                        ['src', 'href', 'data-src', 'alt', 'title', 'style'].forEach(attr => {
+                            if (node.hasAttribute && node.hasAttribute(attr)) {
+                                let val = node.getAttribute(attr) || '';
+                                if (placeholderPattern.test(val) || val.includes('%24%7B')) {
+                                    val = val.replace(placeholderPattern, '');
+                                    val = val.replace(/%24%7B/g, '');
+                                    try { node.setAttribute(attr, val || ''); } catch(e) { /* ignore */ }
+                                }
+                            }
+                        });
+                    }
+                    node = walker.nextNode();
+                }
+            }
+
+            // ensure images have an onerror fallback
+            function attachImageFallbacks(root = document.body) {
+                const imgs = root.querySelectorAll ? root.querySelectorAll('img') : [];
+                imgs.forEach(img => {
+                    try {
+                        const src = img.getAttribute('src') || '';
+                        if (!src || src.includes('${') || src.includes('%24%7B')) {
+                            try { img.src = '/default-avatar.png'; } catch(e) { /* ignore */ }
+                        }
+                    } catch(e) { /* ignore */ }
+                    // always ensure a safe onerror handler that doesn't allow template leakage
+                    img.onerror = function() { try { this.onerror = null; this.src = '/default-avatar.png'; } catch(e){ /* ignore */ } };
+                });
+            }
+
+            function safeText(v) {
+                if (v === null || v === undefined) return '';
+                return String(v).replace(/\$\{[^}]*\}/g, '');
+            }
+
+            function sanitizeAttr(v) {
+                if (!v) return '';
+                return String(v).replace(/\$\{[^}]*\}/g, '').replace(/%24%7B/g, '');
+            }
     </script>
 </body>
 </html>

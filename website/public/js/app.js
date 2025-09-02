@@ -79,7 +79,9 @@ async function loadChannels() {
         const channelSelect = document.getElementById('channelSelect');
         
         if (response.ok && channels.length > 0) {
-            channelSelect.innerHTML = '<option value="">Selecione um canal...</option>';
+                channelSelect.textContent = '';
+                const opt = document.createElement('option'); opt.value = ''; opt.textContent = 'Selecione um canal...';
+                channelSelect.appendChild(opt);
             
             // Agrupar canais por categoria
             const groupedChannels = {};
@@ -122,14 +124,16 @@ async function loadChannels() {
             }
             
         } else {
-            channelSelect.innerHTML = '<option value="">❌ Nenhum canal disponível</option>';
+                channelSelect.textContent = '';
+                const opt2 = document.createElement('option'); opt2.value = ''; opt2.textContent = '❌ Nenhum canal disponível';
+                channelSelect.appendChild(opt2);
         }
         
     } catch (error) {
         // Show user notification and keep debug trace
         showNotification('Erro ao carregar canais', 'error');
         console.debug('Erro ao carregar canais:', error);
-        document.getElementById('channelSelect').innerHTML = '<option value="">❌ Erro ao carregar canais</option>';
+            const cs = document.getElementById('channelSelect'); if(cs){ cs.textContent=''; const eo = document.createElement('option'); eo.value=''; eo.textContent='Erro ao carregar canais'; cs.appendChild(eo); }
     }
 }
 
@@ -196,35 +200,46 @@ function insertEmoji(emoji) {
 function addField() {
     fieldsCount++;
     const container = document.getElementById('fieldsContainer');
-    
-    const fieldHtml = `
-        <div class="field-item" data-field-id="${fieldsCount}">
-            <div class="field-item-header">
-                <h4><i class="fas fa-grip-vertical"></i> Campo ${fieldsCount}</h4>
-                <div class="field-controls">
-                    <button type="button" class="btn btn-danger" onclick="removeField(${fieldsCount})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="field-row">
-                <div class="form-group">
-                    <label>Nome do Campo</label>
-                    <input type="text" name="fieldName${fieldsCount}" placeholder="📋 Novidades" maxlength="256" onchange="updatePreview()">
-                </div>
-                <div class="form-group">
-                    <label>Valor do Campo</label>
-                    <input type="text" name="fieldValue${fieldsCount}" placeholder="• Funcionalidade X adicionada\\n• Bug Y corrigido" onchange="updatePreview()">
-                </div>
-                <div class="checkbox-container">
-                    <input type="checkbox" id="fieldInline${fieldsCount}" name="fieldInline${fieldsCount}" onchange="updatePreview()">
-                    <label for="fieldInline${fieldsCount}">Inline</label>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    container.insertAdjacentHTML('beforeend', fieldHtml);
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'field-item';
+    wrapper.setAttribute('data-field-id', String(fieldsCount));
+
+    const header = document.createElement('div'); header.className = 'field-item-header';
+    const h4 = document.createElement('h4');
+    const grip = document.createElement('i'); grip.className = 'fas fa-grip-vertical';
+    h4.appendChild(grip);
+    h4.appendChild(document.createTextNode(' Campo ' + fieldsCount));
+    const controls = document.createElement('div'); controls.className = 'field-controls';
+    const delBtn = document.createElement('button'); delBtn.type = 'button'; delBtn.className = 'btn btn-danger';
+    const delI = document.createElement('i'); delI.className = 'fas fa-trash'; delBtn.appendChild(delI);
+    delBtn.addEventListener('click', () => removeField(fieldsCount));
+    controls.appendChild(delBtn);
+    header.appendChild(h4); header.appendChild(controls);
+
+    const row = document.createElement('div'); row.className = 'field-row';
+
+    const g1 = document.createElement('div'); g1.className = 'form-group';
+    const l1 = document.createElement('label'); l1.textContent = 'Nome do Campo';
+    const in1 = document.createElement('input'); in1.type = 'text'; in1.name = `fieldName${fieldsCount}`; in1.placeholder = '📋 Novidades'; in1.maxLength = 256;
+    in1.addEventListener('change', updatePreview);
+    g1.appendChild(l1); g1.appendChild(in1);
+
+    const g2 = document.createElement('div'); g2.className = 'form-group';
+    const l2 = document.createElement('label'); l2.textContent = 'Valor do Campo';
+    const in2 = document.createElement('input'); in2.type = 'text'; in2.name = `fieldValue${fieldsCount}`; in2.placeholder = '• Funcionalidade X adicionada\n• Bug Y corrigido';
+    in2.addEventListener('change', updatePreview);
+    g2.appendChild(l2); g2.appendChild(in2);
+
+    const checkboxContainer = document.createElement('div'); checkboxContainer.className = 'checkbox-container';
+    const inlineInput = document.createElement('input'); inlineInput.type = 'checkbox'; inlineInput.id = `fieldInline${fieldsCount}`; inlineInput.name = `fieldInline${fieldsCount}`;
+    inlineInput.addEventListener('change', updatePreview);
+    const inlineLabel = document.createElement('label'); inlineLabel.setAttribute('for', `fieldInline${fieldsCount}`); inlineLabel.textContent = 'Inline';
+    checkboxContainer.appendChild(inlineInput); checkboxContainer.appendChild(inlineLabel);
+
+    row.appendChild(g1); row.appendChild(g2); row.appendChild(checkboxContainer);
+    wrapper.appendChild(header); wrapper.appendChild(row);
+    container.appendChild(wrapper);
     updatePreview();
 }
 
@@ -264,58 +279,73 @@ async function updatePreview() {
 // Renderizar preview do embed
 function renderEmbedPreview(embedData) {
     const previewContainer = document.getElementById('embedPreview');
-    
-    let html = `
-        <div class="discord-embed" style="border-left-color: ${embedData.color ? '#' + embedData.color.toString(16).padStart(6, '0') : '#9932CC'}">
-    `;
-    
+    // Clear previous
+    while (previewContainer.firstChild) previewContainer.removeChild(previewContainer.firstChild);
+
+    const embed = document.createElement('div'); embed.className = 'discord-embed';
+    const color = embedData.color ? '#' + embedData.color.toString(16).padStart(6, '0') : '#9932CC';
+    embed.style.borderLeftColor = color;
+
     // Thumbnail
-    if (embedData.thumbnail) {
-        html += `<img src="${embedData.thumbnail.url}" alt="Thumbnail" class="embed-thumbnail" onerror="this.style.display='none'">`;
+    if (embedData.thumbnail && embedData.thumbnail.url) {
+        const img = document.createElement('img'); img.className = 'embed-thumbnail'; img.alt = 'Thumbnail';
+        img.src = embedData.thumbnail.url; img.addEventListener('error', () => img.style.display = 'none');
+        embed.appendChild(img);
     }
-    
-    // Título
+
+    // Title
     if (embedData.title) {
-        html += `<div class="embed-title">${embedData.title}</div>`;
+    const t = document.createElement('div'); t.className = 'embed-title'; t.textContent = (window.FrontendHelpers && FrontendHelpers.stripHtml) ? FrontendHelpers.stripHtml(String(embedData.title)) : String(embedData.title).replace(/\$\{[^}]*\}/g, '');
+        embed.appendChild(t);
     }
-    
-    // Descrição
+
+    // Description (sanitize by stripping HTML and converting newlines to text + <br>)
     if (embedData.description) {
-        html += `<div class="embed-description">${embedData.description}</div>`;
+    const d = document.createElement('div'); d.className = 'embed-description';
+    const raw = (window.FrontendHelpers && FrontendHelpers.stripHtml) ? FrontendHelpers.stripHtml(String(embedData.description)) : String(embedData.description).replace(/\$\{[^}]*\}/g, '');
+        raw.split('\n').forEach((line, idx) => {
+            if (idx) d.appendChild(document.createElement('br'));
+            d.appendChild(document.createTextNode(line));
+        });
+        embed.appendChild(d);
     }
-    
-    // Campos
+
+    // Fields
     if (embedData.fields && embedData.fields.length > 0) {
         embedData.fields.forEach(field => {
             if (field.name && field.value) {
-                html += `
-                    <div class="embed-field">
-                        <div class="embed-field-name">${field.name}</div>
-                        <div class="embed-field-value">${field.value.replace(/\\n/g, '<br>')}</div>
-                    </div>
-                `;
+                const fwrap = document.createElement('div'); fwrap.className = 'embed-field';
+                const fname = document.createElement('div'); fname.className = 'embed-field-name'; fname.textContent = (window.FrontendHelpers && FrontendHelpers.stripHtml) ? FrontendHelpers.stripHtml(String(field.name)) : String(field.name).replace(/\$\{[^}]*\}/g, '');
+                const fvalue = document.createElement('div'); fvalue.className = 'embed-field-value';
+                const fraw = (window.FrontendHelpers && FrontendHelpers.stripHtml) ? FrontendHelpers.stripHtml(String(field.value)) : String(field.value).replace(/\$\{[^}]*\}/g, '');
+                fraw.split('\n').forEach((line, idx) => { if (idx) fvalue.appendChild(document.createElement('br')); fvalue.appendChild(document.createTextNode(line)); });
+                fwrap.appendChild(fname); fwrap.appendChild(fvalue);
+                embed.appendChild(fwrap);
             }
         });
     }
-    
-    // Imagem
-    if (embedData.image) {
-        html += `<img src="${embedData.image.url}" alt="Banner" class="embed-image" onerror="this.style.display='none'">`;
+
+    // Image
+    if (embedData.image && embedData.image.url) {
+        const bimg = document.createElement('img'); bimg.className = 'embed-image'; bimg.alt = 'Banner'; bimg.src = embedData.image.url; bimg.addEventListener('error', () => bimg.style.display = 'none');
+        embed.appendChild(bimg);
     }
-    
+
     // Footer
     if (embedData.footer) {
-        html += `
-            <div class="embed-footer">
-                ${embedData.footer.icon_url ? `<img src="${embedData.footer.icon_url}" alt="Footer Icon" class="embed-footer-icon">` : ''}
-                <span>${embedData.footer.text}</span>
-                <span style="margin-left: auto;">${new Date(embedData.timestamp).toLocaleString('pt-PT')}</span>
-            </div>
-        `;
+        const footer = document.createElement('div'); footer.className = 'embed-footer';
+        if (embedData.footer.icon_url) {
+            const fimg = document.createElement('img'); fimg.className = 'embed-footer-icon'; fimg.alt = 'Footer Icon'; fimg.src = embedData.footer.icon_url; fimg.addEventListener('error', () => fimg.style.display = 'none');
+            footer.appendChild(fimg);
+        }
+        const ftext = document.createElement('span'); ftext.textContent = stripHtml(String(embedData.footer.text || ''));
+        footer.appendChild(ftext);
+        const fdate = document.createElement('span'); fdate.style.marginLeft = 'auto'; fdate.textContent = new Date(embedData.timestamp).toLocaleString('pt-PT');
+        footer.appendChild(fdate);
+        embed.appendChild(footer);
     }
-    
-    html += '</div>';
-    previewContainer.innerHTML = html;
+
+    previewContainer.appendChild(embed);
 }
 
 // Obter dados do formulário
@@ -353,10 +383,12 @@ async function handleSubmit(e) {
     e.preventDefault();
     
     const sendBtn = document.getElementById('sendBtn');
-    const originalText = sendBtn.innerHTML;
+        const originalText = sendBtn.textContent;
     
     // Mostrar loading
-    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+        sendBtn.textContent = 'Enviando...';
+        const spinner = document.createElement('i'); spinner.className = 'fas fa-spinner fa-spin';
+        sendBtn.insertBefore(spinner, sendBtn.firstChild);
     sendBtn.disabled = true;
     
     try {
@@ -396,7 +428,7 @@ async function handleSubmit(e) {
         console.debug('Erro ao enviar update:', error);
     } finally {
         // Restaurar botão
-        sendBtn.innerHTML = originalText;
+            sendBtn.textContent = originalText;
         sendBtn.disabled = false;
     }
 }
@@ -405,11 +437,11 @@ async function handleSubmit(e) {
 function clearForm() {
     document.getElementById('updateForm').reset();
     quill.setContents([]);
-    document.getElementById('fieldsContainer').innerHTML = '';
+        const fc = document.getElementById('fieldsContainer'); if(fc){ while(fc.firstChild) fc.removeChild(fc.firstChild); }
     fieldsCount = 0;
     document.getElementById('color').value = '#9932CC';
     document.getElementById('channelSelect').selectedIndex = 0;
-    document.getElementById('embedPreview').innerHTML = '';
+        const ep = document.getElementById('embedPreview'); if(ep){ while(ep.firstChild) ep.removeChild(ep.firstChild); }
 }
 
 // Carregar histórico
@@ -419,24 +451,28 @@ async function loadHistory() {
         const history = await response.json();
         
         const historyContainer = document.getElementById('historyList');
-        
+        while (historyContainer.firstChild) historyContainer.removeChild(historyContainer.firstChild);
+
         if (history.length === 0) {
-            historyContainer.innerHTML = '<p style="color: var(--discord-text-muted); text-align: center;">Nenhum update encontrado</p>';
+            const p = document.createElement('p'); p.style.color = 'var(--discord-text-muted)'; p.style.textAlign = 'center'; p.textContent = 'Nenhum update encontrado';
+            historyContainer.appendChild(p);
             return;
         }
-        
-        historyContainer.innerHTML = history.map(item => `
-            <div class="history-item">
-                <div class="history-item-header">
-                    <div class="history-item-title">${item.title}</div>
-                    <div class="history-item-date">${new Date(item.timestamp).toLocaleString('pt-PT')}</div>
-                </div>
-                <div class="history-item-channel">
-                    <i class="fas fa-hashtag"></i> ${item.channelName || 'Canal desconhecido'}
-                </div>
-                <div class="history-item-description">${stripHtml(item.description)}</div>
-            </div>
-        `).join('');
+
+        history.forEach(item => {
+            const hi = document.createElement('div'); hi.className = 'history-item';
+            const hh = document.createElement('div'); hh.className = 'history-item-header';
+        const htitle = document.createElement('div'); htitle.className = 'history-item-title'; htitle.textContent = (window.FrontendHelpers && FrontendHelpers.stripHtml) ? FrontendHelpers.stripHtml(String(item.title || '')) : String(item.title || '').replace(/\$\{[^}]*\}/g, '');
+            const hdate = document.createElement('div'); hdate.className = 'history-item-date'; hdate.textContent = new Date(item.timestamp).toLocaleString('pt-PT');
+            hh.appendChild(htitle); hh.appendChild(hdate);
+            const ch = document.createElement('div'); ch.className = 'history-item-channel';
+            const hash = document.createElement('i'); hash.className = 'fas fa-hashtag';
+            ch.appendChild(hash);
+            ch.appendChild(document.createTextNode(' ' + ((window.FrontendHelpers && FrontendHelpers.stripHtml) ? FrontendHelpers.stripHtml(String(item.channelName || 'Canal desconhecido')) : String(item.channelName || 'Canal desconhecido').replace(/\$\{[^}]*\}/g, ''))));
+            const desc = document.createElement('div'); desc.className = 'history-item-description'; desc.textContent = (window.FrontendHelpers && FrontendHelpers.stripHtml) ? FrontendHelpers.stripHtml(String(item.description || '')) : String(item.description || '').replace(/\$\{[^}]*\}/g, '');
+            hi.appendChild(hh); hi.appendChild(ch); hi.appendChild(desc);
+            historyContainer.appendChild(hi);
+        });
         
     } catch (error) {
         showNotification('Erro ao carregar histórico', 'error');
@@ -447,7 +483,9 @@ async function loadHistory() {
 // Remover HTML tags para preview
 function stripHtml(html) {
     const tmp = document.createElement('div');
-    tmp.innerHTML = html;
+        tmp.textContent = '';
+        // If html contained safe text, append as text node
+        tmp.appendChild(document.createTextNode(html));
     return tmp.textContent || tmp.innerText || '';
 }
 

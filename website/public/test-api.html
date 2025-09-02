@@ -8,6 +8,7 @@
     <!-- test-api styles moved to css/style.css (.test-api, .test-section, .status, etc) -->
 </head>
 <body>
+    <script src="/js/frontend-helpers.js"></script>
     <div class="container">
         <h1>🧪 YSNM API Test Dashboard</h1>
     <p class="muted-center mb-1">
@@ -248,7 +249,7 @@
 
         async function runAllTests() {
             const overallStatus = document.getElementById('overall-status');
-            overallStatus.innerHTML = '🔄 Executando todos os testes...';
+            overallStatus.textContent = '🔄 Executando todos os testes...';
             
             const tests = [
                 { name: 'Guilds', fn: testGuilds },
@@ -276,12 +277,20 @@
             const total = tests.length;
             const success = passed === total;
             
-            overallStatus.innerHTML = `
-                <div style="color: ${success ? '#10B981' : '#F59E0B'}">
-                    ${success ? '🎉' : '⚠️'} Testes completos: ${passed}/${total} passaram
-                    ${success ? '<br>✅ Sistema YSNM 100% funcional!' : '<br>⚠️ Alguns componentes precisam de atenção'}
-                </div>
-            `;
+            // Build a safe DOM summary instead of assigning innerHTML
+            while (overallStatus.firstChild) overallStatus.removeChild(overallStatus.firstChild);
+            const wrap = document.createElement('div');
+            wrap.style.color = success ? '#10B981' : '#F59E0B';
+
+            const line1 = document.createElement('div');
+            line1.textContent = (success ? '🎉' : '⚠️') + ' Testes completos: ' + passed + '/' + total + ' passaram';
+            wrap.appendChild(line1);
+
+            const line2 = document.createElement('div');
+            line2.textContent = success ? '✅ Sistema YSNM 100% funcional!' : '⚠️ Alguns componentes precisam de atenção';
+            wrap.appendChild(line2);
+
+            overallStatus.appendChild(wrap);
         }
 
         // Auto-executar teste básico ao carregar

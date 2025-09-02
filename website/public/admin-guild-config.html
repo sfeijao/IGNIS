@@ -7,6 +7,7 @@
   <!-- admin-guild-config small styles moved to css/style.css (.admin-small/.admin-webhooks) -->
 </head>
 <body class="admin-small">
+  <script src="/js/frontend-helpers.js"></script>
   <h2>Guild Config Admin</h2>
   <p>Access via <em>localhost</em> or provide a Bearer token in DevTools network headers.</p>
 
@@ -112,11 +113,11 @@
     const pageInfo = document.getElementById('pageInfo');
 
     async function loadLogs(page = 1) {
-      const ul = document.getElementById('logList'); ul.innerHTML='Loading...';
+      const ul = document.getElementById('logList'); if (ul) { while(ul.firstChild) ul.removeChild(ul.firstChild); const liLoad = document.createElement('li'); liLoad.textContent = 'Loading...'; ul.appendChild(liLoad);} 
       try{
         const limit = 10;
         const j = await api(`/admin/logs?limit=${limit}&page=${page}`);
-        ul.innerHTML = '';
+  while(ul.firstChild) ul.removeChild(ul.firstChild);
         if (j.logs && j.logs.length) {
           j.logs.forEach(l=>{ const li = document.createElement('li'); li.textContent = `${l.timestamp} [${l.type}] ${l.message}`; ul.appendChild(li); });
         } else ul.textContent = 'No logs';
