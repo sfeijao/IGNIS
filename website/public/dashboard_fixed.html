@@ -550,7 +550,7 @@
 
             updateUserDisplay(userData) {
                 // Update user info if needed
-                console.log('User data loaded:', userData);
+                if (window.DEBUG_UI) console.log('User data loaded:', { id: userData?.id, name: userData?.name });
             }
 
             getAuthToken() {

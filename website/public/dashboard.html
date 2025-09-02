@@ -573,12 +573,13 @@
                 // Comentado para evitar erros 404
                 // this.loadUserData();
                 // this.loadServerStats();
-                console.log('Dashboard initialized successfully');
+                if (window.DEBUG_UI) console.log('Dashboard initialized successfully');
             }
             
             async checkAuthentication() {
                 const token = getAuthToken();
-                console.log('Using auth token:', token ? token.substring(0, 8) + '...' : 'none');
+                // avoid logging tokens; only show presence
+                if (window.DEBUG_UI) console.log('Auth token present:', !!token);
                 
                 // For local development, set a dev token
                 if (!token && (window.location.protocol === 'file:' || 
@@ -599,15 +600,15 @@
                     
                     if (response.ok) {
                         const data = await response.json();
-                        console.log('✅ Authentication test passed:', data);
+                        if (window.DEBUG_UI) console.log('✅ Authentication test passed');
                         this.showMessage('Sistema autenticado com sucesso', 'success');
                         return true;
                     } else {
-                        console.log('❌ Authentication test failed:', response.status);
+                        if (window.DEBUG_UI) console.log('❌ Authentication test failed:', response.status);
                         
                         // Special handling for production (Railway)
                         if (window.location.hostname.includes('railway.app')) {
-                            console.log('🚂 Production environment detected - trying alternative auth');
+                            if (window.DEBUG_UI) console.log('🚂 Production environment detected - trying alternative auth');
                             
                             // Show authentication options for production
                             this.showMessage(`
@@ -628,7 +629,7 @@
                         return false;
                     }
                 } catch (error) {
-                    console.error('Authentication test error:', error);
+                    if (window.DEBUG_UI) console.error('Authentication test error:', error);
                     // If server is not running, allow local development
                     if (window.location.protocol === 'file:') {
                         this.showMessage('Modo de desenvolvimento (servidor offline)', 'warning');
@@ -754,7 +755,7 @@
                 if (targetSection) {
                     targetSection.classList.add('active');
                     this.currentSection = sectionName;
-                    console.log(`Showing section: ${sectionName}`);
+                    if (window.DEBUG_UI) console.log(`Showing section: ${sectionName}`);
                 }
             }
 
@@ -774,7 +775,7 @@
             }
 
             updateUserDisplay(userData) {
-                console.log('User data loaded:', userData);
+                if (window.DEBUG_UI) console.log('User data loaded:', { id: userData?.id, name: userData?.name });
             }
 
             showMessage(message, type = 'info') {
@@ -1031,7 +1032,7 @@
                     createdBy: 'dashboard-admin'
                 };
 
-                console.log('🎫 Enviando dados do ticket:', ticketData);
+                if (window.DEBUG_UI) console.log('🎫 Enviando dados do ticket:', { title: ticketData.title, userId: ticketData.userId });
 
                 try {
                     const response = await fetch('/api/tickets', {
