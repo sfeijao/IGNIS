@@ -37,8 +37,17 @@ module.exports = {
             await updateStatusPanels(client);
         }, 2 * 60 * 1000); // 2 minutos
 
-        // Verificar se deve enviar logs de startup (DESATIVADO - usando website para anúncios)
-        // await handleStartupLogs(client);
+        // Verificar se deve enviar logs de startup (padrão: DESATIVADO).
+        // Para habilitar, defina a variável de ambiente SEND_STARTUP_MESSAGES=true
+        if (process.env.SEND_STARTUP_MESSAGES === 'true') {
+            try {
+                await handleStartupLogs(client);
+            } catch (e) {
+                logger.warn('⚠️ Falha ao executar handleStartupLogs', { error: e && e.message ? e.message : e });
+            }
+        } else {
+            logger.info('📢 Mensagens automáticas de startup/deploy DESATIVADAS (usar SEND_STARTUP_MESSAGES=true para ativar)');
+        }
 
         // Auto-scan existing guilds for configuration
         try {
@@ -60,14 +69,21 @@ module.exports = {
     }
 };
 
-// Função para gerenciar logs de startup (DESATIVADA - usando website para anúncios)
-/* 
+// Função para gerenciar logs de startup (agora controlada por SEND_STARTUP_MESSAGES)
 async function handleStartupLogs(client) {
     try {
+        const logger = require('../utils/logger');
+
+        // Gate: only proceed if explicitly enabled
+        const sendStartup = process.env.SEND_STARTUP_MESSAGES === 'true' || process.env.ENABLE_STARTUP_MESSAGES === 'true';
+        if (!sendStartup) {
+            logger.info('📢 handleStartupLogs: envio de mensagens de startup está desativado por configuração.');
+            return;
+        }
+
         // Só enviar updates no Railway (ambiente de produção)
         const isRailway = process.env.RAILWAY_ENVIRONMENT || process.env.NODE_ENV === 'production';
         if (!isRailway) {
-            const logger = require('../utils/logger');
             logger.info('🔧 Ambiente local detectado - não enviando mensagem de update');
             return;
         }
@@ -161,10 +177,10 @@ async function handleStartupLogs(client) {
         }
 
     } catch (error) {
-    logger.error('❌ Erro ao enviar logs de startup:', { error });
+        const logger = require('../utils/logger');
+        logger.error('❌ Erro ao enviar logs de startup:', { error });
     }
 }
-*/
 
 // Função para atualizar painéis de status (placeholder)
 async function updateStatusPanels(client) {
