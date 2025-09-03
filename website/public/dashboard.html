@@ -824,7 +824,7 @@
                 };
 
                 const wrapper = document.createElement('div');
-                wrapper.style.display = 'flex';
+                wrapper.className = 'flex-row';
                 wrapper.style.justifyContent = 'space-between';
                 wrapper.style.alignItems = 'center';
 
@@ -917,7 +917,7 @@
                 const grpUser = document.createElement('div'); grpUser.className = 'ticket-form-group';
                 const lblUser = document.createElement('label'); lblUser.setAttribute('for','ticket-user'); lblUser.textContent = 'Adicionar Utilizador (opcional)';
                 const inUser = document.createElement('input'); inUser.type = 'text'; inUser.id = 'ticket-user'; inUser.placeholder = 'Nome de utilizador ou ID do Discord';
-                const resultsDiv = document.createElement('div'); resultsDiv.id = 'user-search-results'; resultsDiv.className = 'user-search-results'; resultsDiv.style.display = 'none';
+                const resultsDiv = document.createElement('div'); resultsDiv.id = 'user-search-results'; resultsDiv.className = 'user-search-results hidden';
                 grpUser.appendChild(lblUser); grpUser.appendChild(inUser); grpUser.appendChild(resultsDiv); content.appendChild(grpUser);
 
                 // Actions
@@ -953,7 +953,7 @@
                     if (query.length > 2) {
                         await this.searchUsers(query, searchResults);
                     } else {
-                        searchResults.style.display = 'none';
+                        searchResults.classList.add('hidden');
                     }
                 });
 
@@ -994,7 +994,7 @@
 
             displayUserSearchResults(users, container) {
                 if (users.length === 0) {
-                    container.style.display = 'none';
+                    container.classList.add('hidden');
                     return;
                 }
 
@@ -1008,9 +1008,7 @@
                     item.setAttribute('data-username', String(user.username || ''));
 
                     const holder = document.createElement('div');
-                    holder.style.display = 'flex';
-                    holder.style.alignItems = 'center';
-                    holder.style.gap = '10px';
+                    holder.className = 'user-holder';
 
                     const img = document.createElement('img');
                     img.style.width = '24px';
@@ -1039,13 +1037,13 @@
                     item.addEventListener('click', () => {
                         const userInput = document.querySelector('#ticket-user');
                         if (userInput) userInput.value = `${user.username || ''} (${user.id || ''})`;
-                        container.style.display = 'none';
+                        container.classList.add('hidden');
                     });
 
                     container.appendChild(item);
                 });
 
-                container.style.display = 'block';
+                container.classList.remove('hidden');
             }
 
             async createTicket(modal) {
@@ -1133,7 +1131,7 @@
                 const actionsLabel = document.createElement('label'); actionsLabel.textContent = 'Ações Disponíveis';
                 actionsGroup.appendChild(actionsLabel);
 
-                const grid = document.createElement('div'); grid.style.display = 'grid'; grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(200px, 1fr))'; grid.style.gap = 'var(--space-md)'; grid.style.marginTop = 'var(--space-sm)';
+                const grid = document.createElement('div'); grid.className = 'flex-grid'; grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(200px, 1fr))'; grid.style.gap = 'var(--space-md)'; grid.style.marginTop = 'var(--space-sm)';
 
                 const makeBtn = (cls, id, iconCls, text) => {
                     const btn = document.createElement('button'); btn.type = 'button'; btn.className = cls; btn.id = id;
@@ -1149,7 +1147,7 @@
                 actionsGroup.appendChild(grid);
                 content.appendChild(actionsGroup);
 
-                const actionArea = document.createElement('div'); actionArea.id = 'manage-action-area'; actionArea.style.display = 'none'; actionArea.style.marginTop = 'var(--space-lg)';
+                const actionArea = document.createElement('div'); actionArea.id = 'manage-action-area'; actionArea.className = 'hidden'; actionArea.style.marginTop = 'var(--space-lg)';
                 content.appendChild(actionArea);
 
                 const actionsFooter = document.createElement('div'); actionsFooter.className = 'ticket-actions';
@@ -1173,13 +1171,13 @@
                     const group = document.createElement('div'); group.className = 'ticket-form-group';
                     const label = document.createElement('label'); label.htmlFor = 'add-user-input'; label.textContent = 'Utilizador para Adicionar';
                     const input = document.createElement('input'); input.type = 'text'; input.id = 'add-user-input'; input.placeholder = 'Nome de utilizador ou ID do Discord';
-                    const results = document.createElement('div'); results.id = 'add-user-search-results'; results.className = 'user-search-results'; results.style.display = 'none';
+                    const results = document.createElement('div'); results.id = 'add-user-search-results'; results.className = 'user-search-results hidden';
                     group.appendChild(label); group.appendChild(input); group.appendChild(results);
                     actionArea.appendChild(group);
                     const confirm = document.createElement('button'); confirm.type = 'button'; confirm.className = 'btn btn-primary'; confirm.id = 'confirm-add-user';
                     const ci = document.createElement('i'); ci.className = 'fas fa-check'; confirm.appendChild(ci); confirm.appendChild(document.createTextNode(' Adicionar ao Ticket'));
                     actionArea.appendChild(confirm);
-                    actionArea.style.display = 'block';
+                    actionArea.classList.remove('hidden');
                     this.setupUserSearch(modal, 'add-user-input', 'add-user-search-results');
                     confirm.addEventListener('click', () => { this.addUserToTicket(modal); });
                 });
@@ -1190,13 +1188,13 @@
                     const group = document.createElement('div'); group.className = 'ticket-form-group';
                     const label = document.createElement('label'); label.htmlFor = 'remove-user-input'; label.textContent = 'Utilizador para Remover';
                     const input = document.createElement('input'); input.type = 'text'; input.id = 'remove-user-input'; input.placeholder = 'Nome de utilizador ou ID do Discord';
-                    const results = document.createElement('div'); results.id = 'remove-user-search-results'; results.className = 'user-search-results'; results.style.display = 'none';
+                    const results = document.createElement('div'); results.id = 'remove-user-search-results'; results.className = 'user-search-results hidden';
                     group.appendChild(label); group.appendChild(input); group.appendChild(results);
                     actionArea.appendChild(group);
                     const confirm = document.createElement('button'); confirm.type = 'button'; confirm.className = 'btn btn-warning'; confirm.id = 'confirm-remove-user';
                     const ci = document.createElement('i'); ci.className = 'fas fa-check'; confirm.appendChild(ci); confirm.appendChild(document.createTextNode(' Remover do Ticket'));
                     actionArea.appendChild(confirm);
-                    actionArea.style.display = 'block';
+                    actionArea.classList.remove('hidden');
                     this.setupUserSearch(modal, 'remove-user-input', 'remove-user-search-results');
                     confirm.addEventListener('click', () => { this.removeUserFromTicket(modal); });
                 });
@@ -1231,7 +1229,7 @@
                     const confirm = document.createElement('button'); confirm.type = 'button'; confirm.className = 'btn btn-info'; confirm.id = 'confirm-update-severity';
                     const ci2 = document.createElement('i'); ci2.className = 'fas fa-check'; confirm.appendChild(ci2); confirm.appendChild(document.createTextNode(' Atualizar Gravidade'));
                     actionArea.appendChild(confirm);
-                    actionArea.style.display = 'block';
+                    actionArea.classList.remove('hidden');
 
                     confirm.addEventListener('click', () => { this.updateTicketSeverity(modal); });
                 });
@@ -1246,7 +1244,7 @@
                     const ci3 = document.createElement('i'); ci3.className = 'fas fa-trash'; confirm.appendChild(ci3); confirm.appendChild(document.createTextNode(' Confirmar Eliminação'));
                     wrapper.appendChild(warn); wrapper.appendChild(sub); wrapper.appendChild(confirm);
                     actionArea.appendChild(wrapper);
-                    actionArea.style.display = 'block';
+                    actionArea.classList.remove('hidden');
                     confirm.addEventListener('click', () => { this.deleteTicket(modal); });
                 });
 
@@ -1272,7 +1270,7 @@
                     if (query.length > 2) {
                         await this.searchUsers(query, searchResults);
                     } else {
-                        searchResults.style.display = 'none';
+                        searchResults.classList.add('hidden');
                     }
                 });
             }
@@ -1634,7 +1632,11 @@
                 modalContent.appendChild(fgFooter);
 
                 modal.appendChild(modalContent);
+                // append hidden then activate to allow CSS transitions
+                modal.classList.add('hidden');
                 document.body.appendChild(modal);
+                // next tick, show modal
+                requestAnimationFrame(() => { modal.classList.remove('hidden'); modal.classList.add('active'); });
 
                 // Add event listeners to modal buttons
                 modal.querySelector('#setDevTokenBtn').addEventListener('click', () => {
@@ -1681,13 +1683,17 @@
                 });
                 
                 modal.querySelector('#closeModalBtn').addEventListener('click', () => {
-                    document.body.removeChild(modal);
+                    modal.classList.remove('active');
+                    modal.classList.add('hidden');
+                    setTimeout(() => { if (modal && modal.parentNode) modal.parentNode.removeChild(modal); }, 200);
                 });
                 
                 // Close modal when clicking outside
                 modal.addEventListener('click', (e) => {
                     if (e.target === modal) {
-                        document.body.removeChild(modal);
+                        modal.classList.remove('active');
+                        modal.classList.add('hidden');
+                        setTimeout(() => { if (modal && modal.parentNode) modal.parentNode.removeChild(modal); }, 200);
                     }
                 });
             }
@@ -1805,12 +1811,12 @@
 
                 statusDiv.className = `webhook-status ${type}`;
                 statusDiv.textContent = message;
-                statusDiv.style.display = 'block';
+                statusDiv.classList.remove('hidden');
 
                 // Auto-hide success/error messages after 5 seconds
                 if (type === 'success' || type === 'error') {
                     setTimeout(() => {
-                        statusDiv.style.display = 'none';
+                        statusDiv.classList.add('hidden');
                     }, 5000);
                 }
             }
@@ -2353,7 +2359,7 @@
                 const w = document.createElement('div');
                 w.id = 'ysnm-debug-widget';
                 w.style.cssText = 'position:fixed;right:12px;bottom:12px;background:rgba(0,0,0,0.6);color:#fff;padding:8px;border-radius:8px;font-size:12px;z-index:10001;backdrop-filter:blur(4px);';
-                const inner = document.createElement('div'); inner.style.display = 'flex'; inner.style.gap = '8px'; inner.style.alignItems = 'center';
+                const inner = document.createElement('div'); inner.className = 'flex-row';
                 const toggleBtn = document.createElement('button'); toggleBtn.id = 'ysnm-debug-toggle'; toggleBtn.title = 'Toggle debug'; toggleBtn.style.cssText = 'background:#111;color:#fff;border:0;padding:6px;border-radius:6px;cursor:pointer;'; toggleBtn.textContent = isDebug() ? 'DEBUG ON' : 'debug';
                 const fixBtn = document.createElement('button'); fixBtn.id = 'ysnm-sanitize-btn'; fixBtn.title = 'Fix placeholders'; fixBtn.style.cssText = 'background:#0b78d1;color:#fff;border:0;padding:6px;border-radius:6px;cursor:pointer;'; fixBtn.textContent = 'Fix';
                 inner.appendChild(toggleBtn); inner.appendChild(fixBtn);

@@ -1,3 +1,45 @@
+name: Website smoke tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      PORT: 4000
+      ALLOW_LOCAL_AUTH_BYPASS: 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start website server
+        run: |
+          nohup npm run server > server.log 2>&1 &
+          # wait for the server to be responsive
+          for i in {1..30}; do
+            if curl -sSf http://localhost:4000/dashboard >/dev/null; then
+              echo "server ready"; break
+            fi
+            echo "waiting for server... ($i)"; sleep 1
+          done
+
+      - name: Run fetch-based smoke test
+        run: npm run smoke:fetch
+
+      - name: Run headless smoke test (Puppeteer)
+        run: npm run smoke:headless
 name: website-smoke-tests
 
 on:

@@ -61,6 +61,9 @@
 .search-box { position: relative; margin-bottom: 1rem; }
 .search-input { width: 100%; padding: 0.75rem 2.5rem 0.75rem 1rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.875rem; }
 .search-icon { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+.user-holder { display: flex; align-items: center; gap: 10px; }
+.flex-row { display: flex; align-items: center; gap: 8px; }
+.flex-grid { display: grid; }
 .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 1000; align-items: center; justify-content: center; }
 .modal.active { display: flex; }
 .modal-content { background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border); padding: 2rem; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
@@ -1215,6 +1218,25 @@ body.debug-page { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Ro
     font-style: normal !important;
 }
 
+/* Safety overrides: ensure overlays and modals do not block interactions when hidden.
+   Use the .active class to make them visible and interactive. This prevents
+   stray rules from leaving a full-screen overlay visible by default.
+*/
+.loading-overlay,
+.modal {
+    display: none !important;
+    pointer-events: none !important;
+    opacity: 0;
+    transition: opacity 0.16s ease-in-out;
+}
+
+.loading-overlay.active,
+.modal.active {
+    display: flex !important;
+    pointer-events: auto !important;
+    opacity: 1;
+}
+
 /* Modern Preview Container */
 .preview-container {
     position: sticky;
@@ -2172,9 +2194,9 @@ body.debug-page { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Ro
 .analytics-root .activity-text { margin-bottom: 0.25rem; }
 .analytics-root .activity-time { font-size: 0.75rem; color: var(--text-muted); }
 .analytics-root .loading { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--text-muted); border-radius: 50%; border-top-color: var(--primary); animation: spin 1s ease-in-out infinite; }
-.analytics-root @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg); } }
 .analytics-root .error-state { text-align: center; padding: 2rem; color: var(--danger); }
-.analytics-root @media (max-width: 768px) { .analytics-root .dashboard-grid { grid-template-columns: 1fr; } .analytics-root .stats-overview { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px) { .analytics-root .dashboard-grid { grid-template-columns: 1fr; } .analytics-root .stats-overview { grid-template-columns: repeat(2, 1fr); } }
 
 /* --- admin small pages shared snippet --- */
 .admin-small { font-family: Arial, Helvetica, sans-serif; padding: 16px; }

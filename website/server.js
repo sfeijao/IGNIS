@@ -1780,10 +1780,14 @@ process.on('SIGINT', () => {
     try {
         await routesReady;
         server.listen(PORT, () => {
-            logger.info(`YSNM Dashboard rodando em http://localhost:${PORT}`, { callbackURL, environment: isProduction ? 'Produção' : 'Desenvolvimento' });
-            logger.info('Socket.IO habilitado');
-            logger.info('Sistema completo: Dashboard, Tickets, Analytics, Admin');
-            logger.info('Sistema de segurança ativo');
+            // Startup messages configurable via environment variables for deployments
+            const defaultUrlMsg = `YSNM Dashboard rodando em http://localhost:${PORT}`;
+            const urlMessage = process.env.STARTUP_URL_MESSAGE || defaultUrlMsg;
+            const featuresDefault = ['Socket.IO habilitado', 'Sistema completo: Dashboard, Tickets, Analytics, Admin', 'Sistema de segurança ativo'];
+            const featuresMessage = process.env.STARTUP_FEATURES_MESSAGE ? process.env.STARTUP_FEATURES_MESSAGE.split(';').map(s => s.trim()).filter(Boolean) : featuresDefault;
+
+            logger.info(urlMessage, { callbackURL, environment: isProduction ? 'Produção' : 'Desenvolvimento' });
+            featuresMessage.forEach(msg => logger.info(msg));
         });
     } catch (e) {
         logger.error('❌ Failed to mount routes - aborting startup', { error: e && e.message ? e.message : e, stack: e && e.stack });

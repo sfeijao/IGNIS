@@ -2646,7 +2646,7 @@
 
             console.log('🎯 Servidor selecionado:', serverId);
             
-            document.getElementById('serverSelection').style.display = 'none';
+            document.getElementById('serverSelection').classList.add('hidden');
             document.getElementById('dashboardContent').classList.add('active');
 
             loadServerData();
@@ -3047,21 +3047,19 @@
             card.appendChild(avatarDiv);
             card.appendChild(infoDiv);
 
-            cardContainer.style.display = 'block';
+            cardContainer.classList.remove('hidden');
         }
 
         // Timeout Modal Functions
         function showTimeoutModal() {
             const modal = document.getElementById('timeoutModal');
-            modal.classList.remove('hidden');
-            modal.style.display = 'flex';
+            if (modal) { modal.classList.remove('hidden'); modal.classList.add('active'); }
             loadServerMembers();
         }
 
         function closeTimeoutModal() {
             const modal = document.getElementById('timeoutModal');
-            modal.classList.add('hidden');
-            modal.style.display = 'none';
+            if (modal) { modal.classList.remove('active'); modal.classList.add('hidden'); }
             resetTimeoutForm();
         }
 
@@ -3069,7 +3067,7 @@
             selectedTimeoutUser = null;
             document.getElementById('timeoutUserSearch').value = '';
             const _toElx = document.getElementById('timeoutUserResults'); if (_toElx) { while (_toElx.firstChild) _toElx.removeChild(_toElx.firstChild); }
-            document.getElementById('timeoutSelectedUser').style.display = 'none';
+            document.getElementById('timeoutSelectedUser').classList.add('hidden');
             document.getElementById('timeoutDuration').value = '60';
             document.getElementById('timeoutReason').value = 'Timeout via dashboard';
             const confirmTimeout = document.getElementById('confirmTimeout');
@@ -3120,14 +3118,14 @@
         function showKickModal() {
             const modal = document.getElementById('kickModal');
             modal.classList.remove('hidden');
-            modal.style.display = 'flex';
+            modal.classList.add('active');
             loadServerMembers();
         }
 
         function closeKickModal() {
             const modal = document.getElementById('kickModal');
+            modal.classList.remove('active');
             modal.classList.add('hidden');
-            modal.style.display = 'none';
             resetKickForm();
         }
 
@@ -3135,7 +3133,7 @@
             selectedKickUser = null;
             document.getElementById('kickUserSearch').value = '';
             const _kElx = document.getElementById('kickUserResults'); if (_kElx) { while (_kElx.firstChild) _kElx.removeChild(_kElx.firstChild); }
-            document.getElementById('kickSelectedUser').style.display = 'none';
+            document.getElementById('kickSelectedUser').classList.add('hidden');
             document.getElementById('kickReason').value = 'Expulsão via dashboard';
             document.getElementById('confirmKick').checked = false;
             document.getElementById('executeKickBtn').disabled = true;
@@ -3182,14 +3180,14 @@
         function showBanModal() {
             const modal = document.getElementById('banModal');
             modal.classList.remove('hidden');
-            modal.style.display = 'flex';
+            modal.classList.add('active');
             loadServerMembers();
         }
 
         function closeBanModal() {
             const modal = document.getElementById('banModal');
+            modal.classList.remove('active');
             modal.classList.add('hidden');
-            modal.style.display = 'none';
             resetBanForm();
         }
 
@@ -3197,7 +3195,7 @@
             selectedBanUser = null;
             document.getElementById('banUserSearch').value = '';
             const _bElx = document.getElementById('banUserResults'); if (_bElx) { while (_bElx.firstChild) _bElx.removeChild(_bElx.firstChild); }
-            document.getElementById('banSelectedUser').style.display = 'none';
+            document.getElementById('banSelectedUser').classList.add('hidden');
             document.getElementById('banReason').value = 'Banimento via dashboard';
             document.getElementById('deleteMessageDays').value = '0';
             document.getElementById('banDuration').value = '0';
@@ -3279,7 +3277,6 @@
             
             const modal = document.getElementById('clearChatModal');
             modal.classList.remove('hidden');
-            modal.style.display = 'flex';
             
             // Load channels
             await loadServerChannels();
@@ -3288,7 +3285,6 @@
         function closeClearChatModal() {
             const modal = document.getElementById('clearChatModal');
             modal.classList.add('hidden');
-            modal.style.display = 'none';
             
             // Reset form
             document.getElementById('messageAmount').value = '10';
@@ -3373,15 +3369,15 @@
             const element = document.getElementById(elementId);
             if (element) {
                 element.classList.add('hidden');
-                element.style.display = 'none'; // Fallback para compatibilidade
+                element.classList.remove('active');
             }
         }
 
-        function showElement(elementId, displayType = 'block') {
+        function showElement(elementId) {
             const element = document.getElementById(elementId);
             if (element) {
                 element.classList.remove('hidden');
-                element.style.display = displayType; // Fallback para compatibilidade
+                element.classList.add('active');
             }
         }
 
@@ -3942,9 +3938,10 @@
             
             if (!loadingEl || !listEl || !noTicketsEl) return;
             
-            loadingEl.style.display = 'flex';
-            listEl.style.display = 'none';
-            noTicketsEl.style.display = 'none';
+            loadingEl.classList.remove('hidden');
+            loadingEl.classList.add('active');
+            listEl.classList.add('hidden');
+            noTicketsEl.classList.add('hidden');
             
             try {
                 const params = new URLSearchParams(ticketFilters);
@@ -3978,8 +3975,8 @@
                     ];
                     
                     renderTickets(currentTickets);
-                    loadingEl.style.display = 'none';
-                    listEl.style.display = 'block';
+                    loadingEl.classList.add('hidden'); loadingEl.classList.remove('active');
+                    listEl.classList.remove('hidden');
                     return;
                 }
                 
@@ -3990,11 +3987,11 @@
                     renderTickets(currentTickets);
                     
                     if (currentTickets.length === 0) {
-                        loadingEl.style.display = 'none';
-                        noTicketsEl.style.display = 'block';
+                        loadingEl.classList.add('hidden'); loadingEl.classList.remove('active');
+                        noTicketsEl.classList.remove('hidden');
                     } else {
-                        loadingEl.style.display = 'none';
-                        listEl.style.display = 'block';
+                        loadingEl.classList.add('hidden'); loadingEl.classList.remove('active');
+                        listEl.classList.remove('hidden');
                     }
                 } else {
                     console.error('Erro ao carregar tickets:', data.error);
@@ -4178,7 +4175,7 @@
             const modal = document.getElementById('ticketModal');
             if (modal) {
                 modal.classList.remove('hidden');
-                modal.style.display = 'flex';
+                modal.classList.add('active');
                 const form = document.getElementById('ticketForm');
                 if (form) form.reset();
             }
@@ -4187,8 +4184,8 @@
         function closeTicketModal() {
             const modal = document.getElementById('ticketModal');
             if (modal) {
+                modal.classList.remove('active');
                 modal.classList.add('hidden');
-                modal.style.display = 'none';
             }
         }
 
@@ -4482,7 +4479,7 @@
                 'currentServerId': currentServerId,
                 'isServerLocked': isServerLocked,
                 'dashboardActive': document.getElementById('dashboardContent').classList.contains('active'),
-                'serverSelectionVisible': document.getElementById('serverSelection').style.display !== 'none',
+                'serverSelectionVisible': !document.getElementById('serverSelection').classList.contains('hidden'),
                 'functionsAvailable': {
                     'showClearChatModal': typeof showClearChatModal === 'function',
                     'massUnban': typeof massUnban === 'function',

@@ -287,9 +287,9 @@ function renderEmbedPreview(embedData) {
     embed.style.borderLeftColor = color;
 
     // Thumbnail
-    if (embedData.thumbnail && embedData.thumbnail.url) {
+        if (embedData.thumbnail && embedData.thumbnail.url) {
         const img = document.createElement('img'); img.className = 'embed-thumbnail'; img.alt = 'Thumbnail';
-        img.src = embedData.thumbnail.url; img.addEventListener('error', () => img.style.display = 'none');
+        img.src = embedData.thumbnail.url; img.addEventListener('error', () => img.classList.add('hidden'));
         embed.appendChild(img);
     }
 
@@ -327,7 +327,7 @@ function renderEmbedPreview(embedData) {
 
     // Image
     if (embedData.image && embedData.image.url) {
-        const bimg = document.createElement('img'); bimg.className = 'embed-image'; bimg.alt = 'Banner'; bimg.src = embedData.image.url; bimg.addEventListener('error', () => bimg.style.display = 'none');
+        const bimg = document.createElement('img'); bimg.className = 'embed-image'; bimg.alt = 'Banner'; bimg.src = embedData.image.url; bimg.addEventListener('error', () => bimg.classList.add('hidden'));
         embed.appendChild(bimg);
     }
 
@@ -335,7 +335,7 @@ function renderEmbedPreview(embedData) {
     if (embedData.footer) {
         const footer = document.createElement('div'); footer.className = 'embed-footer';
         if (embedData.footer.icon_url) {
-            const fimg = document.createElement('img'); fimg.className = 'embed-footer-icon'; fimg.alt = 'Footer Icon'; fimg.src = embedData.footer.icon_url; fimg.addEventListener('error', () => fimg.style.display = 'none');
+            const fimg = document.createElement('img'); fimg.className = 'embed-footer-icon'; fimg.alt = 'Footer Icon'; fimg.src = embedData.footer.icon_url; fimg.addEventListener('error', () => fimg.classList.add('hidden'));
             footer.appendChild(fimg);
         }
         const ftext = document.createElement('span'); ftext.textContent = stripHtml(String(embedData.footer.text || ''));

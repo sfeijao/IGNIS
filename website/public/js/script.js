@@ -273,8 +273,8 @@ class YSNMDashboard {
 
         // header
         const header = document.createElement('div'); header.className = 'field-header';
-        const h4 = document.createElement('h4');
-        h4.style.display = 'flex'; h4.style.alignItems = 'center'; h4.style.gap = '8px';
+    const h4 = document.createElement('h4');
+    h4.className = 'flex-row';
         const icon = document.createElement('i'); icon.className = 'fas fa-tag';
         const titleText = document.createTextNode(' Campo ' + this.fieldsCount);
         h4.appendChild(icon); h4.appendChild(titleText);
@@ -431,17 +431,17 @@ class YSNMDashboard {
         const overlay = document.getElementById('loadingOverlay');
         if (show) {
             overlay.classList.remove('hidden');
-            overlay.style.display = 'flex';
+            overlay.classList.add('active');
         } else {
-            overlay.style.display = 'none';
+            overlay.classList.remove('active');
             overlay.classList.add('hidden');
         }
     }
 
     showSuccessModal() {
         const modal = document.getElementById('successModal');
-        modal.style.display = 'flex';
-        modal.classList.add('fade-in');
+    modal.classList.add('active');
+    modal.classList.add('fade-in');
     }
 
     resetForm() {
@@ -529,7 +529,11 @@ class YSNMDashboard {
 // Função global para fechar modal
 function closeModal() {
     const modal = document.getElementById('successModal');
-    modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('active');
+        modal.classList.remove('fade-in');
+        modal.classList.add('hidden');
+    }
 }
 
 // Adicionar estilos CSS para animações

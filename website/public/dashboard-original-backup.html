@@ -1323,7 +1323,7 @@
                 </section>
 
                 <!-- Clear Chat Modal -->
-                <div id="clearChatModal" class="modal" style="display: none;">
+                <div id="clearChatModal" class="modal hidden">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>🧹 Limpar Chat</h3>
@@ -1366,7 +1366,7 @@
                 </div>
 
                 <!-- Timeout Modal -->
-                <div id="timeoutModal" class="modal" style="display: none;">
+                <div id="timeoutModal" class="modal hidden">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>⏰ Dar Timeout</h3>
@@ -1379,7 +1379,7 @@
                                 <div id="timeoutUserResults" class="user-search-results"></div>
                             </div>
                             
-                            <div class="form-group" id="timeoutSelectedUser" style="display: none;">
+                            <div class="form-group hidden" id="timeoutSelectedUser">
                                 <label>Usuário Selecionado:</label>
                                 <div class="selected-user-card" id="timeoutUserCard"></div>
                             </div>
@@ -1411,7 +1411,7 @@
                 </div>
 
                 <!-- Kick Modal -->
-                <div id="kickModal" class="modal" style="display: none;">
+                <div id="kickModal" class="modal hidden">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>👢 Expulsar Usuário</h3>
@@ -1424,7 +1424,7 @@
                                 <div id="kickUserResults" class="user-search-results"></div>
                             </div>
                             
-                            <div class="form-group" id="kickSelectedUser" style="display: none;">
+                            <div class="form-group hidden" id="kickSelectedUser">
                                 <label>Usuário Selecionado:</label>
                                 <div class="selected-user-card" id="kickUserCard"></div>
                             </div>
@@ -1449,7 +1449,7 @@
                 </div>
 
                 <!-- Ban Modal -->
-                <div id="banModal" class="modal" style="display: none;">
+                <div id="banModal" class="modal hidden">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>🔨 Banir Usuário</h3>
@@ -1462,7 +1462,7 @@
                                 <div id="banUserResults" class="user-search-results"></div>
                             </div>
                             
-                            <div class="form-group" id="banSelectedUser" style="display: none;">
+                            <div class="form-group hidden" id="banSelectedUser">
                                 <label>Usuário Selecionado:</label>
                                 <div class="selected-user-card" id="banUserCard"></div>
                             </div>
@@ -1826,7 +1826,7 @@
 
             console.log('🎯 Servidor selecionado:', serverId);
             
-            document.getElementById('serverSelection').style.display = 'none';
+            document.getElementById('serverSelection').classList.add('hidden');
             document.getElementById('dashboardContent').classList.add('active');
 
             loadServerData();
@@ -2042,17 +2042,17 @@
             infoDiv.appendChild(nameDiv); infoDiv.appendChild(tagDiv); infoDiv.appendChild(rolesDiv); infoDiv.appendChild(permsDiv);
             card.appendChild(avatarDiv); card.appendChild(infoDiv);
             
-            cardContainer.style.display = 'block';
+            cardContainer.classList.remove('hidden');
         }
 
         // Timeout Modal Functions
         function showTimeoutModal() {
-            document.getElementById('timeoutModal').style.display = 'flex';
+            document.getElementById('timeoutModal').classList.remove('hidden');
             loadServerMembers();
         }
 
         function closeTimeoutModal() {
-            document.getElementById('timeoutModal').style.display = 'none';
+            document.getElementById('timeoutModal').classList.add('hidden');
             resetTimeoutForm();
         }
 
@@ -2060,7 +2060,7 @@
             selectedTimeoutUser = null;
             document.getElementById('timeoutUserSearch').value = '';
             const tRes = document.getElementById('timeoutUserResults'); if (tRes) while (tRes.firstChild) tRes.removeChild(tRes.firstChild);
-            document.getElementById('timeoutSelectedUser').style.display = 'none';
+            document.getElementById('timeoutSelectedUser').classList.add('hidden');
             document.getElementById('timeoutDuration').value = '60';
             document.getElementById('timeoutReason').value = 'Timeout via dashboard';
             document.getElementById('timeoutBtn').disabled = true;
@@ -2109,12 +2109,12 @@
 
         // Kick Modal Functions
         function showKickModal() {
-            document.getElementById('kickModal').style.display = 'flex';
+            document.getElementById('kickModal').classList.remove('hidden');
             loadServerMembers();
         }
 
         function closeKickModal() {
-            document.getElementById('kickModal').style.display = 'none';
+            document.getElementById('kickModal').classList.add('hidden');
             resetKickForm();
         }
 
@@ -2122,7 +2122,7 @@
             selectedKickUser = null;
             document.getElementById('kickUserSearch').value = '';
             const kRes = document.getElementById('kickUserResults'); if (kRes) while (kRes.firstChild) kRes.removeChild(kRes.firstChild);
-            document.getElementById('kickSelectedUser').style.display = 'none';
+            document.getElementById('kickSelectedUser').classList.add('hidden');
             document.getElementById('kickReason').value = 'Expulsão via dashboard';
             document.getElementById('confirmKick').checked = false;
             document.getElementById('kickBtn').disabled = true;
@@ -2169,12 +2169,12 @@
 
         // Ban Modal Functions
         function showBanModal() {
-            document.getElementById('banModal').style.display = 'flex';
+            document.getElementById('banModal').classList.remove('hidden');
             loadServerMembers();
         }
 
         function closeBanModal() {
-            document.getElementById('banModal').style.display = 'none';
+            document.getElementById('banModal').classList.add('hidden');
             resetBanForm();
         }
 
@@ -2182,7 +2182,7 @@
             selectedBanUser = null;
             document.getElementById('banUserSearch').value = '';
             const bRes = document.getElementById('banUserResults'); if (bRes) while (bRes.firstChild) bRes.removeChild(bRes.firstChild);
-            document.getElementById('banSelectedUser').style.display = 'none';
+            document.getElementById('banSelectedUser').classList.add('hidden');
             document.getElementById('banReason').value = 'Banimento via dashboard';
             document.getElementById('deleteMessageDays').value = '0';
             document.getElementById('banDuration').value = '0';
@@ -2250,7 +2250,7 @@
         // Clear Chat Modal Functions
         async function showClearChatModal() {
             const modal = document.getElementById('clearChatModal');
-            modal.style.display = 'flex';
+            modal.classList.remove('hidden');
             
             // Load channels
             await loadServerChannels();
@@ -2258,7 +2258,7 @@
 
         function closeClearChatModal() {
             const modal = document.getElementById('clearChatModal');
-            modal.style.display = 'none';
+            modal.classList.add('hidden');
             
             // Reset form
             document.getElementById('messageAmount').value = '10';
@@ -2446,19 +2446,19 @@
         // Placeholder functions for additional moderation features (now implemented!)
         function showTimeoutModal() {
             const modal = document.getElementById('timeoutModal');
-            modal.style.display = 'flex';
+            modal.classList.remove('hidden');
             loadServerMembers();
         }
 
         function showKickModal() {
             const modal = document.getElementById('kickModal');
-            modal.style.display = 'flex';
+            modal.classList.remove('hidden');
             loadServerMembers();
         }
 
         function showBanModal() {
             const modal = document.getElementById('banModal');
-            modal.style.display = 'flex';
+            modal.classList.remove('hidden');
             loadServerMembers();
         }
 
@@ -2471,8 +2471,8 @@
             setTimeout(() => {
                 // Clear and add sample log entries
                 while (logsContainer.firstChild) logsContainer.removeChild(logsContainer.firstChild);
-                const wrapper = document.createElement('div'); wrapper.style.fontSize='14px'; wrapper.style.lineHeight='1.6';
-                const entry = document.createElement('div'); entry.style.marginBottom='0.5rem'; entry.style.padding='0.5rem'; entry.style.background='var(--bg)'; entry.style.borderRadius='8px';
+                const wrapper = document.createElement('div'); wrapper.className = 'logs-wrapper';
+                const entry = document.createElement('div'); entry.className = 'log-entry';
                 const strong = document.createElement('strong'); strong.textContent = '🧹 Limpeza de Canal';
                 entry.appendChild(strong); entry.appendChild(document.createTextNode(' - há 2 minutos'));
                 const small = document.createElement('small'); small.style.color='var(--text-muted)'; small.textContent = 'Canal #geral: 15 mensagens removidas';
@@ -2788,9 +2788,9 @@
             
             if (!loadingEl || !listEl || !noTicketsEl) return;
             
-            loadingEl.style.display = 'flex';
-            listEl.style.display = 'none';
-            noTicketsEl.style.display = 'none';
+            loadingEl.classList.remove('hidden');
+            listEl.classList.add('hidden');
+            noTicketsEl.classList.add('hidden');
             
             try {
                 const params = new URLSearchParams(ticketFilters);
@@ -2802,11 +2802,11 @@
                     renderTickets(currentTickets);
                     
                     if (currentTickets.length === 0) {
-                        loadingEl.style.display = 'none';
-                        noTicketsEl.style.display = 'block';
+                        loadingEl.classList.add('hidden');
+                        noTicketsEl.classList.remove('hidden');
                     } else {
-                        loadingEl.style.display = 'none';
-                        listEl.style.display = 'block';
+                        loadingEl.classList.add('hidden');
+                        listEl.classList.remove('hidden');
                     }
                 } else {
                     console.error('Erro ao carregar tickets:', data.error);
@@ -2931,7 +2931,7 @@
         function openTicketModal() {
             const modal = document.getElementById('ticketModal');
             if (modal) {
-                modal.style.display = 'flex';
+                modal.classList.remove('hidden');
                 const form = document.getElementById('ticketForm');
                 if (form) form.reset();
             }
@@ -2939,7 +2939,7 @@
 
         function closeTicketModal() {
             const modal = document.getElementById('ticketModal');
-            if (modal) modal.style.display = 'none';
+            if (modal) modal.classList.add('hidden');
         }
 
         async function submitTicket() {

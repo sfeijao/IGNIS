@@ -4,14 +4,14 @@
 
   function _getToastElement() {
     let t = document.getElementById('toast');
-    if (!t) {
+  if (!t) {
       // create minimal toast container if not present
       t = document.createElement('div');
       t.id = 'toast';
       t.style.position = 'fixed';
       t.style.right = '16px';
       t.style.bottom = '16px';
-      t.style.display = 'none';
+  t.className = 'hidden';
       t.style.background = '#222';
       t.style.color = '#fff';
       t.style.padding = '12px 16px';
@@ -26,10 +26,10 @@
     try {
       const t = _getToastElement();
       if (!t) return;
-      t.textContent = message;
-      t.style.display = 'block';
-      t.style.opacity = '1';
-      if (ms > 0) setTimeout(() => { t.style.display = 'none'; }, ms);
+  t.textContent = message;
+  t.classList.remove('hidden');
+  t.style.opacity = '1';
+  if (ms > 0) setTimeout(() => { t.classList.add('hidden'); }, ms);
     } catch (e) {
       // last-resort fallback
       try { console.debug('showToast fallback error', e); } catch (_) {}

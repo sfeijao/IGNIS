@@ -139,7 +139,7 @@
             statusEl.textContent = success ? '✅ Sucesso' : '❌ Erro';
             
             if (message) {
-                resultEl.style.display = 'block';
+                resultEl.classList.remove('hidden');
                 resultEl.textContent = message;
             }
         }

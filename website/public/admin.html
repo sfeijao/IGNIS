@@ -623,7 +623,7 @@
             
             members.forEach(member => {
                 const name = member.querySelector('.member-name').textContent.toLowerCase();
-                member.style.display = name.includes(search) ? 'flex' : 'none';
+                if (name.includes(search)) member.classList.remove('hidden'); else member.classList.add('hidden');
             });
         }
 
