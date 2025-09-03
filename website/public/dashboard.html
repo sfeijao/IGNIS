@@ -572,9 +572,9 @@
                 this.setupEventListeners();
                 this.showSection('overview');
                 this.checkAuthentication();
-                // Comentado para evitar erros 404
-                // this.loadUserData();
-                // this.loadServerStats();
+                // Enable server stats load (requires authenticated session)
+                this.loadUserData && typeof this.loadUserData === 'function' && this.loadUserData();
+                this.loadServerStats && typeof this.loadServerStats === 'function' && this.loadServerStats();
                 if (window.DEBUG_UI) console.log('Dashboard initialized successfully');
             }
             
@@ -1568,142 +1568,53 @@
             }
             
             showTokenConfig() {
-                const modal = document.createElement('div');
-                modal.className = 'modal';
-
-                const modalContent = document.createElement('div');
-                modalContent.className = 'modal-content';
-
-                const header = document.createElement('h3');
-                const keyIcon = document.createElement('i'); keyIcon.className = 'fas fa-key';
-                header.appendChild(keyIcon); header.appendChild(document.createTextNode(' Configurar Token de Acesso'));
-                modalContent.appendChild(header);
-
-                // Current token
-                const fgCurrent = document.createElement('div'); fgCurrent.className = 'form-group';
-                const lblCurrent = document.createElement('label'); lblCurrent.textContent = 'Token atual:';
-                const currentDiv = document.createElement('div'); currentDiv.className = 'current-token'; currentDiv.textContent = (getAuthToken() || 'Nenhum token configurado');
-                fgCurrent.appendChild(lblCurrent); fgCurrent.appendChild(currentDiv);
-                modalContent.appendChild(fgCurrent);
-
-                // Options
-                const fgOptions = document.createElement('div'); fgOptions.className = 'form-group';
-                const lblOptions = document.createElement('label'); lblOptions.textContent = 'Escolha uma opção:';
-                const actionsWrap = document.createElement('div'); actionsWrap.className = 'form-actions';
-
-                const makeBtn = (cls, id, iconCls, text) => {
-                    const btn = document.createElement('button'); btn.type = 'button'; btn.className = cls; btn.id = id;
-                    const i = document.createElement('i'); i.className = iconCls; btn.appendChild(i); btn.appendChild(document.createTextNode(' ' + text));
-                    return btn;
-                };
-
-                actionsWrap.appendChild(makeBtn('btn btn-primary', 'setDevTokenBtn', 'fas fa-code', 'Dev Token'));
-                actionsWrap.appendChild(makeBtn('btn btn-secondary', 'setAdminTokenBtn', 'fas fa-shield-alt', 'Admin Token'));
-                actionsWrap.appendChild(makeBtn('btn btn-secondary', 'setCustomTokenBtn', 'fas fa-edit', 'Token Personalizado'));
-
-                fgOptions.appendChild(lblOptions); fgOptions.appendChild(actionsWrap);
-                modalContent.appendChild(fgOptions);
-
-                // Tokens info
-                const fgInfo = document.createElement('div'); fgInfo.className = 'form-group';
-                const small = document.createElement('small');
-                const strong = document.createElement('strong'); strong.textContent = 'Tokens válidos:';
-                small.appendChild(strong);
-                small.appendChild(document.createElement('br'));
-                const addTokenLine = (codeText, desc) => {
-                    small.appendChild(document.createTextNode(' • '));
-                    const codeEl = document.createElement('code'); codeEl.textContent = codeText;
-                    small.appendChild(codeEl);
-                    small.appendChild(document.createTextNode(' - ' + desc));
-                    small.appendChild(document.createElement('br'));
-                };
-                addTokenLine('dev-token', 'Para desenvolvimento local');
-                addTokenLine('admin-token', 'Para administração');
-                addTokenLine('dashboard-token', 'Para painel');
-                small.appendChild(document.createTextNode(' • Qualquer token Discord válido'));
-
-                fgInfo.appendChild(small);
-                modalContent.appendChild(fgInfo);
-
-                // Footer actions
-                const fgFooter = document.createElement('div'); fgFooter.className = 'form-actions';
-                fgFooter.appendChild(makeBtn('btn btn-success', 'testAuthBtn', 'fas fa-check', 'Testar Autenticação'));
-                fgFooter.appendChild(makeBtn('btn btn-secondary', 'closeModalBtn', 'fas fa-times', 'Fechar'));
-                modalContent.appendChild(fgFooter);
-
+                // Simplified token modal: show masked token, allow paste or presets
+                const modal = document.createElement('div'); modal.className = 'modal';
+                const modalContent = document.createElement('div'); modalContent.className = 'modal-content';
+                modalContent.innerHTML = `
+                    <h3><i class="fas fa-key"></i> Configurar Token de Acesso</h3>
+                    <div class="form-group">
+                        <label>Token atual</label>
+                        <div class="current-token">${(getAuthToken() || 'Nenhum token configurado')}</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Inserir token personalizado</label>
+                        <input id="customTokenInput" class="form-control" type="password" placeholder="Cole o token aqui">
+                    </div>
+                    <div class="form-actions" style="gap:8px;">
+                        <button id="saveCustomToken" class="btn btn-primary">Guardar token</button>
+                        <button id="useDevToken" class="btn btn-secondary">Usar dev-token</button>
+                        <button id="useAdminToken" class="btn btn-secondary">Usar admin-token</button>
+                        <button id="closeModalBtn" class="btn btn-light">Fechar</button>
+                    </div>
+                    <div class="form-group"><small>Nota: Tokens devem ser usados apenas em ambiente de desenvolvimento. Em produção, prefira OAuth2.</small></div>
+                `;
                 modal.appendChild(modalContent);
-                // append hidden then activate to allow CSS transitions
-                modal.classList.add('hidden');
-                document.body.appendChild(modal);
-                // next tick, show modal
-                requestAnimationFrame(() => { modal.classList.remove('hidden'); modal.classList.add('active'); });
+                modal.classList.add('hidden'); document.body.appendChild(modal);
+                requestAnimationFrame(()=>{ modal.classList.remove('hidden'); modal.classList.add('active'); });
 
-                // Add event listeners to modal buttons
-                modal.querySelector('#setDevTokenBtn').addEventListener('click', () => {
-                    localStorage.setItem('authToken', 'dev-token');
-                    this.showMessage('Token de desenvolvimento configurado', 'success');
-                    this.updateTokenDisplay(modal);
+                const updateDisplay = () => {
+                    const d = modal.querySelector('.current-token'); if (!d) return; const t = getAuthToken(); d.textContent = t ? (t.length>20? t.substring(0,12)+'...'+t.slice(-4): t) : 'Nenhum token configurado';
+                };
+
+                modal.querySelector('#saveCustomToken').addEventListener('click', () => {
+                    const v = modal.querySelector('#customTokenInput').value.trim();
+                    if (!v) return this.showMessage('Nenhum token fornecido', 'error');
+                    localStorage.setItem('authToken', v);
+                    updateDisplay();
+                    this.showMessage('Token guardado localmente', 'success');
                 });
-                
-                modal.querySelector('#setAdminTokenBtn').addEventListener('click', () => {
-                    localStorage.setItem('authToken', 'admin-token');
-                    this.showMessage('Token de administração configurado', 'success');
-                    this.updateTokenDisplay(modal);
-                });
-                
-                modal.querySelector('#setCustomTokenBtn').addEventListener('click', () => {
-                    const token = prompt('Digite o token de acesso personalizado:');
-                    if (token && token.trim()) {
-                        localStorage.setItem('authToken', token.trim());
-                        this.showMessage('Token personalizado configurado', 'success');
-                        this.updateTokenDisplay(modal);
-                    }
-                });
-                
-                modal.querySelector('#testAuthBtn').addEventListener('click', async () => {
-                    try {
-                        const response = await fetch('/api/test-auth', {
-                            method: 'GET',
-                            headers: {
-                                'Authorization': `Bearer ${getAuthToken()}`
-                            }
-                        });
-                        
-                        if (response.ok) {
-                            const data = await response.json();
-                            this.showMessage('✅ Autenticação funcionando!', 'success');
-                            console.log('Auth test result:', data);
-                        } else {
-                            this.showMessage(`❌ Falha na autenticação (${response.status})`, 'error');
-                        }
-                    } catch (error) {
-                        this.showMessage('❌ Erro ao testar autenticação', 'error');
-                        console.error('Auth test error:', error);
-                    }
-                });
-                
-                modal.querySelector('#closeModalBtn').addEventListener('click', () => {
-                    modal.classList.remove('active');
-                    modal.classList.add('hidden');
-                    setTimeout(() => { if (modal && modal.parentNode) modal.parentNode.removeChild(modal); }, 200);
-                });
-                
-                // Close modal when clicking outside
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) {
-                        modal.classList.remove('active');
-                        modal.classList.add('hidden');
-                        setTimeout(() => { if (modal && modal.parentNode) modal.parentNode.removeChild(modal); }, 200);
-                    }
-                });
+                modal.querySelector('#useDevToken').addEventListener('click', () => { localStorage.setItem('authToken','dev-token'); updateDisplay(); this.showMessage('Dev token aplicado', 'success'); });
+                modal.querySelector('#useAdminToken').addEventListener('click', () => { localStorage.setItem('authToken','admin-token'); updateDisplay(); this.showMessage('Admin token aplicado', 'success'); });
+                modal.querySelector('#closeModalBtn').addEventListener('click', () => { modal.classList.remove('active'); modal.classList.add('hidden'); setTimeout(()=>{ if (modal.parentNode) modal.parentNode.removeChild(modal); },200); });
             }
-            
-            updateTokenDisplay(modal) {
-                const tokenDisplay = modal.querySelector('.current-token');
-                if (tokenDisplay) {
-                    const token = getAuthToken();
-                    tokenDisplay.textContent = token ? `${token.substring(0, 15)}...` : 'Nenhum token configurado';
-                }
+
+            updateTokenDisplay() {
+                // Update token displays across the page
+                try {
+                    const els = document.querySelectorAll('.current-token');
+                    els.forEach(d => { const t = getAuthToken(); d.textContent = t ? (t.length>20? t.substring(0,12)+'...'+t.slice(-4): t) : 'Nenhum token configurado'; });
+                } catch(e){}
             }
 
             async loadWebhookConfig() {

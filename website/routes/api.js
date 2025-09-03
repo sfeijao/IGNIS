@@ -11,6 +11,34 @@ const router = express.Router();
 module.exports = (database) => {
     const db = database || new Database();
 
+    // Health endpoint: returns startup messages, feature list and DB status
+    router.get('/health', async (req, res) => {
+        try {
+            const startupUrlMessage = process.env.STARTUP_URL_MESSAGE || `YSNM Dashboard rodando em http://localhost:${process.env.PORT || 4000}`;
+            const features = process.env.STARTUP_FEATURES_MESSAGE ? process.env.STARTUP_FEATURES_MESSAGE.split(';').map(s=>s.trim()).filter(Boolean) : ['Socket.IO habilitado', 'Dashboard, Tickets, Analytics, Admin', 'Sistema de segurança ativo'];
+
+            // Simple DB check
+            let dbOk = false;
+            try {
+                await new Promise((resolve, reject) => {
+                    if (!db || !db.db) return reject(new Error('DB not initialized'));
+                    db.db.get('SELECT 1 as ok', [], (err, row) => {
+                        if (err) return reject(err);
+                        dbOk = !!row;
+                        resolve();
+                    });
+                });
+            } catch (err) {
+                // ignore, dbOk false
+            }
+
+            return res.json({ success: true, startupUrlMessage, features, dbOk, authRejects: { total: authRejectsTotal, recent: recentAuthRejects.slice(-10) } });
+        } catch (err) {
+            logger.error('Erro no health endpoint', { error: err && err.message ? err.message : err });
+            return res.status(500).json({ success: false });
+        }
+    });
+
 const { sendArchivedTicketWebhook: sendArchivedWebhookWithRetries } = require('../utils/webhookSender');
 
 // Use structured project logger (utils/logger.js)
@@ -58,6 +86,24 @@ function addDebugLog(level, message, data = null) {
         } catch (ee) {
             // swallow
         }
+    }
+}
+
+// In-memory auth rejection tracking (masked tokens only)
+let authRejectsTotal = 0;
+const recentAuthRejects = [];
+const MAX_AUTH_REJECTS = 50;
+
+function recordAuthReject(entry) {
+    try {
+        authRejectsTotal++;
+        const e = Object.assign({ timestamp: new Date().toISOString() }, entry || {});
+        recentAuthRejects.push(e);
+        if (recentAuthRejects.length > MAX_AUTH_REJECTS) recentAuthRejects.shift();
+        // Also keep a lightweight debug log
+        addDebugLog('warn', 'Auth reject recorded', { masked: e.masked, path: e.path, ip: e.ip });
+    } catch (e) {
+        // swallow
     }
 }
 
@@ -142,7 +188,13 @@ const requireAuth = (req, res, next) => {
             }
 
             // Otherwise, do not accept arbitrary short tokens. Require session or configured ADMIN_API_TOKEN.
-            logger.warn('❌ Bearer token rejected', { tokenPreview: token.substring(0, 8), isProd, allowDev });
+            try {
+                const masked = token ? (token.length > 12 ? token.substring(0,6) + '...' + token.slice(-4) : token.substring(0,8) + '...') : 'none';
+                logger.warn('❌ Bearer token rejected', { tokenPreview: masked, path: req.path, ip: req.ip, isProd, allowDev });
+                recordAuthReject({ masked, path: req.path, ip: req.ip, ua: req.get('user-agent') });
+            } catch (e) {
+                logger.warn('❌ Bearer token rejected (unable to mask token)');
+            }
         }
     }
     
@@ -253,7 +305,13 @@ const requireAdmin = (req, res, next) => {
                 return next();
             }
 
-            logger.warn('❌ Admin Bearer token rejected', { tokenPreview: token.substring(0, 8), isProd, allowDev });
+            try {
+                const masked = token ? (token.length > 12 ? token.substring(0,6) + '...' + token.slice(-4) : token.substring(0,8) + '...') : 'none';
+                logger.warn('❌ Admin Bearer token rejected', { tokenPreview: masked, path: req.path, ip: req.ip, isProd, allowDev });
+                recordAuthReject({ masked, path: req.path, ip: req.ip, ua: req.get('user-agent'), admin: true });
+            } catch (e) {
+                logger.warn('❌ Admin Bearer token rejected (unable to mask token)');
+            }
         }
     }
     

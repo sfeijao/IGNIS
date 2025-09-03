@@ -154,7 +154,9 @@ body {
     line-height: 1.6;
     font-size: 14px;
     font-weight: 400;
+    /* allow vertical scrolling; keep only horizontal overflow hidden */
     overflow-x: hidden;
+    overflow-y: auto;
 }
 
 /* Modern Glass Morphism Effects */
@@ -254,7 +256,8 @@ body {
     min-width: 120px;
     box-shadow: var(--shadow-card);
     position: relative;
-    overflow: hidden;
+    /* preserve natural flow; avoid globally hiding overflow which breaks scrolling */
+    /* overflow: hidden; */
     display: flex;
     align-items: center;
     gap: var(--space-sm);

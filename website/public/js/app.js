@@ -65,6 +65,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     initializeQuill();
     setupEventListeners();
     loadChannels();
+    loadGuilds();
     loadHistory();
 });
 
@@ -136,6 +137,166 @@ async function loadChannels() {
             const cs = document.getElementById('channelSelect'); if(cs){ cs.textContent=''; const eo = document.createElement('option'); eo.value=''; eo.textContent='Erro ao carregar canais'; cs.appendChild(eo); }
     }
 }
+
+// Carregar servidores (guilds) e popular seletor de servidores
+let currentServerId = null;
+async function loadGuilds() {
+    try {
+        const resp = await authenticatedFetch('/api/guilds');
+        if (!resp) return;
+        const data = await resp.json();
+        const list = data.guilds || [];
+        const serverGrid = document.getElementById('serverGrid');
+        const serverSelect = document.getElementById('serverSelect');
+
+        // Prefer populated grid if exists, else try compact select
+        if (serverGrid) {
+            serverGrid.textContent = '';
+            list.forEach(g => {
+                const card = document.createElement('div');
+                card.className = 'server-card';
+                card.setAttribute('data-server-id', g.id);
+                card.innerHTML = `<div class="server-icon"><img src="${g.icon ? 'https://cdn.discordapp.com/icons/' + g.id + '/' + g.icon + '.png' : '/public/img/server-placeholder.png'}" alt=""></div><div class="server-name">${g.name}</div><div class="server-members">${g.memberCount || g.totalMembers || 'N/A'} membros</div>`;
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.server-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    currentServerId = g.id;
+                    // persist selection server-side and locally
+                    try { fetch('/api/session/server', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ guildId: currentServerId }) }).catch(()=>null); } catch(e){}
+                    try { localStorage.setItem('currentServerId', currentServerId); } catch(e){}
+                    // load server specific data
+                    if (typeof loadServerStats === 'function') loadServerStats();
+                });
+                serverGrid.appendChild(card);
+            });
+            // auto-select first
+            if (list[0]) {
+                currentServerId = list[0].id;
+                const firstCard = serverGrid.querySelector('.server-card');
+                if (firstCard) firstCard.classList.add('selected');
+                try { fetch('/api/session/server', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ guildId: currentServerId }) }).catch(()=>null); } catch(e){}
+                try { localStorage.setItem('currentServerId', currentServerId); } catch(e){}
+            }
+        }
+
+        if (serverSelect) {
+            serverSelect.textContent = '';
+            list.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g.id;
+                opt.textContent = g.name;
+                serverSelect.appendChild(opt);
+            });
+            if (list[0]) serverSelect.value = list[0].id;
+            serverSelect.addEventListener('change', (e) => {
+                currentServerId = e.target.value;
+                try { fetch('/api/session/server', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ guildId: currentServerId }) }).catch(()=>null); } catch(e){}
+                try { localStorage.setItem('currentServerId', currentServerId); } catch(e){}
+                if (typeof loadServerStats === 'function') loadServerStats();
+            });
+        }
+    } catch (error) {
+        console.debug('Erro ao carregar guilds:', error);
+    }
+}
+
+// Wrapper to load server stats using currentServerId (if present)
+async function loadServerStats() {
+    const serverId = currentServerId || localStorage.getItem('currentServerId');
+    if (!serverId) return;
+
+    try {
+        const resp = await authenticatedFetch(`/api/server/${encodeURIComponent(serverId)}/stats`);
+        if (!resp) return;
+        if (resp.ok) {
+            const j = await resp.json();
+            if (j && j.success && j.stats) {
+                // update known fields used by old dashboard
+                const stats = j.stats;
+                if (stats.server && stats.server.memberCount) {
+                    const el = document.getElementById('memberCount'); if (el) el.textContent = stats.server.memberCount;
+                }
+                if (stats.channels && typeof stats.channels.total !== 'undefined') { const el = document.getElementById('channelCount'); if (el) el.textContent = stats.channels.total; }
+                if (stats.roles && typeof stats.roles.total !== 'undefined') { const el = document.getElementById('roleCount'); if (el) el.textContent = stats.roles.total; }
+                if (stats.messages && typeof stats.messages.estimated !== 'undefined') { const el = document.getElementById('messageCount'); if (el) el.textContent = stats.messages.estimated; }
+            }
+        }
+    } catch (e) {
+        console.debug('Erro ao carregar stats do servidor:', e);
+    }
+}
+
+// Logs client: try SSE (no-auth) first; fallback to polling via /api/logs
+let logsSse = null;
+let logsPollInterval = null;
+function startLogsClient() {
+    // If already started, ignore
+    if (logsSse || logsPollInterval) return;
+
+    try {
+        // EventSource does not support Authorization headers. Server allows unauthenticated SSE.
+        logsSse = new EventSource('/api/logs/stream');
+        logsSse.onmessage = function(e) {
+            try {
+                const payload = JSON.parse(e.data);
+                handleIncomingLog(payload);
+            } catch (err) {
+                console.debug('SSE parse error', err);
+            }
+        };
+        logsSse.onerror = function(err) {
+            console.debug('SSE error, falling back to polling', err);
+            if (logsSse) { try { logsSse.close(); } catch(e){} logsSse = null; }
+            startLogsPolling();
+        };
+    } catch (e) {
+        console.debug('SSE not available, starting polling', e);
+        startLogsPolling();
+    }
+}
+
+async function startLogsPolling() {
+    if (logsPollInterval) return;
+    async function pollOnce() {
+        try {
+            const resp = await authenticatedFetch('/api/logs?limit=30');
+            if (!resp) return;
+            if (resp.ok) {
+                const j = await resp.json();
+                if (j && j.logs) {
+                    j.logs.forEach(l => handleIncomingLog({ type: 'log', ...l }));
+                }
+            }
+        } catch (e) {
+            console.debug('Erro no polling de logs:', e);
+        }
+    }
+    // initial poll
+    await pollOnce();
+    logsPollInterval = setInterval(pollOnce, 5000);
+}
+
+function handleIncomingLog(entry) {
+    // Basic append to logs area if present
+    try {
+        const logsContainer = document.getElementById('logsContainer');
+        if (!logsContainer) return;
+        const div = document.createElement('div');
+        div.className = 'log-entry';
+        const ts = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : new Date().toLocaleString();
+        div.textContent = `[${ts}] ${entry.level || entry.type || 'info'}: ${entry.message || JSON.stringify(entry)}`;
+        logsContainer.insertBefore(div, logsContainer.firstChild);
+        // Trim to 200 entries
+        while (logsContainer.childElementCount > 200) logsContainer.removeChild(logsContainer.lastChild);
+    } catch (e) {
+        // swallow
+    }
+}
+
+// Start logs client on load
+document.addEventListener('DOMContentLoaded', function() {
+    startLogsClient();
+});
 
 // Inicializar editor Quill
 function initializeQuill() {
@@ -511,20 +672,12 @@ try {
             console.debug('🚪 Iniciando logout completo...');
             
             try {
-                // 1. Fazer request para servidor
-                const response = await fetch('/api/logout', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                console.debug('🌐 Logout response:', response.status);
-                
+                // Call server logout route which destroys the session (uses GET to match server.js /logout)
+                await fetch('/logout', { method: 'GET', credentials: 'include' });
+                console.debug('🌐 Called server /logout');
             } catch (error) {
-                showNotification('Erro no logout do servidor', 'error');
-                console.debug('❌ Erro no logout do servidor:', error);
+                // non-blocking: continue to clear client state even if server call fails
+                console.debug('❌ Falha ao chamar /logout:', error);
             }
             
             // 2. Limpar TODOS os dados locais (independentemente da resposta do servidor)
