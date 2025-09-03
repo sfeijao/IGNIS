@@ -1564,50 +1564,17 @@
                     item.appendChild(header);
                     item.appendChild(meta);
                     ticketsList.appendChild(item);
-                });
-            }
-            
-            showTokenConfig() {
-                // Simplified token modal: show masked token, allow paste or presets
-                const modal = document.createElement('div'); modal.className = 'modal';
-                const modalContent = document.createElement('div'); modalContent.className = 'modal-content';
-                modalContent.innerHTML = `
-                    <h3><i class="fas fa-key"></i> Configurar Token de Acesso</h3>
-                    <div class="form-group">
-                        <label>Token atual</label>
-                        <div class="current-token">${(getAuthToken() || 'Nenhum token configurado')}</div>
-                    </div>
-                    <div class="form-group">
-                        <label>Inserir token personalizado</label>
-                        <input id="customTokenInput" class="form-control" type="password" placeholder="Cole o token aqui">
-                    </div>
-                    <div class="form-actions" style="gap:8px;">
-                        <button id="saveCustomToken" class="btn btn-primary">Guardar token</button>
-                        <button id="useDevToken" class="btn btn-secondary">Usar dev-token</button>
-                        <button id="useAdminToken" class="btn btn-secondary">Usar admin-token</button>
-                        <button id="closeModalBtn" class="btn btn-light">Fechar</button>
-                    </div>
-                    <div class="form-group"><small>Nota: Tokens devem ser usados apenas em ambiente de desenvolvimento. Em produção, prefira OAuth2.</small></div>
-                `;
-                modal.appendChild(modalContent);
-                modal.classList.add('hidden'); document.body.appendChild(modal);
-                requestAnimationFrame(()=>{ modal.classList.remove('hidden'); modal.classList.add('active'); });
+                    });
+                }
 
-                const updateDisplay = () => {
-                    const d = modal.querySelector('.current-token'); if (!d) return; const t = getAuthToken(); d.textContent = t ? (t.length>20? t.substring(0,12)+'...'+t.slice(-4): t) : 'Nenhum token configurado';
-                };
-
-                modal.querySelector('#saveCustomToken').addEventListener('click', () => {
-                    const v = modal.querySelector('#customTokenInput').value.trim();
-                    if (!v) return this.showMessage('Nenhum token fornecido', 'error');
-                    localStorage.setItem('authToken', v);
-                    updateDisplay();
-                    this.showMessage('Token guardado localmente', 'success');
-                });
-                modal.querySelector('#useDevToken').addEventListener('click', () => { localStorage.setItem('authToken','dev-token'); updateDisplay(); this.showMessage('Dev token aplicado', 'success'); });
-                modal.querySelector('#useAdminToken').addEventListener('click', () => { localStorage.setItem('authToken','admin-token'); updateDisplay(); this.showMessage('Admin token aplicado', 'success'); });
-                modal.querySelector('#closeModalBtn').addEventListener('click', () => { modal.classList.remove('active'); modal.classList.add('hidden'); setTimeout(()=>{ if (modal.parentNode) modal.parentNode.removeChild(modal); },200); });
-            }
+                showTokenConfig() {
+                    // Use shared safe token modal helper implemented in app.js
+                    if (window.showTokenConfigModal) {
+                        window.showTokenConfigModal();
+                    } else {
+                        console.debug('Token modal helper not available');
+                    }
+                }
 
             updateTokenDisplay() {
                 // Update token displays across the page

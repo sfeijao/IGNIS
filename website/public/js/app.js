@@ -156,7 +156,30 @@ async function loadGuilds() {
                 const card = document.createElement('div');
                 card.className = 'server-card';
                 card.setAttribute('data-server-id', g.id);
-                card.innerHTML = `<div class="server-icon"><img src="${g.icon ? 'https://cdn.discordapp.com/icons/' + g.id + '/' + g.icon + '.png' : '/public/img/server-placeholder.png'}" alt=""></div><div class="server-name">${g.name}</div><div class="server-members">${g.memberCount || g.totalMembers || 'N/A'} membros</div>`;
+
+                // icon container
+                const iconWrap = document.createElement('div');
+                iconWrap.className = 'server-icon';
+                const img = document.createElement('img');
+                img.alt = '';
+                img.src = g.icon ? ('https://cdn.discordapp.com/icons/' + g.id + '/' + g.icon + '.png') : '/public/img/server-placeholder.png';
+                img.addEventListener('error', () => { img.classList.add('hidden'); });
+                iconWrap.appendChild(img);
+
+                // name
+                const nameEl = document.createElement('div');
+                nameEl.className = 'server-name';
+                nameEl.textContent = String(g.name || 'Servidor');
+
+                // members
+                const membersEl = document.createElement('div');
+                membersEl.className = 'server-members';
+                membersEl.textContent = String(g.memberCount || g.totalMembers || 'N/A') + ' membros';
+
+                card.appendChild(iconWrap);
+                card.appendChild(nameEl);
+                card.appendChild(membersEl);
+
                 card.addEventListener('click', () => {
                     document.querySelectorAll('.server-card').forEach(c => c.classList.remove('selected'));
                     card.classList.add('selected');
@@ -303,36 +326,54 @@ document.addEventListener('DOMContentLoaded', function() {
 // Expose a simple token modal helper other pages can call
 window.showTokenConfigModal = function() {
     try {
-        // Reuse the modal logic from dashboard: create simple modal
+        // Reuse the modal logic from dashboard: create simple modal (DOM-only, avoid innerHTML)
         const modal = document.createElement('div'); modal.className = 'modal';
         const modalContent = document.createElement('div'); modalContent.className = 'modal-content';
-        modalContent.innerHTML = `
-            <h3><i class="fas fa-key"></i> Configurar Token de Acesso</h3>
-            <div class="form-group">
-                <label>Token atual</label>
-                <div class="current-token">${(localStorage.getItem('authToken') || 'Nenhum token configurado')}</div>
-            </div>
-            <div class="form-group">
-                <label>Inserir token personalizado</label>
-                <input id="customTokenInputGlobal" class="form-control" type="password" placeholder="Cole o token aqui">
-            </div>
-            <div class="form-actions" style="gap:8px;">
-                <button id="saveCustomTokenGlobal" class="btn btn-primary">Guardar token</button>
-                <button id="useDevTokenGlobal" class="btn btn-secondary">Usar dev-token</button>
-                <button id="useAdminTokenGlobal" class="btn btn-secondary">Usar admin-token</button>
-                <button id="closeModalBtnGlobal" class="btn btn-light">Fechar</button>
-            </div>
-            <div class="form-group"><small>Nota: Tokens devem ser usados apenas em ambiente de desenvolvimento. Em produção, prefira OAuth2.</small></div>
-        `;
+
+        // Header
+        const h3 = document.createElement('h3');
+        const icon = document.createElement('i'); icon.className = 'fas fa-key';
+        h3.appendChild(icon);
+        h3.appendChild(document.createTextNode(' Configurar Token de Acesso'));
+        modalContent.appendChild(h3);
+
+        // current token
+        const fg1 = document.createElement('div'); fg1.className = 'form-group';
+        const lbl1 = document.createElement('label'); lbl1.textContent = 'Token atual';
+        const currentDiv = document.createElement('div'); currentDiv.className = 'current-token';
+        const rawToken = localStorage.getItem('authToken');
+        const masked = rawToken ? (rawToken.length > 20 ? (rawToken.substring(0,12) + '...' + rawToken.slice(-4)) : rawToken) : 'Nenhum token configurado';
+        currentDiv.textContent = masked;
+        fg1.appendChild(lbl1); fg1.appendChild(currentDiv);
+        modalContent.appendChild(fg1);
+
+        // custom token input
+        const fg2 = document.createElement('div'); fg2.className = 'form-group';
+        const lbl2 = document.createElement('label'); lbl2.textContent = 'Inserir token personalizado';
+        const input = document.createElement('input'); input.id = 'customTokenInputGlobal'; input.className = 'form-control'; input.type = 'password'; input.placeholder = 'Cole o token aqui';
+        fg2.appendChild(lbl2); fg2.appendChild(input);
+        modalContent.appendChild(fg2);
+
+        // actions
+        const actions = document.createElement('div'); actions.className = 'form-actions'; actions.style.gap = '8px';
+        const saveBtn = document.createElement('button'); saveBtn.id = 'saveCustomTokenGlobal'; saveBtn.className = 'btn btn-primary'; saveBtn.textContent = 'Guardar token';
+        const devBtn = document.createElement('button'); devBtn.id = 'useDevTokenGlobal'; devBtn.className = 'btn btn-secondary'; devBtn.textContent = 'Usar dev-token';
+        const adminBtn = document.createElement('button'); adminBtn.id = 'useAdminTokenGlobal'; adminBtn.className = 'btn btn-secondary'; adminBtn.textContent = 'Usar admin-token';
+        const closeBtn = document.createElement('button'); closeBtn.id = 'closeModalBtnGlobal'; closeBtn.className = 'btn btn-light'; closeBtn.textContent = 'Fechar';
+        actions.appendChild(saveBtn); actions.appendChild(devBtn); actions.appendChild(adminBtn); actions.appendChild(closeBtn);
+        modalContent.appendChild(actions);
+
+        const note = document.createElement('div'); note.className = 'form-group'; const small = document.createElement('small'); small.textContent = 'Nota: Tokens devem ser usados apenas em ambiente de desenvolvimento. Em produção, prefira OAuth2.'; note.appendChild(small); modalContent.appendChild(note);
+
         modal.appendChild(modalContent);
         modal.classList.add('hidden'); document.body.appendChild(modal);
         requestAnimationFrame(()=>{ modal.classList.remove('hidden'); modal.classList.add('active'); });
 
         const updateDisplay = () => { const d = modal.querySelector('.current-token'); if (!d) return; const t = localStorage.getItem('authToken'); d.textContent = t ? (t.length>20? t.substring(0,12)+'...'+t.slice(-4): t) : 'Nenhum token configurado'; };
-        modal.querySelector('#saveCustomTokenGlobal').addEventListener('click', () => { const v = modal.querySelector('#customTokenInputGlobal').value.trim(); if (!v) return; localStorage.setItem('authToken', v); updateDisplay(); });
-        modal.querySelector('#useDevTokenGlobal').addEventListener('click', ()=>{ localStorage.setItem('authToken','dev-token'); updateDisplay(); });
-        modal.querySelector('#useAdminTokenGlobal').addEventListener('click', ()=>{ localStorage.setItem('authToken','admin-token'); updateDisplay(); });
-        modal.querySelector('#closeModalBtnGlobal').addEventListener('click', ()=>{ modal.classList.remove('active'); modal.classList.add('hidden'); setTimeout(()=>{ if (modal.parentNode) modal.parentNode.removeChild(modal); },200); });
+        saveBtn.addEventListener('click', () => { const v = input.value.trim(); if (!v) return; localStorage.setItem('authToken', v); updateDisplay(); });
+        devBtn.addEventListener('click', ()=>{ localStorage.setItem('authToken','dev-token'); updateDisplay(); });
+        adminBtn.addEventListener('click', ()=>{ localStorage.setItem('authToken','admin-token'); updateDisplay(); });
+        closeBtn.addEventListener('click', ()=>{ modal.classList.remove('active'); modal.classList.add('hidden'); setTimeout(()=>{ if (modal.parentNode) modal.parentNode.removeChild(modal); },200); });
     } catch(e){ console.debug('Erro ao abrir modal global', e); }
 };
 
@@ -355,10 +396,20 @@ function initializeQuill() {
         }
     });
 
-    // Sincronizar conteúdo do editor com input hidden
+    // Sincronizar conteúdo do editor com input hidden (sanitize HTML)
     quill.on('text-change', function() {
-        const content = quill.root.innerHTML;
-        document.getElementById('description').value = content;
+        let content = quill.root.innerHTML;
+        try {
+            if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
+                content = window.DOMPurify.sanitize(content, {ALLOWED_TAGS: ['b','i','u','strong','em','a','p','br','ul','ol','li','code','pre']});
+            } else {
+                // fallback: strip dangerous tags but keep text
+                content = stripHtml(content);
+            }
+        } catch(e) {
+            content = stripHtml(content);
+        }
+        const descEl = document.getElementById('description'); if (descEl) descEl.value = content;
         updatePreview();
     });
 }
