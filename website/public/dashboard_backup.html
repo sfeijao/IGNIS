@@ -490,6 +490,9 @@
             setupEventListeners() {
                 // Logout
                 document.getElementById('logoutBtn')?.addEventListener('click', this.handleLogout);
+                // Config button (open simplified token modal when available)
+                const cfg = document.getElementById('configBtn');
+                if (cfg) cfg.addEventListener('click', () => { if (window.showTokenConfigModal) window.showTokenConfigModal(); });
                 
                 // Navigation
                 document.querySelectorAll('.nav-item a').forEach(link => {
@@ -535,6 +538,8 @@
                 
                 // Animate numbers
                 this.animateCounters();
+                // Ensure logs view is refreshed if moderation logs area exists
+                try { if (typeof loadModerationLogs === 'function') loadModerationLogs(); } catch(e){}
             }
 
             animateCounters() {

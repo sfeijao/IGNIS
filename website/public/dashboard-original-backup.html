@@ -2509,6 +2509,13 @@
                 });
             }
 
+            // Wire config button to global token modal helper if present
+            const cfg = document.getElementById('configBtn');
+            if (cfg && window.showTokenConfigModal) cfg.addEventListener('click', () => window.showTokenConfigModal());
+
+            // Refresh moderation logs area if present
+            try { if (typeof refreshModerationLogs === 'function') refreshModerationLogs(); } catch(e){}
+
             // Kick confirmation
             const confirmKick = document.getElementById('confirmKick');
             const kickBtn = document.getElementById('kickBtn');

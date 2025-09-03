@@ -279,15 +279,17 @@ async function startLogsPolling() {
 function handleIncomingLog(entry) {
     // Basic append to logs area if present
     try {
-        const logsContainer = document.getElementById('logsContainer');
-        if (!logsContainer) return;
-        const div = document.createElement('div');
-        div.className = 'log-entry';
-        const ts = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : new Date().toLocaleString();
-        div.textContent = `[${ts}] ${entry.level || entry.type || 'info'}: ${entry.message || JSON.stringify(entry)}`;
-        logsContainer.insertBefore(div, logsContainer.firstChild);
-        // Trim to 200 entries
-        while (logsContainer.childElementCount > 200) logsContainer.removeChild(logsContainer.lastChild);
+        const text = (()=>{ try { const ts = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : new Date().toLocaleString(); return `[${ts}] ${entry.level || entry.type || 'info'}: ${entry.message || JSON.stringify(entry)}`; } catch(e){ return JSON.stringify(entry); } })();
+        const appendTo = (id) => {
+            const logsContainer = document.getElementById(id);
+            if (!logsContainer) return;
+            const div = document.createElement('div'); div.className = 'log-entry'; div.textContent = text;
+            logsContainer.insertBefore(div, logsContainer.firstChild);
+            // Trim to 200 entries
+            while (logsContainer.childElementCount > 200) logsContainer.removeChild(logsContainer.lastChild);
+        };
+        appendTo('logsContainer');
+        appendTo('moderationLogs');
     } catch (e) {
         // swallow
     }
@@ -297,6 +299,42 @@ function handleIncomingLog(entry) {
 document.addEventListener('DOMContentLoaded', function() {
     startLogsClient();
 });
+
+// Expose a simple token modal helper other pages can call
+window.showTokenConfigModal = function() {
+    try {
+        // Reuse the modal logic from dashboard: create simple modal
+        const modal = document.createElement('div'); modal.className = 'modal';
+        const modalContent = document.createElement('div'); modalContent.className = 'modal-content';
+        modalContent.innerHTML = `
+            <h3><i class="fas fa-key"></i> Configurar Token de Acesso</h3>
+            <div class="form-group">
+                <label>Token atual</label>
+                <div class="current-token">${(localStorage.getItem('authToken') || 'Nenhum token configurado')}</div>
+            </div>
+            <div class="form-group">
+                <label>Inserir token personalizado</label>
+                <input id="customTokenInputGlobal" class="form-control" type="password" placeholder="Cole o token aqui">
+            </div>
+            <div class="form-actions" style="gap:8px;">
+                <button id="saveCustomTokenGlobal" class="btn btn-primary">Guardar token</button>
+                <button id="useDevTokenGlobal" class="btn btn-secondary">Usar dev-token</button>
+                <button id="useAdminTokenGlobal" class="btn btn-secondary">Usar admin-token</button>
+                <button id="closeModalBtnGlobal" class="btn btn-light">Fechar</button>
+            </div>
+            <div class="form-group"><small>Nota: Tokens devem ser usados apenas em ambiente de desenvolvimento. Em produção, prefira OAuth2.</small></div>
+        `;
+        modal.appendChild(modalContent);
+        modal.classList.add('hidden'); document.body.appendChild(modal);
+        requestAnimationFrame(()=>{ modal.classList.remove('hidden'); modal.classList.add('active'); });
+
+        const updateDisplay = () => { const d = modal.querySelector('.current-token'); if (!d) return; const t = localStorage.getItem('authToken'); d.textContent = t ? (t.length>20? t.substring(0,12)+'...'+t.slice(-4): t) : 'Nenhum token configurado'; };
+        modal.querySelector('#saveCustomTokenGlobal').addEventListener('click', () => { const v = modal.querySelector('#customTokenInputGlobal').value.trim(); if (!v) return; localStorage.setItem('authToken', v); updateDisplay(); });
+        modal.querySelector('#useDevTokenGlobal').addEventListener('click', ()=>{ localStorage.setItem('authToken','dev-token'); updateDisplay(); });
+        modal.querySelector('#useAdminTokenGlobal').addEventListener('click', ()=>{ localStorage.setItem('authToken','admin-token'); updateDisplay(); });
+        modal.querySelector('#closeModalBtnGlobal').addEventListener('click', ()=>{ modal.classList.remove('active'); modal.classList.add('hidden'); setTimeout(()=>{ if (modal.parentNode) modal.parentNode.removeChild(modal); },200); });
+    } catch(e){ console.debug('Erro ao abrir modal global', e); }
+};
 
 // Inicializar editor Quill
 function initializeQuill() {
