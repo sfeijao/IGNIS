@@ -1,0 +1,35 @@
+name: website-smoke-tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start static server and run smoke tests
+        run: |
+          nohup node website/tools/simple_static_server.js >/tmp/static-server.log 2>&1 &
+          # wait for server to be ready
+          sleep 3
+          echo "=== static server log ==="
+          tail -n +1 /tmp/static-server.log || true
+          echo "=== running fetch-based smoke test ==="
+          node website/tools/e2e-smoke-fetch.js
+          echo "=== running headless smoke test ==="
+          node website/tools/e2e-smoke-headless.js
+        timeout-minutes: 10

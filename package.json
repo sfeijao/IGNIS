@@ -9,8 +9,8 @@
     "start:bot-only": "node scripts/deploy-commands.js && node bot-only.js",
     "start:health": "node health-check.js",
     "dev": "nodemon index.js",
-  "test:e2e": "node website/tools/e2e-ticket-test.js",
-  "test:unit": "node website/tools/unit-tests.js",
+    "test:e2e": "node website/tools/e2e-ticket-test.js",
+    "test:unit": "node website/tools/unit-tests.js",
     "deploy": "node scripts/deploy-commands.js",
     "deploy:global": "node scripts/deploy-commands.js --global",
     "deploy:list": "node scripts/deploy-commands.js --list",
@@ -20,9 +20,9 @@
     "logs:clean": "node -e \"require('./utils/logger').cleanOldLogs()\"",
     "restart": "taskkill /f /im node.exe >nul 2>&1 & timeout /t 2 /nobreak >nul & node index.js",
     "clean-start": "restart-bot.bat",
-  "test": "echo \"✅ No tests specified\" && exit 0",
-  "test:private-receiver": "mocha ./examples/private-receiver/tests --timeout 10000",
-  "test:ci": "npm run test:private-receiver"
+    "test": "echo \"✅ No tests specified\" && exit 0",
+    "test:private-receiver": "mocha ./examples/private-receiver/tests --timeout 10000",
+    "test:ci": "npm run test:private-receiver"
   },
   "repository": {
     "type": "git",
@@ -59,17 +59,18 @@
     "moment": "^2.30.1",
     "multer": "^2.0.2",
     "node-fetch": "^2.7.0",
-  "winston": "^3.9.0",
-  "winston-daily-rotate-file": "^4.7.1",
     "passport": "^0.7.0",
     "passport-discord": "^0.1.4",
+    "puppeteer": "^24.18.0",
     "rate-limiter-flexible": "^7.2.0",
     "socket.io": "^4.8.1",
-  "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "winston": "^3.9.0",
+    "winston-daily-rotate-file": "^4.7.1"
   },
   "devDependencies": {
+    "mocha": "^10.2.0",
     "nodemon": "^3.0.2"
-  ,"mocha": "^10.2.0"
   },
   "engines": {
     "node": ">=16.9.0",

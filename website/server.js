@@ -122,6 +122,34 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Outgoing HTML sanitizer: small defensive middleware that strips unresolved
+// template placeholders from server-rendered HTML responses to avoid leaking
+// strings like `${...}` or encoded `%24%7B` into the UI. This is a safety
+// net and intentionally conservative — it only touches string bodies that
+// look like HTML.
+app.use((req, res, next) => {
+    const originalSend = res.send;
+    res.send = function (body) {
+        try {
+            if (typeof body === 'string') {
+                const contentType = (res.get && res.get('Content-Type')) || '';
+                const looksLikeHtml = /<\s*html|<!doctype|<\s*head|<\s*body/i.test(body);
+                if ((contentType && contentType.toLowerCase().includes('text/html')) || looksLikeHtml) {
+                    // Strip unresolved template placeholders and their common encoded form
+                    const cleaned = body.replace(/\$\{[^}]*\}/g, '').replace(/%24%7B/gi, '');
+                    return originalSend.call(this, cleaned);
+                }
+            }
+        } catch (e) {
+            // If anything goes wrong, fall back to original send to avoid
+            // breaking responses.
+            console.warn('Outgoing HTML sanitizer failed:', e && e.message ? e.message : e);
+        }
+        return originalSend.call(this, body);
+    };
+    next();
+});
+
 // Carregar configuração segura (moved to top)
 
 // Configuração de sessão segura

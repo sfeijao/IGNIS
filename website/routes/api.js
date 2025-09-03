@@ -723,11 +723,16 @@ router.get('/tickets/stats', requireAuth, ensureDbReady, async (req, res) => {
 });
 
 // Transcript viewer - simple HTML page and JSON data endpoint
+const path = require('path');
+
 router.get('/transcript/:ticketId', requireAuth, ensureDbReady, async (req, res) => {
-    const ticketId = req.params.ticketId;
-    const html = '<!doctype html><html><head><meta charset="utf-8"><title>Transcript #' + ticketId + '</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:Arial,Helvetica,sans-serif;padding:1rem;background:#f6f8fa} .msg{border-bottom:1px solid #ddd;padding:.5rem 0} .user{font-weight:700}</style></head><body><h2>Transcript #' + ticketId + '</h2><div id="messages">Loading...</div><script>async function load(){const r=await fetch("/api/transcript/' + ticketId + '/data");if(!r.ok){document.getElementById("messages").textContent="Failed to load transcript";return;}const data=await r.json();const box=document.getElementById("messages");box.innerHTML="";if(!data.messages||data.messages.length===0){box.textContent="No messages found.";return;}for(const m of data.messages){const el=document.createElement("div");el.className="msg";el.innerHTML="<div class=\"user\">"+(m.username||m.user_id)+" <span style=\"font-weight:400;color:#666\">"+new Date(m.created_at).toLocaleString()+"</span></div><div class=\"content\">"+ (m.message.replace(/</g,'&lt;').replace(/\n/g,'<br>')) +"</div>";box.appendChild(el);} }load();</script></body></html>';
-    res.setHeader('Content-Type', 'text/html');
-    res.send(html);
+    try {
+        // Serve the static transcript page which will fetch /api/transcript/:ticketId/data
+        return res.sendFile(path.join(__dirname, '..', 'public', 'transcript.html'));
+    } catch (err) {
+        logger.error('Erro ao servir transcript page', { error: err && err.message ? err.message : err });
+        return res.status(500).json({ error: 'Erro ao carregar transcript' });
+    }
 });
 
 router.get('/transcript/:ticketId/data', requireAuth, ensureDbReady, async (req, res) => {
@@ -773,8 +778,23 @@ router.get('/tickets/export', requireAuth, requireGuildAdmin, exportLimiter, ens
 
         // Build CSV
         const columns = ['id','channel_id','user_id','title','subject','description','severity','category','status','created_at','closed_at','closed_by','closed_reason'];
-        const escape = v => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"';
+
+        // Sanitize cells to remove unresolved template placeholders and newlines
+        const sanitizeCell = (v) => {
+            if (v === null || v === undefined) return '';
+            let s = String(v);
+            // Remove unresolved template placeholders like ${...} and their common encoded form
+            s = s.replace(/\$\{[^}]*\}/g, '').replace(/%24%7B/gi, '');
+            // Collapse newlines to spaces to keep CSV structure intact
+            s = s.replace(/\r?\n/g, ' ');
+            return s;
+        };
+
+        const escape = (v) => '"' + sanitizeCell(v).replace(/"/g, '""') + '"';
         const csv = [columns.join(',')].concat(rows.map(r => columns.map(c => escape(r[c])).join(','))).join('\n');
+
+        // Prefix BOM so Excel/Windows clients detect UTF-8 correctly
+        const csvContent = '\uFEFF' + csv;
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="tickets-archived-${guildId}.csv"`);
@@ -789,7 +809,7 @@ router.get('/tickets/export', requireAuth, requireGuildAdmin, exportLimiter, ens
             addDebugLog('warn', 'Falha ao registar log de exportação', { error: logErr.message });
         }
 
-        res.send(csv);
+    res.send(csvContent);
     } catch (error) {
         logger.error('Erro ao exportar tickets arquivados', { error: error && error.message ? error.message : error });
         res.status(500).json({ error: 'Erro ao exportar tickets' });

@@ -186,21 +186,31 @@ class YSNMDashboard {
             }
 
             // Parse sanitized HTML in an inert template, sanitize attributes on parsed nodes, then attach
-            const tmp = document.createElement('template');
-            tmp.innerHTML = safeHtml || '';
+            // Parse sanitized HTML into a detached DOM using DOMParser (inert)
+            const parser = new DOMParser();
+            const doc = parser.parseFromString('<div>' + (safeHtml || '') + '</div>', 'text/html');
+            const fragment = document.createDocumentFragment();
+            const container = doc.body.firstElementChild || doc.body;
+
             // Clean attributes on parsed elements before insertion
-            const walkerTmp = document.createTreeWalker(tmp.content, NodeFilter.SHOW_ELEMENT, null, false);
+            const walkerTmp = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT, null, false);
             while (walkerTmp.nextNode()) {
                 const el = walkerTmp.currentNode;
                 [...el.attributes].forEach(attr => {
-                    if (attr.name.startsWith('on')) el.removeAttribute(attr.name);
-                    if (typeof attr.value === 'string' && (attr.value.includes('${') || attr.value.toLowerCase().includes('%24%7b'))) el.removeAttribute(attr.name);
-                    if ((attr.name === 'href' || attr.name === 'src') && attr.value && attr.value.toLowerCase().startsWith('javascript:')) el.removeAttribute(attr.name);
+                    const name = attr.name.toLowerCase();
+                    const val = String(attr.value || '');
+                    if (name.startsWith('on')) el.removeAttribute(attr.name);
+                    if (val.includes('${') || val.toLowerCase().includes('%24%7b')) el.removeAttribute(attr.name);
+                    if ((name === 'href' || name === 'src') && val.toLowerCase().startsWith('javascript:')) el.removeAttribute(attr.name);
                 });
             }
-            // Replace content safely
+
+            // Move cleaned nodes into a DocumentFragment
+            Array.from(container.childNodes).forEach(n => fragment.appendChild(n.cloneNode(true)));
+
+            // Replace content safely (no innerHTML on the live DOM)
             while (previewDesc.firstChild) previewDesc.removeChild(previewDesc.firstChild);
-            previewDesc.appendChild(tmp.content.cloneNode(true));
+            previewDesc.appendChild(fragment);
         
         // Atualizar banner
         const previewBanner = document.getElementById('previewBanner');
