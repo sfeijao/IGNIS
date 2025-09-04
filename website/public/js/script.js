@@ -428,8 +428,9 @@ class YSNMDashboard {
                 this.showSuccessModal();
                 this.resetForm();
             } else {
-                const error = await response.text();
-                this.showNotification('Erro: ' + String(error), 'error');
+                let error = await response.text();
+                error = String(error || '').replace(/\s+/g, ' ').slice(0, 500);
+                this.showNotification('Erro: ' + error, 'error');
             }
         } catch (error) {
             this.showNotification('Erro ao enviar update', 'error');

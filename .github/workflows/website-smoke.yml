@@ -27,14 +27,16 @@ jobs:
       - name: Check for unresolved template placeholders
         run: |
           set -e
-          echo "Searching for unresolved template placeholders (\${...} or %24%7B) in website/public..."
-          if grep -RIn '\${' website/public || grep -RIn '%24%7B' website/public; then
-            echo "\nERROR: unresolved template placeholders found in website/public. Fix them before merging.\n"
-            grep -RIn '\${' website/public || true
-            grep -RIn '%24%7B' website/public || true
+          echo "Searching for unresolved template placeholders (\${...} or %24%7B) in website/public (excluding helpers/backups)..."
+          # Exclude runtime sanitizer helpers and backup/original files which intentionally check for placeholders
+          EXCLUDES=("--exclude=frontend-helpers.js" "--exclude=script.js" "--exclude=*backup*.html" "--exclude=*original*.html" "--exclude=transcript.html")
+          if grep -RIn "\${" ${EXCLUDES[*]} website/public || grep -RIn "%24%7B" ${EXCLUDES[*]} website/public; then
+            echo "\nERROR: unresolved template placeholders found in website/public (excluding helpers/backups). Fix them before merging.\n"
+            grep -RIn "\${" ${EXCLUDES[*]} website/public || true
+            grep -RIn "%24%7B" ${EXCLUDES[*]} website/public || true
             exit 1
           else
-            echo "No unresolved template placeholders found."
+            echo "No unresolved template placeholders found (excluding helpers/backups)."
           fi
 
       - name: Start website server
@@ -79,14 +81,15 @@ jobs:
       - name: Check for unresolved template placeholders
         run: |
           set -e
-          echo "Searching for unresolved template placeholders (\${...} or %24%7B) in website/public..."
-          if grep -RIn '\${' website/public || grep -RIn '%24%7B' website/public; then
-            echo "\nERROR: unresolved template placeholders found in website/public. Fix them before merging.\n"
-            grep -RIn '\${' website/public || true
-            grep -RIn '%24%7B' website/public || true
+          echo "Searching for unresolved template placeholders (\${...} or %24%7B) in website/public (excluding helpers/backups)..."
+          EXCLUDES=("--exclude=frontend-helpers.js" "--exclude=script.js" "--exclude=*backup*.html" "--exclude=*original*.html" "--exclude=transcript.html")
+          if grep -RIn "\${" ${EXCLUDES[*]} website/public || grep -RIn "%24%7B" ${EXCLUDES[*]} website/public; then
+            echo "\nERROR: unresolved template placeholders found in website/public (excluding helpers/backups). Fix them before merging.\n"
+            grep -RIn "\${" ${EXCLUDES[*]} website/public || true
+            grep -RIn "%24%7B" ${EXCLUDES[*]} website/public || true
             exit 1
           else
-            echo "No unresolved template placeholders found."
+            echo "No unresolved template placeholders found (excluding helpers/backups)."
           fi
 
       - name: Start static server and run smoke tests

@@ -1742,8 +1742,9 @@
                         this.showWebhookStatus(webhookUrl ? 'Webhook configurado com sucesso!' : 'Webhook removido com sucesso!', 'success');
                         this.showMessage('Configuração de webhook atualizada', 'success');
                     } else {
-                        const error = await response.text();
-                        this.showWebhookStatus('Erro ao guardar: ' + String(error), 'error');
+                        let error = await response.text();
+                        error = String(error || '').replace(/\s+/g, ' ').slice(0, 500);
+                        this.showWebhookStatus('Erro ao guardar: ' + error, 'error');
                     }
                 } catch (error) {
                     console.error('Erro ao guardar webhook:', error);
@@ -1780,8 +1781,9 @@
                         this.showWebhookStatus('✅ Webhook testado com sucesso! Verifica o Discord.', 'success');
                         this.showMessage('Teste de webhook enviado!', 'success');
                     } else {
-                        const error = await response.text();
-                        this.showWebhookStatus('❌ Erro no teste: ' + String(error), 'error');
+                        let error = await response.text();
+                        error = String(error || '').replace(/\s+/g, ' ').slice(0, 500);
+                        this.showWebhookStatus('❌ Erro no teste: ' + error, 'error');
                     }
                 } catch (error) {
                     console.error('Erro ao testar webhook:', error);

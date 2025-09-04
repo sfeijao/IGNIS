@@ -302,11 +302,26 @@ async function startLogsPolling() {
 function handleIncomingLog(entry) {
     // Basic append to logs area if present
     try {
-    const text = (()=>{ try { const ts = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : new Date().toLocaleString(); return '[' + ts + '] ' + (entry.level || entry.type || 'info') + ': ' + (entry.message || JSON.stringify(entry)); } catch(e){ return JSON.stringify(entry); } })();
+        // Build a safe text summary and truncate very long entries to avoid UI overflow
+        const text = (() => {
+            try {
+                const ts = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : new Date().toLocaleString();
+                const body = entry.message || JSON.stringify(entry);
+                // Normalize whitespace and remove control characters except newline
+                let safeBody = String(body).replace(/\s+/g, ' ').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+                const full = '[' + ts + '] ' + (entry.level || entry.type || 'info') + ': ' + safeBody;
+                // Truncate to 2000 chars to prevent massive blocks in the UI
+                return full.length > 2000 ? full.slice(0, 2000) + '… [truncated]' : full;
+            } catch (e) { return '[log] ' + String(entry).slice(0, 2000); }
+        })();
+
         const appendTo = (id) => {
             const logsContainer = document.getElementById(id);
             if (!logsContainer) return;
-            const div = document.createElement('div'); div.className = 'log-entry'; div.textContent = text;
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            // use textContent to avoid any HTML injection
+            div.textContent = text;
             logsContainer.insertBefore(div, logsContainer.firstChild);
             // Trim to 200 entries
             while (logsContainer.childElementCount > 200) logsContainer.removeChild(logsContainer.lastChild);
