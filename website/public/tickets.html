@@ -192,15 +192,15 @@
 
     async function loadTickets(status = null, q = null, page = 1, severity = null, from = null, to = null) {
             try {
-        let params = [];
-        if (status) params.push(`status=${encodeURIComponent(status)}`);
-        if (q) params.push(`q=${encodeURIComponent(q)}`);
-        if (severity) params.push(`severity=${encodeURIComponent(severity)}`);
-        if (from) params.push(`from=${encodeURIComponent(from)}`);
-        if (to) params.push(`to=${encodeURIComponent(to)}`);
-        params.push(`page=${page}`);
-        params.push(`pageSize=${pageSize}`);
-        const url = '/api/tickets' + (params.length ? `?${params.join('&')}` : '');
+    let params = [];
+    if (status) params.push('status=' + encodeURIComponent(status));
+    if (q) params.push('q=' + encodeURIComponent(q));
+    if (severity) params.push('severity=' + encodeURIComponent(severity));
+    if (from) params.push('from=' + encodeURIComponent(from));
+    if (to) params.push('to=' + encodeURIComponent(to));
+    params.push('page=' + page);
+    params.push('pageSize=' + pageSize);
+    const url = '/api/tickets' + (params.length ? '?' + params.join('&') : '');
         const response = await fetch(url);
                 const data = await response.json();
                 
@@ -301,19 +301,19 @@
 
                 const metaEl = document.createElement('div');
                 metaEl.className = 'ticket-meta';
-                let metaText = `Por ${username} • ${formatDate(created)}`;
-                if (ticket.assigned_name) metaText += ` • Atribuído a ${safeText(ticket.assigned_name)}`;
+                let metaText = 'Por ' + username + ' • ' + formatDate(created);
+                if (ticket.assigned_name) metaText += ' • Atribuído a ' + safeText(ticket.assigned_name);
                 metaEl.textContent = metaText;
 
                 info.appendChild(titleEl);
                 info.appendChild(metaEl);
 
                 const statusEl = document.createElement('div');
-                statusEl.className = `ticket-status status-${sanitizeAttr(status)}`;
+                statusEl.className = 'ticket-status status-' + sanitizeAttr(status);
                 statusEl.textContent = getStatusText(status);
 
                 const prEl = document.createElement('div');
-                prEl.className = `priority-badge priority-${sanitizeAttr(priority)}`;
+                prEl.className = 'priority-badge priority-' + sanitizeAttr(priority);
                 prEl.textContent = getPriorityText(priority);
 
                 item.appendChild(avatarWrap);
@@ -337,7 +337,7 @@
                     btnEl.classList.add('active');
                 } else {
                     // attempt to find button by data-filter
-                    const fallback = document.querySelector(`.filter-btn[data-filter="${filter}"]`);
+                        const fallback = document.querySelector('.filter-btn[data-filter="' + filter + '"]');
                     if (fallback) fallback.classList.add('active');
                 }
             } catch (e) {
@@ -375,7 +375,7 @@
             while (pagination.firstChild) pagination.removeChild(pagination.firstChild);
             const controls = document.createElement('div'); controls.className='pagination-controls';
             const btnPrev = document.createElement('button'); btnPrev.textContent = '← Anterior'; btnPrev.addEventListener('click', () => changePage(Math.max(1, page-1)));
-            const span = document.createElement('span'); span.textContent = ` Página ${page} de ${totalPages} `;
+            const span = document.createElement('span'); span.textContent = ' Página ' + page + ' de ' + totalPages + ' ';
             const btnNext = document.createElement('button'); btnNext.textContent = 'Próxima →'; btnNext.addEventListener('click', () => changePage(Math.min(totalPages, page+1)));
             controls.appendChild(btnPrev); controls.appendChild(span); controls.appendChild(btnNext);
             pagination.appendChild(controls);
@@ -401,11 +401,11 @@
             const to = document.getElementById('ticketToDate')?.value || '';
             const params = [];
             params.push('status=archived');
-            if (q) params.push(`q=${encodeURIComponent(q)}`);
-            if (severity) params.push(`severity=${encodeURIComponent(severity)}`);
-            if (from) params.push(`from=${encodeURIComponent(from)}`);
-            if (to) params.push(`to=${encodeURIComponent(to)}`);
-            const url = '/api/tickets/export' + (params.length ? `?${params.join('&')}` : '');
+            if (q) params.push('q=' + encodeURIComponent(q));
+            if (severity) params.push('severity=' + encodeURIComponent(severity));
+            if (from) params.push('from=' + encodeURIComponent(from));
+            if (to) params.push('to=' + encodeURIComponent(to));
+            const url = '/api/tickets/export' + (params.length ? '?' + params.join('&') : '');
             // trigger download and show toast
             showExportToast('A exportação vai começar — se o navegador bloquear, verifique permissões.');
             window.location.href = url;
@@ -477,7 +477,7 @@
                     loadTickets();
                     loadStats();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + (data.error || 'Erro desconhecido'));
                 }
             } catch (error) {
                 console.debug('Erro ao criar ticket:', error);
@@ -495,7 +495,7 @@
             const st = selectedTicket.status || 'open';
             const pr = selectedTicket.priority || 'normal';
 
-            const titleEl = document.getElementById('ticketTitle'); if (titleEl) titleEl.textContent = `Ticket #${selectedTicket.id || ''} - ${subj}`;
+            const titleEl = document.getElementById('ticketTitle'); if (titleEl) titleEl.textContent = 'Ticket #' + (selectedTicket.id || '') + ' - ' + subj;
             
             const details = document.getElementById('ticketDetails');
             if (details) {
@@ -533,7 +533,7 @@
             if (!selectedTicket) return;
 
             try {
-                const response = await fetch(`/api/tickets/${selectedTicket.id}/assign`, {
+                const response = await fetch('/api/tickets/' + encodeURIComponent(selectedTicket.id) + '/assign', {
                     method: 'POST'
                 });
 
@@ -545,7 +545,7 @@
                     loadTickets();
                     loadStats();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + (data.error || 'Erro desconhecido'));
                 }
             } catch (error) {
                 console.debug('Erro ao atribuir ticket:', error);
@@ -559,7 +559,7 @@
             const reason = prompt('Motivo para fechar o ticket (opcional):');
             
             try {
-                const response = await fetch(`/api/tickets/${selectedTicket.id}/close`, {
+                const response = await fetch('/api/tickets/' + encodeURIComponent(selectedTicket.id) + '/close', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reason })
@@ -573,7 +573,7 @@
                     loadTickets();
                     loadStats();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + (data.error || 'Erro desconhecido'));
                 }
             } catch (error) {
                 console.debug('Erro ao fechar ticket:', error);
@@ -593,8 +593,8 @@
             const diff = now - date;
 
             if (diff < 60000) return 'agora mesmo';
-            if (diff < 3600000) return `${Math.floor(diff / 60000)} min atrás`;
-            if (diff < 86400000) return `${Math.floor(diff / 3600000)}h atrás`;
+            if (diff < 3600000) return Math.floor(diff / 60000) + ' min atrás';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + 'h atrás';
 
             return date.toLocaleDateString('pt-BR');
         }

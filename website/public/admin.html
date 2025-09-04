@@ -530,7 +530,7 @@
                         const colorDiv = document.createElement('div'); colorDiv.style.width = '20px'; colorDiv.style.height = '20px'; colorDiv.style.borderRadius = '50%'; colorDiv.style.background = safeText(role.color || '#ccc');
                         const info = document.createElement('div'); info.className = 'member-info';
                         const name = document.createElement('div'); name.className = 'member-name'; name.textContent = safeText(role.name);
-                        const membersDiv = document.createElement('div'); membersDiv.className = 'member-role'; membersDiv.textContent = `${role.members} membros`;
+                        const membersDiv = document.createElement('div'); membersDiv.className = 'member-role'; membersDiv.textContent = String(role.members) + ' membros';
                         info.appendChild(name); info.appendChild(membersDiv);
                         const btn = document.createElement('button'); btn.className = 'btn btn-danger'; btn.textContent = '🗑️'; btn.addEventListener('click', () => deleteRole(String(role.id)));
                         item.appendChild(colorDiv); item.appendChild(info); item.appendChild(btn);
@@ -552,7 +552,7 @@
                     const logsList = document.getElementById('logsList');
                     if (logsList) { while (logsList.firstChild) logsList.removeChild(logsList.firstChild); }
                     data.logs.forEach(log => {
-                        const item = document.createElement('div'); item.className = `log-item ${sanitizeAttr(log.level)}`;
+                        const item = document.createElement('div'); item.className = 'log-item ' + sanitizeAttr(log.level);
                         const header = document.createElement('div'); header.className = 'log-header';
                         const typeDiv = document.createElement('div'); typeDiv.className = 'log-type'; typeDiv.textContent = safeText(log.type);
                         const timeDiv = document.createElement('div'); timeDiv.className = 'log-time'; timeDiv.textContent = formatDate(log.timestamp);
@@ -637,7 +637,7 @@
             const reason = document.getElementById('actionReason').value;
             
             showConfirmModal(
-                `Executar ${action} em ${selectedMember.username}?`,
+                'Executar ' + action + ' em ' + selectedMember.username + '?',
                 () => performMemberAction(action, selectedMember.id, reason)
             );
         }
@@ -653,7 +653,7 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    showAlert('success', `Ação ${action} executada com sucesso`);
+                    showAlert('success', 'Ação ' + action + ' executada com sucesso');
                     clearMemberAction();
                     loadMembers();
                 } else {
@@ -815,7 +815,7 @@
         function showAlert(type, message) {
             // Create alert element
             const alert = document.createElement('div');
-            alert.className = `alert alert-${type}`;
+            alert.className = 'alert alert-' + type;
             alert.textContent = message;
             
             // Insert at top of container

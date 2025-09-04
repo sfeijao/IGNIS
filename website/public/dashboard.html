@@ -32,6 +32,8 @@
                         <i class="fas fa-sign-out-alt"></i>
                         <span>Sair</span>
                     </button>
+                    <!-- build badge to verify updated frontend loaded -->
+                    <div id="ysnm-build-badge" style="display:inline-flex;align-items:center;margin-left:8px;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.03);color:#cbd5e1;font-size:12px;">build: <span id="ysnm-build-ts" style="margin-left:6px;font-weight:700"></span></div>
                 </div>
             </div>
         </header>
@@ -562,9 +564,129 @@
     </div>
 
     <script>
-        class YSNMDashboard {
-            constructor() {
-                this.currentSection = 'overview';
+        // Lightweight compatibility shim: inject server selector, robust logout, and stats updater
+        (function(){
+            function getAuthToken() {
+                const cookieToken = document.cookie.split('; ').find(r => r.startsWith('authToken='))?.split('=')[1];
+                if (cookieToken) return cookieToken;
+                const localToken = localStorage.getItem('authToken'); if (localToken) return localToken;
+                return '';
+            }
+
+            async function authFetch(url, opts = {}) {
+                opts.headers = opts.headers || {};
+                const t = getAuthToken();
+                if (t) opts.headers['Authorization'] = 'Bearer ' + t;
+                opts.credentials = opts.credentials || 'include';
+                return fetch(url, opts);
+            }
+
+            function createServerSelector() {
+                const headerActions = document.querySelector('.header-actions') || document.querySelector('.navbar-user') || document.body;
+                if (!headerActions) return;
+                // avoid duplicate
+                if (document.getElementById('serverSelectMini')) return;
+
+                const wrapper = document.createElement('div'); wrapper.style.display = 'inline-flex'; wrapper.style.alignItems = 'center'; wrapper.style.gap = '8px'; wrapper.style.marginRight = '8px';
+                const sel = document.createElement('select'); sel.id = 'serverSelectMini'; sel.className = 'btn'; sel.style.padding = '6px 10px'; sel.style.borderRadius = '8px'; sel.style.background = 'rgba(255,255,255,0.04)'; sel.style.color = 'white'; sel.style.border = '1px solid rgba(255,255,255,0.04)'; sel.title = 'Selecionar servidor para gerir';
+                const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = 'Escolher servidor...'; sel.appendChild(placeholder);
+                wrapper.appendChild(sel);
+                headerActions.insertBefore(wrapper, headerActions.firstChild);
+
+                sel.addEventListener('change', async (e) => {
+                    const gid = e.target.value;
+                    if (!gid) return;
+                    try {
+                        await authFetch('/api/session/server', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ guildId: gid }) });
+                    } catch(_){}
+                    await refreshStatsFor(gid);
+                });
+
+                return sel;
+            }
+
+            async function loadGuildsInto(sel) {
+                try {
+                    const resp = await authFetch('/api/guilds');
+                    if (!resp) return;
+                    if (resp.status === 302 || resp.status === 401) return; // not authenticated
+                    const j = await resp.json();
+                    const list = j.guilds || j || [];
+                    if (!Array.isArray(list)) return;
+                    // clear
+                    while (sel.firstChild) sel.removeChild(sel.firstChild);
+                    const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = 'Escolher servidor...'; sel.appendChild(placeholder);
+                    list.forEach(g => {
+                        const o = document.createElement('option'); o.value = g.id; o.textContent = (g.name || g.id) + (g.memberCount ? (' ('+g.memberCount+')') : ''); sel.appendChild(o);
+                    });
+                    // auto-select stored
+                    const stored = localStorage.getItem('currentServerId'); if (stored) { sel.value = stored; setTimeout(()=>refreshStatsFor(stored),100); }
+                    // auto-select first if none chosen
+                    if (!sel.value && list[0] && list[0].id) { sel.value = list[0].id; localStorage.setItem('currentServerId', list[0].id); setTimeout(()=>refreshStatsFor(list[0].id),100); }
+                } catch (e) {
+                    console.debug('Failed loading guilds', e);
+                }
+            }
+
+            async function refreshStatsFor(gid) {
+                if (!gid) return;
+                try {
+                    const resp = await authFetch('/api/server/'+encodeURIComponent(gid)+'/stats');
+                    if (!resp || !resp.ok) return;
+                    const j = await resp.json();
+                    if (j && j.success && j.stats) {
+                        const s = j.stats;
+                        const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+                        setText('memberCount', s.server?.memberCount || s.server?.members || 'N/A');
+                        setText('channelCount', s.channels?.total ?? s.channels ?? 'N/A');
+                        setText('roleCount', s.roles?.total ?? s.roles ?? 'N/A');
+                        setText('messageCount', s.messages?.estimated ?? s.messages ?? 'N/A');
+                        localStorage.setItem('currentServerId', gid);
+                    }
+                } catch (e) { console.debug('refreshStatsFor error', e); }
+            }
+
+            // Ensure logout calls server and fully clears data
+            function wireLogout() {
+                const btn = document.getElementById('logoutBtn');
+                if (!btn) return;
+                btn.removeEventListener && btn.removeEventListener('click', ()=>{});
+                btn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    if (!confirm('Tem certeza que deseja terminar a sessão?')) return;
+                    try { await fetch('/logout', { method: 'GET', credentials: 'include' }); } catch(e){}
+                    try { localStorage.clear(); sessionStorage.clear(); } catch(e){}
+                    // clear common cookie names
+                    ['authToken','token','auth_token'].forEach(n => { document.cookie = n + '=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'; });
+                    window.location.replace('/login');
+                });
+            }
+
+            // Try to make nav items clickable if some overlay blocks them
+            function ensureClickable() {
+                const nav = document.querySelector('.nav-menu'); if (nav) { nav.style.pointerEvents = 'auto'; }
+                document.querySelectorAll('a,button,select,input,textarea').forEach(el => { el.style.pointerEvents = 'auto'; });
+            }
+
+            // Initialize
+            document.addEventListener('DOMContentLoaded', async () => {
+                // Build timestamp marker (helps verify cached pages)
+                try { const b = document.getElementById('ysnm-build-ts'); if (b) b.textContent = new Date().toISOString(); } catch(e){}
+
+                // Force enable pointer events for body and children in case an overlay is blocking interactions
+                try { document.body.style.pointerEvents = 'auto'; document.querySelectorAll('body *').forEach(el=>{ if (el && el.style) el.style.pointerEvents = el.style.pointerEvents || 'auto'; }); } catch(e){}
+
+                // Hide non-active overlays/modals that may be invisibly blocking clicks
+                try { document.querySelectorAll('.loading-overlay, .modal, .overlay, .site-overlay').forEach(o=>{ if (!o.classList.contains('active')) { o.classList.add('hidden'); o.style.display='none'; o.style.pointerEvents='none'; } }); } catch(e){}
+
+                ensureClickable(); wireLogout();
+                const sel = createServerSelector(); if (sel) await loadGuildsInto(sel);
+            });
+        })();
+    </script>
+
+    <script src="/js/toast-fallback.js"></script>
+    <script src="/js/event-fallback.js"></script>
                 this.init();
             }
 
@@ -583,20 +705,15 @@
                 // avoid logging tokens; only show presence
                 if (window.DEBUG_UI) console.log('Auth token present:', !!token);
                 
-                // For local development, set a dev token
-                if (!token && (window.location.protocol === 'file:' || 
-                              window.location.hostname === 'localhost' || 
-                              window.location.hostname === '127.0.0.1')) {
-                    localStorage.setItem('authToken', 'dev-token');
-                    console.log('Set development token for local access');
-                }
+                // For local development, do not auto-set tokens; only show a debug hint
+                if (!token && window.DEBUG_UI) console.log('No auth token present (dev)');
                 
                 // Test authentication with server
                 try {
                     const response = await fetch('/api/test-auth', {
                         method: 'GET',
                         headers: {
-                            'Authorization': `Bearer ${getAuthToken()}`
+                            'Authorization': 'Bearer ' + (getAuthToken() || '')
                         }
                     });
                     
@@ -611,23 +728,14 @@
                         // Special handling for production (Railway)
                         if (window.location.hostname.includes('railway.app')) {
                             if (window.DEBUG_UI) console.log('🚂 Production environment detected - trying alternative auth');
-                            
-                            // Show authentication options for production
-                            this.showMessage(`
-                                <strong>Autenticação necessária para Railway</strong><br>
-                                Status: ${response.status}<br>
-                                <button onclick="promptForToken()" class="btn btn-primary btn-sm mt-2">
-                                    Inserir Token de Acesso
-                                </button>
-                                <button onclick="redirectToOAuth()" class="btn btn-secondary btn-sm mt-2 ml-2">
-                                    Login via Discord
-                                </button>
-                            `, 'warning');
-                            
+                            // Keep UI message simple and avoid inserting HTML into the page
+                            this.showMessage('Autenticação necessária no ambiente de produção. Faz login via Discord ou insere um token nas configurações.', 'warning');
+                            if (window.DEBUG_UI) console.log('Production auth failure status:', response.status);
                             return false;
                         }
-                        
-                        this.showMessage('Problema de autenticação. Configure um token válido.', 'error');
+
+                        // Generic auth failure
+                        this.showMessage('Autenticação falhou. Verifica o token nas configurações ou inicia sessão via Discord.', 'error');
                         return false;
                     }
                 } catch (error) {
@@ -753,11 +861,11 @@
                 });
 
                 // Show selected section
-                const targetSection = document.getElementById(`${sectionName}-section`);
+                const targetSection = document.getElementById(sectionName + '-section');
                 if (targetSection) {
                     targetSection.classList.add('active');
                     this.currentSection = sectionName;
-                    if (window.DEBUG_UI) console.log(`Showing section: ${sectionName}`);
+                    if (window.DEBUG_UI) console.log('Showing section: ' + sectionName);
                 }
             }
 
@@ -798,18 +906,16 @@
 
                 // Create message element
                 const messageEl = document.createElement('div');
-                messageEl.className = `alert alert-${type}`;
-                messageEl.style.cssText = `
-                    background: ${type === 'success' ? '#10B981' : 
-                                  type === 'error' ? '#EF4444' : 
-                                  type === 'warning' ? '#F59E0B' : '#3B82F6'};
-                    color: white;
-                    padding: 12px 16px;
-                    border-radius: 8px;
-                    margin-bottom: 10px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-                    animation: slideIn 0.3s ease-out;
-                `;
+                messageEl.className = 'alert alert-' + type;
+                // Build background color safely (avoid leaving raw template placeholder text in the HTML)
+                var bgColor = (type === 'success') ? '#10B981' : (type === 'error') ? '#EF4444' : (type === 'warning') ? '#F59E0B' : '#3B82F6';
+                messageEl.style.cssText = 'background: ' + bgColor + ';'
+                    + ' color: white;'
+                    + ' padding: 12px 16px;'
+                    + ' border-radius: 8px;'
+                    + ' margin-bottom: 10px;'
+                    + ' box-shadow: 0 4px 12px rgba(0,0,0,0.2);'
+                    + ' animation: slideIn 0.3s ease-out;';
                 
                 // Build content safely to avoid inserting raw HTML
                 const sanitize = (s) => {
@@ -906,7 +1012,7 @@
                 severityDefs.forEach(([key,emoji,label], idx) => {
                     const opt = document.createElement('div'); opt.className = 'severity-option'; opt.dataset.severity = key;
                     if (key === 'medium') opt.classList.add('selected');
-                    const icon = document.createElement('span'); icon.className = `severity-icon severity-${key}`; icon.textContent = emoji;
+                    const icon = document.createElement('span'); icon.className = 'severity-icon severity-' + key; icon.textContent = emoji;
                     const lbl = document.createElement('span'); lbl.textContent = label;
                     opt.appendChild(icon); opt.appendChild(lbl);
                     sevWrap.appendChild(opt);
@@ -977,9 +1083,9 @@
 
             async searchUsers(query, resultsContainer) {
                 try {
-                    const response = await fetch(`/api/admin/members?search=${encodeURIComponent(query)}`, {
+                    const response = await fetch('/api/admin/members?search=' + encodeURIComponent(query), {
                         headers: {
-                            'Authorization': `Bearer ${getAuthToken()}`
+                            'Authorization': 'Bearer ' + (getAuthToken() || '')
                         }
                     });
 
@@ -1036,7 +1142,7 @@
 
                     item.addEventListener('click', () => {
                         const userInput = document.querySelector('#ticket-user');
-                        if (userInput) userInput.value = `${user.username || ''} (${user.id || ''})`;
+                        if (userInput) userInput.value = (user.username || '') + ' (' + (user.id || '') + ')';
                         container.classList.add('hidden');
                     });
 
@@ -1083,7 +1189,7 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${getAuthToken()}`
+                            'Authorization': 'Bearer ' + (getAuthToken() || '')
                         },
                         body: JSON.stringify(ticketData)
                     });
@@ -1101,7 +1207,7 @@
                             error: error,
                             ticketData: ticketData
                         });
-                        this.showMessage(`Erro ao criar ticket: ${error.error || 'Erro desconhecido'}`, 'error');
+                        this.showMessage('Erro ao criar ticket: ' + (error.error || 'Erro desconhecido'), 'error');
                     }
                 } catch (error) {
                     console.error('Error creating ticket:', error);
@@ -1262,8 +1368,8 @@
             }
 
             setupUserSearch(modal, inputId, resultsId) {
-                const userInput = modal.querySelector(`#${inputId}`);
-                const searchResults = modal.querySelector(`#${resultsId}`);
+                const userInput = modal.querySelector('#' + inputId);
+                const searchResults = modal.querySelector('#' + resultsId);
                 
                 userInput.addEventListener('input', async (e) => {
                     const query = e.target.value.trim();
@@ -1304,11 +1410,11 @@
                 }
 
                 try {
-                    const response = await fetch(`/api/tickets/${ticketId}/add-user`, {
+                    const response = await fetch('/api/tickets/' + encodeURIComponent(ticketId) + '/add-user', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${getAuthToken()}`
+                            'Authorization': 'Bearer ' + (getAuthToken() || '')
                         },
                         body: JSON.stringify({ userId: userId })
                     });
@@ -1318,7 +1424,7 @@
                         document.body.removeChild(modal);
                     } else {
                         const error = await response.json();
-                        this.showMessage(`Erro: ${error.error}`, 'error');
+                        this.showMessage('Erro: ' + (error.error || ''), 'error');
                     }
                 } catch (error) {
                     console.error('Error adding user to ticket:', error);
@@ -1355,11 +1461,11 @@
                 }
 
                 try {
-                    const response = await fetch(`/api/tickets/${ticketId}/remove-user`, {
+                    const response = await fetch('/api/tickets/' + encodeURIComponent(ticketId) + '/remove-user', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${getAuthToken()}`
+                            'Authorization': 'Bearer ' + (getAuthToken() || '')
                         },
                         body: JSON.stringify({ userId: userId })
                     });
@@ -1369,7 +1475,7 @@
                         document.body.removeChild(modal);
                     } else {
                         const error = await response.json();
-                        this.showMessage(`Erro: ${error.error}`, 'error');
+                        this.showMessage('Erro: ' + (error.error || ''), 'error');
                     }
                 } catch (error) {
                     console.error('Error removing user from ticket:', error);
@@ -1400,22 +1506,22 @@
                 const severity = selectedSeverity.dataset.severity;
 
                 try {
-                    const response = await fetch(`/api/tickets/${ticketId}/severity`, {
+                    const response = await fetch('/api/tickets/' + encodeURIComponent(ticketId) + '/severity', {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${getAuthToken()}`
+                            'Authorization': 'Bearer ' + (getAuthToken() || '')
                         },
                         body: JSON.stringify({ severity: severity })
                     });
 
                     if (response.ok) {
-                        this.showMessage('Gravidade do ticket atualizada!', 'success');
-                        document.body.removeChild(modal);
-                    } else {
-                        const error = await response.json();
-                        this.showMessage(`Erro: ${error.error}`, 'error');
-                    }
+                            this.showMessage('Gravidade do ticket atualizada!', 'success');
+                            document.body.removeChild(modal);
+                        } else {
+                            const error = await response.json();
+                            this.showMessage('Erro: ' + (error.error || ''), 'error');
+                        }
                 } catch (error) {
                     console.error('Error updating ticket severity:', error);
                     this.showMessage('Erro ao atualizar gravidade', 'error');
@@ -1437,10 +1543,10 @@
                 }
 
                 try {
-                    const response = await fetch(`/api/tickets/${ticketId}`, {
+                    const response = await fetch('/api/tickets/' + encodeURIComponent(ticketId), {
                         method: 'DELETE',
                         headers: {
-                            'Authorization': `Bearer ${getAuthToken()}`
+                            'Authorization': 'Bearer ' + (getAuthToken() || '')
                         }
                     });
 
@@ -1450,7 +1556,7 @@
                         this.refreshTickets();
                     } else {
                         const error = await response.json();
-                        this.showMessage(`Erro: ${error.error}`, 'error');
+                        this.showMessage('Erro: ' + (error.error || ''), 'error');
                     }
                 } catch (error) {
                     console.error('Error deleting ticket:', error);
@@ -1461,10 +1567,10 @@
             async refreshTickets() {
                 try {
                     const response = await fetch('/api/tickets', {
-                        headers: {
-                            'Authorization': `Bearer ${getAuthToken()}`
-                        }
-                    });
+                            headers: {
+                                'Authorization': 'Bearer ' + (getAuthToken() || '')
+                            }
+                        });
 
                     if (response.ok) {
                         const data = await response.json();
@@ -1538,7 +1644,7 @@
 
                     const title = document.createElement('span');
                     title.className = 'ticket-title';
-                    const titleText = `${severityEmoji[ticket.severity] || '🟡'} ${ticket.title || ''}`;
+                    const titleText = (severityEmoji[ticket.severity] || '🟡') + ' ' + (ticket.title || '');
                     title.textContent = titleText;
 
                     const status = document.createElement('span');
@@ -1587,10 +1693,10 @@
             async loadWebhookConfig() {
                 try {
                     const response = await fetch('/api/config/archive-webhook', {
-                        headers: {
-                            'Authorization': `Bearer ${getAuthToken()}`
-                        }
-                    });
+                            headers: {
+                                'Authorization': 'Bearer ' + (getAuthToken() || '')
+                            }
+                        });
 
                     if (response.ok) {
                         const data = await response.json();
@@ -1627,7 +1733,7 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${getAuthToken()}`
+                            'Authorization': 'Bearer ' + (getAuthToken() || '')
                         },
                         body: JSON.stringify({ webhookUrl })
                     });
@@ -1637,7 +1743,7 @@
                         this.showMessage('Configuração de webhook atualizada', 'success');
                     } else {
                         const error = await response.text();
-                        this.showWebhookStatus(`Erro ao guardar: ${error}`, 'error');
+                        this.showWebhookStatus('Erro ao guardar: ' + String(error), 'error');
                     }
                 } catch (error) {
                     console.error('Erro ao guardar webhook:', error);
@@ -1665,7 +1771,7 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${getAuthToken()}`
+                            'Authorization': 'Bearer ' + (getAuthToken() || '')
                         },
                         body: JSON.stringify({ webhookUrl })
                     });
@@ -1675,7 +1781,7 @@
                         this.showMessage('Teste de webhook enviado!', 'success');
                     } else {
                         const error = await response.text();
-                        this.showWebhookStatus(`❌ Erro no teste: ${error}`, 'error');
+                        this.showWebhookStatus('❌ Erro no teste: ' + String(error), 'error');
                     }
                 } catch (error) {
                     console.error('Erro ao testar webhook:', error);
@@ -1687,7 +1793,7 @@
                 const statusDiv = document.getElementById('webhook-status');
                 if (!statusDiv) return;
 
-                statusDiv.className = `webhook-status ${type}`;
+                statusDiv.className = 'webhook-status ' + type;
                 statusDiv.textContent = message;
                 statusDiv.classList.remove('hidden');
 
@@ -1702,7 +1808,7 @@
             // Multi-webhook helpers
             async loadWebhooks() {
                 try {
-                    const res = await fetch('/api/config/webhooks', { headers: { 'Authorization': `Bearer ${getAuthToken()}` } });
+                    const res = await fetch('/api/config/webhooks', { headers: { 'Authorization': 'Bearer ' + (getAuthToken() || '') } });
                     const data = await res.json();
                     if (data && data.webhooks) this.renderWebhooksList(data.webhooks);
                 } catch (e) {
@@ -1762,7 +1868,7 @@
                     const id = e.currentTarget.dataset.id;
                     e.currentTarget.disabled = true;
                     try {
-                        const res = await fetch(`/api/config/webhooks/${id}/test`, { method: 'POST', headers: { 'Authorization': `Bearer ${getAuthToken()}` } });
+                        const res = await fetch('/api/config/webhooks/' + encodeURIComponent(id) + '/test', { method: 'POST', headers: { 'Authorization': 'Bearer ' + (getAuthToken() || '') } });
                         const data = await res.json();
                         if (data && data.success) this.showMessage(data.message || 'Teste OK', 'success');
                         else this.showMessage(data.error || 'Teste falhou', 'error');
@@ -1775,7 +1881,7 @@
                     const id = e.currentTarget.dataset.id;
                     if (!confirm('Remover este webhook?')) return;
                     try {
-                        const res = await fetch(`/api/config/webhooks/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${getAuthToken()}` } });
+                        const res = await fetch('/api/config/webhooks/' + encodeURIComponent(id), { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + (getAuthToken() || '') } });
                         const data = await res.json();
                         if (data && data.success) {
                             this.showMessage('Webhook removido', 'success');
@@ -1794,7 +1900,7 @@
                     const newName = prompt('Novo nome para o webhook (deixe vazio para remover):');
                     if (newName === null) return; // cancelled
                     try {
-                        const res = await fetch(`/api/config/webhooks/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` }, body: JSON.stringify({ name: newName }) });
+                        const res = await fetch('/api/config/webhooks/' + encodeURIComponent(id), { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (getAuthToken() || '') }, body: JSON.stringify({ name: newName }) });
                         const data = await res.json();
                         if (data && data.success) {
                             this.loadWebhooks();
@@ -1812,7 +1918,7 @@
                 const name = document.getElementById('new-webhook-name')?.value?.trim();
                 if (!url) return this.showMessage('URL é obrigatória', 'warning');
                 try {
-                    const res = await fetch('/api/config/webhooks', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` }, body: JSON.stringify({ url, name }) });
+                    const res = await fetch('/api/config/webhooks', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (getAuthToken() || '') }, body: JSON.stringify({ url, name }) });
                     const data = await res.json();
                     if (data && data.success) {
                         this.showMessage('Webhook adicionado', 'success');
@@ -1924,27 +2030,26 @@
             }
             
             // Execute moderation action via API
-            fetch('/api/admin/members/action', {
+                fetch('/api/admin/members/action', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${getAuthToken()}`
+                    'Authorization': 'Bearer ' + (getAuthToken() || '')
                 },
                 body: JSON.stringify(requestData)
             })
             .then(async response => {
                 const data = await response.json();
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${data.error || 'Erro no servidor'}`);
+                    throw new Error('HTTP ' + response.status + ': ' + (data.error || 'Erro no servidor'));
                 }
                 return data;
             })
             .then(data => {
                 if (data.success) {
-                    const message = data.note ? 
-                        `✅ ${data.message}\n⚠️ ${data.note}\nUtilizador: ${user}\nMotivo: ${requestData.reason}` :
-                        `✅ ${data.message}\nUtilizador: ${user}\nMotivo: ${requestData.reason}`;
-                    
+                    var message = '✅ ' + (data.message || '') + '\n';
+                    if (data.note) message += '⚠️ ' + data.note + '\n';
+                    message += 'Utilizador: ' + user + '\nMotivo: ' + (requestData.reason || '');
                     alert(message);
                     hideModerationAction();
                     
@@ -1958,7 +2063,7 @@
                     // Add to recent activity or refresh logs
                     addModerationLog(action, user, requestData.reason);
                 } else {
-                    alert(`❌ Erro: ${data.error || 'Falha ao executar ação'}`);
+                    alert('❌ Erro: ' + (data.error || 'Falha ao executar ação'));
                 }
             })
             .catch(error => {
@@ -1975,8 +2080,8 @@
                     errorMessage = '❌ Erro: Dados inválidos fornecidos.';
                 }
                 
-                alert(`${errorMessage}\n\nDetalhes técnicos: ${error.message}`);
-                addModerationLog('error', user, `Falha na ação: ${error.message}`);
+                alert(errorMessage + '\n\nDetalhes técnicos: ' + (error.message || ''));
+                addModerationLog('error', user, 'Falha na ação: ' + (error.message || ''));
             })
             .finally(() => {
                 // Reset button state
@@ -2053,10 +2158,10 @@
                 newLog.className = logClass;
                 const time = document.createElement('span');
                 time.className = 'log-time';
-                time.textContent = `[${currentTime}]`;
+                time.textContent = '[' + currentTime + ']';
                 const msg = document.createElement('span');
                 msg.className = 'log-message';
-                msg.textContent = `${icon} ${actionNames[action] || action} - ${user}: ${reason}`;
+                msg.textContent = icon + ' ' + (actionNames[action] || action) + ' - ' + user + ': ' + reason;
                 newLog.appendChild(time);
                 newLog.appendChild(msg);
                 container.insertBefore(newLog, container.firstChild);
@@ -2112,7 +2217,7 @@
             
             const newLog = document.createElement('div');
             newLog.className = 'log-entry info';
-            const time = document.createElement('span'); time.className = 'log-time'; time.textContent = `[${currentTime}]`;
+            const time = document.createElement('span'); time.className = 'log-time'; time.textContent = '[' + currentTime + ']';
             const msg = document.createElement('span'); msg.className = 'log-message'; msg.textContent = 'Logs atualizados pelo utilizador';
             newLog.appendChild(time);
             newLog.appendChild(msg);
@@ -2131,7 +2236,7 @@
                 while (container.firstChild) container.removeChild(container.firstChild);
                 const newLog = document.createElement('div');
                 newLog.className = 'log-entry info';
-                const time = document.createElement('span'); time.className = 'log-time'; time.textContent = `[${currentTime}]`;
+                const time = document.createElement('span'); time.className = 'log-time'; time.textContent = '[' + currentTime + ']';
                 const msg = document.createElement('span'); msg.className = 'log-message'; msg.textContent = 'Logs limpos pelo utilizador';
                 newLog.appendChild(time);
                 newLog.appendChild(msg);

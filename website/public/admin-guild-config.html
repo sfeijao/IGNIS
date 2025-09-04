@@ -50,7 +50,7 @@
 
     async function api(path, method='GET', body=null) {
       const guildId = document.getElementById('guildId').value;
-      const url = '/api' + path.replace(':guildId', guildId);
+  const url = '/api' + path.replace(':guildId', encodeURIComponent(guildId));
       const opts = { method, headers: {} };
       if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
       const res = await fetch(url, opts);
@@ -84,7 +84,7 @@
           document.getElementById('verifyRole').value = data.config.verify_role_id || '';
           // Show session guild info if available
           try{
-            const s = await fetch('/api/session/server'); const sj = await s.json(); if (sj.guild) document.getElementById('sessionInfo').textContent = `Session guild: ${sj.guild.name} (${sj.guild.id})`;
+            const s = await fetch('/api/session/server'); const sj = await s.json(); if (sj.guild) document.getElementById('sessionInfo').textContent = 'Session guild: ' + sj.guild.name + ' (' + sj.guild.id + ')';
           }catch(e){}
           status.textContent = 'Loaded';
         } else {
@@ -117,15 +117,15 @@
       const ul = document.getElementById('logList'); if (ul) { while(ul.firstChild) ul.removeChild(ul.firstChild); const liLoad = document.createElement('li'); liLoad.textContent = 'Loading...'; ul.appendChild(liLoad);} 
       try{
         const limit = 10;
-        const j = await api(`/admin/logs?limit=${limit}&page=${page}`);
+  const j = await api('/admin/logs?limit=' + encodeURIComponent(limit) + '&page=' + encodeURIComponent(page));
   while(ul.firstChild) ul.removeChild(ul.firstChild);
         if (j.logs && j.logs.length) {
-          j.logs.forEach(l=>{ const li = document.createElement('li'); li.textContent = `${l.timestamp} [${l.type}] ${l.message}`; ul.appendChild(li); });
+          j.logs.forEach(l=>{ const li = document.createElement('li'); li.textContent = String(l.timestamp) + ' [' + String(l.type) + '] ' + String(l.message); ul.appendChild(li); });
         } else ul.textContent = 'No logs';
 
         currentPage = (j.pagination && j.pagination.page) || page;
         const pages = (j.pagination && j.pagination.pages) || 1;
-        pageInfo.textContent = `Page ${currentPage} / ${pages}`;
+  pageInfo.textContent = 'Page ' + currentPage + ' / ' + pages;
         document.getElementById('prevPage').disabled = currentPage <= 1;
         document.getElementById('nextPage').disabled = currentPage >= pages;
       }catch(e){ ul.textContent = e && e.message ? e.message : JSON.stringify(e) }

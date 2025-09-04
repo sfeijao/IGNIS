@@ -10,7 +10,7 @@ async function authenticatedFetch(url, options = {}) {
     if (token) {
         options.headers = {
             ...options.headers,
-            'Authorization': `Bearer ${token}`
+            'Authorization': 'Bearer ' + token
         };
     }
     
@@ -98,13 +98,13 @@ async function loadChannels() {
             Object.keys(groupedChannels).sort().forEach(category => {
                 if (category !== 'Sem Categoria') {
                     const optgroup = document.createElement('optgroup');
-                    optgroup.label = `📁 ${category}`;
+                    optgroup.label = '📁 ' + category;
                     channelSelect.appendChild(optgroup);
                     
                     groupedChannels[category].forEach(channel => {
                         const option = document.createElement('option');
                         option.value = channel.id;
-                        option.textContent = `# ${channel.name}`;
+                        option.textContent = '# ' + channel.name;
                         optgroup.appendChild(option);
                     });
                 }
@@ -119,7 +119,7 @@ async function loadChannels() {
                 groupedChannels['Sem Categoria'].forEach(channel => {
                     const option = document.createElement('option');
                     option.value = channel.id;
-                    option.textContent = `# ${channel.name}`;
+                    option.textContent = '# ' + channel.name;
                     optgroup.appendChild(option);
                 });
             }
@@ -229,7 +229,7 @@ async function loadServerStats() {
     if (!serverId) return;
 
     try {
-        const resp = await authenticatedFetch(`/api/server/${encodeURIComponent(serverId)}/stats`);
+    const resp = await authenticatedFetch('/api/server/' + encodeURIComponent(serverId) + '/stats');
         if (!resp) return;
         if (resp.ok) {
             const j = await resp.json();
@@ -302,7 +302,7 @@ async function startLogsPolling() {
 function handleIncomingLog(entry) {
     // Basic append to logs area if present
     try {
-        const text = (()=>{ try { const ts = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : new Date().toLocaleString(); return `[${ts}] ${entry.level || entry.type || 'info'}: ${entry.message || JSON.stringify(entry)}`; } catch(e){ return JSON.stringify(entry); } })();
+    const text = (()=>{ try { const ts = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : new Date().toLocaleString(); return '[' + ts + '] ' + (entry.level || entry.type || 'info') + ': ' + (entry.message || JSON.stringify(entry)); } catch(e){ return JSON.stringify(entry); } })();
         const appendTo = (id) => {
             const logsContainer = document.getElementById(id);
             if (!logsContainer) return;
@@ -398,18 +398,18 @@ function initializeQuill() {
 
     // Sincronizar conteúdo do editor com input hidden (sanitize HTML)
     quill.on('text-change', function() {
-        let content = quill.root.innerHTML;
         try {
+            const raw = (quill && quill.root && quill.root.innerHTML) ? quill.root.innerHTML : '';
+            let content = '';
             if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
-                content = window.DOMPurify.sanitize(content, {ALLOWED_TAGS: ['b','i','u','strong','em','a','p','br','ul','ol','li','code','pre']});
+                content = window.DOMPurify.sanitize(raw, {ALLOWED_TAGS: ['b','i','u','strong','em','a','p','br','ul','ol','li','code','pre']});
             } else {
-                // fallback: strip dangerous tags but keep text
-                content = stripHtml(content);
+                content = stripHtml(raw);
             }
+            const descEl = document.getElementById('description'); if (descEl) descEl.value = content;
         } catch(e) {
-            content = stripHtml(content);
+            const descEl = document.getElementById('description'); if (descEl) descEl.value = '';
         }
-        const descEl = document.getElementById('description'); if (descEl) descEl.value = content;
         updatePreview();
     });
 }
@@ -471,20 +471,20 @@ function addField() {
 
     const g1 = document.createElement('div'); g1.className = 'form-group';
     const l1 = document.createElement('label'); l1.textContent = 'Nome do Campo';
-    const in1 = document.createElement('input'); in1.type = 'text'; in1.name = `fieldName${fieldsCount}`; in1.placeholder = '📋 Novidades'; in1.maxLength = 256;
+    const in1 = document.createElement('input'); in1.type = 'text'; in1.name = 'fieldName' + fieldsCount; in1.placeholder = '📋 Novidades'; in1.maxLength = 256;
     in1.addEventListener('change', updatePreview);
     g1.appendChild(l1); g1.appendChild(in1);
 
     const g2 = document.createElement('div'); g2.className = 'form-group';
     const l2 = document.createElement('label'); l2.textContent = 'Valor do Campo';
-    const in2 = document.createElement('input'); in2.type = 'text'; in2.name = `fieldValue${fieldsCount}`; in2.placeholder = '• Funcionalidade X adicionada\n• Bug Y corrigido';
+    const in2 = document.createElement('input'); in2.type = 'text'; in2.name = 'fieldValue' + fieldsCount; in2.placeholder = '• Funcionalidade X adicionada\n• Bug Y corrigido';
     in2.addEventListener('change', updatePreview);
     g2.appendChild(l2); g2.appendChild(in2);
 
     const checkboxContainer = document.createElement('div'); checkboxContainer.className = 'checkbox-container';
-    const inlineInput = document.createElement('input'); inlineInput.type = 'checkbox'; inlineInput.id = `fieldInline${fieldsCount}`; inlineInput.name = `fieldInline${fieldsCount}`;
+    const inlineInput = document.createElement('input'); inlineInput.type = 'checkbox'; inlineInput.id = 'fieldInline' + fieldsCount; inlineInput.name = 'fieldInline' + fieldsCount;
     inlineInput.addEventListener('change', updatePreview);
-    const inlineLabel = document.createElement('label'); inlineLabel.setAttribute('for', `fieldInline${fieldsCount}`); inlineLabel.textContent = 'Inline';
+    const inlineLabel = document.createElement('label'); inlineLabel.setAttribute('for', 'fieldInline' + fieldsCount); inlineLabel.textContent = 'Inline';
     checkboxContainer.appendChild(inlineInput); checkboxContainer.appendChild(inlineLabel);
 
     row.appendChild(g1); row.appendChild(g2); row.appendChild(checkboxContainer);
@@ -495,7 +495,7 @@ function addField() {
 
 // Remover campo
 function removeField(fieldId) {
-    const field = document.querySelector(`[data-field-id="${fieldId}"]`);
+    const field = document.querySelector('[data-field-id="' + fieldId + '"]');
     if (field) {
         field.remove();
         updatePreview();
@@ -612,9 +612,9 @@ function getFormData() {
     
     // Campos personalizados
     for (let i = 1; i <= fieldsCount; i++) {
-        const nameInput = document.querySelector(`input[name="fieldName${i}"]`);
-        const valueInput = document.querySelector(`input[name="fieldValue${i}"]`);
-        const inlineInput = document.querySelector(`input[name="fieldInline${i}"]`);
+        const nameInput = document.querySelector('input[name="fieldName' + i + '"]');
+        const valueInput = document.querySelector('input[name="fieldValue' + i + '"]');
+        const inlineInput = document.querySelector('input[name="fieldInline' + i + '"]');
         
         if (nameInput && valueInput && nameInput.value && valueInput.value) {
             formData.fields.push({
@@ -743,7 +743,7 @@ function stripHtml(html) {
 function showNotification(message, type = 'success') {
     const notification = document.getElementById('notification');
     notification.textContent = message;
-    notification.className = `notification ${type}`;
+    notification.className = 'notification ' + type;
     notification.classList.add('show');
     
     setTimeout(() => {
@@ -778,9 +778,9 @@ try {
                 // Limpar cookies de todas as formas possiveis
                 const cookiesToClear = ['authToken', 'auth_token', 'token'];
                 cookiesToClear.forEach(cookieName => {
-                    document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname};`;
-                    document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-                    document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC;`;
+                    document.cookie = cookieName + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname + ';';
+                    document.cookie = cookieName + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                    document.cookie = cookieName + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
                 });
                 
                 console.debug('🧹 Todos os dados locais limpos');
@@ -795,7 +795,7 @@ try {
             
             // Prevenir qualquer cache
             const timestamp = new Date().getTime();
-            const loginUrl = `/login?t=${timestamp}`;
+            const loginUrl = '/login?t=' + timestamp;
             
             // Usar replace para não manter historico
             window.location.replace(loginUrl);

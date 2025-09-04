@@ -61,7 +61,7 @@
         if (data.roles && data.roles.length){
           data.roles.forEach(r=>{ 
             const li = document.createElement('li'); 
-            li.textContent = `${r.name} (${r.id}) - members: ${r.memberCount}`;
+            li.textContent = r.name + ' (' + r.id + ') - members: ' + r.memberCount;
             const editBtn = document.createElement('button'); editBtn.textContent = 'Edit'; editBtn.style.marginLeft='8px';
             editBtn.addEventListener('click', async ()=>{
               const newName = prompt('New role name', r.name);

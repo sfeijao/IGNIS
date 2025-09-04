@@ -1779,7 +1779,7 @@
 
                 if (guild.icon) {
                     const img = document.createElement('img');
-                    const src = `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`;
+                    const src = 'https://cdn.discordapp.com/icons/' + encodeURIComponent(guild.id) + '/' + encodeURIComponent(guild.icon) + '.png';
                     // avoid obvious placeholder values
                     if (!src.includes('${') && !src.toLowerCase().includes('%24%7b')) {
                         img.src = src;
@@ -1802,7 +1802,7 @@
 
                 const members = document.createElement('div');
                 members.className = 'server-members';
-                members.textContent = `${guild.memberCount || '?'} membros ${guild.botPresent ? '🟢' : '🔴'}`;
+                members.textContent = String(guild.memberCount || '?') + ' membros ' + (guild.botPresent ? '🟢' : '🔴');
                 card.appendChild(members);
 
                 card.addEventListener('click', function() {
@@ -1841,7 +1841,7 @@
 
             try {
                 // Fetch real server statistics
-                const response = await fetch(`/api/server/${currentServerId}/stats`);
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/stats');
                 const data = await response.json();
 
                 if (data.success && data.stats) {
@@ -1854,9 +1854,9 @@
                     document.getElementById('messageCount').textContent = stats.messages.estimated;
 
                     // Add tooltips with detailed info
-                    document.getElementById('memberCount').title = `${stats.members.humans} humanos, ${stats.members.bots} bots (${stats.members.total} total)`;
-                    document.getElementById('channelCount').title = `${stats.channels.text} texto, ${stats.channels.voice} voz, ${stats.channels.categories} categorias`;
-                    document.getElementById('roleCount').title = `${stats.roles.colored} cargos com cor`;
+                    document.getElementById('memberCount').title = String(stats.members.humans) + ' humanos, ' + String(stats.members.bots) + ' bots (' + String(stats.members.total) + ' total)';
+                    document.getElementById('channelCount').title = String(stats.channels.text) + ' texto, ' + String(stats.channels.voice) + ' voz, ' + String(stats.channels.categories) + ' categorias';
+                    document.getElementById('roleCount').title = String(stats.roles.colored) + ' cargos com cor';
                     
                     console.log('📊 Estatísticas carregadas:', stats);
                 } else {
@@ -1946,7 +1946,7 @@
             }
 
             try {
-                const response = await fetch(`/api/server/${currentServerId}/members?search=${encodeURIComponent(query)}&limit=10`);
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/members?search=' + encodeURIComponent(query) + '&limit=10');
                 const data = await response.json();
 
                 // clear
@@ -1969,7 +1969,7 @@
                         const nameDiv = document.createElement('div'); nameDiv.className = 'user-name'; nameDiv.textContent = member.displayName || '';
                         const tagDiv = document.createElement('div'); tagDiv.className = 'user-tag'; tagDiv.textContent = member.tag || '';
                         const rolesDiv = document.createElement('div'); rolesDiv.className = 'user-roles';
-                        (member.roles||[]).slice(0,2).forEach(role => { const span = document.createElement('span'); span.className='user-role'; if(role.color){ span.style.background = `${role.color}20`; span.style.color = role.color; } span.textContent = role.name||''; rolesDiv.appendChild(span); });
+                        (member.roles||[]).slice(0,2).forEach(role => { const span = document.createElement('span'); span.className='user-role'; if(role.color){ span.style.background = role.color + '20'; span.style.color = role.color; } span.textContent = role.name||''; rolesDiv.appendChild(span); });
                         if (member.isOwner) { const os = document.createElement('span'); os.className='user-role'; os.style.background='#f59e0b'; os.style.color='white'; os.textContent='👑 DONO'; rolesDiv.appendChild(os); }
                         infoDiv.appendChild(nameDiv); infoDiv.appendChild(tagDiv); infoDiv.appendChild(rolesDiv);
                         item.appendChild(avatarDiv); item.appendChild(infoDiv);
@@ -2006,14 +2006,14 @@
             }
 
             // Clear search results
-            const rEl = document.getElementById(`${type}UserResults`);
+            const rEl = document.getElementById(type + 'UserResults');
             if (rEl) while (rEl.firstChild) rEl.removeChild(rEl.firstChild);
-            document.getElementById(`${type}UserSearch`).value = member.displayName;
+            document.getElementById(type + 'UserSearch').value = member.displayName;
         }
 
         function updateSelectedUserCard(type, member) {
-            const cardContainer = document.getElementById(`${type}SelectedUser`);
-            const card = document.getElementById(`${type}UserCard`);
+            const cardContainer = document.getElementById(type + 'SelectedUser');
+            const card = document.getElementById(type + 'UserCard');
             
             // Build card via DOM APIs
             while (card.firstChild) card.removeChild(card.firstChild);
@@ -2030,7 +2030,7 @@
             const nameDiv = document.createElement('div'); nameDiv.className = 'user-name'; nameDiv.textContent = member.displayName || '';
             const tagDiv = document.createElement('div'); tagDiv.className = 'user-tag'; tagDiv.textContent = member.tag || '';
             const rolesDiv = document.createElement('div'); rolesDiv.className = 'user-roles';
-            (member.roles||[]).forEach(role => { const span = document.createElement('span'); span.className='user-role'; if(role.color){ span.style.background = `${role.color}20`; span.style.color = role.color; } span.textContent = role.name||''; rolesDiv.appendChild(span); });
+            (member.roles||[]).forEach(role => { const span = document.createElement('span'); span.className='user-role'; if(role.color){ span.style.background = role.color + '20'; span.style.color = role.color; } span.textContent = role.name||''; rolesDiv.appendChild(span); });
             const permsDiv = document.createElement('div'); permsDiv.className = 'user-permissions';
             if (member.isOwner) { const sp = document.createElement('span'); sp.className='permission-badge owner'; sp.textContent='👑 Proprietário'; permsDiv.appendChild(sp); }
             else {
@@ -2078,7 +2078,7 @@
             const tbLoad = document.createElement('span'); tbLoad.className='loading'; timeoutBtn.appendChild(tbLoad); timeoutBtn.appendChild(document.createTextNode(' Aplicando...'));
 
             try {
-                const response = await fetch(`/api/server/${currentServerId}/timeout`, {
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/timeout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -2091,11 +2091,11 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    alert(`✅ Timeout aplicado em ${data.user.tag} por ${data.duration} minutos`);
+                    alert('✅ Timeout aplicado em ' + data.user.tag + ' por ' + data.duration + ' minutos');
                     closeTimeoutModal();
                     refreshModerationLogs();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + data.error);
                 }
             } catch (error) {
                 console.error('Erro ao aplicar timeout:', error);
@@ -2139,7 +2139,7 @@
             const kbLoad = document.createElement('span'); kbLoad.className='loading'; kickBtn.appendChild(kbLoad); kickBtn.appendChild(document.createTextNode(' Expulsando...'));
 
             try {
-                const response = await fetch(`/api/server/${currentServerId}/kick`, {
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/kick', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -2151,11 +2151,11 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    alert(`✅ ${data.user.tag} foi expulso do servidor`);
+                    alert('✅ ' + data.user.tag + ' foi expulso do servidor');
                     closeKickModal();
                     refreshModerationLogs();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + data.error);
                 }
             } catch (error) {
                 console.error('Erro ao expulsar usuário:', error);
@@ -2203,7 +2203,7 @@
             const bbLoad = document.createElement('span'); bbLoad.className='loading'; banBtn.appendChild(bbLoad); banBtn.appendChild(document.createTextNode(' Banindo...'));
 
             try {
-                const response = await fetch(`/api/server/${currentServerId}/ban`, {
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/ban', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -2217,12 +2217,12 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    const durationText = data.duration > 0 ? ` por ${data.duration} minutos` : ' permanentemente';
-                    alert(`✅ ${data.user.tag} foi banido${durationText}`);
+                    const durationText = data.duration > 0 ? ' por ' + data.duration + ' minutos' : ' permanentemente';
+                    alert('✅ ' + data.user.tag + ' foi banido' + durationText);
                     closeBanModal();
                     refreshModerationLogs();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + data.error);
                 }
             } catch (error) {
                 console.error('Erro ao banir usuário:', error);
@@ -2236,7 +2236,7 @@
 
         async function loadServerMembers() {
             try {
-                const response = await fetch(`/api/server/${currentServerId}/members?limit=100`);
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/members?limit=100');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -2273,7 +2273,7 @@
             const optLoad = document.createElement('option'); optLoad.value=''; optLoad.textContent='Carregando canais...'; channelSelect.appendChild(optLoad);
             
             try {
-                const response = await fetch(`/api/server/${currentServerId}/channels`);
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/channels');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -2300,7 +2300,7 @@
                         channelsByCategory[category].forEach(channel => {
                             const option = document.createElement('option');
                             option.value = channel.id;
-                            option.textContent = `# ${channel.name}`;
+                            option.textContent = '# ' + (channel.name || '');
                             option.disabled = !channel.permissionsFor;
                             if (!channel.permissionsFor) {
                                 option.textContent += ' (Sem permissão)';
@@ -2338,7 +2338,7 @@
             const cbLoad = document.createElement('span'); cbLoad.className='loading'; clearBtn.appendChild(cbLoad); clearBtn.appendChild(document.createTextNode(' Limpando...'));
             
             try {
-                const response = await fetch(`/api/server/${currentServerId}/channels/${channelId}/clear`, {
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/channels/' + encodeURIComponent(channelId) + '/clear', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -2352,11 +2352,11 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert(`✅ ${data.deletedCount} mensagens foram removidas do canal ${data.channelName}`);
+                    alert('✅ ' + data.deletedCount + ' mensagens foram removidas do canal ' + data.channelName);
                     closeClearChatModal();
                     refreshModerationLogs();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + data.error);
                 }
             } catch (error) {
                 console.error('Erro ao limpar chat:', error);
@@ -2375,7 +2375,7 @@
             }
             
             try {
-                const response = await fetch(`/api/server/${currentServerId}/unban-all`, {
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/unban-all', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -2388,11 +2388,11 @@
                     if (data.unbannedCount === 0) {
                         alert('ℹ️ Não há usuários banidos para desbanir');
                     } else {
-                        alert(`✅ ${data.unbannedCount} usuários foram desbanidos com sucesso!`);
+                        alert('✅ ' + data.unbannedCount + ' usuários foram desbanidos com sucesso!');
                         refreshModerationLogs();
                     }
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + data.error);
                 }
             } catch (error) {
                 console.error('Erro ao desbanir todos:', error);
@@ -2404,19 +2404,19 @@
         async function toggleServerLock() {
             const action = isServerLocked ? 'desbloquear' : 'bloquear';
             
-            if (!confirm(`⚠️ Tem certeza que deseja ${action} o servidor? ${isServerLocked ? 'Isso permitirá que todos os membros enviem mensagens novamente.' : 'Isso impedirá que membros normais enviem mensagens.'}`)) {
+            if (!confirm('⚠️ Tem certeza que deseja ' + action + ' o servidor? ' + (isServerLocked ? 'Isso permitirá que todos os membros enviem mensagens novamente.' : 'Isso impedirá que membros normais enviem mensagens.'))) {
                 return;
             }
             
             try {
-                const response = await fetch(`/api/server/${currentServerId}/lock`, {
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/lock', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         lock: !isServerLocked,
-                        reason: `${action} via dashboard`
+                        reason: action + ' via dashboard'
                     })
                 });
                 
@@ -2425,7 +2425,7 @@
                 if (data.success) {
                     isServerLocked = data.action === 'locked';
                     const statusText = isServerLocked ? 'bloqueado' : 'desbloqueado';
-                    alert(`✅ Servidor ${statusText} com sucesso! ${data.modifiedChannels} canais foram modificados.`);
+                    alert('✅ Servidor ' + statusText + ' com sucesso! ' + (data.modifiedChannels || 0) + ' canais foram modificados.');
                     
                     // Update button text safely
                     const lockBtn = document.querySelector('button[onclick="toggleServerLock()"]');
@@ -2435,7 +2435,7 @@
                     
                     refreshModerationLogs();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + (data.error || ''));
                 }
             } catch (error) {
                 console.error('Erro ao bloquear/desbloquear servidor:', error);
@@ -2749,7 +2749,7 @@
 
             try {
                 const params = new URLSearchParams(logsFilters);
-                const response = await fetch(`/api/logs?limit=50&${params}`);
+                const response = await fetch('/api/logs?limit=50&' + params);
                 const data = await response.json();
 
                 if (data.success) {
@@ -2779,7 +2779,7 @@
             const countEl = document.getElementById('logsCount');
             if (countEl) {
                 const logs = document.querySelectorAll('.log-entry');
-                countEl.textContent = `${logs.length} logs`;
+                countEl.textContent = logs.length + ' logs';
             }
         }
 
@@ -2801,7 +2801,7 @@
             
             try {
                 const params = new URLSearchParams(ticketFilters);
-                const response = await fetch(`/api/tickets?${params}`);
+                const response = await fetch('/api/tickets?' + params);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -2985,7 +2985,7 @@
                     loadTickets();
                     refreshTicketStats();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + (data.error || ''));
                 }
             } catch (error) {
                 console.error('Erro ao criar ticket:', error);
@@ -2998,7 +2998,7 @@
 
         async function assignTicket(ticketId) {
             try {
-                const response = await fetch(`/api/tickets/${ticketId}/assign`, {
+                const response = await fetch('/api/tickets/' + encodeURIComponent(ticketId) + '/assign', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -3010,7 +3010,7 @@
                     loadTickets();
                     refreshTicketStats();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + (data.error || ''));
                 }
             } catch (error) {
                 console.error('Erro ao atribuir ticket:', error);
@@ -3022,7 +3022,7 @@
             const reason = prompt('Motivo do fechamento (opcional):');
             
             try {
-                const response = await fetch(`/api/tickets/${ticketId}/close`, {
+                const response = await fetch('/api/tickets/' + encodeURIComponent(ticketId) + '/close', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reason: reason || 'Resolvido' })
@@ -3035,7 +3035,7 @@
                     loadTickets();
                     refreshTicketStats();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + (data.error || ''));
                 }
             } catch (error) {
                 console.error('Erro ao fechar ticket:', error);
@@ -3045,7 +3045,7 @@
 
         function openTicketDetails(ticketId) {
             // Redirect to full tickets page
-            window.open(`tickets.html#${ticketId}`, '_blank');
+            window.open('tickets.html#' + encodeURIComponent(ticketId), '_blank');
         }
 
         // Initialize

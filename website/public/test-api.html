@@ -132,12 +132,12 @@
         }
 
         function updateStatus(testName, success, message = '') {
-            const statusEl = document.getElementById(`${testName}-status`);
-            const resultEl = document.getElementById(`${testName}-result`);
-            
-            statusEl.className = `status ${success ? 'success' : 'error'}`;
+            const statusEl = document.getElementById(testName + '-status');
+            const resultEl = document.getElementById(testName + '-result');
+
+            statusEl.className = 'status ' + (success ? 'success' : 'error');
             statusEl.textContent = success ? '✅ Sucesso' : '❌ Erro';
-            
+
             if (message) {
                 resultEl.classList.remove('hidden');
                 resultEl.textContent = message;
@@ -150,49 +150,54 @@
             
             if (result.success) {
                 const guilds = result.data.guilds || [];
-                const message = `✅ ${guilds.length} servidor(es) encontrado(s)\n\n${JSON.stringify(result.data, null, 2)}`;
-                updateStatus('guilds', true, message);
+                // build safe message using text nodes
+                const msg = '✅ ' + guilds.length + ' servidor(es) encontrado(s)\n\n' + JSON.stringify(result.data, null, 2);
+                updateStatus('guilds', true, msg);
             } else {
-                updateStatus('guilds', false, `❌ Erro: ${result.error || result.data?.error || 'Falha na API'}`);
+                const err = typeof result.error === 'string' ? result.error : (result.data?.error || 'Falha na API');
+                updateStatus('guilds', false, '❌ Erro: ' + err);
             }
         }
 
         async function testChannels() {
             console.log('📺 Testando Channels API...');
-            const result = await makeApiCall(`/api/server/${SERVER_ID}/channels`);
-            
+            const result = await makeApiCall('/api/server/' + encodeURIComponent(SERVER_ID) + '/channels');
+
             if (result.success) {
                 const channels = result.data.channels || [];
-                const message = `✅ ${channels.length} canal(is) encontrado(s)\n\n${JSON.stringify(result.data, null, 2)}`;
-                updateStatus('channels', true, message);
+                const msg = '✅ ' + channels.length + ' canal(is) encontrado(s)\n\n' + JSON.stringify(result.data, null, 2);
+                updateStatus('channels', true, msg);
             } else {
-                updateStatus('channels', false, `❌ Erro: ${result.error || result.data?.error || 'Falha na API'}`);
+                const err = typeof result.error === 'string' ? result.error : (result.data?.error || 'Falha na API');
+                updateStatus('channels', false, '❌ Erro: ' + err);
             }
         }
 
         async function testRoles() {
             console.log('👑 Testando Roles API...');
-            const result = await makeApiCall(`/api/server/${SERVER_ID}/roles`);
-            
+            const result = await makeApiCall('/api/server/' + encodeURIComponent(SERVER_ID) + '/roles');
+
             if (result.success) {
                 const roles = result.data.roles || [];
-                const message = `✅ ${roles.length} cargo(s) encontrado(s)\n\n${JSON.stringify(result.data, null, 2)}`;
-                updateStatus('roles', true, message);
+                const msg = '✅ ' + roles.length + ' cargo(s) encontrado(s)\n\n' + JSON.stringify(result.data, null, 2);
+                updateStatus('roles', true, msg);
             } else {
-                updateStatus('roles', false, `❌ Erro: ${result.error || result.data?.error || 'Falha na API'}`);
+                const err = typeof result.error === 'string' ? result.error : (result.data?.error || 'Falha na API');
+                updateStatus('roles', false, '❌ Erro: ' + err);
             }
         }
 
         async function testMembers() {
             console.log('👥 Testando Members API...');
-            const result = await makeApiCall(`/api/server/${SERVER_ID}/members`);
-            
+            const result = await makeApiCall('/api/server/' + encodeURIComponent(SERVER_ID) + '/members');
+
             if (result.success) {
                 const members = result.data.members || [];
-                const message = `✅ ${members.length} membro(s) encontrado(s)\n\n${JSON.stringify(result.data, null, 2)}`;
-                updateStatus('members', true, message);
+                const msg = '✅ ' + members.length + ' membro(s) encontrado(s)\n\n' + JSON.stringify(result.data, null, 2);
+                updateStatus('members', true, msg);
             } else {
-                updateStatus('members', false, `❌ Erro: ${result.error || result.data?.error || 'Falha na API'}`);
+                const err = typeof result.error === 'string' ? result.error : (result.data?.error || 'Falha na API');
+                updateStatus('members', false, '❌ Erro: ' + err);
             }
         }
 
@@ -202,10 +207,11 @@
             
             if (result.success) {
                 const tickets = result.data.tickets || [];
-                const message = `✅ ${tickets.length} ticket(s) encontrado(s)\n\n${JSON.stringify(result.data, null, 2)}`;
-                updateStatus('tickets', true, message);
+                const msg = '✅ ' + tickets.length + ' ticket(s) encontrado(s)\n\n' + JSON.stringify(result.data, null, 2);
+                updateStatus('tickets', true, msg);
             } else {
-                updateStatus('tickets', false, `❌ Erro: ${result.error || result.data?.error || 'Falha na API'}`);
+                const err = typeof result.error === 'string' ? result.error : (result.data?.error || 'Falha na API');
+                updateStatus('tickets', false, '❌ Erro: ' + err);
             }
         }
 
@@ -215,17 +221,19 @@
             
             if (result.success) {
                 const logs = result.data.logs || [];
-                const message = `✅ ${logs.length} log(s) encontrado(s)\n\n${JSON.stringify(result.data, null, 2)}`;
-                updateStatus('logs', true, message);
+                const msg = '✅ ' + logs.length + ' log(s) encontrado(s)\n\n' + JSON.stringify(result.data, null, 2);
+                updateStatus('logs', true, msg);
             } else {
-                updateStatus('logs', false, `❌ Erro: ${result.error || result.data?.error || 'Falha na API'}`);
+                const err = typeof result.error === 'string' ? result.error : (result.data?.error || 'Falha na API');
+                updateStatus('logs', false, '❌ Erro: ' + err);
             }
         }
 
         async function testModeration() {
             console.log('🛡️ Testando Moderation API...');
             // Teste dry-run (sem executar ação real)
-            const message = `ℹ️ Teste de moderação (simulação)\n\nEndpoints disponíveis:\n- POST /api/server/${SERVER_ID}/timeout\n- POST /api/server/${SERVER_ID}/kick\n- POST /api/server/${SERVER_ID}/ban\n- POST /api/server/${SERVER_ID}/unban-all\n- POST /api/server/${SERVER_ID}/lock\n\n⚠️ Testes reais de moderação requerem IDs de usuário válidos`;
+            const sid = encodeURIComponent(SERVER_ID);
+            const message = 'ℹ️ Teste de moderação (simulação)\n\nEndpoints disponíveis:\n- POST /api/server/' + sid + '/timeout\n- POST /api/server/' + sid + '/kick\n- POST /api/server/' + sid + '/ban\n- POST /api/server/' + sid + '/unban-all\n- POST /api/server/' + sid + '/lock\n\n⚠️ Testes reais de moderação requerem IDs de usuário válidos';
             updateStatus('moderation', true, message);
         }
 
@@ -244,7 +252,7 @@
                 }
             };
             
-            const message = `✅ Sistema funcionando corretamente\n\n${JSON.stringify(systemInfo, null, 2)}`;
+            const message = '✅ Sistema funcionando corretamente\n\n' + JSON.stringify(systemInfo, null, 2);
             updateStatus('system', true, message);
         }
 
@@ -271,7 +279,7 @@
                     passed++;
                     await new Promise(resolve => setTimeout(resolve, 500)); // Delay entre testes
                 } catch (error) {
-                    console.error(`❌ Teste ${test.name} falhou:`, error);
+                    console.error('❌ Teste ' + test.name + ' falhou:', error);
                 }
             }
             

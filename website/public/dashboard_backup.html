@@ -1685,12 +1685,12 @@
                     if (resultsContainer) { while (resultsContainer.firstChild) resultsContainer.removeChild(resultsContainer.firstChild); }
                     data.members.forEach(member => {
                         const logEl = document.createElement('div');
-                        logEl.className = `log-entry log-${logData.level || 'info'}`;
+                        logEl.className = 'log-entry log-' + (logData.level || 'info');
 
                         const header = document.createElement('div'); header.className = 'log-header';
                         const timeSpan = document.createElement('span'); timeSpan.className = 'log-time'; timeSpan.textContent = new Date(logData.timestamp).toLocaleTimeString('pt-BR');
                         const typeSpan = document.createElement('span'); typeSpan.className = 'log-type'; typeSpan.textContent = getLogTypeLabel(logData.type);
-                        const levelSpan = document.createElement('span'); levelSpan.className = `log-level log-level-${logData.level || 'info'}`; levelSpan.textContent = getLogLevelLabel(logData.level);
+                        const levelSpan = document.createElement('span'); levelSpan.className = 'log-level log-level-' + (logData.level || 'info'); levelSpan.textContent = getLogLevelLabel(logData.level);
                         header.appendChild(timeSpan); header.appendChild(typeSpan); header.appendChild(levelSpan);
 
                         const msgDiv = document.createElement('div'); msgDiv.className = 'log-message'; msgDiv.textContent = logData.message || '';
@@ -1698,11 +1698,11 @@
                         logEl.appendChild(header); logEl.appendChild(msgDiv);
 
                         if (logData.username) {
-                            const userDiv = document.createElement('div'); userDiv.className = 'log-user'; userDiv.textContent = `👤 ${logData.username}`;
+                            const userDiv = document.createElement('div'); userDiv.className = 'log-user'; userDiv.textContent = '👤 ' + (logData.username || '');
                             logEl.appendChild(userDiv);
                         }
                         if (logData.channel_name) {
-                            const chanDiv = document.createElement('div'); chanDiv.className = 'log-channel'; chanDiv.textContent = `📺 ${logData.channel_name}`;
+                            const chanDiv = document.createElement('div'); chanDiv.className = 'log-channel'; chanDiv.textContent = '📺 ' + (logData.channel_name || '');
                             logEl.appendChild(chanDiv);
                         }
 
@@ -1718,14 +1718,14 @@
                         (member.roles || []).slice(0,2).forEach(role => {
                             const span = document.createElement('span');
                             span.className = 'user-role';
-                            span.style.background = `${role.color}20`;
+                            span.style.background = (role.color ? (role.color + '20') : '');
                             span.style.color = role.color || '';
                             span.textContent = role.name || '';
                             rolesDiv.appendChild(span);
                         });
-                        if (member.isOwner) {
-                            const ownerSpan = document.createElement('span'); ownerSpan.className = 'user-role'; ownerSpan.style.background = '#f59e0b'; ownerSpan.style.color = 'white'; ownerSpan.textContent = '👑 DONO'; rolesDiv.appendChild(ownerSpan);
-                        }
+                            if (member.isOwner) {
+                                const ownerSpan = document.createElement('span'); ownerSpan.className = 'user-role'; ownerSpan.style.background = '#f59e0b'; ownerSpan.style.color = 'white'; ownerSpan.textContent = '👑 DONO'; rolesDiv.appendChild(ownerSpan);
+                            }
 
                         info.appendChild(name);
                         info.appendChild(tag);
@@ -2603,7 +2603,7 @@
                     if (guild.icon) {
                         const img = document.createElement('img');
                         img.alt = guild.name || '';
-                        img.src = `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`;
+                        img.src = 'https://cdn.discordapp.com/icons/' + encodeURIComponent(guild.id) + '/' + encodeURIComponent(guild.icon) + '.png';
                         img.onerror = function() {
                             // fallback to initial letter if image fails
                             if (img.parentNode) img.parentNode.removeChild(img);
@@ -2623,7 +2623,7 @@
 
                     const members = document.createElement('div');
                     members.className = 'server-members';
-                    members.textContent = `${guild.memberCount || '?'} membros ${guild.botPresent ? '🟢' : '🔴'}`;
+                    members.textContent = String(guild.memberCount || '?') + ' membros ' + (guild.botPresent ? '🟢' : '🔴');
                     card.appendChild(members);
 
                     serverGrid.appendChild(card);
@@ -2668,7 +2668,7 @@
                 console.log('📊 Carregando estatísticas do servidor:', currentServerId);
                 
                 // Fetch real server statistics
-                const response = await fetch(`/api/server/${currentServerId}/stats`);
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/stats');
                 const data = await response.json();
 
                 console.log('📈 Resposta das estatísticas:', response.status, data);
@@ -2684,13 +2684,13 @@
 
                     // Add tooltips with detailed info if available
                     if (stats.members) {
-                        document.getElementById('memberCount').title = `${stats.members.humans} humanos, ${stats.members.bots} bots (${stats.members.total} total)`;
+                        document.getElementById('memberCount').title = String(stats.members.humans) + ' humanos, ' + String(stats.members.bots) + ' bots (' + String(stats.members.total) + ' total)';
                     }
                     if (stats.channels) {
-                        document.getElementById('channelCount').title = `${stats.channels.text} texto, ${stats.channels.voice} voz, ${stats.channels.categories} categorias`;
+                        document.getElementById('channelCount').title = String(stats.channels.text) + ' texto, ' + String(stats.channels.voice) + ' voz, ' + String(stats.channels.categories) + ' categorias';
                     }
                     if (stats.roles) {
-                        document.getElementById('roleCount').title = `${stats.roles.colored} cargos com cor`;
+                        document.getElementById('roleCount').title = String(stats.roles.colored) + ' cargos com cor';
                     }
                     
                     console.log('✅ Estatísticas carregadas:', stats);
@@ -2731,7 +2731,7 @@
                 console.log('📺 Carregando canais e cargos do servidor:', currentServerId);
                 
                 // Load channels
-                const channelsResponse = await fetch(`/api/server/${currentServerId}/channels`);
+                const channelsResponse = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/channels');
                 const channelsData = await channelsResponse.json();
                 
                 console.log('📺 Resposta dos canais:', channelsResponse.status, channelsData);
@@ -2750,7 +2750,7 @@
                 }
                 
                 // Load roles  
-                const rolesResponse = await fetch(`/api/server/${currentServerId}/roles`);
+                const rolesResponse = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/roles');
                 const rolesData = await rolesResponse.json();
                 
                 console.log('👑 Resposta dos cargos:', rolesResponse.status, rolesData);
@@ -2811,13 +2811,13 @@
                     textChannels.forEach(channel => {
                         const option = document.createElement('option');
                         option.value = channel.id;
-                        option.textContent = `#${channel.name}`;
+                        option.textContent = '#' + (channel.name || '');
                         select.appendChild(option);
                     });
                     
-                    console.log(`✅ ${textChannels.length} canais carregados para ${selectId}`);
+                    console.log('✅ ' + textChannels.length + ' canais carregados para ' + selectId);
                 } else {
-                    console.log(`❌ Elemento select não encontrado: ${selectId}`);
+                    console.log('❌ Elemento select não encontrado: ' + selectId);
                 }
             });
         }
@@ -2844,12 +2844,12 @@
                         option.value = role.id;
                         option.textContent = role.name;
                         if (role.color) {
-                            option.style.color = `#${role.color.toString(16).padStart(6, '0')}`;
+                            option.style.color = '#' + role.color.toString(16).padStart(6, '0');
                         }
                         select.appendChild(option);
                     });
                     
-                    console.log(`✅ ${assignableRoles.length} cargos carregados para ${selectId}`);
+                    console.log('✅ ' + assignableRoles.length + ' cargos carregados para ' + selectId);
                 }
             });
         }
@@ -2916,7 +2916,7 @@
             }
 
             try {
-                const response = await fetch(`/api/server/${currentServerId}/members?search=${encodeURIComponent(query)}&limit=10`);
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/members?search=' + encodeURIComponent(query) + '&limit=10');
                 const data = await response.json();
 
                 // clear previous results
@@ -2949,7 +2949,7 @@
                         const rolesDiv = document.createElement('div'); rolesDiv.className = 'user-roles';
                         (member.roles || []).slice(0,2).forEach(role => {
                             const span = document.createElement('span'); span.className = 'user-role';
-                            if (role.color) { span.style.background = `${role.color}20`; span.style.color = role.color; }
+                            if (role.color) { span.style.background = role.color + '20'; span.style.color = role.color; }
                             span.textContent = role.name || '';
                             rolesDiv.appendChild(span);
                         });
@@ -2996,13 +2996,13 @@
             }
 
             // Clear search results
-            const _rElx = document.getElementById(`${type}UserResults`); if (_rElx) { while (_rElx.firstChild) _rElx.removeChild(_rElx.firstChild); }
-            document.getElementById(`${type}UserSearch`).value = member.displayName;
+            const _rElx = document.getElementById(type + 'UserResults'); if (_rElx) { while (_rElx.firstChild) _rElx.removeChild(_rElx.firstChild); }
+            document.getElementById(type + 'UserSearch').value = member.displayName;
         }
 
         function updateSelectedUserCard(type, member) {
-            const cardContainer = document.getElementById(`${type}SelectedUser`);
-            const card = document.getElementById(`${type}UserCard`);
+            const cardContainer = document.getElementById(type + 'SelectedUser');
+            const card = document.getElementById(type + 'UserCard');
             
             // Build card content safely using DOM APIs
             if (card) { while (card.firstChild) card.removeChild(card.firstChild); }
@@ -3025,7 +3025,7 @@
 
             const rolesDiv = document.createElement('div'); rolesDiv.className = 'user-roles';
             (member.roles || []).forEach(role => {
-                const span = document.createElement('span'); span.className = 'user-role'; span.style.background = `${role.color}20`; span.style.color = role.color || ''; span.textContent = role.name || '';
+                const span = document.createElement('span'); span.className = 'user-role'; span.style.background = role.color + '20'; span.style.color = role.color || ''; span.textContent = role.name || '';
                 rolesDiv.appendChild(span);
             });
 
@@ -3091,7 +3091,7 @@
             while (timeoutBtn.firstChild) timeoutBtn.removeChild(timeoutBtn.firstChild); const _spto = document.createElement('span'); _spto.className = 'loading'; timeoutBtn.appendChild(_spto); timeoutBtn.appendChild(document.createTextNode(' Aplicando...'));
 
             try {
-                const response = await fetch(`/api/server/${currentServerId}/timeout`, {
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/timeout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -3103,12 +3103,12 @@
 
                 const data = await response.json();
 
-                if (data.success) {
-                    alert(`✅ Timeout aplicado em ${data.user.tag} por ${data.duration} minutos`);
+                    if (data.success) {
+                    alert('✅ Timeout aplicado em ' + data.user.tag + ' por ' + data.duration + ' minutos');
                     closeTimeoutModal();
                     refreshModerationLogs();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + data.error);
                 }
             } catch (error) {
                 console.error('Erro ao aplicar timeout:', error);
@@ -3154,7 +3154,7 @@
             while (executeKickBtn.firstChild) executeKickBtn.removeChild(executeKickBtn.firstChild); const _spkk = document.createElement('span'); _spkk.className = 'loading'; executeKickBtn.appendChild(_spkk); executeKickBtn.appendChild(document.createTextNode(' Expulsando...'));
 
             try {
-                const response = await fetch(`/api/server/${currentServerId}/kick`, {
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/kick', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -3166,11 +3166,11 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    alert(`✅ ${data.user.tag} foi expulso do servidor`);
+                    alert('✅ ' + data.user.tag + ' foi expulso do servidor');
                     closeKickModal();
                     refreshModerationLogs();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + data.error);
                 }
             } catch (error) {
                 console.error('Erro ao expulsar usuário:', error);
@@ -3220,7 +3220,7 @@
             while (executeBanBtn.firstChild) executeBanBtn.removeChild(executeBanBtn.firstChild); const _spbb = document.createElement('span'); _spbb.className = 'loading'; executeBanBtn.appendChild(_spbb); executeBanBtn.appendChild(document.createTextNode(' Banindo...'));
 
             try {
-                const response = await fetch(`/api/server/${currentServerId}/ban`, {
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/ban', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -3234,12 +3234,12 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    const durationText = data.duration > 0 ? ` por ${data.duration} minutos` : ' permanentemente';
-                    alert(`✅ ${data.user.tag} foi banido${durationText}`);
+                    const durationText = data.duration > 0 ? ' por ' + data.duration + ' minutos' : ' permanentemente';
+                    alert('✅ ' + data.user.tag + ' foi banido' + durationText);
                     closeBanModal();
                     refreshModerationLogs();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + data.error);
                 }
             } catch (error) {
                 console.error('Erro ao banir usuário:', error);
@@ -3260,7 +3260,7 @@
             }
             
             try {
-                const response = await fetch(`/api/server/${currentServerId}/members?limit=100`);
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/members?limit=100');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -3304,7 +3304,7 @@
         function showToast(type, title, message, duration = 5000) {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
+            toast.className = 'toast ' + type;
 
             const toastId = 'toast_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             toast.id = toastId;
@@ -3411,14 +3411,14 @@
                 serverChannels.forEach(channel => {
                     const option = document.createElement('option');
                     option.value = channel.id;
-                    option.textContent = `#${channel.name}`;
+                    option.textContent = '#' + (channel.name || '');
                     channelSelect.appendChild(option);
                 });
                 return;
             }
             
             try {
-                const response = await fetch(`/api/server/${currentServerId}/channels`);
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/channels');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -3444,7 +3444,7 @@
                         channelsByCategory[category].forEach(channel => {
                             const option = document.createElement('option');
                             option.value = channel.id;
-                            option.textContent = `# ${channel.name}`;
+                            option.textContent = '# ' + (channel.name || '');
                             option.disabled = !channel.permissionsFor;
                             if (!channel.permissionsFor) {
                                 option.textContent += ' (Sem permissão)';
@@ -3479,7 +3479,7 @@
             while (clearBtn.firstChild) clearBtn.removeChild(clearBtn.firstChild); const _spc2 = document.createElement('span'); _spc2.className = 'loading'; clearBtn.appendChild(_spc2); clearBtn.appendChild(document.createTextNode(' Limpando...'));
             
             try {
-                const response = await fetch(`/api/server/${currentServerId}/channels/${channelId}/clear`, {
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/channels/' + encodeURIComponent(channelId) + '/clear', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -3492,12 +3492,12 @@
                 
                 const data = await response.json();
                 
-                if (data.success) {
-                    alert(`✅ ${data.deletedCount} mensagens foram removidas do canal ${data.channelName}`);
+                    if (data.success) {
+                    alert('✅ ' + data.deletedCount + ' mensagens foram removidas do canal ' + data.channelName);
                     closeClearChatModal();
                     refreshModerationLogs();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + data.error);
                 }
             } catch (error) {
                 console.error('Erro ao limpar chat:', error);
@@ -3523,7 +3523,7 @@
             
             try {
                 console.log('📤 Enviando pedido para /api/server/' + currentServerId + '/unban-all');
-                const response = await fetch(`/api/server/${currentServerId}/unban-all`, {
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/unban-all', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -3538,11 +3538,11 @@
                     if (data.unbannedCount === 0) {
                         alert('ℹ️ Não há usuários banidos para desbanir');
                     } else {
-                        alert(`✅ ${data.unbannedCount} usuários foram desbanidos com sucesso!`);
+                        alert('✅ ' + data.unbannedCount + ' usuários foram desbanidos com sucesso!');
                         refreshModerationLogs();
                     }
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + data.error);
                 }
             } catch (error) {
                 console.error('❌ Erro ao desbanir todos:', error);
@@ -3561,20 +3561,20 @@
             
             const action = isServerLocked ? 'desbloquear' : 'bloquear';
             
-            if (!confirm(`⚠️ Tem certeza que deseja ${action} o servidor? ${isServerLocked ? 'Isso permitirá que todos os membros enviem mensagens novamente.' : 'Isso impedirá que membros normais enviem mensagens.'}`)) {
+            if (!confirm('⚠️ Tem certeza que deseja ' + action + ' o servidor? ' + (isServerLocked ? 'Isso permitirá que todos os membros enviem mensagens novamente.' : 'Isso impedirá que membros normais enviem mensagens.'))) {
                 return;
             }
             
             try {
-                console.log(`📤 Enviando pedido para ${action} servidor:`, currentServerId);
-                const response = await fetch(`/api/server/${currentServerId}/lock`, {
+                console.log('📤 Enviando pedido para ' + action + ' servidor:', currentServerId);
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/lock', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         lock: !isServerLocked,
-                        reason: `${action} via dashboard`
+                        reason: action + ' via dashboard'
                     })
                 });
                 
@@ -3585,7 +3585,7 @@
                 if (data.success) {
                     isServerLocked = data.action === 'locked';
                     const statusText = isServerLocked ? 'bloqueado' : 'desbloqueado';
-                    alert(`✅ Servidor ${statusText} com sucesso! ${data.modifiedChannels} canais foram modificados.`);
+                    alert('✅ Servidor ' + statusText + ' com sucesso! ' + data.modifiedChannels + ' canais foram modificados.');
                     
                     // Update button text
                     const lockBtn = document.getElementById('toggleServerLockBtn');
@@ -3594,7 +3594,7 @@
                     
                     refreshModerationLogs();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + data.error);
                 }
             } catch (error) {
                 console.error('❌ Erro ao bloquear/desbloquear servidor:', error);
@@ -3809,12 +3809,12 @@
 
             // Criar elemento do log (DOM-safe)
             const logEl = document.createElement('div');
-            logEl.className = `log-entry log-${logData.level || 'info'}`;
+            logEl.className = 'log-entry log-' + (logData.level || 'info');
 
             const header = document.createElement('div'); header.className = 'log-header';
             const timeSpan = document.createElement('span'); timeSpan.className = 'log-time'; timeSpan.textContent = new Date(logData.timestamp).toLocaleTimeString('pt-BR');
             const typeSpan = document.createElement('span'); typeSpan.className = 'log-type'; typeSpan.textContent = getLogTypeLabel(logData.type);
-            const levelSpan = document.createElement('span'); levelSpan.className = `log-level log-level-${logData.level || 'info'}`; levelSpan.textContent = getLogLevelLabel(logData.level);
+            const levelSpan = document.createElement('span'); levelSpan.className = 'log-level log-level-' + (logData.level || 'info'); levelSpan.textContent = getLogLevelLabel(logData.level);
             header.appendChild(timeSpan); header.appendChild(typeSpan); header.appendChild(levelSpan);
             logEl.appendChild(header);
 
@@ -3896,7 +3896,7 @@
 
             try {
                 const params = new URLSearchParams(logsFilters);
-                const response = await fetch(`/api/logs?limit=50&${params}`);
+                const response = await fetch('/api/logs?limit=50&' + params);
                 const data = await response.json();
 
                 if (data.success) {
@@ -3927,7 +3927,7 @@
             const countEl = document.getElementById('logsCount');
             if (countEl) {
                 const logs = document.querySelectorAll('.log-entry');
-                countEl.textContent = `${logs.length} logs`;
+                countEl.textContent = String(logs.length) + ' logs';
             }
         }
 
@@ -3950,7 +3950,7 @@
             
             try {
                 const params = new URLSearchParams(ticketFilters);
-                const response = await fetch(`/api/tickets?${params}`);
+                const response = await fetch('/api/tickets?' + params);
                 
                 if (response.status === 404) {
                     console.log('🎫 Sistema de tickets não implementado - usando dados de teste');
@@ -4080,14 +4080,14 @@
                 const left = document.createElement('div');
                 const title = document.createElement('h4');
                 title.className = 'ticket-title';
-                title.textContent = `#${ticket.id} - ${ticket.subject || 'Sem título'}`;
+                title.textContent = '#' + (ticket.id || '') + ' - ' + (ticket.subject || 'Sem título');
                 left.appendChild(title);
 
                 const meta = document.createElement('div');
                 meta.className = 'ticket-meta';
                 const createdDate = new Date(ticket.created_at).toLocaleDateString('pt-BR');
-                meta.textContent = `Por: ${ticket.username || 'Usuário desconhecido'} • ${createdDate}`;
-                if (ticket.assigned_name) meta.textContent += ` • Atribuído a: ${ticket.assigned_name}`;
+                meta.textContent = 'Por: ' + (ticket.username || 'Usuário desconhecido') + ' • ' + createdDate;
+                if (ticket.assigned_name) meta.textContent += ' • Atribuído a: ' + ticket.assigned_name;
                 left.appendChild(meta);
 
                 header.appendChild(left);
@@ -4095,11 +4095,11 @@
                 const badges = document.createElement('div');
                 badges.className = 'ticket-badges';
                 const status = document.createElement('span');
-                status.className = `ticket-badge badge-status-${ticket.status || 'open'}`;
+                status.className = 'ticket-badge badge-status-' + (ticket.status || 'open');
                 status.textContent = getStatusLabel(ticket.status);
                 badges.appendChild(status);
                 const priority = document.createElement('span');
-                priority.className = `ticket-badge badge-priority-${ticket.priority || 'normal'}`;
+                priority.className = 'ticket-badge badge-priority-' + (ticket.priority || 'normal');
                 priority.textContent = getPriorityLabel(ticket.priority);
                 badges.appendChild(priority);
 
@@ -4239,7 +4239,7 @@
                     loadTickets();
                     refreshTicketStats();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + (data.error || ''));
                 }
             } catch (error) {
                 console.error('Erro ao criar ticket:', error);
@@ -4252,7 +4252,7 @@
 
         async function assignTicket(ticketId) {
             try {
-                const response = await fetch(`/api/tickets/${ticketId}/assign`, {
+                const response = await fetch('/api/tickets/' + encodeURIComponent(ticketId) + '/assign', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -4272,7 +4272,7 @@
                     loadTickets();
                     refreshTicketStats();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + (data.error || ''));
                 }
             } catch (error) {
                 console.error('Erro ao atribuir ticket:', error);
@@ -4284,7 +4284,7 @@
             const reason = prompt('Motivo do fechamento (opcional):');
             
             try {
-                const response = await fetch(`/api/tickets/${ticketId}/close`, {
+                const response = await fetch('/api/tickets/' + encodeURIComponent(ticketId) + '/close', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reason: reason || 'Resolvido' })
@@ -4305,7 +4305,7 @@
                     loadTickets();
                     refreshTicketStats();
                 } else {
-                    alert(`❌ Erro: ${data.error}`);
+                    alert('❌ Erro: ' + (data.error || ''));
                 }
             } catch (error) {
                 console.error('Erro ao fechar ticket:', error);
@@ -4315,7 +4315,7 @@
 
         function openTicketDetails(ticketId) {
             // Redirect to full tickets page
-            window.open(`tickets.html#${ticketId}`, '_blank');
+            window.open('tickets.html#' + encodeURIComponent(ticketId), '_blank');
         }
 
         // Função para alternar modo teste
@@ -4498,11 +4498,12 @@
             console.log('📊 Status completo do Dashboard:', status);
             
             // Criar um modal informativo
-            const statusText = Object.entries(status).map(([key, value]) => 
-                `${key}: ${typeof value === 'object' ? JSON.stringify(value, null, 2) : value}`
-            ).join('\n');
-            
-            showInfo('Status do Dashboard', `<pre style="font-family: monospace; font-size: 12px; background: var(--bg); padding: 1rem; border-radius: 8px; overflow-x: auto;">${statusText}</pre>`);
+            const statusText = Object.entries(status).map(([key, value]) => {
+                const v = (typeof value === 'object') ? JSON.stringify(value, null, 2) : String(value);
+                return key + ': ' + v;
+            }).join('\n');
+
+            showInfo('Status do Dashboard', '<pre style="font-family: monospace; font-size: 12px; background: var(--bg); padding: 1rem; border-radius: 8px; overflow-x: auto;">' + statusText + '</pre>');
         }
 
         // Função de teste para todos os botões de moderação
@@ -4589,9 +4590,9 @@
                 const totalTests = testResults.length;
                 
                 if (successCount === totalTests) {
-                    showSuccess('Teste Completo', `Todos os ${totalTests} testes passaram com sucesso! 🎉\n\nTodos os botões estão a funcionar corretamente.`);
+                    showSuccess('Teste Completo', 'Todos os ' + totalTests + ' testes passaram com sucesso! 🎉\n\nTodos os botões estão a funcionar corretamente.');
                 } else {
-                    showWarning('Teste Parcial', `${successCount}/${totalTests} testes passaram.\n\nVerifique o console para detalhes dos erros.`);
+                    showWarning('Teste Parcial', successCount + '/' + totalTests + ' testes passaram.\n\nVerifique o console para detalhes dos erros.');
                 }
                 
                 console.log('🧪 === FIM DOS TESTES ===');
@@ -4636,7 +4637,7 @@
                 if (response.ok) {
                     showSuccess('Configurações Guardadas', 'As configurações de moderação foram guardadas com sucesso!');
                 } else {
-                    showError('Erro ao Guardar', `Falha ao guardar configurações: ${result.error || 'Erro desconhecido'}`);
+                    showError('Erro ao Guardar', 'Falha ao guardar configurações: ' + (result.error || 'Erro desconhecido'));
                 }
             } catch (error) {
                 console.error('🚨 Erro na requisição:', error);
@@ -4723,9 +4724,9 @@
             if (totalToSave === 0) {
                 showWarning('Nenhuma Seleção', 'Nenhuma configuração foi selecionada para guardar! Selecione pelo menos um canal ou cargo.');
             } else if (savedCount === totalToSave) {
-                showSuccess('Configurações Guardadas', `Todas as configurações foram guardadas com sucesso! (${savedCount}/${totalToSave})`);
+                showSuccess('Configurações Guardadas', 'Todas as configurações foram guardadas com sucesso! (' + savedCount + '/' + totalToSave + ')');
             } else {
-                showWarning('Parcialmente Guardado', `Algumas configurações falharam. Guardadas: ${savedCount}/${totalToSave}`);
+                showWarning('Parcialmente Guardado', 'Algumas configurações falharam. Guardadas: ' + savedCount + '/' + totalToSave);
             }
         }
 

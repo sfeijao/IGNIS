@@ -16,7 +16,7 @@
         j.guilds.forEach(g => {
             const li = document.createElement('li');
             const a = document.createElement('a');
-            a.href = `/admin-guild-config.html?guildId=${g}`;
+            a.href = '/admin-guild-config.html?guildId=' + encodeURIComponent(g);
             a.textContent = 'Editar';
             a.addEventListener('click', async (ev) => {
               ev.preventDefault();

@@ -115,13 +115,13 @@ class YSNMDashboard {
                 Object.keys(grouped).sort().forEach(category => {
                     if (category !== 'Sem Categoria') {
                         const optgroup = document.createElement('optgroup');
-                        optgroup.label = `📁 ${category}`;
+                        optgroup.label = '📁 ' + category;
                         channelSelect.appendChild(optgroup);
                         
                         grouped[category].forEach(channel => {
                             const option = document.createElement('option');
                             option.value = channel.id;
-                            option.textContent = `# ${channel.name}`;
+                            option.textContent = '# ' + channel.name;
                             optgroup.appendChild(option);
                         });
                     }
@@ -132,7 +132,7 @@ class YSNMDashboard {
                     grouped['Sem Categoria'].forEach(channel => {
                         const option = document.createElement('option');
                         option.value = channel.id;
-                        option.textContent = `# ${channel.name}`;
+                        option.textContent = '# ' + channel.name;
                         channelSelect.appendChild(option);
                     });
                 }
@@ -349,7 +349,7 @@ class YSNMDashboard {
         if (fieldItems.length === 0) return;
 
         fieldItems.forEach((item, index) => {
-            const name = item.querySelector('.field-name').value || `Campo ${index + 1}`;
+            const name = item.querySelector('.field-name').value || ('Campo ' + (index + 1));
             const value = item.querySelector('.field-value').value || 'Valor do campo...';
             const inline = item.querySelector('.field-inline').checked;
 
@@ -385,7 +385,19 @@ class YSNMDashboard {
         
         const formData = new FormData(event.target);
         const data = Object.fromEntries(formData);
-        data.description = this.quill.root.innerHTML;
+        // Sanitize description from Quill before sending to server
+        try {
+            const rawHtml = (this.quill && this.quill.root && this.quill.root.innerHTML) ? this.quill.root.innerHTML : '';
+            if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
+                data.description = window.DOMPurify.sanitize(rawHtml, {ALLOWED_TAGS: ['b','i','u','strong','em','a','p','br','ul','ol','li','code','pre']});
+            } else {
+                // fallback to the dashboard's sanitizer
+                data.description = this.sanitizeHtmlForPreview(rawHtml);
+            }
+        } catch (e) {
+            console.debug('Erro ao sanitizar descrição:', e);
+            data.description = this.sanitizeHtmlForPreview(this.quill ? (this.quill.root ? this.quill.root.innerHTML : '') : '');
+        }
         
         // Adicionar campos customizados
         const fields = [];
@@ -417,7 +429,7 @@ class YSNMDashboard {
                 this.resetForm();
             } else {
                 const error = await response.text();
-                this.showNotification(`Erro: ${error}`, 'error');
+                this.showNotification('Erro: ' + String(error), 'error');
             }
         } catch (error) {
             this.showNotification('Erro ao enviar update', 'error');
@@ -463,10 +475,10 @@ class YSNMDashboard {
     showNotification(message, type = 'info') {
         // Criar notificação moderna (DOM-safe)
         const notification = document.createElement('div');
-        notification.className = `notification notification-${type} slide-up`;
+    notification.className = 'notification notification-' + type + ' slide-up';
 
         const icon = document.createElement('i');
-        icon.className = `fas fa-${type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}`;
+    icon.className = 'fas fa-' + (type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle');
         const span = document.createElement('span'); span.textContent = message;
 
         notification.appendChild(icon);

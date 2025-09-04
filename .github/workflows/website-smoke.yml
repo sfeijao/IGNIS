@@ -24,6 +24,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check for unresolved template placeholders
+        run: |
+          set -e
+          echo "Searching for unresolved template placeholders (\${...} or %24%7B) in website/public..."
+          if grep -RIn '\${' website/public || grep -RIn '%24%7B' website/public; then
+            echo "\nERROR: unresolved template placeholders found in website/public. Fix them before merging.\n"
+            grep -RIn '\${' website/public || true
+            grep -RIn '%24%7B' website/public || true
+            exit 1
+          else
+            echo "No unresolved template placeholders found."
+          fi
+
       - name: Start website server
         run: |
           nohup npm run server > server.log 2>&1 &
@@ -62,6 +75,19 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Check for unresolved template placeholders
+        run: |
+          set -e
+          echo "Searching for unresolved template placeholders (\${...} or %24%7B) in website/public..."
+          if grep -RIn '\${' website/public || grep -RIn '%24%7B' website/public; then
+            echo "\nERROR: unresolved template placeholders found in website/public. Fix them before merging.\n"
+            grep -RIn '\${' website/public || true
+            grep -RIn '%24%7B' website/public || true
+            exit 1
+          else
+            echo "No unresolved template placeholders found."
+          fi
 
       - name: Start static server and run smoke tests
         run: |

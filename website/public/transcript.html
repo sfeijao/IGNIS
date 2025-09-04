@@ -30,7 +30,7 @@
         }
         document.getElementById('title').textContent = 'Transcript #' + ticketId;
         try{
-          const r = await fetch(`/api/transcript/${ticketId}/data`);
+          const r = await fetch('/api/transcript/' + encodeURIComponent(ticketId) + '/data');
           if(!r.ok){ document.getElementById('messages').textContent = 'Falha ao carregar transcript'; return; }
           const data = await r.json();
           const box = document.getElementById('messages');

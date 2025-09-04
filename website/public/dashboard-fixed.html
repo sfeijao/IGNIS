@@ -415,7 +415,7 @@
             // Append log entry safely
             const entry = document.createElement('div');
             entry.style.color = colors[type] || '#0ff';
-            entry.textContent = `[${timestamp}] ${String(message)}`;
+            entry.textContent = '[' + timestamp + '] ' + String(message);
             console.appendChild(entry);
             console.scrollTop = console.scrollHeight;
         }
@@ -427,8 +427,8 @@
 
         // Alert system
         function showAlert(title, message, type = 'info') {
-            addDebugLog(`${title}: ${message}`, type);
-            alert(`${title}\n\n${message}`);
+            addDebugLog(title + ': ' + message, type);
+            alert(title + '\n\n' + message);
         }
 
         // Load user data and guilds
@@ -441,8 +441,8 @@
                     fetch('/api/guilds')
                 ]);
 
-                addDebugLog(`Status /api/user: ${userResponse.status}`, 'info');
-                addDebugLog(`Status /api/guilds: ${guildsResponse.status}`, 'info');
+                addDebugLog('Status /api/user: ' + userResponse.status, 'info');
+                addDebugLog('Status /api/guilds: ' + guildsResponse.status, 'info');
 
                 const userData = await userResponse.json();
                 const guildsData = await guildsResponse.json();
@@ -462,8 +462,8 @@
                     showAlert('Erro', 'Falha ao carregar dados do usuário', 'error');
                 }
             } catch (error) {
-                addDebugLog(`❌ Erro: ${error.message}`, 'error');
-                showAlert('Erro', `Erro ao carregar dados: ${error.message}`, 'error');
+                addDebugLog('❌ Erro: ' + error.message, 'error');
+                showAlert('Erro', 'Erro ao carregar dados: ' + error.message, 'error');
             }
         }
 
@@ -475,14 +475,14 @@
                 return;
             }
 
-            addDebugLog(`📊 Exibindo ${userGuilds.length} servidor(es)`, 'info');
+            addDebugLog('📊 Exibindo ' + userGuilds.length + ' servidor(es)', 'info');
 
             userGuilds.forEach(guild => {
                 const card = document.createElement('div'); card.className = 'server-card'; card.setAttribute('data-server-id', guild.id);
                 const iconWrap = document.createElement('div'); iconWrap.className = 'server-icon';
                 if (guild.icon) {
                     const img = document.createElement('img');
-                    img.src = `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`;
+                    img.src = 'https://cdn.discordapp.com/icons/' + encodeURIComponent(guild.id) + '/' + encodeURIComponent(guild.icon) + '.png';
                     img.alt = guild.name || '';
                     img.addEventListener('error', () => { img.src = '/default-avatar.png'; });
                     iconWrap.appendChild(img);
@@ -492,7 +492,7 @@
 
                 const info = document.createElement('div'); info.className = 'server-info';
                 const name = document.createElement('div'); name.className = 'server-name'; name.textContent = guild.name || '';
-                const members = document.createElement('div'); members.className = 'server-members'; members.textContent = `${guild.memberCount || '?'} membros ${guild.botPresent ? '🟢' : '🔴'}`;
+                const members = document.createElement('div'); members.className = 'server-members'; members.textContent = String(guild.memberCount || '?') + ' membros ' + (guild.botPresent ? '🟢' : '🔴');
 
                 info.appendChild(name); info.appendChild(members);
                 card.appendChild(iconWrap); card.appendChild(info);
@@ -504,7 +504,7 @@
 
         function selectServer(serverId, clickedElement) {
             currentServerId = serverId;
-            addDebugLog(`🎯 Servidor selecionado: ${serverId}`, 'success');
+            addDebugLog('🎯 Servidor selecionado: ' + serverId, 'success');
             
             const serverCards = document.querySelectorAll('.server-card');
             serverCards.forEach(card => card.classList.remove('selected'));
@@ -530,10 +530,10 @@
                 document.getElementById('messageCount').textContent = '...';
 
                 // Fetch real server statistics
-                const response = await fetch(`/api/server/${currentServerId}/stats`);
+                const response = await fetch('/api/server/' + encodeURIComponent(currentServerId) + '/stats');
                 const data = await response.json();
 
-                addDebugLog(`Status /api/server/stats: ${response.status}`, 'info');
+                addDebugLog('Status /api/server/stats: ' + response.status, 'info');
 
                 if (data.success && data.stats) {
                     const stats = data.stats;
@@ -554,8 +554,8 @@
                     document.getElementById('messageCount').textContent = '0';
                 }
             } catch (error) {
-                addDebugLog(`❌ Erro ao carregar estatísticas: ${error.message}`, 'error');
-                showAlert('Erro', `Erro ao carregar estatísticas: ${error.message}`, 'error');
+                addDebugLog('❌ Erro ao carregar estatísticas: ' + error.message, 'error');
+                showAlert('Erro', 'Erro ao carregar estatísticas: ' + error.message, 'error');
             }
         }
 
@@ -585,7 +585,7 @@
                             el.appendChild(small);
                             ticketsList.appendChild(el);
                         });
-                        addDebugLog(`✅ ${tickets.length} ticket(s) carregado(s)`, 'success');
+                        addDebugLog('✅ ' + tickets.length + ' ticket(s) carregado(s)', 'success');
                     } else {
                         if (ticketsList) { while (ticketsList.firstChild) ticketsList.removeChild(ticketsList.firstChild); }
                         const p = document.createElement('p'); p.textContent = 'Nenhum ticket encontrado'; ticketsList.appendChild(p);
@@ -596,7 +596,7 @@
                     const errP = document.createElement('p'); errP.textContent = 'Erro ao carregar tickets'; ticketsList.appendChild(errP);
                     addDebugLog('❌ Erro ao carregar tickets', 'error');
                 }
-                    addDebugLog(`Status /api/tickets: ${response.status}`, 'info');
+                    addDebugLog('Status /api/tickets: ' + response.status, 'info');
                     const ticketsList = document.getElementById('ticketsList');
                 
                     if (data.success && data.tickets) {
@@ -618,7 +618,7 @@
                                 el.appendChild(small);
                                 ticketsList.appendChild(el);
                             });
-                            addDebugLog(`✅ ${tickets.length} ticket(s) carregado(s)`, 'success');
+                            addDebugLog('✅ ' + tickets.length + ' ticket(s) carregado(s)', 'success');
                         } else {
                             while (ticketsList.firstChild) ticketsList.removeChild(ticketsList.firstChild);
                             const p = document.createElement('p'); p.textContent = 'Nenhum ticket encontrado'; ticketsList.appendChild(p);
@@ -630,14 +630,14 @@
                         addDebugLog('❌ Erro ao carregar tickets', 'error');
                     }
             } catch (error) {
-                addDebugLog(`❌ Erro nos tickets: ${error.message}`, 'error');
+                addDebugLog('❌ Erro nos tickets: ' + error.message, 'error');
                 const tlist = document.getElementById('ticketsList'); if (tlist) { while (tlist.firstChild) tlist.removeChild(tlist.firstChild); const errP2 = document.createElement('p'); errP2.textContent = 'Erro ao carregar tickets'; tlist.appendChild(errP2); }
             }
         }
 
         // Global error handler
         window.addEventListener('error', function(event) {
-            addDebugLog(`❌ ERRO GLOBAL: ${event.error?.message || event.message}`, 'error');
+            addDebugLog('❌ ERRO GLOBAL: ' + (event.error?.message || event.message), 'error');
         });
 
         // Initialize dashboard
@@ -649,7 +649,7 @@
         // Log clicks for debugging
         document.addEventListener('click', function(event) {
             if (event.target.tagName === 'BUTTON') {
-                addDebugLog(`🖱️ Botão clicado: ${event.target.textContent}`, 'info');
+                addDebugLog('🖱️ Botão clicado: ' + event.target.textContent, 'info');
             }
         });
     </script>

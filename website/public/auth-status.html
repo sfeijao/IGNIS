@@ -34,8 +34,8 @@
     
     <script>
         function getCookie(name) {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
+            const value = '; ' + document.cookie;
+            const parts = value.split('; ' + name + '=');
             if (parts.length === 2) return parts.pop().split(';').shift();
             return null;
         }
@@ -47,7 +47,8 @@
             const cookieStatus = document.getElementById('cookieStatus');
             
             if (cookieToken) {
-                cookieInfo.textContent = `Token encontrado: ${cookieToken.substring(0, 20)}...`;
+                // Do not reveal token contents in the UI
+                cookieInfo.textContent = 'Token encontrado (oculto)';
                 cookieStatus.className = 'status success';
             } else {
                 cookieInfo.textContent = 'Nenhum token encontrado nos cookies';
@@ -60,7 +61,8 @@
             const localStatus = document.getElementById('localStorageStatus');
             
             if (localToken) {
-                localInfo.textContent = `Token encontrado: ${localToken.substring(0, 20)}...`;
+                // Do not reveal token contents in the UI
+                localInfo.textContent = 'Token encontrado (oculto)';
                 localStatus.className = 'status success';
             } else {
                 localInfo.textContent = 'Nenhum token encontrado no localStorage';
@@ -81,14 +83,14 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    apiInfo.textContent = `API funcionando! ${data.length} canais encontrados`;
+                    apiInfo.textContent = 'API funcionando! ' + (data.length || 0) + ' canais encontrados';
                     apiStatus.className = 'status success';
                 } else {
-                    apiInfo.textContent = `Erro API: ${response.status} - ${response.statusText}`;
+                    apiInfo.textContent = 'Erro API: ' + response.status + ' - ' + response.statusText;
                     apiStatus.className = 'status error';
                 }
             } catch (error) {
-                apiInfo.textContent = `Erro: ${error.message}`;
+                apiInfo.textContent = 'Erro: ' + (error && error.message ? error.message : String(error));
                 apiStatus.className = 'status error';
             }
         }

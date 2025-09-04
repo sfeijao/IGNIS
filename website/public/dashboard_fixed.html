@@ -511,7 +511,7 @@
                 try {
                     const response = await fetch('/api/user', {
                         headers: {
-                            'Authorization': `Bearer ${this.getAuthToken()}`
+                            'Authorization': 'Bearer ' + this.getAuthToken()
                         }
                     });
                     
@@ -528,7 +528,7 @@
                 try {
                     const response = await fetch('/api/server/stats', {
                         headers: {
-                            'Authorization': `Bearer ${this.getAuthToken()}`
+                            'Authorization': 'Bearer ' + this.getAuthToken()
                         }
                     });
                     

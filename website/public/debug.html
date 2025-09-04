@@ -71,10 +71,10 @@
             const log = document.getElementById('activity-log');
             const timestamp = new Date().toLocaleTimeString();
             const entry = document.createElement('div');
-            entry.className = `log-entry ${type}`;
+            entry.className = 'log-entry ' + type;
             const timeSpan = document.createElement('span');
             timeSpan.style.color = '#64748B';
-            timeSpan.textContent = `[${timestamp}] `;
+            timeSpan.textContent = '[' + timestamp + '] ';
             entry.appendChild(timeSpan);
             const msgNode = document.createTextNode(message);
             entry.appendChild(msgNode);
@@ -88,10 +88,10 @@
         }
 
         function updateStatus(testName, success, message = '') {
-            const statusEl = document.getElementById(`${testName}-status`);
-            const resultEl = document.getElementById(`${testName}-result`);
+            const statusEl = document.getElementById(testName + '-status');
+            const resultEl = document.getElementById(testName + '-result');
             
-            statusEl.className = `status ${success ? 'success' : 'error'}`;
+            statusEl.className = 'status ' + (success ? 'success' : 'error');
             statusEl.textContent = success ? '✅ Sucesso' : '❌ Erro';
             
             if (message) {
@@ -110,19 +110,19 @@
                 const userResponse = await fetch('/api/user');
                 const userData = await userResponse.json();
                 
-                addLog(`Status: ${userResponse.status}`, userResponse.ok ? 'success' : 'error');
-                addLog(`Resposta: ${JSON.stringify(userData, null, 2)}`, 'info');
+                addLog('Status: ' + userResponse.status, userResponse.ok ? 'success' : 'error');
+                addLog('Resposta: ' + JSON.stringify(userData, null, 2), 'info');
                 
                 if (userData.success) {
-                    updateStatus('auth', true, `✅ Usuário autenticado: ${userData.user?.username || 'Developer'}`);
+                    updateStatus('auth', true, '✅ Usuário autenticado: ' + (userData.user?.username || 'Developer'));
                     addLog('✅ Autenticação funcionando!', 'success');
                 } else {
-                    updateStatus('auth', false, `❌ Falha na autenticação: ${userData.error || 'Erro desconhecido'}`);
+                    updateStatus('auth', false, '❌ Falha na autenticação: ' + (userData.error || 'Erro desconhecido'));
                     addLog('❌ Falha na autenticação', 'error');
                 }
             } catch (error) {
-                updateStatus('auth', false, `❌ Erro de rede: ${error.message}`);
-                addLog(`❌ Erro de rede: ${error.message}`, 'error');
+                updateStatus('auth', false, '❌ Erro de rede: ' + error.message);
+                addLog('❌ Erro de rede: ' + error.message, 'error');
             }
         }
 
@@ -134,20 +134,20 @@
                 const response = await fetch('/api/guilds');
                 const data = await response.json();
                 
-                addLog(`Status: ${response.status}`, response.ok ? 'success' : 'error');
-                addLog(`Resposta: ${JSON.stringify(data, null, 2)}`, 'info');
+                addLog('Status: ' + response.status, response.ok ? 'success' : 'error');
+                addLog('Resposta: ' + JSON.stringify(data, null, 2), 'info');
                 
                 if (data.success) {
                     const guilds = data.guilds || [];
-                    updateStatus('guilds', true, `✅ ${guilds.length} servidor(es) encontrado(s)\n\n${JSON.stringify(data, null, 2)}`);
-                    addLog(`✅ ${guilds.length} servidor(es) carregado(s)`, 'success');
+                    updateStatus('guilds', true, '✅ ' + guilds.length + ' servidor(es) encontrado(s)\n\n' + JSON.stringify(data, null, 2));
+                    addLog('✅ ' + guilds.length + ' servidor(es) carregado(s)', 'success');
                 } else {
-                    updateStatus('guilds', false, `❌ Erro: ${data.error || 'Falha na API'}`);
-                    addLog(`❌ Erro ao carregar guilds: ${data.error}`, 'error');
+                    updateStatus('guilds', false, '❌ Erro: ' + (data.error || 'Falha na API'));
+                    addLog('❌ Erro ao carregar guilds: ' + (data.error || ''), 'error');
                 }
             } catch (error) {
-                updateStatus('guilds', false, `❌ Erro de rede: ${error.message}`);
-                addLog(`❌ Erro de rede: ${error.message}`, 'error');
+                updateStatus('guilds', false, '❌ Erro de rede: ' + error.message);
+                addLog('❌ Erro de rede: ' + error.message, 'error');
             }
         }
 
@@ -188,8 +188,8 @@
                 addLog('✅ Todos os testes JavaScript passaram', 'success');
                 
             } catch (error) {
-                updateStatus('js', false, `❌ Erro JavaScript: ${error.message}`);
-                addLog(`❌ Erro JavaScript: ${error.message}`, 'error');
+                updateStatus('js', false, '❌ Erro JavaScript: ' + error.message);
+                addLog('❌ Erro JavaScript: ' + error.message, 'error');
             }
         }
 
@@ -200,27 +200,27 @@
             // Capturar console.log
             const originalLog = console.log;
             console.log = function(...args) {
-                addLog(`[LOG] ${args.join(' ')}`, 'info');
+                addLog('[LOG] ' + args.join(' '), 'info');
                 originalLog.apply(console, args);
             };
             
             // Capturar console.error
             const originalError = console.error;
             console.error = function(...args) {
-                addLog(`[ERROR] ${args.join(' ')}`, 'error');
+                addLog('[ERROR] ' + args.join(' '), 'error');
                 originalError.apply(console, args);
             };
             
             // Capturar console.warn
             const originalWarn = console.warn;
             console.warn = function(...args) {
-                addLog(`[WARN] ${args.join(' ')}`, 'warning');
+                addLog('[WARN] ' + args.join(' '), 'warning');
                 originalWarn.apply(console, args);
             };
             
             // Capturar erros globais
             window.addEventListener('error', function(event) {
-                addLog(`[GLOBAL ERROR] ${event.error?.message || event.message} em ${event.filename}:${event.lineno}`, 'error');
+                addLog('[GLOBAL ERROR] ' + (event.error?.message || event.message) + ' em ' + event.filename + ':' + event.lineno, 'error');
             });
             
             updateStatus('console', true, '✅ Monitor de console ativo');
@@ -243,8 +243,8 @@
                 const userData = await userResponse.json();
                 const guildsData = await guildsResponse.json();
                 
-                addLog(`User response: ${JSON.stringify(userData)}`, 'info');
-                addLog(`Guilds response: ${JSON.stringify(guildsData)}`, 'info');
+                addLog('User response: ' + JSON.stringify(userData), 'info');
+                addLog('Guilds response: ' + JSON.stringify(guildsData), 'info');
                 
                 if (userData.success && guildsData.success) {
                     addLog('✅ Dados do usuário e guilds carregados', 'success');
@@ -252,15 +252,15 @@
                     // Passo 2: Simular seleção de servidor
                     if (guildsData.guilds && guildsData.guilds.length > 0) {
                         const firstGuild = guildsData.guilds[0];
-                        addLog(`Passo 2: Simulando seleção do servidor ${firstGuild.name}...`, 'info');
+                        addLog('Passo 2: Simulando seleção do servidor ' + firstGuild.name + '...', 'info');
                         
                         // Passo 3: Simular loadServerData()
                         addLog('Passo 3: Simulando loadServerData()...', 'info');
                         
-                        const statsResponse = await fetch(`/api/server/${firstGuild.id}/stats`);
+                        const statsResponse = await fetch('/api/server/' + encodeURIComponent(firstGuild.id) + '/stats');
                         const statsData = await statsResponse.json();
                         
-                        addLog(`Stats response: ${JSON.stringify(statsData)}`, 'info');
+                        addLog('Stats response: ' + JSON.stringify(statsData), 'info');
                         
                         if (statsData.success) {
                             addLog('✅ Estatísticas do servidor carregadas', 'success');
@@ -279,8 +279,8 @@
                 }
                 
             } catch (error) {
-                addLog(`❌ Erro na simulação: ${error.message}`, 'error');
-                updateStatus('sim', false, `❌ Erro: ${error.message}`);
+                addLog('❌ Erro na simulação: ' + error.message, 'error');
+                updateStatus('sim', false, '❌ Erro: ' + error.message);
             }
         }
 
