@@ -26,7 +26,7 @@
             result.textContent = '⏳ Testing...';
             
             try {
-                console.log('Testing with password:', password);
+                // Do not log raw password in console
                 
                 const response = await fetch('/api/login', {
                     method: 'POST',
@@ -35,20 +35,17 @@
                     credentials: 'include' // Importante para cookies
                 });
                 
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
-                
                 const data = await response.json();
-                console.log('Response data:', data);
                 
                 if (data.success) {
                     result.textContent = '✅ SUCCESS! Token received. Redirecting in 3 seconds...';
                     result.style.background = '#3ba55d';
                     
-                    // Guardar token também no localStorage como backup
+                    // Guardar token no localStorage somente com confirmação do utilizador
                     if (data.token) {
-                        localStorage.setItem('authToken', data.token);
-                        console.log('Token saved to localStorage');
+                        if (confirm('Guardar token recebido no armazenamento local? Isto é inseguro em dispositivos partilhados.')) {
+                            localStorage.setItem('authToken', data.token);
+                        }
                     }
                     
                     // Redirecionamento com delay

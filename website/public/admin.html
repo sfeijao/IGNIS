@@ -599,7 +599,7 @@
             imgs.forEach(img => {
                 try {
                     const src = img.getAttribute('src') || '';
-                    if (!src || src.includes('${') || src.includes('%24%7B')) {
+                    if (!src || src.includes('$' + '{') || src.includes('%24%7B')) {
                         img.src = '/default-avatar.png';
                     }
                 } catch(e) { }
