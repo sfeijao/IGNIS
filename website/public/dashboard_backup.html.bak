@@ -474,14 +474,14 @@
 
     <!-- External dashboard script to avoid inline duplication -->
     <script src="/js/script.js"></script>
-
+                        const rolesResponse = await fetch('/api/roles', { credentials: 'include' });
                     if (rolesResponse.ok) {
-
-
+                        const roles = await rolesResponse.json();
+                        document.getElementById('roleCount').textContent = roles.length || '46';
                     }
 
                 } catch (error) {
-
+                    console.error('Erro carregando estatísticas:', error);
                 }
             }
 
@@ -498,12 +498,12 @@
             }
 
             animateCounters() {
-
-
-
-
+                document.querySelectorAll('.stat-number').forEach(counter => {
+                    const target = parseInt(counter.textContent);
+                    let current = 0;
+                    const increment = target / 50;
                     
-
+                    const updateCounter = () => {
                         if (current < target) {
                             current += increment;
                             counter.textContent = Math.ceil(current);
@@ -519,7 +519,7 @@
 
             handleNavigation(event) {
                 // Update active state
-
+                    document.querySelectorAll('.nav-item').forEach(item => {
                     item.classList.remove('active');
                 });
                 
@@ -529,14 +529,14 @@
             handleLogout() {
                 if (confirm('🚀 Tens a certeza que queres fazer logout?')) {
                     localStorage.clear();
-
+                    document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
                     (function(){ try{ if (window.location.pathname !== '/login' && !sessionStorage.getItem('redirectingToLogin')){ sessionStorage.setItem('redirectingToLogin','1'); setTimeout(()=>sessionStorage.removeItem('redirectingToLogin'),10000); window.location.replace('/login'); } }catch(e){ try{ window.location.href='/login'; }catch(_){} }})();
                 }
             }
         }
 
         // Initialize dashboard when page loads
-
+        document.addEventListener('DOMContentLoaded', () => {
             new YSNMDashboard();
         });
     </script>
@@ -1639,57 +1639,57 @@
                     // Build results using DOM nodes to avoid template placeholders
                     if (resultsContainer) { while (resultsContainer.firstChild) resultsContainer.removeChild(resultsContainer.firstChild); }
                     data.members.forEach(member => {
-
+                        const logEl = document.createElement('div');
                         logEl.className = 'log-entry log-' + (logData.level || 'info');
 
+                        const header = document.createElement('div'); header.className = 'log-header';
+                        const timeSpan = document.createElement('span'); timeSpan.className = 'log-time'; timeSpan.textContent = new Date(logData.timestamp).toLocaleTimeString('pt-BR');
+                        const typeSpan = document.createElement('span'); typeSpan.className = 'log-type'; typeSpan.textContent = getLogTypeLabel(logData.type);
+                        const levelSpan = document.createElement('span'); levelSpan.className = 'log-level log-level-' + (logData.level || 'info'); levelSpan.textContent = getLogLevelLabel(logData.level);
+                        header.appendChild(timeSpan); header.appendChild(typeSpan); header.appendChild(levelSpan);
 
+                        const msgDiv = document.createElement('div'); msgDiv.className = 'log-message'; msgDiv.textContent = logData.message || '';
 
-
-
-
-
-
-
-
+                        logEl.appendChild(header); logEl.appendChild(msgDiv);
 
                         if (logData.username) {
-
-
+                            const userDiv = document.createElement('div'); userDiv.className = 'log-user'; userDiv.textContent = '👤 ' + (logData.username || '');
+                            logEl.appendChild(userDiv);
                         }
                         if (logData.channel_name) {
-
-
+                            const chanDiv = document.createElement('div'); chanDiv.className = 'log-channel'; chanDiv.textContent = '📺 ' + (logData.channel_name || '');
+                            logEl.appendChild(chanDiv);
                         }
 
                         // Adicionar no topo
                         listEl.insertBefore(logEl, listEl.firstChild);
                         }
 
+                        const info = document.createElement('div'); info.className = 'user-info';
+                        const name = document.createElement('div'); name.className = 'user-name'; name.textContent = member.displayName || '';
+                        const tag = document.createElement('div'); tag.className = 'user-tag'; tag.textContent = member.tag || '';
 
-
-
-
-
+                        const rolesDiv = document.createElement('div'); rolesDiv.className = 'user-roles';
                         (member.roles || []).slice(0,2).forEach(role => {
-
+                            const span = document.createElement('span');
                             span.className = 'user-role';
                             span.style.background = (role.color ? (role.color + '20') : '');
                             span.style.color = role.color || '';
                             span.textContent = role.name || '';
-
+                            rolesDiv.appendChild(span);
                         });
                             if (member.isOwner) {
-
+                                const ownerSpan = document.createElement('span'); ownerSpan.className = 'user-role'; ownerSpan.style.background = '#f59e0b'; ownerSpan.style.color = 'white'; ownerSpan.textContent = '👑 DONO'; rolesDiv.appendChild(ownerSpan);
                             }
 
+                        info.appendChild(name);
+                        info.appendChild(tag);
+                        info.appendChild(rolesDiv);
 
+                        item.appendChild(avatar);
+                        item.appendChild(info);
 
-
-
-
-
-
-
+                        resultsContainer.appendChild(item);
                     });
             from {
                 opacity: 0;

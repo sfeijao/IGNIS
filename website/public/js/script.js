@@ -501,6 +501,74 @@ class YSNMDashboard {
         }
     }
 
+    // Expose a helper to safely read an auth token from cookie/localStorage
+    static getAuthToken() {
+        try {
+            // cookie
+            const cookieToken = document.cookie?.split('; ').find(row => row.startsWith('authToken='))?.split('=')[1];
+            if (cookieToken) return cookieToken;
+            // localStorage
+            const localToken = localStorage.getItem('authToken') || localStorage.getItem('productionToken');
+            if (localToken) return localToken;
+            // development or file protocol: do not auto-insert
+            if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return null;
+            // production markers
+            const urlParams = new URLSearchParams(window.location.search);
+            const prodToken = urlParams.get('token');
+            if (window.location.hostname.includes('railway.app') && prodToken) return '***present***';
+            return '';
+        } catch (e) { return ''; }
+    }
+
+    // Small helper to update embed preview (keeps parity with old inline functions)
+    updateEmbedPreviewLight() {
+        try {
+            const preview = document.getElementById('previewEmbed');
+            const previewTitle = document.getElementById('previewTitle');
+            const previewDesc = document.getElementById('previewDescription');
+            const embedTitle = document.getElementById('embedTitle');
+            const title = document.getElementById('title')?.value || '';
+            const color = document.getElementById('color')?.value || '#4318FF';
+            const description = this.quill ? this.quill.root.innerHTML : '';
+
+            if (previewTitle) previewTitle.textContent = title;
+            if (preview) preview.style.setProperty('--embed-color', color);
+            if (embedTitle) embedTitle.style.setProperty('--title-color', color);
+
+            // update description safely using existing sanitizer logic
+            if (previewDesc) {
+                const safe = (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') ? window.DOMPurify.sanitize(description) : this.sanitizeHtmlForPreview(description);
+                while (previewDesc.firstChild) previewDesc.removeChild(previewDesc.firstChild);
+                const tmp = document.createElement('div'); tmp.innerHTML = safe || '';
+                while (tmp.firstChild) previewDesc.appendChild(tmp.firstChild);
+            }
+        } catch (e) { console.debug('updateEmbedPreviewLight failed', e); }
+    }
+
+    sendEmbedMock() {
+        alert('Embed enviado com sucesso! (Funcionalidade simulada)');
+    }
+
+    // Simple logs helpers used by UI
+    addLogEntry(containerSelector, action, user, reason) {
+        try {
+            const container = document.querySelector(containerSelector);
+            if (!container) return;
+            const newLog = document.createElement('div');
+            const time = document.createElement('span');
+            const msg = document.createElement('span');
+            const currentTime = new Date().toLocaleTimeString();
+            const actionNames = { 'warn': 'Aviso', 'timeout': 'Timeout', 'kick': 'Expulsão', 'ban': 'Banimento', 'error': 'Erro' };
+            const icon = action === 'error' ? '❌' : 'ℹ️';
+            newLog.className = 'log-entry ' + (action === 'error' ? 'error' : 'info');
+            time.className = 'log-time'; time.textContent = '[' + currentTime + '] ';
+            msg.className = 'log-message'; msg.textContent = icon + ' ' + (actionNames[action] || action) + ' - ' + user + ': ' + (reason || '');
+            newLog.appendChild(time); newLog.appendChild(msg);
+            container.insertBefore(newLog, container.firstChild);
+            while (container.children.length > 50) container.removeChild(container.lastChild);
+        } catch (e) { console.debug('addLogEntry failed', e); }
+    }
+
     showNotification(message, type = 'info') {
         // Criar notificação moderna (DOM-safe)
         const notification = document.createElement('div');
@@ -787,7 +855,115 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+// --- Legacy helpers (moved from dashboard.html) ---
+function promptForToken(){
+    const token = prompt('Insira o token de acesso para Railway:');
+    if (token && token.trim()){
+        if (!confirm('Guardar este token no armazenamento local? Isto é inseguro em ambientes partilhados.')) return;
+        localStorage.setItem('productionToken', token.trim());
+        alert('Token armazenado como productionToken. Use a opção de sessão para ativar.');
+    }
+}
+
+function redirectToOAuth(){
+    window.location.href = 'auth/discord';
+}
+
+function setProductionToken(){
+    const tokenInput = document.getElementById('prodToken');
+    const token = tokenInput && tokenInput.value && tokenInput.value.trim();
+    if (token){
+        if (!confirm('Guardar este token no armazenamento local? Isto é inseguro em ambientes partilhados.')) return;
+        localStorage.setItem('productionToken', token);
+        if (tokenInput) tokenInput.value = '';
+        alert('Token guardado como productionToken. Por favor ative sessão manualmente se necessário.');
+    }
+}
+
+function initSmallUI(){
+    try{
+        if (typeof createDebuggerWidget === 'function') createDebuggerWidget();
+        if (window.sanitizeTemplatePlaceholders) window.sanitizeTemplatePlaceholders();
+        if (window.attachImageFallbacks) window.attachImageFallbacks();
+        if (typeof YSNMDashboard === 'function') { if (!window.dashboard) window.dashboard = new YSNMDashboard(); }
+    }catch(e){ console.debug && console.debug('Init error', e); }
+}
+
+// Global lightweight wrapper for backward compatibility
+function updateEmbedPreview(){ try{ if (window.dashboard && typeof window.dashboard.updateEmbedPreviewLight === 'function') return window.dashboard.updateEmbedPreviewLight(); }catch(e){} }
+
+// Expose small globals
+window.promptForToken = promptForToken;
+window.redirectToOAuth = redirectToOAuth;
+window.setProductionToken = setProductionToken;
+window.initSmallUI = initSmallUI;
+window.updateEmbedPreview = updateEmbedPreview;
+
+// --- Simple-test page helpers ---
+window.testeBasico = function(){
+    const resultado = document.getElementById('resultado1');
+    if (!resultado) return;
+    resultado.className = 'result';
+    resultado.textContent = 'Executando teste básico...';
+    try {
+        const a = 2, b = 3;
+        const soma = a + b;
+        resultado.textContent += '\n✅ Funções: 2 + 3 = ' + soma;
+        const elemento = document.querySelector('.test-page');
+        resultado.textContent += '\n✅ DOM: ' + (elemento ? 'Sim' : 'Não');
+        resultado.textContent += '\n✅ Fetch API: ' + (typeof fetch === 'function' ? 'Disponível' : 'Não disponível');
+        resultado.className = 'result success';
+    } catch (e) {
+        resultado.className = 'result error';
+        resultado.textContent = '❌ ERRO: ' + (e.message || e);
+    }
+};
+
+window.testeAPI = async function(){
+    const resultado = document.getElementById('resultado2'); if (!resultado) return;
+    resultado.className = 'result'; resultado.textContent = 'Testando APIs...';
+    try {
+        const r1 = await fetch('/api/user'); resultado.textContent += '\n/api/user: ' + r1.status;
+        const j1 = await r1.json().catch(()=>null); resultado.textContent += '\n/api/user resp: ' + JSON.stringify(j1);
+        const r2 = await fetch('/api/guilds'); resultado.textContent += '\n/api/guilds: ' + r2.status;
+        const j2 = await r2.json().catch(()=>null); resultado.textContent += '\n/api/guilds resp: ' + JSON.stringify(j2);
+        resultado.className = 'result success';
+    } catch (e) {
+        resultado.className = 'result error'; resultado.textContent += '\n❌ ERRO API: ' + (e.message || e);
+    }
+};
+
+window.testeCompleto = async function(){
+    const resultado = document.getElementById('resultado3'); if (!resultado) return;
+    resultado.className = 'result'; resultado.textContent = 'Executando teste completo...';
+    try {
+        const [r1, r2] = await Promise.all([fetch('/api/user'), fetch('/api/guilds')]);
+        resultado.textContent += '\nResponses: ' + r1.status + ', ' + r2.status;
+        const j1 = await r1.json().catch(()=>null);
+        const j2 = await r2.json().catch(()=>null);
+        resultado.textContent += '\nUser success: ' + (j1 && j1.success) + ' Guilds success: ' + (j2 && j2.success);
+        resultado.className = 'result success';
+    } catch (e) {
+        resultado.className = 'result error'; resultado.textContent += '\n❌ ERRO COMPLETO: ' + (e.message || e);
+    }
+};
+
 // Inicializar dashboard quando página carregar
 document.addEventListener('DOMContentLoaded', () => {
     window.dashboard = new YSNMDashboard();
 });
+
+// Backwards-compatible global proxy functions (some pages still call these)
+function updateEmbedPreview() {
+    try { if (window.dashboard && typeof window.dashboard.updateEmbedPreviewLight === 'function') window.dashboard.updateEmbedPreviewLight(); } catch(e) { console.debug('updateEmbedPreview proxy failed', e); }
+}
+
+function sendEmbed() {
+    try { if (window.dashboard && typeof window.dashboard.sendEmbedMock === 'function') window.dashboard.sendEmbedMock(); } catch(e) { console.debug('sendEmbed proxy failed', e); }
+}
+
+function refreshLogs() { try { if (window.dashboard && typeof window.dashboard.addLogEntry === 'function') window.dashboard.addLogEntry('#logs', 'info', 'system', 'refresh'); } catch(e) { console.debug('refreshLogs proxy failed', e); } }
+
+function clearLogs() { try { const container = document.querySelector('#logs'); if (!container) return; while(container.firstChild) container.removeChild(container.firstChild); } catch(e) { console.debug('clearLogs proxy failed', e); } }
+
+function getAuthToken(){ try { if (window.dashboard && typeof window.dashboard.constructor.getAuthToken === 'function') return window.dashboard.constructor.getAuthToken(); return null; } catch(e){ return null; } }
