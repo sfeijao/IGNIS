@@ -183,7 +183,8 @@ app.use(session({
     cookie: {
         secure: isProd, // HTTPS obrigatório em produção
         httpOnly: true, // Proteção contra XSS
-        sameSite: isProd ? 'lax' : 'lax', // Proteção CSRF
+        // Use 'none' in production to allow OAuth providers to redirect back and set cookies
+        sameSite: isProd ? 'none' : 'lax',
         maxAge: 2 * 60 * 60 * 1000, // 2 horas (mais seguro que 24h)
         domain: cookieDomain || undefined
     }
@@ -331,21 +332,41 @@ app.get('/auth/discord/callback',
         }
         
         passport.authenticate('discord', { failureRedirect: '/login' }, (err, user, info) => {
+            // Extra debug information to help diagnose why auth may return to login
+            try {
+                logger.debug('\u2139 OAuth2 callback invoked', { query: req.query, body: req.body, info });
+            } catch (logErr) {
+                logger.warn('Failed to log OAuth2 callback debug info', { error: logErr && logErr.message ? logErr.message : logErr });
+            }
+
             if (err) {
-                logger.error('❌ Erro OAuth2 detalhado', { error: err && err.message ? err.message : err, name: err && err.name });
+                logger.error('\u274c Erro OAuth2 detalhado', { error: err && err.message ? err.message : err, name: err && err.name, info });
                 return res.redirect('/login?error=oauth_error');
             }
             if (!user) {
-                logger.warn('❌ Usuário não encontrado após OAuth2');
+                logger.warn('\u274c Usu\u00e1rio n\u00e3o encontrado ap\u00f3s OAuth2', { info });
                 return res.redirect('/login?error=user_not_found');
             }
             req.logIn(user, (loginErr) => {
                 if (loginErr) {
-                    logger.error('❌ Erro ao fazer login', { error: loginErr && loginErr.message ? loginErr.message : loginErr });
+                    logger.error('\u274c Erro ao fazer login', { error: loginErr && loginErr.message ? loginErr.message : loginErr, info });
                     return res.redirect('/login?error=login_error');
                 }
-                logger.info('✅ OAuth2 callback bem-sucedido para: %s', user.username);
-                return res.redirect('/dashboard');
+
+                // Save session and ensure cookie headers are set before redirecting
+                try {
+                    logger.debug('Saving session and dumping request cookies/headers for debug', { cookies: req.headers.cookie, headers: req.headers });
+                } catch (e) { /* noop */ }
+
+                req.session.save((saveErr) => {
+                    if (saveErr) {
+                        logger.warn('Session save returned error before redirect', { error: saveErr && saveErr.message ? saveErr.message : saveErr });
+                        // Fall back to redirect anyway
+                        return res.redirect('/dashboard');
+                    }
+                    logger.info('\u2705 OAuth2 callback bem-sucedido para: %s (session saved)', user.username);
+                    return res.redirect('/dashboard');
+                });
             });
         })(req, res, next);
     }

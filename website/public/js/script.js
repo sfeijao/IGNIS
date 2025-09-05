@@ -866,7 +866,8 @@ function promptForToken(){
 }
 
 function redirectToOAuth(){
-    window.location.href = 'auth/discord';
+    // Use absolute path to ensure redirect always goes to the server root
+    window.location.href = '/auth/discord';
 }
 
 function setProductionToken(){
