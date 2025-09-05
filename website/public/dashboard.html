@@ -23,28 +23,13 @@
                     <p>Sistema avançado de gestão para Discord bot</p>
                 </div>
                 <div class="header-actions">
-                    <!-- Ticket functions moved into /js/script.js to avoid duplication and visible JS text -->
-                    meta.appendChild(idSpan);
-                    meta.appendChild(bySpan);
-                    meta.appendChild(dateSpan);
-                    meta.appendChild(sevSpan);
+            <!-- Ticket functions moved into /js/script.js to avoid duplication and visible JS text -->
+            <!-- (ticket DOM creation handled in /js/script.js::YSNMDashboard.updateTicketsDisplay) -->
 
-                    item.appendChild(header);
-                    item.appendChild(meta);
-                    ticketsList.appendChild(item);
-                    });
-                }
-
-                showTokenConfig() {
-                    // Use shared safe token modal helper implemented in app.js
-                    if (window.showTokenConfigModal) {
-                        window.showTokenConfigModal();
-                    } else {
-                        console.debug('Token modal helper not available');
-                    }
-                }
-
-            updateTokenDisplay() {
+                
+        // legacy hook replaced by global in /js/script.js
+            
+        updateTokenDisplay() {
                 // Update token displays across the page
                 try {
                     const els = document.querySelectorAll('.current-token');

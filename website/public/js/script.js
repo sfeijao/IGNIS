@@ -73,6 +73,15 @@ class YSNMDashboard {
             modules: {
                 toolbar: toolbarOptions
             },
+
+        // Backwards-compatible global used by legacy inline calls in HTML
+        function showTokenConfig() {
+            if (window.showTokenConfigModal) {
+                window.showTokenConfigModal();
+            } else {
+                console.debug('Token modal helper not available');
+            }
+        }
             placeholder: '✨ Escreve aqui a descrição incrível do teu update...\n\nPodes usar:\n• **Negrito** para destacar\n• *Itálico* para ênfase\n• `Código` para comandos\n• [Links](https://exemplo.com)\n• E muito mais! 🚀'
         });
 
