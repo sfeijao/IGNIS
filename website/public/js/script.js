@@ -68,22 +68,13 @@ class YSNMDashboard {
             ['clean']
         ];
 
-        this.quill = new Quill('#description-editor', {
-            theme: 'snow',
-            modules: {
-                toolbar: toolbarOptions
-            },
-
-        // Backwards-compatible global used by legacy inline calls in HTML
-        function showTokenConfig() {
-            if (window.showTokenConfigModal) {
-                window.showTokenConfigModal();
-            } else {
-                console.debug('Token modal helper not available');
-            }
-        }
-            placeholder: '✨ Escreve aqui a descrição incrível do teu update...\n\nPodes usar:\n• **Negrito** para destacar\n• *Itálico* para ênfase\n• `Código` para comandos\n• [Links](https://exemplo.com)\n• E muito mais! 🚀'
-        });
+            this.quill = new Quill('#description-editor', {
+                theme: 'snow',
+                modules: {
+                    toolbar: toolbarOptions
+                },
+                placeholder: '✨ Escreve aqui a descrição incrível do teu update...\n\nPodes usar:\n• **Negrito** para destacar\n• *Itálico* para ênfase\n• `Código` para comandos\n• [Links](https://exemplo.com)\n• E muito mais! 🚀'
+            });
 
         // Atualizar preview em tempo real
         this.quill.on('text-change', () => {
@@ -573,6 +564,17 @@ class YSNMDashboard {
         } catch (error) {
             console.debug('⚠️ Socket.IO não disponível');
         }
+    }
+
+    // Update token displays across the page (legacy UI hook)
+    updateTokenDisplay() {
+        try {
+            const els = document.querySelectorAll('.current-token');
+            els.forEach(d => {
+                const t = getAuthToken();
+                d.textContent = t ? (t.length > 20 ? t.substring(0, 12) + '...' + t.slice(-4) : t) : 'Nenhum token configurado';
+            });
+        } catch (e) { /* no-op */ }
     }
 
     // --- Ticket management methods moved here from dashboard.html ---
