@@ -2,6 +2,19 @@
 let quill;
 let fieldsCount = 0;
 
+// Guarded redirect helper to prevent redirect loops when auth fails
+function safeRedirectToLogin() {
+    try {
+        if (window.location.pathname === '/login') return;
+        if (sessionStorage.getItem('redirectingToLogin')) return;
+        sessionStorage.setItem('redirectingToLogin', '1');
+        setTimeout(() => sessionStorage.removeItem('redirectingToLogin'), 10000);
+        window.location.replace('/login');
+    } catch (e) {
+        try { window.location.href = '/login'; } catch(_){}
+    }
+}
+
 // Função para fazer requests autenticados
 async function authenticatedFetch(url, options = {}) {
     // Verificar se tem token nos cookies
@@ -16,9 +29,9 @@ async function authenticatedFetch(url, options = {}) {
     
     const response = await fetch(url, options);
     
-    // Se token expirou, redirecionar para login
+    // Se token expirou, redirecionar para login (defensivo)
     if (response.status === 401) {
-        window.location.href = '/login';
+        safeRedirectToLogin();
         return null;
     }
     

@@ -886,7 +886,10 @@
                 toggleBtn.addEventListener('click', ()=>{
                     setDebug(!isDebug());
                     toggleBtn.textContent = isDebug() ? 'DEBUG ON' : 'debug';
-                    location.reload();
+                    // Confirm reload to avoid accidental refresh loops
+                    if (confirm('Reload page to apply debug state?')) {
+                        try { window.location.reload(); } catch(e) { /* noop */ }
+                    }
                 });
                 fixBtn.addEventListener('click', ()=>{ sanitizeTemplatePlaceholders(); attachImageFallbacks(); alert('Sanitização aplicada'); });
             }

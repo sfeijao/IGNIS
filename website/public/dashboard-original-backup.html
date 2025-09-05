@@ -1749,7 +1749,7 @@
                     userGuilds = guildsData.guilds;
                     displayServers();
                 } else {
-                    window.location.href = '/login';
+                    (function(){ try{ if (window.location.pathname !== '/login' && !sessionStorage.getItem('redirectingToLogin')){ sessionStorage.setItem('redirectingToLogin','1'); setTimeout(()=>sessionStorage.removeItem('redirectingToLogin'),10000); window.location.replace('/login'); } }catch(e){ try{ window.location.href='/login'; }catch(_){} }})();
                 }
             } catch (error) {
                 console.error('Erro ao carregar dados:', error);

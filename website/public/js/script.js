@@ -1,4 +1,19 @@
 // Modern YSNM Dashboard JavaScript - HorizonUI Inspired
+
+// Guarded redirect helper to prevent redirect loops when auth fails
+function safeRedirectToLogin() {
+    try {
+        if (window.location.pathname === '/login') return;
+        if (sessionStorage.getItem('redirectingToLogin')) return;
+        sessionStorage.setItem('redirectingToLogin', '1');
+        // allow another redirect attempt after 10s
+        setTimeout(() => sessionStorage.removeItem('redirectingToLogin'), 10000);
+        window.location.replace('/login');
+    } catch (e) {
+        // if anything fails, fallback to a simple assignment (best effort)
+        try { window.location.href = '/login'; } catch(_){}
+    }
+}
 class YSNMDashboard {
     constructor() {
         this.quill = null;
@@ -31,13 +46,13 @@ class YSNMDashboard {
             const response = await fetch('/api/channels', { credentials: 'include' });
             if (!response.ok) {
                 console.debug('❌ Não autenticado, redirecionando...');
-                window.location.replace('/login');
+                safeRedirectToLogin();
                 return false;
             }
             return true;
         } catch (error) {
             console.debug('❌ Erro na autenticação:', error);
-            window.location.replace('/login');
+            safeRedirectToLogin();
             return false;
         }
     }
@@ -482,7 +497,7 @@ class YSNMDashboard {
         if (confirm('🚀 Tens a certeza que queres fazer logout?')) {
             localStorage.clear();
             document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-            window.location.href = '/login';
+            safeRedirectToLogin();
         }
     }
 

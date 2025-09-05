@@ -530,7 +530,7 @@
                 if (confirm('🚀 Tens a certeza que queres fazer logout?')) {
                     localStorage.clear();
                     document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                    window.location.href = '/login';
+                    (function(){ try{ if (window.location.pathname !== '/login' && !sessionStorage.getItem('redirectingToLogin')){ sessionStorage.setItem('redirectingToLogin','1'); setTimeout(()=>sessionStorage.removeItem('redirectingToLogin'),10000); window.location.replace('/login'); } }catch(e){ try{ window.location.href='/login'; }catch(_){} }})();
                 }
             }
         }
