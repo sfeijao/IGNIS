@@ -502,6 +502,32 @@
             }
         }
     </script>
+    <script>
+        // Sanity guard: remove any visible text nodes that look like raw JS leaking into the page
+        (function(){
+            try {
+                const suspiciousRe = /\b(document\.|appendChild\(|function\s+\w+\s*\(|console\.|\bconst\s+\w+|\blet\s+\w+|\bvar\s+\w+|=>)\b/;
+                function cleanse(root){
+                    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+                    const toReplace = [];
+                    while(walker.nextNode()){
+                        const n = walker.currentNode;
+                        if (!n.nodeValue) continue;
+                        const txt = n.nodeValue.trim();
+                        if (txt.length < 10) continue;
+                        if (suspiciousRe.test(txt)) toReplace.push(n);
+                    }
+                    toReplace.forEach(n => {
+                        try { console.warn('Sanity guard removed suspicious text node:', n.nodeValue.slice(0,120)); } catch(e){}
+                        n.nodeValue = '';
+                    });
+                }
+                // Run immediately and also after DOMContentLoaded to catch late inserts
+                cleanse(document.body);
+                document.addEventListener('DOMContentLoaded', () => { try { cleanse(document.body); } catch(e){} });
+            } catch(e) { console.debug('Sanity guard failed', e); }
+        })();
+    </script>
     <script src="/js/toast-fallback.js"></script>
     <script src="/js/event-fallback.js"></script>
     <!-- Include DOMPurify then frontend helpers once at end of body -->
