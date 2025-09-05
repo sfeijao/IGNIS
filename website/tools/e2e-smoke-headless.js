@@ -4,8 +4,24 @@ const puppeteer = require('puppeteer');
   const base = process.env.BASE_URL || 'http://localhost:4000';
   const pages = [
     '/dashboard',
+    '/dashboard.html',
+    '/dashboard-fixed.html',
+    '/dashboard-original-backup.html',
+    '/index.html',
+    '/',
+    '/admin.html',
+    '/admin-guilds.html',
+    '/admin-channels.html',
+    '/admin-roles.html',
+    '/admin-webhooks.html',
+    '/analytics.html',
+    '/auth-status.html',
     '/tickets.html',
-    '/debug.html'
+    '/login.html',
+    '/login_clean.html',
+    '/debug.html',
+    '/test-api.html',
+    '/simple-test.html'
   ];
 
   const browser = await puppeteer.launch({ args: ['--no-sandbox','--disable-setuid-sandbox'] });

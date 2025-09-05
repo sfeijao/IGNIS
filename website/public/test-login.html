@@ -6,8 +6,7 @@
     <!-- local test-login styles moved to css/style.css (.test-login) -->
 </head>
 <body>
-    <script src="/js/frontend-helpers.js"></script>
-    <script src="/js/dompurify.min.js"></script>
+    <!-- helpers loaded at end of body -->
     <h2>🔐 YSNM Login Test</h2>
     <form id="testForm" class="test-login">
         <input type="password" id="pass" placeholder="Password: YSNM2024!" value="YSNM2024!">
@@ -67,5 +66,8 @@
     </script>
         <script src="/js/toast-fallback.js"></script>
         <script src="/js/event-fallback.js"></script>
+        <!-- Include DOMPurify then frontend helpers once at end of body -->
+        <script src="/js/dompurify.min.js"></script>
+        <script src="/js/frontend-helpers.js"></script>
     </body>
 </html>

@@ -7,8 +7,7 @@
   <!-- admin small roles styles moved to css/style.css (.admin-small) -->
 </head>
 <body>
-  <script src="/js/frontend-helpers.js"></script>
-  <script src="/js/dompurify.min.js"></script>
+  <!-- helpers loaded at end of body -->
   <h2>Roles</h2>
   <div>
     <label>Server ID <input id="guildId" placeholder="guild id" /></label>
@@ -104,5 +103,8 @@
 
     (async ()=>{ const g = await getSessionGuild(); if (g) document.getElementById('guildId').value = g.id; await load(); })();
   </script>
+  <!-- Include DOMPurify then frontend helpers once at end of body -->
+  <script src="/js/dompurify.min.js"></script>
+  <script src="/js/frontend-helpers.js"></script>
 </body>
 </html>

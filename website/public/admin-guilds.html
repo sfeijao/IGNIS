@@ -2,8 +2,7 @@
 <html lang="pt">
 <head><meta charset="utf-8"><title>Admin Guilds</title></head>
 <body>
-  <script src="/js/frontend-helpers.js"></script>
-  <script src="/js/dompurify.min.js"></script>
+  <!-- helpers loaded at end of body -->
   <h2>Guilds</h2>
   <button id="refresh">Refresh</button>
   <ul id="list"></ul>
@@ -33,5 +32,8 @@
     document.getElementById('refresh').addEventListener('click', fetchList);
     fetchList();
   </script>
+  <!-- Include DOMPurify then frontend helpers once at end of body -->
+  <script src="/js/dompurify.min.js"></script>
+  <script src="/js/frontend-helpers.js"></script>
 </body>
 </html>

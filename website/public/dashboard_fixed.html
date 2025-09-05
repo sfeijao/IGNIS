@@ -315,8 +315,7 @@
     </style>
 </head>
 <body>
-    <script src="/js/frontend-helpers.js"></script>
-    <script src="/js/dompurify.min.js"></script>
+    <!-- page content scripts will be loaded at end of body to ensure DOM is available -->
     <div class="container">
         <header class="header">
             <div class="header-content">
@@ -584,5 +583,8 @@
         });
     </script>
     <script src="/js/toast-fallback.js"></script>
+    <!-- Include DOMPurify then frontend helpers once at end of body -->
+    <script src="/js/dompurify.min.js"></script>
+    <script src="/js/frontend-helpers.js"></script>
 </body>
 </html>

@@ -6,8 +6,7 @@
     <!-- auth-status styles moved to css/style.css (.auth-status) -->
 </head>
 <body>
-    <script src="/js/frontend-helpers.js"></script>
-    <script src="/js/dompurify.min.js"></script>
+    <!-- helpers will be loaded at end of body -->
     <h2>🔐 YSNM - Status de Autenticação</h2>
     
     <div id="cookieStatus" class="status auth-status">
@@ -117,5 +116,8 @@
         testAPI();
     </script>
         <script src="/js/toast-fallback.js"></script>
+        <!-- Ensure DOMPurify then frontend helpers are loaded last -->
+        <script src="/js/dompurify.min.js"></script>
+        <script src="/js/frontend-helpers.js"></script>
     </body>
     </html>

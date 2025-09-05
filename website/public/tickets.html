@@ -14,8 +14,6 @@
     <script src="/js/toast-fallback.js"></script>
     <script src="/js/event-fallback.js"></script>
     <script src="/js/tickets-fallbacks.js"></script>
-    <script src="/js/frontend-helpers.js"></script>
-    <script src="/js/dompurify.min.js"></script>
 
     <div class="container">
         <div class="header">
@@ -698,5 +696,8 @@
                 return String(v).replace(/\$\{[^}]*\}/g, '').replace(/%24%7B/g, '');
             }
     </script>
+    <!-- Include DOMPurify then frontend helpers once at end of body -->
+    <script src="/js/dompurify.min.js"></script>
+    <script src="/js/frontend-helpers.js"></script>
 </body>
 </html>

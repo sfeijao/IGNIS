@@ -7,8 +7,7 @@
   <!-- admin-guild-config small styles moved to css/style.css (.admin-small/.admin-webhooks) -->
 </head>
 <body class="admin-small">
-  <script src="/js/frontend-helpers.js"></script>
-  <script src="/js/dompurify.min.js"></script>
+  <!-- helpers loaded at end of body -->
   <h2>Guild Config Admin</h2>
   <p>Access via <em>localhost</em> or provide a Bearer token in DevTools network headers.</p>
 
@@ -136,7 +135,10 @@
     document.getElementById('nextPage').addEventListener('click', ()=> { loadLogs(currentPage+1); });
 
     // initial load
-    loadLogs(1);
-  </script>
-</body>
-</html>
+      loadLogs(1);
+    </script>
+    <!-- Include DOMPurify then frontend helpers once at end of body -->
+    <script src="/js/dompurify.min.js"></script>
+    <script src="/js/frontend-helpers.js"></script>
+  </body>
+  </html>
