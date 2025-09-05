@@ -311,6 +311,26 @@ function requireServerAccess(req, res, next) {
 }
 
 // Servir ficheiros estáticos apenas para recursos públicos
+// Defensive middleware: block accidental serving of backup or temporary
+// public files (e.g. files containing "backup" or ending with ".bak").
+// This prevents stale or debug pages from being served in production or
+// by accident while we audit and clean the public folder.
+app.use((req, res, next) => {
+    try {
+        const p = (req.path || '').toLowerCase();
+        if (!p) return next();
+        const isBackup = p.includes('backup') || p.endsWith('.bak') || p.includes('_backup') || p.includes('original-backup') || /\bbackup\b/.test(p);
+        if (isBackup) {
+            logger.warn('🚫 Blocked request to public backup/temporary file', { path: req.path });
+            return res.status(404).send('Not Found');
+        }
+    } catch (e) {
+        // If anything weird happens, don't block the request; fail open.
+        logger.warn('Backup-block middleware error, continuing', { error: e && e.message ? e.message : e });
+    }
+    next();
+});
+
 app.use('/css', express.static(path.join(__dirname, 'public/css')));
 app.use('/js', express.static(path.join(__dirname, 'public/js')));
 app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
