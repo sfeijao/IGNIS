@@ -565,6 +565,117 @@ class YSNMDashboard {
             console.debug('⚠️ Socket.IO não disponível');
         }
     }
+
+    // --- Ticket management methods moved here from dashboard.html ---
+    async updateTicketSeverity(modal) {
+        const ticketId = modal.querySelector('#manage-ticket-id')?.value?.trim();
+        const selectedSeverity = modal.querySelector('[data-severity].selected');
+        if (!ticketId || !/^\d+$/.test(ticketId)) {
+            this.showMessage('ID do ticket deve ser um número válido', 'error');
+            return;
+        }
+        if (!selectedSeverity) {
+            this.showMessage('Selecione uma gravidade', 'error');
+            return;
+        }
+        const severity = selectedSeverity.dataset.severity;
+        try {
+            const response = await fetch('/api/tickets/' + encodeURIComponent(ticketId) + '/severity', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (getAuthToken() || '') },
+                body: JSON.stringify({ severity: severity })
+            });
+            if (response.ok) {
+                this.showMessage('Gravidade do ticket atualizada!', 'success');
+                document.body.removeChild(modal);
+            } else {
+                const error = await response.json().catch(() => ({}));
+                this.showMessage('Erro: ' + (error.error || ''), 'error');
+            }
+        } catch (error) {
+            console.error('Error updating ticket severity:', error);
+            this.showMessage('Erro ao atualizar gravidade', 'error');
+        }
+    }
+
+    async deleteTicket(modal) {
+        const ticketId = modal.querySelector('#manage-ticket-id')?.value?.trim();
+        if (!ticketId) return this.showMessage('ID do ticket é obrigatório', 'error');
+        if (!/^\d+$/.test(ticketId)) return this.showMessage('ID do ticket deve ser um número válido', 'error');
+        try {
+            const response = await fetch('/api/tickets/' + encodeURIComponent(ticketId), {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + (getAuthToken() || '') }
+            });
+            if (response.ok) {
+                this.showMessage('Ticket eliminado com sucesso!', 'success');
+                document.body.removeChild(modal);
+                this.refreshTickets();
+            } else {
+                const error = await response.json().catch(() => ({}));
+                this.showMessage('Erro: ' + (error.error || ''), 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting ticket:', error);
+            this.showMessage('Erro ao eliminar ticket', 'error');
+        }
+    }
+
+    async refreshTickets() {
+        try {
+            const response = await fetch('/api/tickets', { headers: { 'Authorization': 'Bearer ' + (getAuthToken() || '') } });
+            if (response.ok) {
+                const data = await response.json().catch(() => ([]));
+                const tickets = data.tickets || data || [];
+                if (Array.isArray(tickets)) {
+                    this.updateTicketsDisplay(tickets);
+                    this.showMessage('Tickets atualizados!', 'success');
+                } else {
+                    this.updateTicketsDisplay([]);
+                    this.showMessage('Nenhum ticket encontrado', 'info');
+                }
+            } else {
+                console.error('Response not ok:', response.status, response.statusText);
+                this.showMessage('Erro ao carregar tickets', 'error');
+            }
+        } catch (error) {
+            console.error('Error refreshing tickets:', error);
+            this.showMessage('Erro ao atualizar tickets', 'error');
+        }
+    }
+
+    updateTicketsDisplay(tickets) {
+        const ticketsList = document.querySelector('.tickets-list');
+        if (!ticketsList) return;
+        if (!Array.isArray(tickets)) { tickets = []; }
+        if (tickets.length === 0) {
+            while (ticketsList.firstChild) ticketsList.removeChild(ticketsList.firstChild);
+            const emptyDiv = document.createElement('div');
+            emptyDiv.style.textAlign = 'center';
+            emptyDiv.style.padding = 'var(--space-xl)';
+            emptyDiv.style.color = 'var(--text-secondary)';
+            const icon = document.createElement('i'); icon.className = 'fas fa-ticket-alt'; icon.style.fontSize = '3rem'; icon.style.marginBottom = 'var(--space-md)'; icon.style.opacity = '0.5';
+            const messageDiv = document.createElement('div'); messageDiv.textContent = 'Nenhum ticket encontrado';
+            emptyDiv.appendChild(icon); emptyDiv.appendChild(messageDiv); ticketsList.appendChild(emptyDiv); return;
+        }
+        while (ticketsList.firstChild) ticketsList.removeChild(ticketsList.firstChild);
+        const severityEmoji = { 'low': '\ud83d\udfe2', 'normal': '\ud83d\udfe1', 'high': '\ud83d\udd34', 'critical': '\ud83d\udfe3' };
+        const statusColor = { 'open': '#10B981', 'pending': '#F59E0B', 'closed': '#6B7280' };
+        tickets.forEach(ticket => {
+            const item = document.createElement('div'); item.className = 'ticket-item';
+            const header = document.createElement('div'); header.className = 'ticket-header';
+            const title = document.createElement('span'); title.className = 'ticket-title'; title.textContent = (severityEmoji[ticket.severity] || '\ud83d\udfe1') + ' ' + (ticket.title || '');
+            const status = document.createElement('span'); status.className = 'ticket-status'; status.style.background = statusColor[ticket.status] || '#6B7280'; status.textContent = ticket.status || '';
+            header.appendChild(title); header.appendChild(status);
+            const meta = document.createElement('div'); meta.className = 'ticket-meta';
+            const idSpan = document.createElement('span'); idSpan.textContent = 'ID: ' + (ticket.id || '');
+            const bySpan = document.createElement('span'); bySpan.textContent = 'Por: ' + (ticket.created_by || 'Desconhecido');
+            const dateSpan = document.createElement('span'); dateSpan.textContent = ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : '';
+            const sevSpan = document.createElement('span'); sevSpan.textContent = 'Gravidade: ' + (ticket.severity || '');
+            meta.appendChild(idSpan); meta.appendChild(bySpan); meta.appendChild(dateSpan); meta.appendChild(sevSpan);
+            item.appendChild(header); item.appendChild(meta); ticketsList.appendChild(item);
+        });
+    }
 }
 
 // Função global para fechar modal
