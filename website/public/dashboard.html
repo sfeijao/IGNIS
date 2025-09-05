@@ -32,40 +32,40 @@
         updateTokenDisplay() {
                 // Update token displays across the page
                 try {
-                    const els = document.querySelectorAll('.current-token');
-                    els.forEach(d => { const t = getAuthToken(); d.textContent = t ? (t.length>20? t.substring(0,12)+'...'+t.slice(-4): t) : 'Nenhum token configurado'; });
+
+
                 } catch(e){}
             }
 
             async loadWebhookConfig() {
                 try {
-                    const response = await fetch('/api/config/archive-webhook', {
+
                             headers: {
                                 'Authorization': 'Bearer ' + (getAuthToken() || '')
                             }
                         });
 
                     if (response.ok) {
-                        const data = await response.json();
-                        const webhookInput = document.getElementById('webhook-url');
+
+
                         if (webhookInput && data.webhookUrl) {
                             webhookInput.value = data.webhookUrl;
                         }
                     } else {
-                        console.log('Nenhuma configuração de webhook encontrada');
+
                     }
                 } catch (error) {
-                    console.error('Erro ao carregar configuração de webhook:', error);
+
                 }
             }
 
             async saveWebhookConfig() {
-                const webhookInput = document.getElementById('webhook-url');
-                const statusDiv = document.getElementById('webhook-status');
+
+
                 
                 if (!webhookInput || !statusDiv) return;
 
-                const webhookUrl = webhookInput.value.trim();
+
                 
                 // Validar URL do webhook
                 if (webhookUrl && !webhookUrl.includes('discord.com/api/webhooks/')) {
@@ -76,7 +76,7 @@
                 try {
                     this.showWebhookStatus('A guardar configuração...', 'loading');
 
-                    const response = await fetch('/api/config/archive-webhook', {
+
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -88,7 +88,7 @@
             }
             
             // Map action title to API action
-            let action;
+
             switch(actionTitle) {
                 case 'Avisar Utilizador':
                     action = 'warn';
@@ -110,13 +110,13 @@
             }
             
             // Show loading state
-            const executeBtn = document.getElementById('execute-moderation-btn');
-            const originalText = executeBtn.textContent;
+
+
             executeBtn.textContent = 'Executando...';
             executeBtn.disabled = true;
             
             // Prepare request data
-            const requestData = {
+
                 action: action,
                 memberId: user,
                 reason: reason || 'Sem motivo especificado'
@@ -137,7 +137,7 @@
                 body: JSON.stringify(requestData)
             })
             .then(async response => {
-                const data = await response.json();
+
                 if (!response.ok) {
                     throw new Error('HTTP ' + response.status + ': ' + (data.error || 'Erro no servidor'));
                 }
@@ -145,17 +145,17 @@
             })
             .then(data => {
                 if (data.success) {
-                    var message = '✅ ' + (data.message || '') + '\n';
+
                     if (data.note) message += '⚠️ ' + data.note + '\n';
                     message += 'Utilizador: ' + user + '\nMotivo: ' + (requestData.reason || '');
                     alert(message);
                     hideModerationAction();
                     
                     // Clear form
-                    document.getElementById('target-user').value = '';
-                    document.getElementById('action-reason').value = '';
-                    if (document.getElementById('action-duration')) {
-                        document.getElementById('action-duration').value = '';
+
+
+
+
                     }
                     
                     // Add to recent activity or refresh logs
@@ -165,9 +165,9 @@
                 }
             })
             .catch(error => {
-                console.error('Erro ao executar ação de moderação:', error);
+
                 
-                let errorMessage = '❌ Erro de rede: Não foi possível conectar ao servidor';
+
                 if (error.message.includes('403')) {
                     errorMessage = '❌ Erro: Permissões insuficientes. Verifique se está logado.';
                 } else if (error.message.includes('404')) {
@@ -190,7 +190,7 @@
         
         function getAuthToken() {
             // Try to get token from cookie first
-            const cookieToken = document.cookie
+
                 .split('; ')
                 .find(row => row.startsWith('authToken='))
                 ?.split('=')[1];
@@ -200,7 +200,7 @@
             }
             
             // Try localStorage
-            const localToken = localStorage.getItem('authToken');
+
             if (localToken) {
                 return localToken;
             }
@@ -215,8 +215,8 @@
             // For Railway production, do NOT auto-store tokens from URL; require explicit configuration
             if (window.location.hostname.includes('railway.app')) {
                 // If there's a token param, show presence only and do not persist it automatically
-                const urlParams = new URLSearchParams(window.location.search);
-                const prodToken = urlParams.get('token');
+
+
                 if (prodToken) {
                     // do not call localStorage.setItem here; return marker for presence
                     return '***present***';
@@ -229,11 +229,11 @@
             return '';
         }
         
-        function addModerationLog(action, user, reason) {
-            const container = document.getElementById('logsContainer');
+
+
             if (container) {
-                const currentTime = new Date().toLocaleTimeString();
-                const actionNames = {
+
+
                     'warn': 'Aviso',
                     'timeout': 'Timeout',
                     'kick': 'Expulsão',
@@ -241,19 +241,19 @@
                     'error': 'Erro'
                 };
                 
-                const logClass = action === 'error' ? 'log-entry error' : 'log-entry moderation';
-                const icon = action === 'error' ? '❌' : '⚖️';
+
+
                 
-                const newLog = document.createElement('div');
+
                 newLog.className = logClass;
-                const time = document.createElement('span');
+
                 time.className = 'log-time';
                 time.textContent = '[' + currentTime + ']';
-                const msg = document.createElement('span');
+
                 msg.className = 'log-message';
                 msg.textContent = icon + ' ' + (actionNames[action] || action) + ' - ' + user + ': ' + reason;
-                newLog.appendChild(time);
-                newLog.appendChild(msg);
+
+
                 container.insertBefore(newLog, container.firstChild);
                 
                 // Limit to 50 logs
@@ -265,32 +265,32 @@
 
         // Embed functions
         function updateEmbedPreview() {
-            const title = document.getElementById('embed-title').value || 'Título do Embed';
-            const description = document.getElementById('embed-description').value || 'Descrição do embed';
-            const color = document.getElementById('embed-color').value;
-            const footer = document.getElementById('embed-footer').value || 'Footer do embed';
+
+
+
+
             
-            const preview = document.getElementById('embed-preview-content');
+
             // Clear previous preview
             while (preview.firstChild) preview.removeChild(preview.firstChild);
-            const t = document.createElement('div'); t.className = 'embed-title'; t.textContent = title;
-            const d = document.createElement('div'); d.className = 'embed-description'; d.textContent = description;
-            const f = document.createElement('div'); f.className = 'embed-footer'; f.textContent = footer;
-            preview.appendChild(t);
-            preview.appendChild(d);
-            preview.appendChild(f);
+
+
+
+
+
+
             
             // Use CSS custom properties for dynamic colors
             preview.style.setProperty('--embed-color', color);
-            const embedTitle = preview.querySelector('.embed-title');
+
             if (embedTitle) {
                 embedTitle.style.setProperty('--title-color', color);
             }
         }
 
         function sendEmbed() {
-            const title = document.getElementById('embed-title').value;
-            const description = document.getElementById('embed-description').value;
+
+
             
             if (!title && !description) {
                 alert('Por favor, preenche pelo menos o título ou a descrição');
@@ -302,15 +302,15 @@
 
         // Logs functions
         function refreshLogs() {
-            const container = document.getElementById('logsContainer');
-            const currentTime = new Date().toLocaleTimeString();
+
+
             
-            const newLog = document.createElement('div');
+
             newLog.className = 'log-entry info';
-            const time = document.createElement('span'); time.className = 'log-time'; time.textContent = '[' + currentTime + ']';
-            const msg = document.createElement('span'); msg.className = 'log-message'; msg.textContent = 'Logs atualizados pelo utilizador';
-            newLog.appendChild(time);
-            newLog.appendChild(msg);
+
+
+
+
             container.insertBefore(newLog, container.firstChild);
             
             // Limitar a 50 logs
@@ -321,27 +321,27 @@
 
         function clearLogs() {
             if (confirm('Tens a certeza de que queres limpar todos os logs?')) {
-                const currentTime = new Date().toLocaleTimeString();
-                const container = document.getElementById('logsContainer');
+
+
                 while (container.firstChild) container.removeChild(container.firstChild);
-                const newLog = document.createElement('div');
+
                 newLog.className = 'log-entry info';
-                const time = document.createElement('span'); time.className = 'log-time'; time.textContent = '[' + currentTime + ']';
-                const msg = document.createElement('span'); msg.className = 'log-message'; msg.textContent = 'Logs limpos pelo utilizador';
-                newLog.appendChild(time);
-                newLog.appendChild(msg);
-                container.appendChild(newLog);
+
+
+
+
+
             }
         }
 
         // Initialize dashboard when page loads
-        document.addEventListener('DOMContentLoaded', () => {
+
             new YSNMDashboard();
 
             // Auto-update embed preview when typing
-            const embedInputs = ['embed-title', 'embed-description', 'embed-color', 'embed-footer'];
+
             embedInputs.forEach(id => {
-                const element = document.getElementById(id);
+
                 if (element) {
                     element.addEventListener('input', updateEmbedPreview);
                 }
@@ -353,7 +353,7 @@
                 attachImageFallbacks();
             } catch (e) {
                 // Don't break dashboard init if sanitation fails
-                console.warn('DOM sanitation failed:', e);
+
             }
         });
     </script>
