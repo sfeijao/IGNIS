@@ -472,52 +472,8 @@
         </div>
     </div>
 
-    <script>
-        // Modern dashboard JavaScript
-        class YSNMDashboard {
-            constructor() {
-                this.init();
-            }
-
-            async init() {
-                console.log('🚀 Inicializando YSNM Dashboard...');
-                this.setupEventListeners();
-                await this.loadStats();
-                this.startRealTimeUpdates();
-            }
-
-            setupEventListeners() {
-                // Logout
-                document.getElementById('logoutBtn')?.addEventListener('click', this.handleLogout);
-                // Config button (open simplified token modal when available)
-                const cfg = document.getElementById('configBtn');
-                if (cfg) cfg.addEventListener('click', () => { if (window.showTokenConfigModal) window.showTokenConfigModal(); });
-                
-                // Navigation
-                document.querySelectorAll('.nav-item a').forEach(link => {
-                    link.addEventListener('click', this.handleNavigation.bind(this));
-                });
-            }
-
-            async loadStats() {
-                try {
-                    // Load member count
-                        const guildsResponse = await fetch('/api/guilds', { credentials: 'include' });
-                    if (guildsResponse.ok) {
-                        const guilds = await guildsResponse.json();
-                        if (guilds.length > 0) {
-                            document.getElementById('memberCount').textContent = guilds[0].memberCount || '15';
-                        }
-                    }
-
-                    // Load channels
-                        const channelsResponse = await fetch('/api/channels', { credentials: 'include' });
-                    if (channelsResponse.ok) {
-                        const channels = await channelsResponse.json();
-                        document.getElementById('channelCount').textContent = channels.length || '60';
-                    }
-
-                    // Load roles
+    <!-- External dashboard script to avoid inline duplication -->
+    <script src="/js/script.js"></script>
                         const rolesResponse = await fetch('/api/roles', { credentials: 'include' });
                     if (rolesResponse.ok) {
                         const roles = await rolesResponse.json();

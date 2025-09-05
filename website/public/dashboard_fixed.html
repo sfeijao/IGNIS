@@ -575,13 +575,8 @@
             }
         }
 
-        // Initialize dashboard when page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            new YSNMDashboard();
-            const cfg = document.getElementById('configBtn');
-            if (cfg && window.showTokenConfigModal) cfg.addEventListener('click', () => window.showTokenConfigModal());
-        });
-    </script>
+    <!-- Use centralized external dashboard script -->
+    <script src="/js/script.js"></script>
     <script src="/js/toast-fallback.js"></script>
     <!-- Include DOMPurify then frontend helpers once at end of body -->
     <script src="/js/dompurify.min.js"></script>
