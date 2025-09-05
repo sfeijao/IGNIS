@@ -1,0 +1,46 @@
+name: Deploy to Railway on push
+
+on:
+  push:
+    # Trigger on push to any branch — change if you want to restrict
+    branches: ['**']
+
+jobs:
+  deploy:
+    name: Deploy to Railway
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Railway CLI
+        run: |
+          npm install -g @railway/cli@latest || true
+
+      - name: Validate Railway API key
+        run: |
+          if [ -z "${{ secrets.RAILWAY_API_KEY }}" ]; then
+            echo "\nERROR: RAILWAY_API_KEY secret is not set. Add it in repository Settings → Secrets → Actions.\n";
+            exit 1;
+          fi
+
+      - name: Login to Railway
+        run: |
+          railway login --apiKey "${{ secrets.RAILWAY_API_KEY }}"
+
+      - name: Trigger Railway deploy
+        run: |
+          # Attempt to deploy the project in the current working directory.
+          # This uses the Railway CLI; adjust the command below if your project
+          # requires a specific environment or flags (for example: --environment production)
+          railway deploy || railway up --detach || true
+
+      - name: Post-deploy note
+        if: ${{ always() }}
+        run: |
+          echo "Railway deploy step finished. Check Railway dashboard for deployment status and logs."
