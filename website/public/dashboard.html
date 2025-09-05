@@ -2109,32 +2109,24 @@
                 return localToken;
             }
             
-            // For local development, use a dev token
+            // For local development, do NOT auto-insert a dev token; require explicit user action
             if (window.location.protocol === 'file:' || 
                 window.location.hostname === 'localhost' || 
                 window.location.hostname === '127.0.0.1') {
-                return 'dev-token';
+                return null; // no auto-token
             }
-            
-            // For Railway production, check for production token
+
+            // For Railway production, do NOT auto-store tokens from URL; require explicit configuration
             if (window.location.hostname.includes('railway.app')) {
-                // Try to get production token from URL parameters or prompt user
+                // If there's a token param, show presence only and do not persist it automatically
                 const urlParams = new URLSearchParams(window.location.search);
                 const prodToken = urlParams.get('token');
                 if (prodToken) {
-                    localStorage.setItem('authToken', prodToken);
-                    return prodToken;
+                    // do not call localStorage.setItem here; return marker for presence
+                    return '***present***';
                 }
-                
-                // Check if we have a stored production token
-                const storedToken = localStorage.getItem('productionToken');
-                if (storedToken) {
-                    return storedToken;
-                }
-                
-                // For now, use admin-token for Railway production
-                // TODO: Implement proper OAuth flow
-                return 'admin-token';
+                // Do not return admin-token by default; prefer explicit OAuth flow
+                return null;
             }
             
             // Fallback empty token (backend will handle local dev)
@@ -2283,7 +2275,7 @@
                 console[fn] = function(...args){ if (isDebug()) _console[fn](...args); };
             });
 
-            // Replace any visible template placeholders like ${...} in text nodes and attributes
+            // Replace any visible template placeholders like $ + '{' + '...}' in text nodes and attributes
             window.sanitizeTemplatePlaceholders = function(){
                 const placeholderRegex = /\$\{[^}]+\}/g;
 
@@ -2294,7 +2286,7 @@
                         const val = el.getAttribute(attr);
                         if (!val) return;
                         // encoded forms sometimes appear (e.g. %24%7B)
-                        if (val.includes('${') || val.includes('%24%7B')) {
+                        if (val.includes('$' + '{') || val.includes('%24%7B')) {
                             // If it's an image, set a safe default
                             if (el.tagName.toLowerCase() === 'img') {
                                 el.setAttribute('src','/default-avatar.png');
@@ -2324,7 +2316,7 @@
                 document.querySelectorAll('img').forEach(img => {
                     // If src looks like an unprocessed template, fix it now
                     const src = img.getAttribute('src') || '';
-                    if (src.includes('${') || src.includes('%24%7B')) {
+                    if (src.includes('$' + '{') || src.includes('%24%7B')) {
                         img.src = defaultSrc;
                     }
 
@@ -2373,9 +2365,10 @@
         function promptForToken() {
             const token = prompt('Insira o token de acesso para Railway:');
             if (token && token.trim()) {
+                if (!confirm('Guardar este token no armazenamento local? Isto é inseguro em ambientes partilhados.')) return;
                 localStorage.setItem('productionToken', token.trim());
-                localStorage.setItem('authToken', token.trim());
-                location.reload();
+                // Do not set authToken automatically; require explicit user action or reload
+                alert('Token armazenado como productionToken. Use a opção de sessão para ativar.');
             }
         }
         
@@ -2402,10 +2395,11 @@
             const tokenInput = document.getElementById('prodToken');
             const token = tokenInput?.value?.trim();
             if (token) {
+                if (!confirm('Guardar este token no armazenamento local? Isto é inseguro em ambientes partilhados.')) return;
                 localStorage.setItem('productionToken', token);
-                localStorage.setItem('authToken', token);
+                // Do not auto-set authToken; admin should enable session explicitly
                 tokenInput.value = '';
-                location.reload();
+                alert('Token guardado como productionToken. Por favor ative sessão manualmente se necessário.');
             }
         }
     </script>

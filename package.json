@@ -24,7 +24,8 @@
     "test:private-receiver": "mocha ./examples/private-receiver/tests --timeout 10000",
   "test:ci": "npm run test:private-receiver",
   "smoke:fetch": "node website/tools/e2e-smoke-fetch.js",
-    "smoke:headless": "node website/tools/e2e-smoke-headless.js"
+  "smoke:headless": "node website/tools/e2e-smoke-headless.js",
+  "smoke:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-smoke-local.ps1"
   },
   "repository": {
     "type": "git",

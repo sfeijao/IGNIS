@@ -372,22 +372,20 @@ window.showTokenConfigModal = function() {
         // actions
         const actions = document.createElement('div'); actions.className = 'form-actions'; actions.style.gap = '8px';
         const saveBtn = document.createElement('button'); saveBtn.id = 'saveCustomTokenGlobal'; saveBtn.className = 'btn btn-primary'; saveBtn.textContent = 'Guardar token';
-        const devBtn = document.createElement('button'); devBtn.id = 'useDevTokenGlobal'; devBtn.className = 'btn btn-secondary'; devBtn.textContent = 'Usar dev-token';
-        const adminBtn = document.createElement('button'); adminBtn.id = 'useAdminTokenGlobal'; adminBtn.className = 'btn btn-secondary'; adminBtn.textContent = 'Usar admin-token';
+    // remove dev/admin preset buttons to avoid accidental token exposure
         const closeBtn = document.createElement('button'); closeBtn.id = 'closeModalBtnGlobal'; closeBtn.className = 'btn btn-light'; closeBtn.textContent = 'Fechar';
         actions.appendChild(saveBtn); actions.appendChild(devBtn); actions.appendChild(adminBtn); actions.appendChild(closeBtn);
         modalContent.appendChild(actions);
 
-        const note = document.createElement('div'); note.className = 'form-group'; const small = document.createElement('small'); small.textContent = 'Nota: Tokens devem ser usados apenas em ambiente de desenvolvimento. Em produção, prefira OAuth2.'; note.appendChild(small); modalContent.appendChild(note);
+    const note = document.createElement('div'); note.className = 'form-group'; const small = document.createElement('small'); small.textContent = 'Nota: Tokens devem ser usados apenas em ambiente de desenvolvimento. Em produção, prefira OAuth2.'; note.appendChild(small); modalContent.appendChild(note);
 
         modal.appendChild(modalContent);
         modal.classList.add('hidden'); document.body.appendChild(modal);
         requestAnimationFrame(()=>{ modal.classList.remove('hidden'); modal.classList.add('active'); });
 
         const updateDisplay = () => { const d = modal.querySelector('.current-token'); if (!d) return; const t = localStorage.getItem('authToken'); d.textContent = t ? (t.length>20? t.substring(0,12)+'...'+t.slice(-4): t) : 'Nenhum token configurado'; };
-        saveBtn.addEventListener('click', () => { const v = input.value.trim(); if (!v) return; localStorage.setItem('authToken', v); updateDisplay(); });
-        devBtn.addEventListener('click', ()=>{ localStorage.setItem('authToken','dev-token'); updateDisplay(); });
-        adminBtn.addEventListener('click', ()=>{ localStorage.setItem('authToken','admin-token'); updateDisplay(); });
+        saveBtn.addEventListener('click', () => { const v = input.value.trim(); if (!v) return; // require confirmation before storing
+            if (!confirm('Guardar token localmente? Isto é inseguro em ambientes partilhados.')) return; localStorage.setItem('authToken', v); updateDisplay(); });
         closeBtn.addEventListener('click', ()=>{ modal.classList.remove('active'); modal.classList.add('hidden'); setTimeout(()=>{ if (modal.parentNode) modal.parentNode.removeChild(modal); },200); });
     } catch(e){ console.debug('Erro ao abrir modal global', e); }
 };
@@ -418,6 +416,8 @@ function initializeQuill() {
             let content = '';
             if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
                 content = window.DOMPurify.sanitize(raw, {ALLOWED_TAGS: ['b','i','u','strong','em','a','p','br','ul','ol','li','code','pre']});
+            } else if (window.FrontendHelpers && typeof window.FrontendHelpers.stripHtml === 'function') {
+                content = window.FrontendHelpers.stripHtml(raw);
             } else {
                 content = stripHtml(raw);
             }

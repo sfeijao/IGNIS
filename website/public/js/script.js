@@ -177,12 +177,18 @@ class YSNMDashboard {
             try {
                 if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
                     safeHtml = window.DOMPurify.sanitize(htmlContent, {ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|ftp|data):|[^\s]*$)/i});
+                } else if (window.FrontendHelpers && typeof window.FrontendHelpers.stripHtml === 'function') {
+                    safeHtml = window.FrontendHelpers.stripHtml(htmlContent);
                 } else {
                     safeHtml = this.sanitizeHtmlForPreview(htmlContent);
                 }
             } catch (purgeErr) {
                 console.warn('DOMPurify sanitize failed, falling back to basic sanitizer', purgeErr);
-                safeHtml = this.sanitizeHtmlForPreview(htmlContent);
+                if (window.FrontendHelpers && typeof window.FrontendHelpers.stripHtml === 'function') {
+                    safeHtml = window.FrontendHelpers.stripHtml(htmlContent);
+                } else {
+                    safeHtml = this.sanitizeHtmlForPreview(htmlContent);
+                }
             }
 
             // Parse sanitized HTML in an inert template, sanitize attributes on parsed nodes, then attach
@@ -386,17 +392,24 @@ class YSNMDashboard {
         const formData = new FormData(event.target);
         const data = Object.fromEntries(formData);
         // Sanitize description from Quill before sending to server
-        try {
+            try {
             const rawHtml = (this.quill && this.quill.root && this.quill.root.innerHTML) ? this.quill.root.innerHTML : '';
             if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
                 data.description = window.DOMPurify.sanitize(rawHtml, {ALLOWED_TAGS: ['b','i','u','strong','em','a','p','br','ul','ol','li','code','pre']});
+            } else if (window.FrontendHelpers && typeof window.FrontendHelpers.stripHtml === 'function') {
+                data.description = window.FrontendHelpers.stripHtml(rawHtml);
             } else {
                 // fallback to the dashboard's sanitizer
                 data.description = this.sanitizeHtmlForPreview(rawHtml);
             }
         } catch (e) {
             console.debug('Erro ao sanitizar descrição:', e);
-            data.description = this.sanitizeHtmlForPreview(this.quill ? (this.quill.root ? this.quill.root.innerHTML : '') : '');
+            const fallbackRaw = this.quill && this.quill.root ? this.quill.root.innerHTML : '';
+            if (window.FrontendHelpers && typeof window.FrontendHelpers.stripHtml === 'function') {
+                data.description = window.FrontendHelpers.stripHtml(fallbackRaw);
+            } else {
+                data.description = this.sanitizeHtmlForPreview(fallbackRaw);
+            }
         }
         
         // Adicionar campos customizados
