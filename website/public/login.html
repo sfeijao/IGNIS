@@ -9,6 +9,7 @@
     <link rel="icon" href="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" type="image/gif">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https: http:; script-src 'self' 'unsafe-inline' 'unsafe-eval';">
     <!-- Inline login styles moved to css/style.css -->
+    <style>
         .security-note h4 {
             color: var(--brand-green);
             font-size: 0.9rem;
@@ -42,8 +43,7 @@
     </style>
 </head>
 <body>
-    <script src="/js/frontend-helpers.js"></script>
-    <script src="/js/dompurify.min.js"></script>
+    <!-- helpers loaded at end of body -->
     <div class="login-container">
         <img src="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" alt="YSNM Logo" class="login-logo">
         
@@ -125,7 +125,8 @@
             }, 100);
         });
     </script>
-    </body>
-        <script src="/js/toast-fallback.js"></script>
-        <script src="/js/event-fallback.js"></script>
-</html>
+    <!-- Include DOMPurify then frontend helpers once at end of body -->
+    <script src="/js/dompurify.min.js"></script>
+    <script src="/js/frontend-helpers.js"></script>
+        </body>
+    </html>

@@ -12,8 +12,7 @@
     <div id="messages">Loading...</div>
   </div>
 
-  <script src="/js/frontend-helpers.js"></script>
-  <script src="/js/dompurify.min.js"></script>
+  <!-- helpers loaded at end of body -->
   <script>
     (function(){
       function getTicketIdFromPath(){
@@ -68,5 +67,8 @@
       document.addEventListener('DOMContentLoaded', load);
     })();
   </script>
+  <!-- Include DOMPurify then frontend helpers once at end of body -->
+  <script src="/js/dompurify.min.js"></script>
+  <script src="/js/frontend-helpers.js"></script>
 </body>
 </html>

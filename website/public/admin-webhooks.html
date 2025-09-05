@@ -8,8 +8,7 @@
     <!-- admin-webhooks styles moved to css/style.css (.admin-webhooks) -->
   </head>
 <body class="admin-webhooks">
-  <script src="/js/frontend-helpers.js"></script>
-  <script src="/js/dompurify.min.js"></script>
+  <!-- helpers loaded at end of body -->
   <h2>Webhooks</h2>
   <p>Configure the archive webhook for ticket archiving and test delivery.</p>
 
@@ -122,5 +121,8 @@
       ['load','save','testWebhook'].forEach(id=>{ const b=document.getElementById(id); if(b) b.disabled = !!state; });
     }
   </script>
+  <!-- Include DOMPurify then frontend helpers once at end of body -->
+  <script src="/js/dompurify.min.js"></script>
+  <script src="/js/frontend-helpers.js"></script>
 </body>
 </html>

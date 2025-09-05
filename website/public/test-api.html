@@ -8,8 +8,7 @@
     <!-- test-api styles moved to css/style.css (.test-api, .test-section, .status, etc) -->
 </head>
 <body>
-    <script src="/js/frontend-helpers.js"></script>
-    <script src="/js/dompurify.min.js"></script>
+    <!-- helpers loaded at end of body -->
     <div class="container">
         <h1>🧪 YSNM API Test Dashboard</h1>
     <p class="muted-center mb-1">
@@ -99,11 +98,11 @@
         </div>
     </div>
 
+    </script>
+    
+    </div>
+    
     <script>
-        const SERVER_ID = '1333820000791691284'; // ID real do servidor
-
-        async function makeApiCall(endpoint, method = 'GET', body = null) {
-            try {
                 const options = {
                     method,
                     headers: {
@@ -313,3 +312,6 @@
         <script src="/js/toast-fallback.js"></script>
     </body>
     </html>
+            <!-- Include DOMPurify then frontend helpers once at end of body -->
+            <script src="/js/dompurify.min.js"></script>
+            <script src="/js/frontend-helpers.js"></script>

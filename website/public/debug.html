@@ -8,8 +8,7 @@
     <!-- Inline debug styles moved to css/style.css -->
 </head>
 <body>
-    <script src="/js/frontend-helpers.js"></script>
-    <script src="/js/dompurify.min.js"></script>
+    <!-- helpers loaded at end of body -->
     <div class="container">
         <h1>🔧 Diagnóstico Dashboard YSNM</h1>
     <p class="muted-center">
@@ -65,10 +64,10 @@
         </div>
     </div>
 
+    </script>
+    </div>
+
     <script>
-        // Log system
-        function addLog(message, type = 'info') {
-            const log = document.getElementById('activity-log');
             const timestamp = new Date().toLocaleTimeString();
             const entry = document.createElement('div');
             entry.className = 'log-entry ' + type;
@@ -184,7 +183,7 @@
                     addLog('❌ DOM API com problemas', 'error');
                 }
                 
-                updateStatus('js', true, '✅ JavaScript básico funcionando corretamente');
+            updateStatus('js', true, '✅ JavaScript básico funcionando corretamente');
                 addLog('✅ Todos os testes JavaScript passaram', 'success');
                 
             } catch (error) {
@@ -197,7 +196,7 @@
         function startConsoleMonitor() {
             addLog('🐛 Iniciando monitor de console...', 'info');
             
-            // Capturar console.log
+        // Capturar console.log
             const originalLog = console.log;
             console.log = function(...args) {
                 addLog('[LOG] ' + args.join(' '), 'info');
@@ -293,5 +292,8 @@
     </script>
         <script src="/js/toast-fallback.js"></script>
         <script src="/js/event-fallback.js"></script>
+        <!-- Include DOMPurify then frontend helpers once at end of body -->
+        <script src="/js/dompurify.min.js"></script>
+        <script src="/js/frontend-helpers.js"></script>
     </body>
     </html>

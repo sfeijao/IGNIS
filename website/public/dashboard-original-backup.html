@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="/js/frontend-helpers.js"></script>
-    <script src="/js/dompurify.min.js"></script>
+    <!-- moved helper scripts to end of body -->
     <title>Dashboard - YSNM Bot</title>
     <style>
         * {
@@ -3052,5 +3051,8 @@
         loadUserData();
     </script>
         <script src="/js/toast-fallback.js"></script>
-    </body>
-    </html>
+        <!-- Include DOMPurify then frontend helpers once at end of body -->
+        <script src="/js/dompurify.min.js"></script>
+        <script src="/js/frontend-helpers.js"></script>
+        </body>
+        </html>

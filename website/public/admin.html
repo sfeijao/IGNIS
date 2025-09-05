@@ -8,10 +8,9 @@
     <!-- Admin page styles moved to css/style.css -->
 </head>
 <body>
-    <script src="/js/frontend-helpers.js"></script>
-    <script src="/js/dompurify.min.js"></script>
+    <!-- page content scripts will be loaded at end of body to ensure DOM is available -->
     <div class="container">
-    <script src="/js/frontend-helpers.js"></script>
+    <!-- frontend helpers intentionally loaded at end of body -->
         <div class="header">
             <h1>⚙️ Administração</h1>
             <p>Painel de controle completo do servidor</p>
@@ -833,5 +832,8 @@
     </script>
     <script src="/js/toast-fallback.js"></script>
     <script src="/js/event-fallback.js"></script>
+    <!-- Include DOMPurify then frontend helpers once at end of body -->
+    <script src="/js/dompurify.min.js"></script>
+    <script src="/js/frontend-helpers.js"></script>
 </body>
 </html>

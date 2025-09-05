@@ -8,8 +8,7 @@
     <!-- simple-test styles moved to css/style.css (.test-page) -->
 </head>
 <body>
-    <script src="/js/frontend-helpers.js"></script>
-    <script src="/js/dompurify.min.js"></script>
+    <!-- helpers loaded at end of body -->
     <div class="container test-page">
         <h1>🔧 Teste Simples YSNM</h1>
         <p>Teste básico para verificar JavaScript e APIs</p>
@@ -27,9 +26,12 @@
         <div id="console-log" class="result">Aguardando...</div>
     </div>
 
-    <script>
-        // Capturar console
-        const consoleDiv = document.getElementById('console-log');
+    </script>
+    <!-- Include DOMPurify then frontend helpers once at end of body -->
+    <script src="/js/dompurify.min.js"></script>
+    <script src="/js/frontend-helpers.js"></script>
+</body>
+</html>
         const originalLog = console.log;
         const originalError = console.error;
         
