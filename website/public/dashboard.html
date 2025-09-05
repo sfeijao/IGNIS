@@ -32,7 +32,777 @@
                         <span>Logout</span>
                     </button>
                 </div>
-                <!-- Inlined dashboard JavaScript removed: functionality moved to /js/script.js to avoid accidental rendering as text -->
+
+                // Validar se o ID é numérico
+                if (!/^\d+$/.test(ticketId)) {
+                    this.showMessage('ID do ticket deve ser um número válido', 'error');
+                    return;
+                }
+
+                if (!selectedSeverity) {
+                    this.showMessage('Selecione uma gravidade', 'error');
+                    return;
+                }
+
+                const severity = selectedSeverity.dataset.severity;
+
+                try {
+                    const response = await fetch('/api/tickets/' + encodeURIComponent(ticketId) + '/severity', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + (getAuthToken() || '')
+                        },
+                        body: JSON.stringify({ severity: severity })
+                    });
+
+                    if (response.ok) {
+                            this.showMessage('Gravidade do ticket atualizada!', 'success');
+                            document.body.removeChild(modal);
+                        } else {
+                            const error = await response.json();
+                            this.showMessage('Erro: ' + (error.error || ''), 'error');
+                        }
+                } catch (error) {
+                    console.error('Error updating ticket severity:', error);
+                    this.showMessage('Erro ao atualizar gravidade', 'error');
+                }
+            }
+
+            async deleteTicket(modal) {
+                const ticketId = modal.querySelector('#manage-ticket-id').value.trim();
+
+                if (!ticketId) {
+                    this.showMessage('ID do ticket é obrigatório', 'error');
+                    return;
+                }
+
+                // Validar se o ID é numérico
+                if (!/^\d+$/.test(ticketId)) {
+                    this.showMessage('ID do ticket deve ser um número válido', 'error');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/tickets/' + encodeURIComponent(ticketId), {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': 'Bearer ' + (getAuthToken() || '')
+                        }
+                    });
+
+                    if (response.ok) {
+                        this.showMessage('Ticket eliminado com sucesso!', 'success');
+                        document.body.removeChild(modal);
+                        this.refreshTickets();
+                    } else {
+                        const error = await response.json();
+                        this.showMessage('Erro: ' + (error.error || ''), 'error');
+                    }
+                } catch (error) {
+                    console.error('Error deleting ticket:', error);
+                    this.showMessage('Erro ao eliminar ticket', 'error');
+                }
+            }
+
+            async refreshTickets() {
+                try {
+                    const response = await fetch('/api/tickets', {
+                            headers: {
+                                'Authorization': 'Bearer ' + (getAuthToken() || '')
+                            }
+                        });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('Tickets response:', data); // Debug
+                        
+                        // Verificar se a resposta tem a estrutura correta
+                        const tickets = data.tickets || data || [];
+                        
+                        // Garantir que tickets é um array
+                        if (Array.isArray(tickets)) {
+                            this.updateTicketsDisplay(tickets);
+                            this.showMessage('Tickets atualizados!', 'success');
+                        } else {
+                            console.error('Tickets não é um array:', tickets);
+                            this.updateTicketsDisplay([]);
+                            this.showMessage('Nenhum ticket encontrado', 'info');
+                        }
+                    } else {
+                        console.error('Response not ok:', response.status, response.statusText);
+                        this.showMessage('Erro ao carregar tickets', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error refreshing tickets:', error);
+                    this.showMessage('Erro ao atualizar tickets', 'error');
+                }
+            }
+
+            updateTicketsDisplay(tickets) {
+                const ticketsList = document.querySelector('.tickets-list');
+                if (!ticketsList) return;
+
+                // Garantir que tickets é um array
+                if (!Array.isArray(tickets)) {
+                    console.error('updateTicketsDisplay: tickets não é um array:', tickets);
+                    tickets = [];
+                }
+
+                if (tickets.length === 0) {
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.style.textAlign = 'center';
+                    emptyDiv.style.padding = 'var(--space-xl)';
+                    emptyDiv.style.color = 'var(--text-secondary)';
+
+                    const icon = document.createElement('i');
+                    icon.className = 'fas fa-ticket-alt';
+                    icon.style.fontSize = '3rem';
+                    icon.style.marginBottom = 'var(--space-md)';
+                    icon.style.opacity = '0.5';
+
+                    const messageDiv = document.createElement('div');
+                    messageDiv.textContent = 'Nenhum ticket encontrado';
+
+                    emptyDiv.appendChild(icon);
+                    emptyDiv.appendChild(messageDiv);
+                    if (ticketsList) { while (ticketsList.firstChild) ticketsList.removeChild(ticketsList.firstChild); ticketsList.appendChild(emptyDiv); }
+                    return;
+                }
+
+                // Clear previous
+                if (ticketsList) { while (ticketsList.firstChild) ticketsList.removeChild(ticketsList.firstChild); }
+
+                const severityEmoji = { 'low': '🟢', 'normal': '🟡', 'high': '🔴', 'critical': '🟣' };
+                const statusColor = { 'open': '#10B981', 'pending': '#F59E0B', 'closed': '#6B7280' };
+
+                tickets.forEach(ticket => {
+                    const item = document.createElement('div');
+                    item.className = 'ticket-item';
+
+                    const header = document.createElement('div');
+                    header.className = 'ticket-header';
+
+                    const title = document.createElement('span');
+                    title.className = 'ticket-title';
+                    const titleText = (severityEmoji[ticket.severity] || '🟡') + ' ' + (ticket.title || '');
+                    title.textContent = titleText;
+
+                    const status = document.createElement('span');
+                    status.className = 'ticket-status';
+                    status.style.background = statusColor[ticket.status] || '#6B7280';
+                    status.textContent = ticket.status || '';
+
+                    header.appendChild(title);
+                    header.appendChild(status);
+
+                    const meta = document.createElement('div');
+                    meta.className = 'ticket-meta';
+                    const idSpan = document.createElement('span'); idSpan.textContent = 'ID: ' + (ticket.id || '');
+                    const bySpan = document.createElement('span'); bySpan.textContent = 'Por: ' + (ticket.created_by || 'Desconhecido');
+                    const dateSpan = document.createElement('span'); dateSpan.textContent = ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : '';
+                    const sevSpan = document.createElement('span'); sevSpan.textContent = 'Gravidade: ' + (ticket.severity || '');
+
+                    meta.appendChild(idSpan);
+                    meta.appendChild(bySpan);
+                    meta.appendChild(dateSpan);
+                    meta.appendChild(sevSpan);
+
+                    item.appendChild(header);
+                    item.appendChild(meta);
+                    ticketsList.appendChild(item);
+                    });
+                }
+
+                showTokenConfig() {
+                    // Use shared safe token modal helper implemented in app.js
+                    if (window.showTokenConfigModal) {
+                        window.showTokenConfigModal();
+                    } else {
+                        console.debug('Token modal helper not available');
+                    }
+                }
+
+            updateTokenDisplay() {
+                // Update token displays across the page
+                try {
+                    const els = document.querySelectorAll('.current-token');
+                    els.forEach(d => { const t = getAuthToken(); d.textContent = t ? (t.length>20? t.substring(0,12)+'...'+t.slice(-4): t) : 'Nenhum token configurado'; });
+                } catch(e){}
+            }
+
+            async loadWebhookConfig() {
+                try {
+                    const response = await fetch('/api/config/archive-webhook', {
+                            headers: {
+                                'Authorization': 'Bearer ' + (getAuthToken() || '')
+                            }
+                        });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const webhookInput = document.getElementById('webhook-url');
+                        if (webhookInput && data.webhookUrl) {
+                            webhookInput.value = data.webhookUrl;
+                        }
+                    } else {
+                        console.log('Nenhuma configuração de webhook encontrada');
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar configuração de webhook:', error);
+                }
+            }
+
+            async saveWebhookConfig() {
+                const webhookInput = document.getElementById('webhook-url');
+                const statusDiv = document.getElementById('webhook-status');
+                
+                if (!webhookInput || !statusDiv) return;
+
+                const webhookUrl = webhookInput.value.trim();
+                
+                // Validar URL do webhook
+                if (webhookUrl && !webhookUrl.includes('discord.com/api/webhooks/')) {
+                    this.showWebhookStatus('URL do webhook deve ser do Discord (discord.com/api/webhooks/...)', 'error');
+                    return;
+                }
+
+                try {
+                    this.showWebhookStatus('A guardar configuração...', 'loading');
+
+                    const response = await fetch('/api/config/archive-webhook', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + (getAuthToken() || '')
+                        },
+                        body: JSON.stringify({ webhookUrl })
+                    });
+
+                    if (response.ok) {
+                        this.showWebhookStatus(webhookUrl ? 'Webhook configurado com sucesso!' : 'Webhook removido com sucesso!', 'success');
+                        this.showMessage('Configuração de webhook atualizada', 'success');
+                    } else {
+                        let error = await response.text();
+                        error = String(error || '').replace(/\s+/g, ' ').slice(0, 500);
+                        this.showWebhookStatus('Erro ao guardar: ' + error, 'error');
+                    }
+                } catch (error) {
+                    console.error('Erro ao guardar webhook:', error);
+                    this.showWebhookStatus('Erro de conexão ao guardar webhook', 'error');
+                }
+            }
+
+            async testWebhook() {
+                const webhookInput = document.getElementById('webhook-url');
+                const statusDiv = document.getElementById('webhook-status');
+                
+                if (!webhookInput || !statusDiv) return;
+
+                const webhookUrl = webhookInput.value.trim();
+                
+                if (!webhookUrl) {
+                    this.showWebhookStatus('Configure uma URL de webhook primeiro', 'error');
+                    return;
+                }
+
+                try {
+                    this.showWebhookStatus('A testar webhook...', 'loading');
+
+                    const response = await fetch('/api/config/archive-webhook/test', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + (getAuthToken() || '')
+                        },
+                        body: JSON.stringify({ webhookUrl })
+                    });
+
+                    if (response.ok) {
+                        this.showWebhookStatus('✅ Webhook testado com sucesso! Verifica o Discord.', 'success');
+                        this.showMessage('Teste de webhook enviado!', 'success');
+                    } else {
+                        let error = await response.text();
+                        error = String(error || '').replace(/\s+/g, ' ').slice(0, 500);
+                        this.showWebhookStatus('❌ Erro no teste: ' + error, 'error');
+                    }
+                } catch (error) {
+                    console.error('Erro ao testar webhook:', error);
+                    this.showWebhookStatus('❌ Erro de conexão ao testar webhook', 'error');
+                }
+            }
+
+            showWebhookStatus(message, type) {
+                const statusDiv = document.getElementById('webhook-status');
+                if (!statusDiv) return;
+
+                statusDiv.className = 'webhook-status ' + type;
+                statusDiv.textContent = message;
+                statusDiv.classList.remove('hidden');
+
+                // Auto-hide success/error messages after 5 seconds
+                if (type === 'success' || type === 'error') {
+                    setTimeout(() => {
+                        statusDiv.classList.add('hidden');
+                    }, 5000);
+                }
+            }
+
+            // Multi-webhook helpers
+            async loadWebhooks() {
+                try {
+                    const res = await fetch('/api/config/webhooks', { headers: { 'Authorization': 'Bearer ' + (getAuthToken() || '') } });
+                    const data = await res.json();
+                    if (data && data.webhooks) this.renderWebhooksList(data.webhooks);
+                } catch (e) {
+                    console.warn('Erro ao carregar webhooks', e);
+                }
+            }
+
+            renderWebhooksList(webhooks) {
+                const container = document.getElementById('webhooks-list');
+                if (!container) return;
+                while (container.firstChild) container.removeChild(container.firstChild);
+                if (!webhooks || webhooks.length === 0) {
+                    const p = document.createElement('p'); p.textContent = 'Nenhum webhook configurado.'; container.appendChild(p);
+                    return;
+                }
+
+                const list = document.createElement('div');
+                list.className = 'webhook-list';
+                webhooks.forEach(wh => {
+                    const item = document.createElement('div');
+                    item.className = 'webhook-item';
+                    item.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.02);';
+                    const left = document.createElement('div');
+                    const title = document.createElement('strong');
+                    title.textContent = wh.name || ('Webhook ' + wh.id);
+                    const urlDiv = document.createElement('div');
+                    urlDiv.style.fontSize = '0.85rem';
+                    urlDiv.style.color = 'var(--text-secondary)';
+                    urlDiv.textContent = wh.url || '';
+                    const channelDiv = document.createElement('div');
+                    channelDiv.style.fontSize = '0.8rem';
+                    channelDiv.style.color = 'var(--text-secondary)';
+                    channelDiv.textContent = wh.channel_id ? ('Canal alvo: #' + wh.channel_id) : (wh.channel_name ? wh.channel_name : '');
+                    left.appendChild(title);
+                    left.appendChild(urlDiv);
+                    left.appendChild(channelDiv);
+
+                    const right = document.createElement('div');
+                    const mkBtn = (cls, action, id, text) => {
+                        const b = document.createElement('button');
+                        b.className = cls;
+                        b.setAttribute('data-action', action);
+                        b.setAttribute('data-id', id);
+                        b.textContent = text;
+                        return b;
+                    };
+                    right.appendChild(mkBtn('btn btn-secondary btn-sm', 'test', wh.id, 'Testar'));
+                    right.appendChild(mkBtn('btn btn-light btn-sm', 'edit', wh.id, 'Editar'));
+                    right.appendChild(mkBtn('btn btn-danger btn-sm', 'delete', wh.id, 'Remover'));
+                    item.appendChild(left);
+                    item.appendChild(right);
+                    list.appendChild(item);
+                });
+                container.appendChild(list);
+
+                container.querySelectorAll('button[data-action="test"]').forEach(btn => btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.dataset.id;
+                    e.currentTarget.disabled = true;
+                    try {
+                        const res = await fetch('/api/config/webhooks/' + encodeURIComponent(id) + '/test', { method: 'POST', headers: { 'Authorization': 'Bearer ' + (getAuthToken() || '') } });
+                        const data = await res.json();
+                        if (data && data.success) this.showMessage(data.message || 'Teste OK', 'success');
+                        else this.showMessage(data.error || 'Teste falhou', 'error');
+                    } catch (err) {
+                        this.showMessage('Erro ao testar webhook', 'error');
+                    } finally { e.currentTarget.disabled = false; }
+                }));
+
+                container.querySelectorAll('button[data-action="delete"]').forEach(btn => btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.dataset.id;
+                    if (!confirm('Remover este webhook?')) return;
+                    try {
+                        const res = await fetch('/api/config/webhooks/' + encodeURIComponent(id), { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + (getAuthToken() || '') } });
+                        const data = await res.json();
+                        if (data && data.success) {
+                            this.showMessage('Webhook removido', 'success');
+                            this.loadWebhooks();
+                        } else {
+                            this.showMessage('Falha ao remover webhook', 'error');
+                        }
+                    } catch (err) {
+                        this.showMessage('Erro ao remover webhook', 'error');
+                    }
+                }));
+
+                container.querySelectorAll('button[data-action="edit"]').forEach(btn => btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.dataset.id;
+                    // prompt for new name
+                    const newName = prompt('Novo nome para o webhook (deixe vazio para remover):');
+                    if (newName === null) return; // cancelled
+                    try {
+                        const res = await fetch('/api/config/webhooks/' + encodeURIComponent(id), { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (getAuthToken() || '') }, body: JSON.stringify({ name: newName }) });
+                        const data = await res.json();
+                        if (data && data.success) {
+                            this.loadWebhooks();
+                        } else {
+                            this.showMessage(data.error || 'Erro ao editar webhook', 'error');
+                        }
+                    } catch (err) {
+                        this.showMessage('Erro ao editar webhook', 'error');
+                    }
+                }));
+            }
+
+            async addWebhook() {
+                const url = document.getElementById('new-webhook-url')?.value?.trim();
+                const name = document.getElementById('new-webhook-name')?.value?.trim();
+                if (!url) return this.showMessage('URL é obrigatória', 'warning');
+                try {
+                    const res = await fetch('/api/config/webhooks', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (getAuthToken() || '') }, body: JSON.stringify({ url, name }) });
+                    const data = await res.json();
+                    if (data && data.success) {
+                        this.showMessage('Webhook adicionado', 'success');
+                        document.getElementById('new-webhook-url').value = '';
+                        document.getElementById('new-webhook-name').value = '';
+                        this.loadWebhooks();
+                    } else {
+                        this.showMessage(data.error || 'Falha ao adicionar webhook', 'error');
+                    }
+                } catch (e) {
+                    this.showMessage('Erro ao adicionar webhook', 'error');
+                }
+            }
+        }
+
+        // Opens the transcript viewer for a ticket in a new tab
+        function openTranscript(ticketId) {
+            if (!ticketId) return;
+            const url = '/api/transcript/' + encodeURIComponent(ticketId);
+            window.open(url, '_blank');
+        }
+
+        // Moderation functions
+        function showModerationAction(action) {
+            const actionDiv = document.getElementById('moderation-action');
+            const titleElement = document.getElementById('action-title');
+            const durationGroup = document.getElementById('duration-group');
+            
+            actionDiv.classList.remove('moderation-action-hidden');
+            
+            switch(action) {
+                case 'warn':
+                    titleElement.textContent = 'Avisar Utilizador';
+                    durationGroup.classList.add('duration-group-hidden');
+                    break;
+                case 'mute':
+                case 'timeout':
+                    titleElement.textContent = action === 'mute' ? 'Silenciar Utilizador' : 'Timeout';
+                    durationGroup.classList.remove('duration-group-hidden');
+                    break;
+                case 'kick':
+                    titleElement.textContent = 'Expulsar Utilizador';
+                    durationGroup.classList.add('duration-group-hidden');
+                    break;
+                case 'ban':
+                    titleElement.textContent = 'Banir Utilizador';
+                    durationGroup.classList.add('duration-group-hidden');
+                    break;
+                case 'history':
+                    titleElement.textContent = 'Histórico de Moderação';
+                    durationGroup.classList.add('duration-group-hidden');
+                    break;
+            }
+        }
+
+        function hideModerationAction() {
+            document.getElementById('moderation-action').classList.add('moderation-action-hidden');
+        }
+
+        function executeModerationAction() {
+            const user = document.getElementById('target-user').value;
+            const reason = document.getElementById('action-reason').value;
+            const actionTitle = document.getElementById('action-title').textContent;
+            const duration = document.getElementById('action-duration')?.value;
+            
+            if (!user) {
+                alert('Por favor, insira o nome do utilizador');
+                return;
+            }
+            
+            // Map action title to API action
+            let action;
+            switch(actionTitle) {
+                case 'Avisar Utilizador':
+                    action = 'warn';
+                    break;
+                case 'Silenciar Utilizador':
+                    action = 'timeout';
+                    break;
+                case 'Timeout':
+                    action = 'timeout';
+                    break;
+                case 'Expulsar Utilizador':
+                    action = 'kick';
+                    break;
+                case 'Banir Utilizador':
+                    action = 'ban';
+                    break;
+                default:
+                    action = 'warn';
+            }
+            
+            // Show loading state
+            const executeBtn = document.getElementById('execute-moderation-btn');
+            const originalText = executeBtn.textContent;
+            executeBtn.textContent = 'Executando...';
+            executeBtn.disabled = true;
+            
+            // Prepare request data
+            const requestData = {
+                action: action,
+                memberId: user,
+                reason: reason || 'Sem motivo especificado'
+            };
+            
+            // Add duration for timeout actions
+            if ((action === 'timeout' || action === 'mute') && duration) {
+                requestData.duration = parseInt(duration) * 1000; // Convert to milliseconds
+            }
+            
+            // Execute moderation action via API
+                fetch('/api/admin/members/action', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + (getAuthToken() || '')
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status + ': ' + (data.error || 'Erro no servidor'));
+                }
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    var message = '✅ ' + (data.message || '') + '\n';
+                    if (data.note) message += '⚠️ ' + data.note + '\n';
+                    message += 'Utilizador: ' + user + '\nMotivo: ' + (requestData.reason || '');
+                    alert(message);
+                    hideModerationAction();
+                    
+                    // Clear form
+                    document.getElementById('target-user').value = '';
+                    document.getElementById('action-reason').value = '';
+                    if (document.getElementById('action-duration')) {
+                        document.getElementById('action-duration').value = '';
+                    }
+                    
+                    // Add to recent activity or refresh logs
+                    addModerationLog(action, user, requestData.reason);
+                } else {
+                    alert('❌ Erro: ' + (data.error || 'Falha ao executar ação'));
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao executar ação de moderação:', error);
+                
+                let errorMessage = '❌ Erro de rede: Não foi possível conectar ao servidor';
+                if (error.message.includes('403')) {
+                    errorMessage = '❌ Erro: Permissões insuficientes. Verifique se está logado.';
+                } else if (error.message.includes('404')) {
+                    errorMessage = '❌ Erro: Membro não encontrado no servidor.';
+                } else if (error.message.includes('500')) {
+                    errorMessage = '❌ Erro interno do servidor. O bot pode estar offline.';
+                } else if (error.message.includes('400')) {
+                    errorMessage = '❌ Erro: Dados inválidos fornecidos.';
+                }
+                
+                alert(errorMessage + '\n\nDetalhes técnicos: ' + (error.message || ''));
+                addModerationLog('error', user, 'Falha na ação: ' + (error.message || ''));
+            })
+            .finally(() => {
+                // Reset button state
+                executeBtn.textContent = originalText;
+                executeBtn.disabled = false;
+            });
+        }
+        
+        function getAuthToken() {
+            // Try to get token from cookie first
+            const cookieToken = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('authToken='))
+                ?.split('=')[1];
+                
+            if (cookieToken) {
+                return cookieToken;
+            }
+            
+            // Try localStorage
+            const localToken = localStorage.getItem('authToken');
+            if (localToken) {
+                return localToken;
+            }
+            
+            // For local development, do NOT auto-insert a dev token; require explicit user action
+            if (window.location.protocol === 'file:' || 
+                window.location.hostname === 'localhost' || 
+                window.location.hostname === '127.0.0.1') {
+                return null; // no auto-token
+            }
+
+            // For Railway production, do NOT auto-store tokens from URL; require explicit configuration
+            if (window.location.hostname.includes('railway.app')) {
+                // If there's a token param, show presence only and do not persist it automatically
+                const urlParams = new URLSearchParams(window.location.search);
+                const prodToken = urlParams.get('token');
+                if (prodToken) {
+                    // do not call localStorage.setItem here; return marker for presence
+                    return '***present***';
+                }
+                // Do not return admin-token by default; prefer explicit OAuth flow
+                return null;
+            }
+            
+            // Fallback empty token (backend will handle local dev)
+            return '';
+        }
+        
+        function addModerationLog(action, user, reason) {
+            const container = document.getElementById('logsContainer');
+            if (container) {
+                const currentTime = new Date().toLocaleTimeString();
+                const actionNames = {
+                    'warn': 'Aviso',
+                    'timeout': 'Timeout',
+                    'kick': 'Expulsão',
+                    'ban': 'Banimento',
+                    'error': 'Erro'
+                };
+                
+                const logClass = action === 'error' ? 'log-entry error' : 'log-entry moderation';
+                const icon = action === 'error' ? '❌' : '⚖️';
+                
+                const newLog = document.createElement('div');
+                newLog.className = logClass;
+                const time = document.createElement('span');
+                time.className = 'log-time';
+                time.textContent = '[' + currentTime + ']';
+                const msg = document.createElement('span');
+                msg.className = 'log-message';
+                msg.textContent = icon + ' ' + (actionNames[action] || action) + ' - ' + user + ': ' + reason;
+                newLog.appendChild(time);
+                newLog.appendChild(msg);
+                container.insertBefore(newLog, container.firstChild);
+                
+                // Limit to 50 logs
+                while (container.children.length > 50) {
+                    container.removeChild(container.lastChild);
+                }
+            }
+        }
+
+        // Embed functions
+        function updateEmbedPreview() {
+            const title = document.getElementById('embed-title').value || 'Título do Embed';
+            const description = document.getElementById('embed-description').value || 'Descrição do embed';
+            const color = document.getElementById('embed-color').value;
+            const footer = document.getElementById('embed-footer').value || 'Footer do embed';
+            
+            const preview = document.getElementById('embed-preview-content');
+            // Clear previous preview
+            while (preview.firstChild) preview.removeChild(preview.firstChild);
+            const t = document.createElement('div'); t.className = 'embed-title'; t.textContent = title;
+            const d = document.createElement('div'); d.className = 'embed-description'; d.textContent = description;
+            const f = document.createElement('div'); f.className = 'embed-footer'; f.textContent = footer;
+            preview.appendChild(t);
+            preview.appendChild(d);
+            preview.appendChild(f);
+            
+            // Use CSS custom properties for dynamic colors
+            preview.style.setProperty('--embed-color', color);
+            const embedTitle = preview.querySelector('.embed-title');
+            if (embedTitle) {
+                embedTitle.style.setProperty('--title-color', color);
+            }
+        }
+
+        function sendEmbed() {
+            const title = document.getElementById('embed-title').value;
+            const description = document.getElementById('embed-description').value;
+            
+            if (!title && !description) {
+                alert('Por favor, preenche pelo menos o título ou a descrição');
+                return;
+            }
+            
+            alert('Embed enviado com sucesso! (Funcionalidade simulada)');
+        }
+
+        // Logs functions
+        function refreshLogs() {
+            const container = document.getElementById('logsContainer');
+            const currentTime = new Date().toLocaleTimeString();
+            
+            const newLog = document.createElement('div');
+            newLog.className = 'log-entry info';
+            const time = document.createElement('span'); time.className = 'log-time'; time.textContent = '[' + currentTime + ']';
+            const msg = document.createElement('span'); msg.className = 'log-message'; msg.textContent = 'Logs atualizados pelo utilizador';
+            newLog.appendChild(time);
+            newLog.appendChild(msg);
+            container.insertBefore(newLog, container.firstChild);
+            
+            // Limitar a 50 logs
+            while (container.children.length > 50) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        function clearLogs() {
+            if (confirm('Tens a certeza de que queres limpar todos os logs?')) {
+                const currentTime = new Date().toLocaleTimeString();
+                const container = document.getElementById('logsContainer');
+                while (container.firstChild) container.removeChild(container.firstChild);
+                const newLog = document.createElement('div');
+                newLog.className = 'log-entry info';
+                const time = document.createElement('span'); time.className = 'log-time'; time.textContent = '[' + currentTime + ']';
+                const msg = document.createElement('span'); msg.className = 'log-message'; msg.textContent = 'Logs limpos pelo utilizador';
+                newLog.appendChild(time);
+                newLog.appendChild(msg);
+                container.appendChild(newLog);
+            }
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new YSNMDashboard();
+
+            // Auto-update embed preview when typing
+            const embedInputs = ['embed-title', 'embed-description', 'embed-color', 'embed-footer'];
+            embedInputs.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', updateEmbedPreview);
+                }
+            });
+
+            // Run lightweight DOM sanitation and attach image fallbacks early
+            try {
+                sanitizeTemplatePlaceholders();
+                attachImageFallbacks();
+            } catch (e) {
+                // Don't break dashboard init if sanitation fails
+                console.warn('DOM sanitation failed:', e);
+            }
+        });
+    </script>
+
     <script>
         // UI and runtime fixes (sanitization + debug wrapper)
         (function(){
