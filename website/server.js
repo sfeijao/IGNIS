@@ -33,12 +33,15 @@ const corsOptions = {
                             
         if (isProduction) {
             // Production allowed origins
-            const allowedOrigins = [
-                'https://ysnmbot-alberto.up.railway.app',
-                'https://*.railway.app',
-                'https://discord.com',
-                'https://discordapp.com'
-            ];
+                const allowedOrigins = [
+                    'https://ysnmbot-alberto.up.railway.app',
+                    'https://*.railway.app',
+                    'https://discord.com',
+                    'https://discordapp.com'
+                ];
+                // Allow explicit APP_ORIGIN or the detected appOrigin
+                if (process.env.APP_ORIGIN) allowedOrigins.push(process.env.APP_ORIGIN);
+                if (appOrigin) allowedOrigins.push(appOrigin);
             
             // Check if origin matches any allowed pattern
             const isAllowed = allowedOrigins.some(pattern => {
@@ -157,6 +160,21 @@ const isProd = process.env.NODE_ENV === 'production' ||
               !!process.env.RAILWAY_ENVIRONMENT_NAME || 
               !!process.env.RAILWAY_PROJECT_NAME;
 
+// Determine application origin from environment (prefer explicit config)
+const envAppOrigin = process.env.APP_ORIGIN || process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_ENVIRONMENT_URL || process.env.RAILWAY_SERVICE_URL || (config.WEBSITE && config.WEBSITE.production && config.WEBSITE.production.origin);
+let appOrigin = null;
+if (envAppOrigin) {
+    try { appOrigin = (new URL(envAppOrigin)).origin; } catch (e) { if (/^https?:\/\//i.test(envAppOrigin)) appOrigin = envAppOrigin; }
+}
+
+// Cookie domain: allow explicit override via COOKIE_DOMAIN, otherwise derive from appOrigin when available.
+let cookieDomain = undefined;
+if (process.env.COOKIE_DOMAIN) {
+    cookieDomain = process.env.COOKIE_DOMAIN;
+} else if (appOrigin) {
+    try { cookieDomain = '.' + (new URL(appOrigin)).hostname; } catch (e) { /* ignore */ }
+}
+
 app.use(session({
     secret: config.WEBSITE.SESSION_SECRET,
     resave: false,
@@ -167,7 +185,7 @@ app.use(session({
         httpOnly: true, // Proteção contra XSS
         sameSite: isProd ? 'lax' : 'lax', // Proteção CSRF
         maxAge: 2 * 60 * 60 * 1000, // 2 horas (mais seguro que 24h)
-        domain: isProd ? '.railway.app' : undefined
+        domain: cookieDomain || undefined
     }
 }));
 
@@ -181,12 +199,30 @@ const isProduction = process.env.NODE_ENV === 'production' ||
                     !!process.env.RAILWAY_PROJECT_NAME ||
                     !!process.env.RAILWAY_SERVICE_NAME;
 
-// Configuração segura do callback URL
-const callbackURL = isProduction ? 
-    (config.WEBSITE?.production?.redirectUri || 
-     process.env.CALLBACK_URL || 
-     'https://ysnmbot-alberto.up.railway.app/auth/discord/callback') :
-    `http://localhost:${PORT}/auth/discord/callback`;
+// Build callback URL: allow CALLBACK_URL env to be either a full URL or a path
+let callbackURL = null;
+if (process.env.CALLBACK_URL) {
+    // If CALLBACK_URL is a full URL, use it. If it's a path, prepend appOrigin when available.
+    try {
+        const parsed = new URL(process.env.CALLBACK_URL);
+        callbackURL = parsed.href;
+    } catch (e) {
+        // Not a full URL, treat as path
+        if (appOrigin) {
+            callbackURL = new URL(process.env.CALLBACK_URL, appOrigin).href;
+        } else {
+            callbackURL = process.env.CALLBACK_URL; // fallback; may be a path
+        }
+    }
+} else if (config.WEBSITE && config.WEBSITE.production && config.WEBSITE.production.redirectUri) {
+    try { callbackURL = new URL(config.WEBSITE.production.redirectUri).href; } catch (e) { callbackURL = config.WEBSITE.production.redirectUri; }
+} else if (!isProduction) {
+    callbackURL = `http://localhost:${PORT}/auth/discord/callback`;
+} else if (appOrigin) {
+    callbackURL = new URL('/auth/discord/callback', appOrigin).href;
+} else {
+    callbackURL = 'https://ysnmbot-alberto.up.railway.app/auth/discord/callback';
+}
 
 logger.info('🔍 Debug OAuth2:', { NODE_ENV: process.env.NODE_ENV, RAILWAY_ENVIRONMENT_NAME: process.env.RAILWAY_ENVIRONMENT_NAME, RAILWAY_PROJECT_NAME: process.env.RAILWAY_PROJECT_NAME, isProduction, callbackURL, hasWebsite: !!config.WEBSITE });
 

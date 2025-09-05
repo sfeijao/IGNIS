@@ -1,39 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; script-src-attr 'none'; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net fonts.googleapis.com; font-src 'self' cdn.jsdelivr.net fonts.gstatic.com; img-src 'self' data: cdn.discordapp.com; connect-src 'self';">
-    <title>YSNM Bot - Modern Dashboard</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
-    <link rel="icon" href="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" type="image/gif">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https: http:; script-src 'self' 'unsafe-inline' 'unsafe-eval';">
-</head>
-                <div class="header-actions">
-            <!-- Ticket, webhook and token helper functions intentionally moved to /js/script.js -->
-            <!-- This keeps JS out of the HTML so it doesn't render as visible text. -->
-            </div>
 
-    <script>
-        // Small runtime glue: initSmallUI is provided by js/script.js; call it when ready
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ()=>{ try{ window.initSmallUI && window.initSmallUI(); }catch(e){} });
-        else { try{ window.initSmallUI && window.initSmallUI(); }catch(e){} }
-    </script>
-
-    <!-- Static script includes (relative paths) -->
-    <script src="js/toast-fallback.js"></script>
-    <script src="js/event-fallback.js"></script>
-    <script src="js/dompurify.min.js"></script>
-    <script src="js/frontend-helpers.js"></script>
-    <script src="js/script.js"></script>
-    <script>
-        // Ensure consolidated runtime initializes when DOM is ready
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ()=>{ try{ window.initSmallUI && window.initSmallUI(); }catch(e){} });
-        else { try{ window.initSmallUI && window.initSmallUI(); }catch(e){} }
-    </script>
 
 </html>
 
