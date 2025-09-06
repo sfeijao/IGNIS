@@ -91,3 +91,7 @@ website/public_backups_html/
 
 # Any file or folder with "backup" in the name (safe to ignore for this repo)
 *backup*
+
+# Local SQLite DB
+website/database/ysnm_dashboard.db
+
