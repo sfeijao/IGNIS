@@ -538,9 +538,19 @@ class YSNMDashboard {
             // update description safely using existing sanitizer logic
             if (previewDesc) {
                 const safe = (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') ? window.DOMPurify.sanitize(description) : this.sanitizeHtmlForPreview(description);
+                // Use DOMParser to parse sanitized HTML in an inert document, then move cleaned nodes
                 while (previewDesc.firstChild) previewDesc.removeChild(previewDesc.firstChild);
-                const tmp = document.createElement('div'); tmp.innerHTML = safe || '';
-                while (tmp.firstChild) previewDesc.appendChild(tmp.firstChild);
+                try {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString('<div>' + (safe || '') + '</div>', 'text/html');
+                    const container = doc.body.firstElementChild || doc.body;
+                    const fragment = document.createDocumentFragment();
+                    Array.from(container.childNodes).forEach(n => fragment.appendChild(n.cloneNode(true)));
+                    previewDesc.appendChild(fragment);
+                } catch (parseErr) {
+                    // fallback: create a text node to avoid inserting raw HTML
+                    previewDesc.appendChild(document.createTextNode(String(safe || '')));
+                }
             }
         } catch (e) { console.debug('updateEmbedPreviewLight failed', e); }
     }

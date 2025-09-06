@@ -383,11 +383,12 @@ window.showTokenConfigModal = function() {
         modalContent.appendChild(fg2);
 
         // actions
-        const actions = document.createElement('div'); actions.className = 'form-actions'; actions.style.gap = '8px';
-        const saveBtn = document.createElement('button'); saveBtn.id = 'saveCustomTokenGlobal'; saveBtn.className = 'btn btn-primary'; saveBtn.textContent = 'Guardar token';
-    // remove dev/admin preset buttons to avoid accidental token exposure
-        const closeBtn = document.createElement('button'); closeBtn.id = 'closeModalBtnGlobal'; closeBtn.className = 'btn btn-light'; closeBtn.textContent = 'Fechar';
-        actions.appendChild(saveBtn); actions.appendChild(devBtn); actions.appendChild(adminBtn); actions.appendChild(closeBtn);
+    const actions = document.createElement('div'); actions.className = 'form-actions'; actions.style.gap = '8px';
+    const saveBtn = document.createElement('button'); saveBtn.id = 'saveCustomTokenGlobal'; saveBtn.className = 'btn btn-primary'; saveBtn.textContent = 'Guardar token';
+    const closeBtn = document.createElement('button'); closeBtn.id = 'closeModalBtnGlobal'; closeBtn.className = 'btn btn-light'; closeBtn.textContent = 'Fechar';
+    // Only append defined buttons to avoid ReferenceError for missing dev/admin buttons
+    actions.appendChild(saveBtn);
+    actions.appendChild(closeBtn);
         modalContent.appendChild(actions);
 
     const note = document.createElement('div'); note.className = 'form-group'; const small = document.createElement('small'); small.textContent = 'Nota: Tokens devem ser usados apenas em ambiente de desenvolvimento. Em produção, prefira OAuth2.'; note.appendChild(small); modalContent.appendChild(note);
