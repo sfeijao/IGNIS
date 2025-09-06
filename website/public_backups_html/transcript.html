@@ -50,7 +50,7 @@
               parts.forEach((p, i) => {
                 // Remove unresolved template placeholders if present
                 // Remove unresolved template placeholders and any encoded forms
-                const clean = p.replace(/\$\{[^}]*\}/g, '').replace(//gi, '');
+                const clean = p.replace(/\$\{[^}]*\}/g, '').replace(/%24%7B/gi, '');
                 contentDiv.appendChild(document.createTextNode(clean));
                 if(i < parts.length - 1) contentDiv.appendChild(document.createElement('br'));
               });

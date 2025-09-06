@@ -392,18 +392,7 @@
             
             // Show selected tab
             document.getElementById(tabName).classList.add('active');
-            // Try to add active class to the clicked button; fallback to finding button by onclick attribute
-            try {
-                if (typeof event !== 'undefined' && event && event.target && event.target.classList) {
-                    event.target.classList.add('active');
-                } else {
-                    const selector = '.tab-btn[onclick*="switchTab(\\\'' + tabName + '\\\')"]';
-                    const btn = document.querySelector(selector) || document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
-                    if (btn && btn.classList) btn.classList.add('active');
-                }
-            } catch (e) {
-                console.debug('switchTab: unable to set active button', e);
-            }
+            event.target.classList.add('active');
             
             currentTab = tabName;
         }
@@ -592,9 +581,9 @@
                     ['src', 'href', 'data-src', 'alt', 'title', 'style'].forEach(attr => {
                         if (node.hasAttribute && node.hasAttribute(attr)) {
                             let val = node.getAttribute(attr) || '';
-                            if (placeholderPattern.test(val) || val.includes('')) {
+                            if (placeholderPattern.test(val) || val.includes('%24%7B')) {
                                 val = val.replace(placeholderPattern, '');
-                                val = val.replace(//g, '');
+                                val = val.replace(/%24%7B/g, '');
                                 try { node.setAttribute(attr, val || ''); } catch(e) { }
                             }
                         }
@@ -609,7 +598,7 @@
             imgs.forEach(img => {
                 try {
                     const src = img.getAttribute('src') || '';
-                    if (!src || src.includes('$' + '{') || src.includes('')) {
+                    if (!src || src.includes('$' + '{') || src.includes('%24%7B')) {
                         img.src = '/default-avatar.png';
                     }
                 } catch(e) { }
@@ -620,7 +609,7 @@
         }
 
         function safeText(v) { if (v === null || v === undefined) return ''; return String(v).replace(/\$\{[^}]*\}/g, ''); }
-        function sanitizeAttr(v) { if (!v) return ''; return String(v).replace(/\$\{[^}]*\}/g, '').replace(//g, ''); }
+        function sanitizeAttr(v) { if (!v) return ''; return String(v).replace(/\$\{[^}]*\}/g, '').replace(/%24%7B/g, ''); }
 
         function selectMember(memberId, username) {
             selectedMember = { id: memberId, username: username };

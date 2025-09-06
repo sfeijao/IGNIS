@@ -659,9 +659,9 @@
                         ['src', 'href', 'data-src', 'alt', 'title', 'style'].forEach(attr => {
                             if (node.hasAttribute && node.hasAttribute(attr)) {
                                 let val = node.getAttribute(attr) || '';
-                                if (placeholderPattern.test(val) || val.includes('')) {
+                                if (placeholderPattern.test(val) || val.includes('%24%7B')) {
                                     val = val.replace(placeholderPattern, '');
-                                    val = val.replace(//g, '');
+                                    val = val.replace(/%24%7B/g, '');
                                     try { node.setAttribute(attr, val || ''); } catch(e) { /* ignore */ }
                                 }
                             }
@@ -677,7 +677,7 @@
                 imgs.forEach(img => {
                     try {
                         const src = img.getAttribute('src') || '';
-                        if (!src || src.includes('$' + '{') || src.includes('')) {
+                        if (!src || src.includes('$' + '{') || src.includes('%24%7B')) {
                             try { img.src = '/default-avatar.png'; } catch(e) { /* ignore */ }
                         }
                     } catch(e) { /* ignore */ }
@@ -693,7 +693,7 @@
 
             function sanitizeAttr(v) {
                 if (!v) return '';
-                return String(v).replace(/\$\{[^}]*\}/g, '').replace(//g, '');
+                return String(v).replace(/\$\{[^}]*\}/g, '').replace(/%24%7B/g, '');
             }
     </script>
     <!-- Include DOMPurify then frontend helpers once at end of body -->

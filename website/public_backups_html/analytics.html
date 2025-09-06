@@ -140,19 +140,8 @@
             currentTimeFilter = filter;
             
             // Update active button
-            try {
-                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-                if (typeof event !== 'undefined' && event && event.target && event.target.classList) {
-                    event.target.classList.add('active');
-                } else {
-                    // fallback: find button by onclick attribute
-                    const sel = '.filter-btn[onclick*="setTimeFilter(\\\'' + filter + '\\\')"]';
-                    const b = document.querySelector(sel) || document.querySelector('.filter-btn[data-filter="' + filter + '"]');
-                    if (b && b.classList) b.classList.add('active');
-                }
-            } catch (e) {
-                console.debug('setTimeFilter: unable to set active button', e);
-            }
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
             
             // Reload data
             loadDashboardData();
@@ -504,7 +493,7 @@
                         const item = document.createElement('div'); item.className = 'activity-item';
 
                         const avatarWrap = document.createElement('div'); avatarWrap.className = 'activity-avatar';
-                        if (activity.avatar && typeof activity.avatar === 'string' && !activity.avatar.includes('$' + '{') && !activity.avatar.toLowerCase().includes('')) {
+                        if (activity.avatar && typeof activity.avatar === 'string' && !activity.avatar.includes('$' + '{') && !activity.avatar.toLowerCase().includes('%24%7b')) {
                             const img = document.createElement('img');
                             img.style.width = '100%'; img.style.height = '100%'; img.style.borderRadius = '50%';
                             img.src = activity.avatar;

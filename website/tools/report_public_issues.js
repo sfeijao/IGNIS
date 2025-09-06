@@ -18,10 +18,13 @@ function walk(dir) {
 function analyzeFile(file) {
     const rel = path.relative(publicDir, file).replace(/\\/g, '/');
     const text = fs.readFileSync(file, 'utf8');
+    // Remove <script>...</script> blocks before scanning so code that
+    // references placeholder patterns doesn't trigger false positives.
+    let scanText = text.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
     const issues = [];
 
-    if (/\$\{[^}]*\}/.test(text)) issues.push('template-placeholder-${} found');
-    if (/%24%7B/i.test(text)) issues.push('encoded-placeholder-%24%7B found');
+    if (/\$\{[^}]*\}/.test(scanText)) issues.push('template-placeholder-${} found (outside <script>)');
+    if (/%24%7B/i.test(scanText)) issues.push('encoded-placeholder-%24%7B found (outside <script>)');
     if (/backup|_backup|original-backup|\.bak/i.test(rel)) issues.push('filename looks like backup');
     if (/src=["']?\/?js\//i.test(text)) issues.push('script src references /js/ (verify path)');
 
