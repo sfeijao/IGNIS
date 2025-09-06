@@ -336,13 +336,19 @@ app.use('/js', express.static(path.join(__dirname, 'public/js')));
 app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
 
 // Rotas de autenticação Discord
-app.get('/auth/discord', (req, res) => {
+// Start OAuth flow: first verify we have CLIENT_SECRET, then hand off to Passport
+app.get('/auth/discord', (req, res, next) => {
     if (!config.DISCORD.CLIENT_SECRET) {
-    logger.warn('⚠️  OAuth2 não disponível - redirecionando para login alternativo');
+        logger.warn('⚠️  OAuth2 não disponível - redirecionando para login alternativo');
         return res.redirect('/login?error=oauth_disabled');
     }
-    passport.authenticate('discord')(req, res);
-});
+
+    // Log the OAuth initiation to help debug redirect issues
+    logger.info('🔁 Iniciando redirecionamento OAuth2 para Discord', { callbackURL });
+
+    // Hand off to Passport as a middleware (more idiomatic and avoids subtle call issues)
+    return passport.authenticate('discord')(req, res, next);
+}, passport.authenticate('discord'));
 
 app.get('/auth/discord/callback',
     (req, res, next) => {
@@ -384,6 +390,15 @@ app.get('/auth/discord/callback',
                         // Fall back to redirect anyway
                         return res.redirect('/dashboard');
                     }
+
+                    // Log session and cookie headers to help diagnose browser not storing session cookie
+                    try {
+                        const setCookie = res.getHeader && res.getHeader('Set-Cookie');
+                        logger.debug('Session saved; sessionID=%s, Set-Cookie=%o', req.sessionID, setCookie);
+                    } catch (logErr) {
+                        logger.warn('Failed to log Set-Cookie header after session save', { error: logErr && logErr.message ? logErr.message : logErr });
+                    }
+
                     logger.info('\u2705 OAuth2 callback bem-sucedido para: %s (session saved)', user.username);
                     return res.redirect('/dashboard');
                 });
@@ -1833,12 +1848,12 @@ app.use((error, req, res, next) => {
 // Routes - API routes are mounted earlier (dynamic import fallback handled above)
 // (no-op here to avoid double-requiring the module which may use async initialization)
 
-// Graceful shutdown
+// Graceful shutdown handlers
 process.on('SIGTERM', () => {
     logger.info('SIGTERM received, shutting down gracefully');
     server.close(() => {
         logger.info('Server closed');
-        db.close();
+        try { if (db && typeof db.close === 'function') db.close(); } catch (e) { logger.warn('Error closing DB during SIGTERM', { error: e && e.message ? e.message : e }); }
         process.exit(0);
     });
 });
@@ -1847,12 +1862,12 @@ process.on('SIGINT', () => {
     logger.info('SIGINT received, shutting down gracefully');
     server.close(() => {
         logger.info('Server closed');
-        db.close();
+        try { if (db && typeof db.close === 'function') db.close(); } catch (e) { logger.warn('Error closing DB during SIGINT', { error: e && e.message ? e.message : e }); }
         process.exit(0);
     });
 });
 
-// Iniciar servidor only after routes are mounted (routesReady may be a resolved promise)
+// Start server after routes are mounted (routesReady resolves when API routes are attached)
 (async () => {
     try {
         await routesReady;
