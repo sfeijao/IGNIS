@@ -77,6 +77,58 @@
                 <!-- Inline helpers & legacy duplicates removed — runtime logic is consolidated in js/script.js -->
                 }
 
-<script src="/js/dompurify.min.js"></script>
-<script src="/js/frontend-helpers.js"></script>
-<script src="/js/script.js"></script>
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - YSNM Bot</title>
+  <link rel="stylesheet" href="/public/css/style.css">
+  <style>
+    /* Minimal page-specific overrides kept from previous design */
+    body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial; margin:0; background:#0F1419; color:#fff }
+    .container { max-width:1200px; margin:24px auto; padding:0 16px }
+    .server-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px }
+    .navbar { background:linear-gradient(135deg,#6B73FF,#5A63E8); padding:12px 0 }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-content container">
+      <div class="navbar-brand">🤖 YSNM Dashboard</div>
+      <div class="navbar-user">
+        <img id="userAvatar" src="/assets/default-avatar.png" alt="Avatar" class="user-avatar" style="width:36px;height:36px;border-radius:50%;margin-right:8px;">
+        <span id="userName">Carregando...</span>
+        <a href="/logout" class="logout-btn" style="margin-left:12px;color:#fff;opacity:0.9">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section id="serverSelection" class="server-selection">
+      <h2>🏠 Selecione um Servidor</h2>
+      <p>Escolha o servidor que deseja gerenciar</p>
+      <div id="serverGrid" class="server-grid">
+        <div class="loading">Carregando servidores...</div>
+      </div>
+    </section>
+
+    <section id="dashboardContent" class="dashboard-content">
+      <!-- Dashboard content will be populated by js/script.js (YSNMDashboard) -->
+    </section>
+  </main>
+
+  <!-- Load sanitizers/helpers first, then main script. Keep order to ensure availability in headless runs. -->
+  <script src="/js/dompurify.min.js"></script>
+  <script src="/js/frontend-helpers.js"></script>
+  <script src="/js/script.js"></script>
+
+  <!-- Backwards-compatible initializer: calls initSmallUI which will create dashboard instance if absent. -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      try { if (typeof initSmallUI === 'function') initSmallUI(); else if (window.dashboard && typeof window.dashboard.init === 'function') window.dashboard.init(); }
+      catch(e){ console.debug && console.debug('initSmallUI failed', e); }
+    });
+  </script>
+</body>
+</html>
