@@ -259,6 +259,11 @@ passport.deserializeUser((user, done) => {
 
 // Middleware de autenticação
 function requireAuth(req, res, next) {
+    // Log incoming cookies/session id to help debug login loop
+    try {
+        logger.debug('requireAuth cookies', { cookies: req.headers && req.headers.cookie, sessionID: req.sessionID });
+    } catch (e) { /* noop */ }
+
     // Require an explicit local bypass flag to enable development simulation.
     // This prevents accidental bypass in environments where NODE_ENV may be unset.
     const allowLocalBypass = process.env.ALLOW_LOCAL_AUTH_BYPASS === 'true';
@@ -440,6 +445,11 @@ app.get('/login', (req, res) => {
 // Dashboard (protegido)
 app.get('/dashboard', requireAuth, requireServerAccess, (req, res) => {
     try {
+        // Debug incoming cookies/session when serving dashboard
+        try {
+            logger.debug('dashboard request cookies', { cookies: req.headers && req.headers.cookie, sessionID: req.sessionID, user: req.user && req.user.username });
+        } catch (e) { /* noop */ }
+
         logger.info('📊 Usuário acessando dashboard: %s', req.user?.username || 'Desconhecido');
         res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
     } catch (error) {
