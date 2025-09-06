@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="/js/frontend-helpers.js"></script>
+    
     <title>Dashboard - YSNM Bot</title>
     <style>
         * {
@@ -319,7 +319,7 @@
                 🤖 YSNM Dashboard
             </div>
             <div class="navbar-user">
-                <img id="userAvatar" src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Ccircle cx='24' cy='16' r='10' fill='%23888'/%3E%3Crect x='6' y='30' width='36' height='12' rx='6' fill='%23bbb'/%3E%3C/svg%3E" alt="Avatar" class="user-avatar">
+
                 <span id="userName">Carregando...</span>
             </div>
         </div>
@@ -396,7 +396,14 @@
         </div>
     </div>
 
-    <script>
+    
+<script src="/js/dompurify.min.js"></script>
+<script src="/js/script.js"></script>
+</body>
+</html>
+
+<script src="/js/frontend-helpers.js"></script>
+<script>
         // Variables
         let currentServerId = null;
         let userGuilds = [];
@@ -653,5 +660,3 @@
             }
         });
     </script>
-</body>
-</html>

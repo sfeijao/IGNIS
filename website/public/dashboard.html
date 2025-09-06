@@ -30,9 +30,9 @@
     </main>
 
     <!-- Scripts: ensure DOMPurify loads before frontend-helpers which expect it -->
-    <script src="/js/dompurify.min.js"></script>
-    <script src="/js/frontend-helpers.js"></script>
-    <script src="/js/script.js"></script>
+    
+    
+    
   </body>
 </html>
 <!DOCTYPE html>
@@ -41,8 +41,8 @@
 
 </html>
 
-            // Clear previous preview
-            while (preview.firstChild) preview.removeChild(preview.firstChild);
+
+
 
 
 
@@ -50,12 +50,12 @@
 
 
             
-            // Use CSS custom properties for dynamic colors
-            preview.style.setProperty('--embed-color', color);
 
-            if (embedTitle) {
-                embedTitle.style.setProperty('--title-color', color);
-                // Auth token helper moved to /js/script.js::YSNMDashboard.getAuthToken()
+
+
+
+
+
                 newLog.className = 'log-entry info';
 
 
@@ -65,14 +65,18 @@
             }
         }
 
-        // Initialize dashboard when page loads
 
-            new YSNMDashboard();
 
-            // Auto-update embed preview when typing
 
-            embedInputs.forEach(id => {
+
+
+
+
 
                 if (element) {
                 <!-- Inline helpers & legacy duplicates removed — runtime logic is consolidated in js/script.js -->
                 }
+
+<script src="/js/dompurify.min.js"></script>
+<script src="/js/frontend-helpers.js"></script>
+<script src="/js/script.js"></script>

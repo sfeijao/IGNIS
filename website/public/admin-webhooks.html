@@ -19,7 +19,7 @@
 
   <div class="form-row">
     <label for="archive">Archive Webhook URL</label>
-    <input id="archive" placeholder="https://discord.com/api/webhooks/..." aria-label="Archive Webhook URL" />
+
   </div>
 
   <div class="form-actions">
@@ -30,7 +30,15 @@
 
   <div id="status" aria-live="polite" role="status"></div>
 
-  <script>
+  
+  <!-- Include DOMPurify then frontend helpers once at end of body -->
+  
+  
+<script src="/js/script.js"></script>
+</body>
+</html>
+
+<script>
     async function api(path, method='GET', body=null) {
       const gidEl = document.getElementById('guildId');
       const guildId = gidEl ? String(gidEl.value || '').trim() : '';
@@ -121,8 +129,5 @@
       ['load','save','testWebhook'].forEach(id=>{ const b=document.getElementById(id); if(b) b.disabled = !!state; });
     }
   </script>
-  <!-- Include DOMPurify then frontend helpers once at end of body -->
-  <script src="/js/dompurify.min.js"></script>
-  <script src="/js/frontend-helpers.js"></script>
-</body>
-</html>
+<script src="/js/dompurify.min.js"></script>
+<script src="/js/frontend-helpers.js"></script>

@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YSNM Bot - Modern Dashboard</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
-    <link rel="icon" href="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" type="image/gif">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https: http:; script-src 'self' 'unsafe-inline' 'unsafe-eval';">
+
+
+
+
+
     <style>
         /* Dashboard specific styles */
         .dashboard-container {
@@ -319,7 +319,7 @@
     <div class="container">
         <header class="header">
             <div class="header-content">
-                <img src="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" alt="YSNM Logo" class="logo">
+
                 <div class="header-text">
                     <h1><i class="fas fa-rocket"></i> YSNM Modern Dashboard</h1>
                     <p>Sistema avançado de gestão para Discord bot</p>
@@ -341,7 +341,7 @@
             <div class="dashboard-grid">
                 <aside class="sidebar">
                     <div class="sidebar-logo">
-                        <img src="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" alt="YB">
+
                         <h3>YSNM Bot</h3>
                     </div>
                     
@@ -475,7 +475,15 @@
         </div>
     </div>
 
-    <script>
+    
+    
+    <!-- Include DOMPurify then frontend helpers once at end of body -->
+    
+    
+</body>
+</html>
+
+<script>
         class YSNMDashboard {
             constructor() {
                 this.init();
@@ -577,9 +585,6 @@
 
     <!-- Use centralized external dashboard script -->
     <script src="/js/script.js"></script>
-    <script src="/js/toast-fallback.js"></script>
-    <!-- Include DOMPurify then frontend helpers once at end of body -->
-    <script src="/js/dompurify.min.js"></script>
-    <script src="/js/frontend-helpers.js"></script>
-</body>
-</html>
+<script src="/js/toast-fallback.js"></script>
+<script src="/js/dompurify.min.js"></script>
+<script src="/js/frontend-helpers.js"></script>

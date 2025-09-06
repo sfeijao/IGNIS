@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Tickets - YSNM Bot</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" href="https://cdn.discordapp.com/icons/1333825066928214053/a_8c5e2b5b5f4d3c2a1e0f9b8d7c6e5a4b.gif" type="image/gif">
+
+
     <!-- Minimal page helpers moved to css/style.css -->
 </head>
 <body>
     <!-- Global fallbacks: toast, event shim, tickets helpers -->
-    <script src="/js/toast-fallback.js"></script>
-    <script src="/js/event-fallback.js"></script>
-    <script src="/js/tickets-fallbacks.js"></script>
+    
+    
+    
 
     <div class="container">
         <div class="header">
@@ -146,7 +146,18 @@
         </div>
     </div>
 
-    <script>
+    
+    <!-- Include DOMPurify then frontend helpers once at end of body -->
+    
+    
+<script src="/js/script.js"></script>
+</body>
+</html>
+
+<script src="/js/toast-fallback.js"></script>
+<script src="/js/event-fallback.js"></script>
+<script src="/js/tickets-fallbacks.js"></script>
+<script>
         // --- preserved page script (kept unchanged) ---
         let currentTickets = [];
     let currentFilter = 'all';
@@ -696,8 +707,5 @@
                 return String(v).replace(/\$\{[^}]*\}/g, '').replace(//g, '');
             }
     </script>
-    <!-- Include DOMPurify then frontend helpers once at end of body -->
-    <script src="/js/dompurify.min.js"></script>
-    <script src="/js/frontend-helpers.js"></script>
-</body>
-</html>
+<script src="/js/dompurify.min.js"></script>
+<script src="/js/frontend-helpers.js"></script>
