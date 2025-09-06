@@ -77,3 +77,17 @@ config-production.json
 
 # Example receiver received payloads (generated during local tests)
 examples/private-receiver/received/
+
+# Ignore common backup/artifact files and public backups created during maintenance
+# Files like *.bak, *.backup, *.orig, *.old, and folders used to stash public backups
+*.bak
+*.backup
+*.orig
+*.old
+
+# Backup folders created by cleanup scripts
+website/public_backups/
+website/public_backups_html/
+
+# Any file or folder with "backup" in the name (safe to ignore for this repo)
+*backup*
