@@ -9,7 +9,21 @@ const config = require('../utils/config');
 const logger = require('../utils/logger');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
+
+// Helper function for OAuth callback URL
+const getCallbackURL = () => {
+    if (process.env.CALLBACK_URL) {
+        return process.env.CALLBACK_URL;
+    }
+    
+    // Auto-detect based on environment  
+    const baseUrl = process.env.NODE_ENV === 'production' 
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'ysnmbot-alberto.up.railway.app'}`
+        : `http://localhost:${PORT}`;
+    
+    return `${baseUrl}/auth/discord/callback`;
+};
 
 // Middleware
 app.use(express.static(path.join(__dirname, 'public')));
@@ -35,7 +49,7 @@ app.use(passport.session());
 passport.use(new DiscordStrategy({
     clientID: config.DISCORD.CLIENT_ID,
     clientSecret: config.DISCORD.CLIENT_SECRET,
-    callbackURL: process.env.CALLBACK_URL || '/auth/discord/callback',
+    callbackURL: getCallbackURL(),
     scope: ['identify', 'guilds']
 }, (accessToken, refreshToken, profile, done) => {
     profile.accessToken = accessToken;
@@ -76,6 +90,18 @@ app.get('/dashboard', (req, res) => {
 
 // Auth routes
 app.get('/auth/discord', passport.authenticate('discord'));
+
+// Debug endpoint para verificar configuração OAuth
+app.get('/auth/debug', (req, res) => {
+    res.json({
+        clientID: config.DISCORD.CLIENT_ID,
+        callbackURL: getCallbackURL(),
+        environment: process.env.NODE_ENV || 'development',
+        port: PORT,
+        railwayDomain: process.env.RAILWAY_PUBLIC_DOMAIN,
+        hasClientSecret: !!config.DISCORD.CLIENT_SECRET
+    });
+});
 
 app.get('/auth/discord/callback',
     passport.authenticate('discord', { failureRedirect: '/login' }),
@@ -220,7 +246,11 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
 // Start server only if not in bot-only mode
 if (config.DISCORD.CLIENT_SECRET) {
     app.listen(PORT, () => {
+        const callbackURL = getCallbackURL();
         logger.info(`🌐 Dashboard servidor iniciado em http://localhost:${PORT}`);
+        logger.info(`🔑 OAuth Callback URL: ${callbackURL}`);
+        logger.info(`🆔 Client ID: ${config.DISCORD.CLIENT_ID}`);
+        logger.info(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
 } else {
     logger.warn('⚠️ Dashboard não iniciado - CLIENT_SECRET não configurado');
