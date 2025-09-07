@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YSNM Bot - Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <i class="fas fa-robot"></i>
+                YSNM Dashboard
+            </div>
+            <div class="navbar-user">
+                <img id="userAvatar" src="/assets/default-avatar.png" alt="Avatar" class="user-avatar">
+                <span id="userName">Carregando...</span>
+                <a href="/logout" class="btn btn-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Server Selection -->
+            <section id="serverSelection" class="dashboard-section fade-in">
+                <div class="section-header">
+                    <h1 class="section-title">
+                        <i class="fas fa-server"></i>
+                        Selecione um Servidor
+                    </h1>
+                </div>
+                <p class="text-center text-secondary mb-4">
+                    Escolha o servidor que deseja gerenciar com o YSNM Bot
+                </p>
+                <div id="serverGrid" class="server-grid">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        Carregando servidores...
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dashboard Content (Hidden initially) -->
+            <section id="dashboardContent" class="dashboard-section hidden">
+                <!-- Server Stats -->
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-chart-line"></i>
+                        Estatísticas do Servidor
+                    </h2>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-value" id="memberCount">-</div>
+                        <div class="stat-label">Membros</div>
+                    </div>
+                    
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-hashtag"></i>
+                        </div>
+                        <div class="stat-value" id="channelCount">-</div>
+                        <div class="stat-label">Canais</div>
+                    </div>
+                    
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="stat-value" id="roleCount">-</div>
+                        <div class="stat-label">Cargos</div>
+                    </div>
+                    
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <div class="stat-value" id="boosterCount">-</div>
+                        <div class="stat-label">Boosters</div>
+                    </div>
+                </div>
+
+                <!-- Control Panels -->
+                <div class="grid grid-2">
+                    <!-- Ticket System -->
+                    <div class="control-panel glass-card">
+                        <div class="section-header">
+                            <h3 class="section-title">
+                                <i class="fas fa-ticket-alt"></i>
+                                Sistema de Tickets
+                            </h3>
+                        </div>
+                        
+                        <div class="control-grid">
+                            <div class="control-item">
+                                <button class="btn btn-primary" onclick="configureTickets()">
+                                    <i class="fas fa-cog"></i>
+                                    Configurar Sistema
+                                </button>
+                            </div>
+                            <div class="control-item">
+                                <button class="btn btn-glass" onclick="viewTickets()">
+                                    <i class="fas fa-list"></i>
+                                    Ver Tickets
+                                </button>
+                            </div>
+                            <div class="control-item">
+                                <button class="btn btn-glass" onclick="ticketStats()">
+                                    <i class="fas fa-chart-bar"></i>
+                                    Estatísticas
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tickets List -->
+                        <div id="ticketsList" class="mt-4">
+                            <div class="loading">
+                                <div class="loading-spinner"></div>
+                                Carregando tickets...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Moderation Panel -->
+                    <div class="control-panel glass-card">
+                        <div class="section-header">
+                            <h3 class="section-title">
+                                <i class="fas fa-hammer"></i>
+                                Moderação
+                            </h3>
+                        </div>
+                        
+                        <div class="control-grid">
+                            <div class="control-item">
+                                <button class="btn btn-primary" onclick="configureVerification()">
+                                    <i class="fas fa-user-check"></i>
+                                    Configurar Verificação
+                                </button>
+                            </div>
+                            <div class="control-item">
+                                <button class="btn btn-glass" onclick="manageTags()">
+                                    <i class="fas fa-tags"></i>
+                                    Gerir Tags
+                                </button>
+                            </div>
+                            <div class="control-item">
+                                <button class="btn btn-glass" onclick="viewLogs()">
+                                    <i class="fas fa-clipboard-list"></i>
+                                    Ver Logs
+                                </button>
+                            </div>
+                            <div class="control-item">
+                                <button class="btn btn-glass" onclick="botSettings()">
+                                    <i class="fas fa-robot"></i>
+                                    Configurações Bot
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Controls -->
+                <div class="control-panel glass-card mt-4">
+                    <div class="section-header">
+                        <h3 class="section-title">
+                            <i class="fas fa-tools"></i>
+                            Ferramentas Avançadas
+                        </h3>
+                    </div>
+                    
+                    <div class="control-grid">
+                        <div class="control-item">
+                            <button class="btn btn-glass" onclick="serverDiagnostics()">
+                                <i class="fas fa-stethoscope"></i>
+                                Diagnóstico do Servidor
+                            </button>
+                        </div>
+                        <div class="control-item">
+                            <button class="btn btn-glass" onclick="backupData()">
+                                <i class="fas fa-download"></i>
+                                Backup de Dados
+                            </button>
+                        </div>
+                        <div class="control-item">
+                            <button class="btn btn-glass" onclick="botPerformance()">
+                                <i class="fas fa-tachometer-alt"></i>
+                                Performance do Bot
+                            </button>
+                        </div>
+                        <div class="control-item">
+                            <button class="btn btn-glass" onclick="customCommands()">
+                                <i class="fas fa-terminal"></i>
+                                Comandos Personalizados
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>

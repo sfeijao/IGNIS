@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YSNM Bot - Login</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-card glass-card fade-in">
+            <div class="login-header">
+                <div class="bot-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <h1>YSNM Bot</h1>
+                <p>Dashboard de Gestão</p>
+            </div>
+            
+            <div class="login-content">
+                <h2>Bem-vindo de volta!</h2>
+                <p>Faça login com a sua conta do Discord para aceder ao dashboard</p>
+                
+                <a href="/auth/discord" class="btn btn-discord">
+                    <i class="fab fa-discord"></i>
+                    Entrar com Discord
+                </a>
+                
+                <div class="login-features">
+                    <div class="feature">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Autenticação Segura</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-cogs"></i>
+                        <span>Gestão Multi-Servidor</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Analytics em Tempo Real</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="login-info">
+            <div class="info-card glass-card fade-in">
+                <h3>🚀 Funcionalidades</h3>
+                <ul>
+                    <li><i class="fas fa-ticket-alt"></i> Sistema de Tickets Avançado</li>
+                    <li><i class="fas fa-user-check"></i> Verificação de Membros</li>
+                    <li><i class="fas fa-tags"></i> Sistema de Tags Personalizadas</li>
+                    <li><i class="fas fa-chart-bar"></i> Estatísticas Detalhadas</li>
+                    <li><i class="fas fa-hammer"></i> Ferramentas de Moderação</li>
+                    <li><i class="fas fa-robot"></i> Configuração do Bot</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .login-page {
+            background: linear-gradient(-45deg, 
+                var(--bg-primary), 
+                var(--bg-secondary), 
+                var(--bg-tertiary), 
+                #1a1a2e
+            );
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-2xl);
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: var(--space-lg);
+        }
+
+        .login-card {
+            padding: var(--space-2xl);
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .login-header {
+            margin-bottom: var(--space-xl);
+        }
+
+        .bot-avatar {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto var(--space-lg);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: var(--radius-xl);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
+        }
+
+        .login-header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: var(--space-sm);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .login-header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .login-content h2 {
+            font-size: 1.8rem;
+            margin-bottom: var(--space-sm);
+        }
+
+        .login-content p {
+            color: var(--text-secondary);
+            margin-bottom: var(--space-xl);
+        }
+
+        .btn-discord {
+            background: #5865F2;
+            color: white;
+            padding: var(--space-lg) var(--space-xl);
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: var(--radius-lg);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-md);
+            margin-bottom: var(--space-xl);
+            box-shadow: 0 8px 24px rgba(88, 101, 242, 0.3);
+            transition: all var(--transition-normal);
+        }
+
+        .btn-discord:hover {
+            background: #4752C4;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(88, 101, 242, 0.4);
+        }
+
+        .login-features {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            margin-top: var(--space-xl);
+        }
+
+        .feature {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .feature i {
+            color: var(--primary);
+            width: 20px;
+        }
+
+        .info-card {
+            padding: var(--space-xl);
+        }
+
+        .info-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: var(--space-lg);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .info-card ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .info-card li {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-sm) 0;
+            color: var(--text-secondary);
+        }
+
+        .info-card li i {
+            color: var(--primary);
+            width: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .login-container {
+                grid-template-columns: 1fr;
+                gap: var(--space-lg);
+            }
+            
+            .login-card {
+                max-width: 100%;
+            }
+        }
+    </style>
+</body>
+</html>
