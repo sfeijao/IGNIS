@@ -5,18 +5,14 @@ require('dotenv').config();
 
 const config = require('./utils/config');
 const logger = require('./utils/logger');
+const storage = require('./utils/storage');
 
-// Importar sistema do dashboard APENAS se CLIENT_SECRET estiver disponível
-let server, socketManager, Database;
+// Iniciar dashboard se CLIENT_SECRET estiver disponível
 if (config.DISCORD.CLIENT_SECRET) {
-    logger.info('✅ CLIENT_SECRET disponível - carregando sistema completo (bot + website)');
-    const websiteServer = require('./website/server');
-    server = websiteServer.server;
-    socketManager = websiteServer.socketManager;
-    Database = require('./website/database/database');
+    logger.info('✅ CLIENT_SECRET disponível - iniciando dashboard');
+    require('./dashboard/server');
 } else {
-    logger.warn('⚠️  CLIENT_SECRET não disponível - modo bot-only ativado');
-    logger.info('   Website/dashboard desabilitado');
+    logger.warn('⚠️  CLIENT_SECRET não disponível - dashboard desabilitado');
 }
 
 const client = new Client({
@@ -41,28 +37,8 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Configurar componentes do website apenas se disponível
-if (socketManager) {
-    client.socketManager = socketManager;
-    logger.info('✅ Socket manager configurado');
-} else {
-    client.socketManager = null;
-    logger.warn('⚠️  Socket manager não disponível (modo bot-only)');
-}
-
-if (Database) {
-    client.database = new Database();
-    
-    // Initialize database for bot
-    client.database.initialize().then(() => {
-    logger.info('✅ Bot database connection established');
-    }).catch(error => {
-    logger.error('❌ Bot database connection failed', { error: error && error.message ? error.message : error, stack: error && error.stack });
-    });
-} else {
-    client.database = null;
-    logger.warn('⚠️  Database não disponível (modo bot-only)');
-}
+// Setup storage
+client.storage = storage;
 
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -142,46 +118,17 @@ async function registerCommands() {
     });
 })();
 
-// Enhanced ready event (único)
+// Enhanced ready event
 client.once('ready', () => {
     logger.info(`✅ Bot logado como ${client.user.tag}`);
     logger.info(`🏠 Servidores: ${client.guilds.cache.size}`);
     logger.info(`👥 Usuários: ${client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0)}`);
     
-    logger.info('✅ Integração com dashboard configurada');
-});
-
-// Registrar comandos e fazer login
-(async () => {
-    await registerCommands();
+    // Update bot status
+    client.user.setActivity('🤖 Bot ativo | /ajuda', { type: 'WATCHING' });
     
-    client.login(config.DISCORD.TOKEN).catch(error => {
-        logger.error('❌ Erro ao fazer login:', { error: error && error.message ? error.message : error, stack: error && error.stack });
-        process.exit(1);
-    });
-})();
-
-// Enhanced ready event (único)
-client.once('ready', () => {
-    logger.info(`✅ Bot logado como ${client.user.tag}`);
-    logger.info(`🏠 Servidores: ${client.guilds.cache.size}`);
-    logger.info(`👥 Usuários: ${client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0)}`);
-    
-    // Update bot status baseado no modo
-    const statusMessage = config.DISCORD.CLIENT_SECRET ? 
-        '🛡️ Dashboard ativo | /ajuda' : 
-        '🤖 Bot ativo | /ajuda';
-    client.user.setActivity(statusMessage, { type: 'WATCHING' });
-    
-    // Tornar cliente disponível globalmente para o website (se disponível)
+    // Tornar cliente disponível globalmente para o dashboard
     global.discordClient = client;
-    
-    // Website já foi inicializado anteriormente se CLIENT_SECRET disponível
-    if (config.DISCORD.CLIENT_SECRET) {
-        logger.info('✅ Website já inicializado - Dashboard disponível');
-    } else {
-        logger.warn('⚠️  Modo bot-only - Website não disponível');
-    }
 });
 
 // Graceful shutdown
