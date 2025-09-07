@@ -34,18 +34,9 @@ module.exports = {
             const prioridade = interaction.options.getString('prioridade') || 'normal';
             
             // Verificar se o usuário já tem um ticket aberto
-            const db = interaction.client.database;
+            const storage = interaction.client.storage;
             
-            // Verificar se a database está inicializada
-            if (!db || !db.db) {
-                console.error('❌ Database não inicializada no comando ticket');
-                return await interaction.reply({
-                    content: '❌ Sistema de tickets temporariamente indisponível. Tente novamente em alguns momentos.',
-                    ephemeral: true
-                });
-            }
-            
-            const userTickets = await db.getTickets(interaction.guild.id);
+            const userTickets = await storage.getTickets(interaction.guild.id);
             const openTicket = userTickets.find(ticket => 
                 ticket.user_id === interaction.user.id && 
                 (ticket.status === 'open' || ticket.status === 'assigned')
@@ -155,7 +146,7 @@ module.exports = {
             });
             
             // Criar ticket na base de dados
-            const db = interaction.client.database;
+            const storage = interaction.client.storage;
             
             const ticketData = {
                 guild_id: interaction.guild.id,
@@ -167,7 +158,7 @@ module.exports = {
                 priority: prioridade
             };
             
-            const ticketResult = await db.createTicket(ticketData);
+            const ticketResult = await storage.createTicket(ticketData);
             
             // Criar embed informativo
             const embed = new EmbedBuilder()
@@ -275,7 +266,7 @@ module.exports = {
         });
         
         // Criar ticket na base de dados
-        const db = interaction.client.database;
+        const storage = interaction.client.storage;
         
         const ticketDBData = {
             guild_id: interaction.guild.id,
@@ -287,7 +278,7 @@ module.exports = {
             priority: priority
         };
         
-        const ticketResult = await db.createTicket(ticketDBData);
+        const ticketResult = await storage.createTicket(ticketDBData);
         
         // Criar embed informativo
         const embed = new EmbedBuilder()

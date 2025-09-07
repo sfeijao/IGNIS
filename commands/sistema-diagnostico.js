@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const storage = require('../utils/storage');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -88,7 +89,7 @@ module.exports = {
                 // Carregar config para verificar roles
                 let config;
                 try {
-                    config = require('../config.json');
+                    config = await storage.getGuildConfig(interaction.guild.id);
                 } catch {
                     config = { roles: {} };
                 }

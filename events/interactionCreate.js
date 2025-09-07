@@ -1,29 +1,12 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelType, PermissionFlagsBits, MessageFlags, WebhookClient } = require('discord.js');
-const Database = require('../website/database/database');
 const errorHandler = require('../utils/errorHandler');
 const logger = require('../utils/logger');
 const config = require('../utils/config');
-const { sendArchivedTicketWebhook } = require('../website/utils/webhookSender');
 const { BUTTON_IDS, MODAL_IDS, INPUT_IDS, EMBED_COLORS, EMOJIS, ERROR_MESSAGES } = require('../constants/ui');
 
 // Função auxiliar para obter ou criar categoria de tickets
 async function getOrCreateTicketCategory(guild) {
-    const Database = require('../website/database/database');
-    let ticketCategory = null;
-    try {
-        const db = new Database();
-        await db.initialize();
-        const cfg = await db.getGuildConfig(guild.id, 'ticket_category_id');
-        if (cfg?.value) {
-            ticketCategory = guild.channels.cache.get(cfg.value) || null;
-        }
-    } catch (e) {
-        // silently fallback to name-based lookup
-    }
-
-    if (!ticketCategory) {
-        ticketCategory = guild.channels.cache.find(c => c.name === '📁 TICKETS' && c.type === ChannelType.GuildCategory);
-    }
+    let ticketCategory = guild.channels.cache.find(c => c.name === '📁 TICKETS' && c.type === ChannelType.GuildCategory);
     
     if (!ticketCategory) {
         logger.debug(`Categoria '📁 TICKETS' não encontrada, criando automaticamente...`);
@@ -629,20 +612,9 @@ module.exports = {
                                                 } catch (fbErr) {
                                                     logger.warn('Error during fallback posting to log channel', { error: fbErr && fbErr.message ? fbErr.message : fbErr, ticketId: ticketRecord.id });
                                                 }
-                                                // Also attempt to send archive payload to a private endpoint if configured
-                                                try {
-                                                    const privateEndpoint = process.env.PRIVATE_LOG_ENDPOINT || null;
-                                                    const privateToken = process.env.PRIVATE_LOG_TOKEN || null;
-                                                    if (privateEndpoint) {
-                                                        const { sendToPrivateEndpoint } = require('../website/utils/privateLogger');
-                                                        const payload = { ticket: ticketRecord, messages, transcriptUrl, event: 'ticket_archived', closedBy: interaction.user?.id || null };
-                                                        const ok = await sendToPrivateEndpoint(privateEndpoint, privateToken, payload).catch(() => false);
-                                                        if (ok) await db.createLog(ticketRecord.guild_id, 'private_log_sent', { ticketId: ticketRecord.id });
-                                                        else await db.createLog(ticketRecord.guild_id, 'private_log_failed', { ticketId: ticketRecord.id });
-                                                    }
-                                                } catch (privateErr) {
-                                                    logger.warn('Error sending to private endpoint', { error: privateErr && privateErr.message ? privateErr.message : privateErr, ticketId: ticketRecord.id });
-                                                }
+                                                // Private endpoint logging disabled (website integration removed)
+                                                // const privateEndpoint = process.env.PRIVATE_LOG_ENDPOINT || null;
+                                                // if (privateEndpoint) { ... }
                                             }
                                         } else {
                                             logger.debug('No archive webhooks configured or already sent for this ticket', { guildId, ticketId: ticketRecord?.id });

@@ -1,6 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
+const storage = require('../utils/storage');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -38,18 +37,8 @@ module.exports = {
             const reset = interaction.options.getBoolean('resetar');
 
             // Carregar configuração atual
-            const configPath = path.join(__dirname, '..', 'config.json');
-            let config;
+            const config = await storage.getGuildConfig(interaction.guild.id);
             
-            try {
-                config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            } catch (error) {
-                return await interaction.reply({
-                    content: '❌ Erro ao carregar configuração.',
-                    ephemeral: true
-                });
-            }
-
             // Inicializar ticketSystem se não existir
             if (!config.ticketSystem) {
                 config.ticketSystem = {
@@ -57,6 +46,7 @@ module.exports = {
                     logChannelId: null,
                     deleteInsteadOfArchive: true
                 };
+                await storage.setGuildConfig(interaction.guild.id, config);
             }
 
             await interaction.deferReply({ ephemeral: true });
@@ -66,7 +56,7 @@ module.exports = {
                 config.ticketSystem.logServerId = null;
                 config.ticketSystem.logChannelId = null;
                 
-                fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+                await storage.setGuildConfig(interaction.guild.id, config);
                 
                 const resetEmbed = new EmbedBuilder()
                     .setColor(0x9E9E9E)
@@ -147,7 +137,7 @@ module.exports = {
             }
 
             // Salvar configuração
-            fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+            await storage.setGuildConfig(interaction.guild.id, config);
 
             // Criar embed de confirmação
             const successEmbed = new EmbedBuilder()

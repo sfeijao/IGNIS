@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const config = require('../config.json');
+const storage = require('../utils/storage');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -8,8 +8,9 @@ module.exports = {
     
     async execute(interaction) {
         // Verificar permissões (incluindo owner)
+        const config = await storage.getGuildConfig(interaction.guild.id);
         const isOwner = interaction.user.id === '381762006329589760';
-        const hasAdminRole = interaction.member.roles.cache.has(config.roles.admin);
+        const hasAdminRole = config.roles?.admin ? interaction.member.roles.cache.has(config.roles.admin) : false;
         const hasAdminPerm = interaction.member.permissions.has('Administrator');
         
         if (!isOwner && !hasAdminRole && !hasAdminPerm) {
@@ -22,7 +23,7 @@ module.exports = {
         const embed = new EmbedBuilder()
             .setColor(0x00ff00)
             .setTitle('🌟 VERIFICAÇÃO DO SERVIDOR 🌟')
-            .setDescription(`Bem-vindo(a) ao **${config.serverName}**!\n\n` +
+            .setDescription(`Bem-vindo(a) ao **${config.serverName || interaction.guild.name}**!\n\n` +
                 '📋 **Sistema de Verificação**\n' +
                 'Para aceder todos os canais e interagir com a nossa comunidade, é necessário passar pela verificação.\n\n' +
                 'O processo é rápido e garante um ambiente seguro para todos os membros.\n\n' +

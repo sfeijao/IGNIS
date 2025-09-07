@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
-const config = require('../config.json');
+const storage = require('../utils/storage');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -9,8 +9,9 @@ module.exports = {
     
     async execute(interaction) {
         // Verificar permissões (apenas admin/owner)
+        const config = await storage.getGuildConfig(interaction.guild.id);
         const isOwner = interaction.user.id === '381762006329589760';
-        const hasAdminRole = interaction.member.roles.cache.has(config.roles.admin);
+        const hasAdminRole = config.roles?.admin ? interaction.member.roles.cache.has(config.roles.admin) : false;
         const hasAdminPerm = interaction.member.permissions.has('Administrator');
         
         if (!isOwner && !hasAdminRole && !hasAdminPerm) {

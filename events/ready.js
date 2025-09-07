@@ -49,18 +49,23 @@ module.exports = {
             logger.info('📢 Mensagens automáticas de startup/deploy DESATIVADAS (usar SEND_STARTUP_MESSAGES=true para ativar)');
         }
 
-        // Auto-scan existing guilds for configuration
+        // Initialize configuration for existing guilds
         try {
-            const { scanGuildAndSave } = require('../website/tools/auto_config');
+            const storage = require('../utils/storage');
             for (const guild of client.guilds.cache.values()) {
                 try {
-                    await scanGuildAndSave(guild, client);
+                    const config = await storage.getGuildConfig(guild.id);
+                    if (!config.serverName) {
+                        config.serverName = guild.name;
+                        await storage.setGuildConfig(guild.id, config);
+                        logger.info(`✅ Initialized config for guild: ${guild.name} (${guild.id})`);
+                    }
                 } catch (e) {
-                    logger.warn('Auto-scan failed for guild on ready', { guild: guild.id, error: e && e.message ? e.message : e });
+                    logger.warn('Guild config initialization failed', { guild: guild.id, error: e && e.message ? e.message : e });
                 }
             }
         } catch (e) {
-            logger.warn('Auto-scan init failed in ready', { error: e && e.message ? e.message : e });
+            logger.warn('Guild config initialization failed in ready', { error: e && e.message ? e.message : e });
         }
 
     logger.info('🔄 Sistema de auto-atualização de status ativado (2 minutos)');

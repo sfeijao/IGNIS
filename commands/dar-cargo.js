@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const config = require('../config.json');
+const storage = require('../utils/storage');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -17,9 +17,10 @@ module.exports = {
     
     async execute(interaction) {
         // Verificar permissões (incluindo owner)
+        const config = await storage.getGuildConfig(interaction.guild.id);
         const isOwner = interaction.user.id === '381762006329589760';
-        const hasStaffRole = interaction.member.roles.cache.has(config.roles.admin) || 
-                           interaction.member.roles.cache.has(config.roles.staff);
+        const hasStaffRole = (config.roles?.admin && interaction.member.roles.cache.has(config.roles.admin)) || 
+                           (config.roles?.staff && interaction.member.roles.cache.has(config.roles.staff));
         const hasAdminPerm = interaction.member.permissions.has('ManageRoles');
         
         if (!isOwner && !hasStaffRole && !hasAdminPerm) {
@@ -65,13 +66,13 @@ module.exports = {
             await interaction.reply({ embeds: [embed] });
 
             // Enviar mensagem para canal específico de cargos
-            const cargoLogsChannel = interaction.guild.channels.cache.get(config.channels.cargoLogs);
+            const cargoLogsChannel = config.channels?.cargoLogs ? interaction.guild.channels.cache.get(config.channels.cargoLogs) : null;
             if (cargoLogsChannel) {
                 cargoLogsChannel.send({ embeds: [embed] });
             }
 
             // Log para canal de logs geral
-            const logsChannel = interaction.guild.channels.cache.get(config.channels.logs);
+            const logsChannel = config.channels?.logs ? interaction.guild.channels.cache.get(config.channels.logs) : null;
             if (logsChannel) {
                 logsChannel.send({ embeds: [embed] });
             }
