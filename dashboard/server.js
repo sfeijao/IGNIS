@@ -32,12 +32,13 @@ app.use(express.urlencoded({ extended: true }));
 
 // Session configuration
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'ysnm-dashboard-secret-' + Math.random(),
+    secret: process.env.SESSION_SECRET || 'ysnm-dashboard-development-secret-2024',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 24 horas
+        secure: false, // Always false for development/localhost
+        maxAge: 24 * 60 * 60 * 1000, // 24 horas
+        httpOnly: true
     }
 }));
 
@@ -57,15 +58,18 @@ passport.use(new DiscordStrategy({
 }));
 
 passport.serializeUser((user, done) => {
+    logger.info(`Serializing user: ${user.username} (${user.id})`);
     done(null, user);
 });
 
 passport.deserializeUser((user, done) => {
+    logger.info(`Deserializing user: ${user.username} (${user.id})`);
     done(null, user);
 });
 
 // Routes
 app.get('/', (req, res) => {
+    logger.info(`Route / - isAuthenticated: ${req.isAuthenticated()}, sessionID: ${req.sessionID}`);
     if (req.isAuthenticated()) {
         res.redirect('/dashboard');
     } else {
@@ -74,6 +78,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/login', (req, res) => {
+    logger.info(`Route /login - isAuthenticated: ${req.isAuthenticated()}, sessionID: ${req.sessionID}`);
     if (req.isAuthenticated()) {
         res.redirect('/dashboard');
     } else {
@@ -82,6 +87,7 @@ app.get('/login', (req, res) => {
 });
 
 app.get('/dashboard', (req, res) => {
+    logger.info(`Route /dashboard - isAuthenticated: ${req.isAuthenticated()}, user: ${req.user ? req.user.username : 'none'}, sessionID: ${req.sessionID}`);
     if (!req.isAuthenticated()) {
         return res.redirect('/login');
     }
@@ -103,9 +109,22 @@ app.get('/auth/debug', (req, res) => {
     });
 });
 
+// Debug endpoint para verificar sessão
+app.get('/debug/session', (req, res) => {
+    res.json({
+        isAuthenticated: req.isAuthenticated(),
+        sessionID: req.sessionID,
+        user: req.user || null,
+        session: req.session,
+        cookies: req.headers.cookie
+    });
+});
+
 app.get('/auth/discord/callback',
     passport.authenticate('discord', { failureRedirect: '/login' }),
     (req, res) => {
+        logger.info(`OAuth callback success - user: ${req.user ? req.user.username : 'none'}, sessionID: ${req.sessionID}`);
+        logger.info(`Session data:`, req.session);
         res.redirect('/dashboard');
     }
 );
