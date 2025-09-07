@@ -1,4 +1,6 @@
-const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { createTicketModal, getTicketTypeInfo } = require('../utils/ticketModals');
+const TicketSystem = require('../utils/ticketSystem');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -15,7 +17,170 @@ module.exports = {
                     { name: '👤 Questão de Moderação', value: 'moderacao' },
                     { name: '📝 Geral', value: 'geral' }
                 )
-        )
+        ),
+
+    async execute(interaction) {
+        try {
+            const tipo = interaction.options.getString('tipo');
+            
+            // Verificar se o usuário já tem um ticket aberto
+            const storage = interaction.client.storage;
+            const userTickets = await storage.getTickets(interaction.guild.id);
+            const openTicket = userTickets.find(ticket => 
+                ticket.user_id === interaction.user.id && 
+                (ticket.status === 'open' || ticket.status === 'assigned')
+            );
+            
+            if (openTicket) {
+                return await interaction.reply({
+                    content: `❌ Você já tem um ticket aberto: <#${openTicket.channel_id}>`,
+                    ephemeral: true
+                });
+            }
+            
+            // Criar modal para detalhes do ticket
+            const modal = createTicketModal(tipo);
+            await interaction.showModal(modal);
+
+        } catch (error) {
+            console.error('Erro no comando ticket:', error);
+            if (!interaction.replied) {
+                await interaction.reply({
+                    content: '❌ Erro ao processar comando de ticket.',
+                    ephemeral: true
+                });
+            }
+        }
+    },
+
+    // Handler para quando o modal é submetido
+    async handleModalSubmit(interaction) {
+        try {
+            const tipo = interaction.customId.split('_')[2];
+            const subject = interaction.fields.getTextInputValue('ticket_subject');
+            const description = interaction.fields.getTextInputValue('ticket_description');
+            
+            await interaction.deferReply({ ephemeral: true });
+            
+            const ticketSystem = new TicketSystem(interaction.client);
+            const typeInfo = getTicketTypeInfo(tipo);
+            
+            // Buscar ou criar categoria de tickets
+            const guildConfig = await interaction.client.storage.getGuildConfig(interaction.guild.id);
+            const staffRoleId = guildConfig.ticketStaffRoleId;
+
+            if (!staffRoleId) {
+                return await interaction.editReply({
+                    content: '❌ Sistema de tickets não configurado. Use `/configurar-painel-tickets` primeiro.',
+                    ephemeral: true
+                });
+            }
+
+            let ticketCategory = interaction.guild.channels.cache.find(
+                channel => channel.type === 4 && channel.name.toLowerCase() === 'tickets'
+            );
+            
+            if (!ticketCategory) {
+                ticketCategory = await interaction.guild.channels.create({
+                    name: 'Tickets',
+                    type: 4,
+                    permissionOverwrites: [
+                        {
+                            id: interaction.guild.roles.everyone,
+                            deny: ['ViewChannel']
+                        },
+                        {
+                            id: staffRoleId,
+                            allow: ['ViewChannel', 'SendMessages', 'ManageChannels']
+                        }
+                    ]
+                });
+            }
+            
+            // Criar canal do ticket
+            const ticketChannel = await interaction.guild.channels.create({
+                name: `ticket-${tipo}-${interaction.user.username}`,
+                type: 0,
+                parent: ticketCategory.id,
+                topic: `Ticket de ${interaction.user.tag} | Tipo: ${typeInfo.name}`,
+                permissionOverwrites: [
+                    {
+                        id: interaction.guild.roles.everyone,
+                        deny: ['ViewChannel']
+                    },
+                    {
+                        id: interaction.user.id,
+                        allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AttachFiles']
+                    },
+                    {
+                        id: staffRoleId,
+                        allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'ManageMessages']
+                    }
+                ]
+            });
+            
+            // Criar ticket na base de dados
+            const ticketData = {
+                guild_id: interaction.guild.id,
+                channel_id: ticketChannel.id,
+                user_id: interaction.user.id,
+                category: tipo,
+                subject: subject,
+                description: description,
+                priority: 'normal'
+            };
+            
+            const ticket = await interaction.client.storage.createTicket(ticketData);
+            
+            // Criar embed e botões
+            const embed = new EmbedBuilder()
+                .setColor(typeInfo.color)
+                .setTitle(`🎫 Ticket #${ticket.id} - ${typeInfo.name}`)
+                .setDescription(`**Assunto:** ${subject}`)
+                .addFields(
+                    { name: '📝 Descrição', value: description, inline: false },
+                    { name: '👤 Autor', value: `<@${interaction.user.id}>`, inline: true },
+                    { name: '📅 Criado em', value: `<t:${Math.floor(Date.now()/1000)}:F>`, inline: true }
+                )
+                .setFooter({ text: 'YSNM Ticket System', iconURL: interaction.guild.iconURL() });
+
+            const actionRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`ticket_assign_${ticket.id}`)
+                        .setLabel('Atribuir para mim')
+                        .setStyle('Primary')
+                        .setEmoji('👋'),
+                    new ButtonBuilder()
+                        .setCustomId(`ticket_close_${ticket.id}`)
+                        .setLabel('Fechar Ticket')
+                        .setStyle('Danger')
+                        .setEmoji('🔒')
+                );
+
+            await ticketChannel.send({ 
+                content: `<@${interaction.user.id}> Seu ticket foi criado!\n<@&${staffRoleId}> Novo ticket disponível.`,
+                embeds: [embed],
+                components: [actionRow]
+            });
+
+            // Enviar log via webhook
+            await ticketSystem.sendLogWebhook(interaction.guild, ticket, 'create');
+
+            await interaction.editReply({
+                content: `✅ Ticket criado com sucesso em ${ticketChannel}!`,
+                ephemeral: true
+            });
+
+        } catch (error) {
+            console.error('Erro ao criar ticket:', error);
+            await interaction.editReply({
+                content: '❌ Erro ao criar ticket. Por favor, tente novamente.',
+                ephemeral: true
+            });
+        }
+    }
+};
         .addStringOption(option =>
             option.setName('prioridade')
                 .setDescription('Prioridade do ticket')
@@ -31,11 +196,9 @@ module.exports = {
     async execute(interaction) {
         try {
             const tipo = interaction.options.getString('tipo');
-            const prioridade = interaction.options.getString('prioridade') || 'normal';
             
             // Verificar se o usuário já tem um ticket aberto
             const storage = interaction.client.storage;
-            
             const userTickets = await storage.getTickets(interaction.guild.id);
             const openTicket = userTickets.find(ticket => 
                 ticket.user_id === interaction.user.id && 
@@ -44,15 +207,13 @@ module.exports = {
             
             if (openTicket) {
                 return await interaction.reply({
-                    content: `❌ Já tens um ticket aberto: <#${openTicket.channel_id}>`,
+                    content: `❌ Você já tem um ticket aberto: <#${openTicket.channel_id}>`,
                     ephemeral: true
                 });
             }
             
             // Criar modal para detalhes do ticket
-            const modal = new ModalBuilder()
-                .setCustomId(`ticket_modal_${tipo}_${prioridade}`)
-                .setTitle(`🎫 Criar Ticket - ${getTipoEmoji(tipo)} ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`);
+            const modal = createTicketModal(tipo);
 
             const subjectInput = new TextInputBuilder()
                 .setCustomId('ticket_subject')
@@ -93,11 +254,14 @@ module.exports = {
     // Handler para quando o modal é submetido
     async handleModalSubmit(interaction) {
         try {
-            const [, , tipo, prioridade] = interaction.customId.split('_');
+            const tipo = interaction.customId.split('_')[2];
             const subject = interaction.fields.getTextInputValue('ticket_subject');
             const description = interaction.fields.getTextInputValue('ticket_description');
             
             await interaction.deferReply({ ephemeral: true });
+            
+            const ticketSystem = new TicketSystem(interaction.client);
+            const typeInfo = getTicketTypeInfo(tipo);
             
             // Buscar categoria de tickets (ou criar se não existir)
             let ticketCategory = interaction.guild.channels.cache.find(
