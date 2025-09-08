@@ -6,6 +6,7 @@ const {
 
 const TicketTimeout = require('./ticketTimeout');
 const NotificationManager = require('./notificationManager');
+const WebhookManager = require('./webhooks/webhookManager');
 
 class TicketManager {
     constructor(client) {
@@ -13,6 +14,7 @@ class TicketManager {
         this.storage = client.storage;
         this.timeout = new TicketTimeout(client);
         this.notifications = new NotificationManager(client);
+        this.webhooks = new WebhookManager();
 
         // Bind methods to ensure correct 'this' context
         this.handleTicketCreate = this.handleTicketCreate.bind(this);
@@ -33,10 +35,28 @@ class TicketManager {
 
             if (userTickets.length > 0) {
                 const ticket = userTickets[0];
-                return await interaction.editReply({
+                await interaction.editReply({
                     content: `❌ Você já tem um ticket aberto: <#${ticket.channel_id}>`,
                     ephemeral: true
                 });
+                return;
+            }
+
+            // Create the ticket
+            const ticket = await this.storage.createTicket({
+                guild_id: interaction.guildId,
+                user_id: interaction.user.id,
+                type: type,
+                description: description,
+                status: 'open'
+            });
+
+            // Send webhook log
+            await this.webhooks.sendTicketLog(interaction.guildId, 'create', {
+                author: interaction.user,
+                ticketId: ticket.id,
+                category: type
+            });
             }
 
             // Mostrar modal para detalhes do ticket
