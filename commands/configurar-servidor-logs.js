@@ -1,5 +1,6 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const storage = require('../utils/storage');
+const logger = require('../utils/logger');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -28,7 +29,7 @@ module.exports = {
             if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
                 return await interaction.reply({
                     content: '❌ Apenas administradores podem configurar o servidor de logs.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
 
@@ -42,7 +43,7 @@ module.exports = {
                 if (!webhookManager) {
                     return await interaction.reply({
                         content: '❌ Sistema de webhooks não está inicializado.',
-                        ephemeral: true
+                        flags: MessageFlags.Ephemeral
                     });
                 }
 
@@ -50,7 +51,7 @@ module.exports = {
                 if (!success) {
                     return await interaction.reply({
                         content: '❌ Não foi possível configurar o webhook no canal selecionado.',
-                        ephemeral: true
+                        flags: MessageFlags.Ephemeral
                     });
                 }
             }
@@ -68,7 +69,7 @@ module.exports = {
                 await storage.setGuildConfig(interaction.guild.id, config);
             }
 
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             // Se for para resetar
             if (reset === true) {
@@ -178,7 +179,6 @@ module.exports = {
 
             await interaction.editReply({ embeds: [successEmbed] });
 
-            const logger = require('../utils/logger');
             logger.info(`⚙️ Servidor de logs configurado: ${targetServer.name} (${serverId}) por ${interaction.user.tag}`);
 
         } catch (error) {
@@ -187,7 +187,7 @@ module.exports = {
             const errorMessage = '❌ Erro ao configurar servidor de logs.';
             
             if (!interaction.replied && !interaction.deferred) {
-                await interaction.reply({ content: errorMessage, ephemeral: true });
+                await interaction.reply({ content: errorMessage, flags: MessageFlags.Ephemeral });
             } else {
                 await interaction.editReply({ content: errorMessage });
             }
