@@ -47,19 +47,73 @@ class WebhookManager {
         };
 
         for (const [guildId, info] of this.webhooks) {
-            config.webhooks[guildId] = {
-                name: info.name,
-                webhook_url: info.webhook.url,
-                enabled: true
-            };
+            if (info.webhook?.url) {
+                config.webhooks[guildId] = {
+                    name: info.name,
+                    webhook_url: info.webhook.url,
+                    enabled: true
+                };
+            }
         }
 
         await fs.writeFile(this.configPath, JSON.stringify(config, null, 2));
     }
 
+    async verifyAndSetupWebhook(guild, channel) {
+        try {
+            // Verifica se já existe um webhook válido
+            const existingInfo = this.webhooks.get(guild.id);
+            if (existingInfo?.webhook?.url) {
+                try {
+                    // Tenta enviar uma mensagem de teste
+                    await existingInfo.webhook.send({
+                        content: '🔄 Verificando conexão do webhook...'
+                    });
+                    logger.info(`Webhook existente verificado para ${guild.name}`);
+                    return true;
+                } catch (error) {
+                    logger.warn(`Webhook existente inválido para ${guild.name}, recriando...`);
+                }
+            }
+
+            // Se não tem canal específico, usa o sistema
+            if (!channel) {
+                channel = guild.systemChannel;
+            }
+
+            if (!channel) {
+                logger.error(`Não foi possível encontrar um canal válido em ${guild.name}`);
+                return false;
+            }
+
+            // Cria um novo webhook
+            const webhook = await channel.createWebhook({
+                name: 'YSNM Logs',
+                avatar: 'https://cdn.discordapp.com/avatars/1404584949285388339/3c28165b10ffdde42c3f76692513ca25.webp',
+                reason: 'Configuração automática do sistema de logs'
+            });
+
+            // Registra o webhook
+            this.webhooks.set(guild.id, {
+                name: guild.name,
+                webhook: new WebhookClient({ url: webhook.url })
+            });
+
+            await this.saveConfig();
+            logger.info(`Webhook configurado com sucesso para ${guild.name}`);
+            return true;
+        } catch (error) {
+            logger.error(`Erro ao configurar webhook para ${guild.name}:`, error);
+            return false;
+        }
+    }
+
     async sendTicketLog(guildId, type, data) {
         const webhookInfo = this.webhooks.get(guildId);
-        if (!webhookInfo) return;
+        if (!webhookInfo || !webhookInfo.webhook?.url) {
+            logger.warn(`Webhook não configurado para o servidor ${guildId}. Ticket log não enviado.`);
+            return;
+        }
 
         try {
             const embed = new EmbedBuilder()

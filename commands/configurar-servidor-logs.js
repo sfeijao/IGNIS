@@ -36,6 +36,25 @@ module.exports = {
             const channel = interaction.options.getChannel('canal');
             const reset = interaction.options.getBoolean('resetar');
 
+            // Se tem channel, vamos configurar o webhook primeiro
+            if (channel) {
+                const webhookManager = interaction.client.webhooks;
+                if (!webhookManager) {
+                    return await interaction.reply({
+                        content: '❌ Sistema de webhooks não está inicializado.',
+                        ephemeral: true
+                    });
+                }
+
+                const success = await webhookManager.verifyAndSetupWebhook(interaction.guild, channel);
+                if (!success) {
+                    return await interaction.reply({
+                        content: '❌ Não foi possível configurar o webhook no canal selecionado.',
+                        ephemeral: true
+                    });
+                }
+            }
+
             // Carregar configuração atual
             const config = await storage.getGuildConfig(interaction.guild.id);
             
