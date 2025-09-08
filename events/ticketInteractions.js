@@ -8,11 +8,10 @@ module.exports = {
     async execute(interaction) {
         // Ignorar interações que não são relacionadas a tickets
         if (!interaction.customId?.startsWith('ticket_')) return;
-        
+
         try {
             // Handle button interactions for tickets
             if (interaction.isButton()) {
-                await interaction.deferReply({ ephemeral: true });
                 const [_, action, type] = interaction.customId.split('_');
 
                 if (action === 'create') {
@@ -22,7 +21,7 @@ module.exports = {
 
                     if (!allowed) {
                         const resetIn = Math.ceil((resetTime - Date.now()) / 60000);
-                        return await interaction.editReply({
+                        return await interaction.reply({
                             content: `❌ Você atingiu o limite de tickets. Tente novamente em ${resetIn} minutos.`,
                             ephemeral: true
                         });
@@ -36,7 +35,7 @@ module.exports = {
 
                     if (existingTickets.length > 0) {
                         return await interaction.reply({
-                            content: `❌ Você já tem um ticket aberto: <#${existingTickets[0].channelId}>`,
+                            content: `❌ Você já tem um ticket aberto: <#${existingTickets[0].channel_id}>`,
                             ephemeral: true
                         });
                     }
@@ -48,12 +47,12 @@ module.exports = {
 
                     const descriptionInput = new TextInputBuilder()
                         .setCustomId('description')
-                        .setLabel('Descreva detalhadamente seu problema/solicitação')
+                        .setLabel('Descreva seu problema/solicitação')
                         .setStyle(TextInputStyle.Paragraph)
                         .setPlaceholder('Quanto mais detalhes fornecer, mais rápido poderemos ajudar.')
                         .setRequired(true)
-                        .setMinLength(20)
-                        .setMaxLength(1000);
+                        .setMinLength(10)
+                        .setMaxLength(500);
 
                     const firstActionRow = new ActionRowBuilder().addComponents(descriptionInput);
                     modal.addComponents(firstActionRow);
@@ -61,7 +60,6 @@ module.exports = {
                     await interaction.showModal(modal);
                 } 
                 else {
-                    // For other actions, defer reply first
                     await interaction.deferReply({ ephemeral: true });
                     const ticketManager = interaction.client.ticketManager;
 
@@ -82,21 +80,25 @@ module.exports = {
             }
             // Handle modal submissions for ticket creation
             else if (interaction.isModalSubmit()) {
-                // Get the description immediately
-                const description = interaction.fields.getTextInputValue('description');
-                const [_, __, type] = interaction.customId.split('_');
-
-                // Now defer the reply
                 await interaction.deferReply({ ephemeral: true });
-
+                
                 try {
+                    const description = interaction.fields.getTextInputValue('description');
+                    
+                    if (!description || description.length < 10 || description.length > 500) {
+                        return await interaction.editReply({
+                            content: '❌ A descrição deve ter entre 10 e 500 caracteres.',
+                            ephemeral: true
+                        });
+                    }
+
+                    const [_, __, type] = interaction.customId.split('_');
                     const ticketManager = interaction.client.ticketManager;
                     
-                    // Create ticket
                     const ticket = await ticketManager.createTicket(
                         interaction.guildId,
                         interaction.user.id,
-                        null, // channelId will be set during creation
+                        null,
                         {
                             type,
                             description,
@@ -105,12 +107,10 @@ module.exports = {
                         }
                     );
 
-                    // Update the deferred reply
                     await interaction.editReply({
                         content: `✅ Ticket criado com sucesso! <#${ticket.channel_id}>`,
                         ephemeral: true
                     });
-
                 } catch (error) {
                     logger.error('Erro ao processar modal de ticket:', error);
                     
@@ -119,19 +119,19 @@ module.exports = {
                         errorMessage = '❌ Você já possui um ticket aberto.';
                     }
 
-                    await interaction.editReply({
-                        content: errorMessage,
-                        ephemeral: true
-                    });
+                    if (!interaction.replied) {
+                        await interaction.editReply({
+                            content: errorMessage,
+                            ephemeral: true
+                        });
+                    }
                 }
             }
         } catch (error) {
             logger.error('Erro ao processar interação de ticket:', error);
             
-            // Try to send error response
             try {
-                // Se já foi respondido e não foi adiado, apenas logue o erro
-                if (interaction.replied && !interaction.deferred) {
+                if (interaction.replied) {
                     logger.error('Interação já foi respondida:', error);
                     return;
                 }
@@ -143,7 +143,15 @@ module.exports = {
 
                 if (interaction.deferred) {
                     await interaction.editReply(response);
-                } else if (!interaction.replied) {
+                } else {
+                    await interaction.reply(response);
+                }
+            } catch (followUpError) {
+                logger.error('Erro ao enviar resposta de erro:', followUpError);
+            }
+        }
+    }
+};
                     await interaction.reply(response);
                 }
             } catch (followUpError) {
