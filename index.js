@@ -1,35 +1,11 @@
-﻿const { Client, Collection, GatewayIntentBits, Partials, const eventFiles let eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
-
-// Remover ticketHandler.js se existir (foi substituído por ticketInteractions.js)
-eventFiles = eventFiles.filter(file => file !== 'ticketHandler.js');
-
-for (const file of eventFiles) {
-    const filePath = path.join(eventsPath, file);
-    const event = require(filePath);
-    
-    if (event.once) {
-        client.once(event.name, (...args) => event.execute(...args, client));
-    } else {
-        client.on(event.name, (...args) => event.execute(...args, client));
-    }
-    logger.info(`✅ Evento carregado: ${event.name} (${file})`);Sync(eventsPath).filter(file => file.endsWith('.js'));
-
-// Remover ticketHandler.js se existir (foi substituído por ticketInteractions.js)
-if (eventFiles.includes('ticketHandler.js')) {
-    eventFiles.splice(eventFiles.indexOf('ticketHandler.js'), 1);
-}
-
-for (const file of eventFiles) {
-    const filePath = path.join(eventsPath, file);
-    const event = require(filePath);
-    
-    if (event.once) {
-        client.once(event.name, (...args) => event.execute(...args, client));
-    } else {
-        client.on(event.name, (...args) => event.execute(...args, client));
-    }
-    logger.info(`✅ Evento carregado: ${event.name} (${file})`);
-}} = require('discord.js');
+﻿const { 
+    Client, 
+    Collection, 
+    GatewayIntentBits, 
+    Partials,
+    REST,
+    Routes
+} = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -86,7 +62,9 @@ for (const file of commandFiles) {
 }
 
 const eventsPath = path.join(__dirname, 'events');
-const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+const eventFiles = fs.readdirSync(eventsPath)
+    .filter(file => file.endsWith('.js'))
+    .filter(file => file !== 'ticketHandler.js'); // Remove ticketHandler.js (replaced by ticketInteractions.js)
 
 for (const file of eventFiles) {
     const filePath = path.join(eventsPath, file);
@@ -97,7 +75,7 @@ for (const file of eventFiles) {
     } else {
         client.on(event.name, (...args) => event.execute(...args, client));
     }
-    logger.info(`✅ Evento carregado: ${event.name}`);
+    logger.info(`✅ Evento carregado: ${event.name} (${file})`);
 }
 
 // Tratamento de erros
