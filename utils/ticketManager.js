@@ -13,37 +13,106 @@ class TicketManager {
         this.storage = client.storage;
         this.timeout = new TicketTimeout(client);
         this.notifications = new NotificationManager(client);
+
+        // Bind methods to ensure correct 'this' context
+        this.handleTicketCreate = this.handleTicketCreate.bind(this);
+        this.handleTicketClose = this.handleTicketClose.bind(this);
+        this.handleTicketClaim = this.handleTicketClaim.bind(this);
+    }
+
+    async handleTicketCreate(interaction, type) {
+        try {
+            // Verificar limite de tickets
+            const existingTickets = await this.storage.getTickets(interaction.guildId);
+            const hasOpenTicket = existingTickets.some(t => 
+                t.user_id === interaction.user.id && 
+                (t.status === 'open' || t.status === 'assigned')
+            );
+
+            if (hasOpenTicket) {
+                return await interaction.editReply({
+                    content: `❌ Você já tem um ticket aberto.`,
+                    ephemeral: true
+                });
+            }
+
+            // Mostrar modal para detalhes do ticket
+            const modal = {
+                customId: `ticket_modal_${type}`,
+                title: this.getModalTitle(type),
+                components: [{
+                    type: 1,
+                    components: [{
+                        type: 4,
+                        customId: 'description',
+                        label: 'Descreva seu problema/solicitação',
+                        style: 2,
+                        minLength: 20,
+                        maxLength: 1000,
+                        placeholder: 'Seja detalhado para receber ajuda mais rapidamente',
+                        required: true
+                    }]
+                }]
+            };
+
+            await interaction.showModal(modal);
+        } catch (error) {
+            console.error('Erro ao criar ticket:', error);
+            await interaction.editReply({
+                content: '❌ Erro ao criar ticket. Tente novamente.',
+                ephemeral: true
+            });
+        }
     }
 
     async createTicket(guildId, userId, channelId, data) {
-        // Verificar tickets existentes com lock
-        const existingTickets = await this.storage.getTickets(guildId);
-        const hasOpenTicket = existingTickets.some(t => 
-            t.user_id === userId && 
-            (t.status === 'open' || t.status === 'assigned')
-        );
+        try {
+            // Verificar tickets existentes com lock
+            const existingTickets = await this.storage.getTickets(guildId);
+            const hasOpenTicket = existingTickets.some(t => 
+                t.user_id === userId && 
+                (t.status === 'open' || t.status === 'assigned')
+            );
 
-        if (hasOpenTicket) {
-            throw new Error('USER_HAS_OPEN_TICKET');
+            if (hasOpenTicket) {
+                throw new Error('USER_HAS_OPEN_TICKET');
+            }
+
+            const ticket = {
+                id: Date.now(),
+                guild_id: guildId,
+                channel_id: channelId,
+                user_id: userId,
+                subject: data.subject,
+                description: data.description,
+                category: data.category,
+                priority: data.priority || 'normal',
+                status: 'open',
+                created_at: new Date().toISOString(),
+                assigned_to: null,
+                closed_at: null,
+                closed_by: null,
+                close_reason: null,
+                last_activity: new Date().toISOString()
+            };
+
+            // Criar canal do ticket
+            const guild = this.client.guilds.cache.get(guildId);
+            if (!guild) throw new Error('GUILD_NOT_FOUND');
+
+            const category = await this.getOrCreateTicketCategory(guild);
+            const channel = await this.createTicketChannel(guild, userId, category, data.type);
+
+            ticket.channel_id = channel.id;
+            await this.setupTicketChannel(channel, userId, ticket, data.type);
+
+            // Salvar e retornar o ticket
+            await this.storage.createTicket(ticket);
+            return ticket;
+        } catch (error) {
+            console.error('Erro ao criar ticket:', error);
+            throw error;
         }
-
-        const ticket = {
-            id: Date.now(),
-            guild_id: guildId,
-            channel_id: channelId,
-            user_id: userId,
-            subject: data.subject,
-            description: data.description,
-            category: data.category,
-            priority: data.priority || 'normal',
-            status: 'open',
-            created_at: new Date().toISOString(),
-            assigned_to: null,
-            closed_at: null,
-            closed_by: null,
-            close_reason: null,
-            last_activity: new Date().toISOString()
-        };
 
         try {
             await this.storage.createTicket(ticket);
