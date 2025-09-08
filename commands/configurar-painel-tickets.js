@@ -25,6 +25,32 @@ module.exports = {
             
             await interaction.deferReply({ ephemeral: true });
 
+            // Verificar e configurar cargo de staff
+            let staffRole = interaction.guild.roles.cache.find(r => r.name === 'Staff');
+            if (!staffRole) {
+                // Criar cargo de staff se não existir
+                staffRole = await interaction.guild.roles.create({
+                    name: 'Staff',
+                    color: '#2ecc71',
+                    reason: 'Cargo automático para sistema de tickets',
+                    permissions: []
+                });
+            }
+
+            // Salvar configurações no banco de dados
+            try {
+                await interaction.client.storage.updateGuildConfig(interaction.guild.id, {
+                    ticketStaffRoleId: staffRole.id,
+                    ticketChannelId: targetChannel.id
+                });
+            } catch (error) {
+                console.error('Erro ao salvar configurações:', error);
+                return await interaction.editReply({
+                    content: '❌ Erro ao salvar configurações. Tente novamente.',
+                    ephemeral: true
+                });
+            }
+
             // Criar embed do painel
             const embed = new EmbedBuilder()
                 .setColor('#9932CC')
@@ -80,15 +106,28 @@ module.exports = {
 
             // Responder ao comando
             await interaction.editReply({
-                content: `✅ **Painel de tickets criado com sucesso!**
+                content: `✅ **Painel de tickets configurado com sucesso!**
                 
-**📋 Detalhes:**
-• **Canal**: ${targetChannel}
+**📋 Detalhes da Configuração:**
+• **Canal do Painel**: ${targetChannel}
+• **Cargo Staff**: ${staffRole}
 • **ID da Mensagem**: \`${message.id}\`
+• **ID do Cargo Staff**: \`${staffRole.id}\`
 • **3 categorias** de suporte disponíveis
-• **Sistema ativo** e pronto para usar
 
-Os utilizadores agora podem clicar nos botões para criar tickets automaticamente!`
+**✨ Sistema Configurado:**
+• Painel de tickets criado
+• Cargo de staff configurado
+• Permissões verificadas
+• Base de dados atualizada
+• Sistema ativo e pronto para usar
+
+**📝 Próximos Passos:**
+1. Adicione o cargo ${staffRole} aos membros da equipe
+2. Teste criando um ticket
+3. Verifique se a equipe recebe as notificações
+
+Use \`/configurar-painel-tickets\` novamente se precisar reconfigurar.`
             });
 
             const logger = require('../utils/logger');

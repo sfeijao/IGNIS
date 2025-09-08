@@ -28,9 +28,27 @@ module.exports = {
 
             // Obter configuração do servidor
             const guildConfig = await client.storage.getGuildConfig(interaction.guild.id);
-            if (!guildConfig.ticketStaffRoleId) {
+            
+            // Verificar se a configuração existe e tem as propriedades necessárias
+            if (!guildConfig || !guildConfig.ticketStaffRoleId) {
                 return await interaction.reply({
-                    content: '❌ Sistema de tickets não configurado. Use `/configurar-painel-tickets`.',
+                    content: '❌ Sistema de tickets não configurado corretamente. Use `/configurar-painel-tickets` para configurar o sistema.',
+                    ephemeral: true
+                });
+            }
+            
+            // Verificar se o cargo ainda existe no servidor
+            try {
+                const staffRole = await interaction.guild.roles.fetch(guildConfig.ticketStaffRoleId);
+                if (!staffRole) {
+                    return await interaction.reply({
+                        content: '❌ O cargo de staff configurado não existe mais no servidor. Use `/configurar-painel-tickets` para reconfigurar.',
+                        ephemeral: true
+                    });
+                }
+            } catch (error) {
+                return await interaction.reply({
+                    content: '❌ Erro ao verificar cargo de staff. Use `/configurar-painel-tickets` para reconfigurar.',
                     ephemeral: true
                 });
             }
