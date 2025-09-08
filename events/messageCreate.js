@@ -8,8 +8,17 @@ module.exports = {
         
         // Apenas processar mensagens de servidores
         if (!message.guild) return;
-        
+
         try {
+            // Verificar se é um canal de ticket e atualizar atividade
+            const ticketManager = new (require('../utils/ticketManager'))(message.client);
+            const tickets = await message.client.storage.getTickets(message.guild.id);
+            const ticket = tickets.find(t => t.channel_id === message.channel.id);
+            
+            if (ticket) {
+                await ticketManager.timeout.updateActivity(ticket.id);
+            }
+            
             // Analytics - registrar mensagem criada
             if (message.client.database) {
                 await message.client.database.recordAnalytics(

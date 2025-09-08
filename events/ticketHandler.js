@@ -1,5 +1,6 @@
 const { PermissionFlagsBits } = require('discord.js');
 const TicketManager = require('../utils/ticketManager');
+const rateLimit = require('../utils/rateLimit');
 const {
     ticketTypes,
     ticketStatus
@@ -73,6 +74,18 @@ module.exports = {
 
 // Funções auxiliares
 async function handleTicketCreate(interaction, type, ticketManager) {
+    // Verificar rate limit
+    const rateLimitKey = `ticket:${interaction.user.id}`;
+    const { allowed, resetTime, remaining } = rateLimit.check(rateLimitKey, 3, 3600000); // 3 tickets por hora
+
+    if (!allowed) {
+        const resetIn = Math.ceil((resetTime - Date.now()) / 60000); // Converter para minutos
+        return await interaction.reply({
+            content: `❌ Você atingiu o limite de tickets. Tente novamente em ${resetIn} minutos.`,
+            ephemeral: true
+        });
+    }
+
     if (!ticketManager.isValidTicketType(type)) {
         return await interaction.reply({
             content: '❌ Tipo de ticket inválido.',
@@ -93,6 +106,15 @@ async function handleTicketCreate(interaction, type, ticketManager) {
 
     // Mostrar modal para criação do ticket
     const modal = require('../utils/ticketModals').createTicketModal(type);
+    
+    // Informar tickets restantes se estiver próximo do limite
+    if (remaining <= 1) {
+        await interaction.reply({
+            content: `⚠️ Você tem apenas ${remaining} ticket(s) disponível(is) na próxima hora.`,
+            ephemeral: true
+        });
+    }
+    
     await interaction.showModal(modal);
 }
 

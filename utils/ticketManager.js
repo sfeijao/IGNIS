@@ -4,13 +4,29 @@ const {
     ticketStatus 
 } = require('../constants/ticketConstants');
 
+const TicketTimeout = require('./ticketTimeout');
+const NotificationManager = require('./notificationManager');
+
 class TicketManager {
     constructor(client) {
         this.client = client;
         this.storage = client.storage;
+        this.timeout = new TicketTimeout(client);
+        this.notifications = new NotificationManager(client);
     }
 
     async createTicket(guildId, userId, channelId, data) {
+        // Verificar tickets existentes com lock
+        const existingTickets = await this.storage.getTickets(guildId);
+        const hasOpenTicket = existingTickets.some(t => 
+            t.user_id === userId && 
+            (t.status === 'open' || t.status === 'assigned')
+        );
+
+        if (hasOpenTicket) {
+            throw new Error('USER_HAS_OPEN_TICKET');
+        }
+
         const ticket = {
             id: Date.now(),
             guild_id: guildId,
@@ -25,11 +41,27 @@ class TicketManager {
             assigned_to: null,
             closed_at: null,
             closed_by: null,
-            close_reason: null
+            close_reason: null,
+            last_activity: new Date().toISOString()
         };
 
-        await this.storage.createTicket(ticket);
-        return ticket;
+        try {
+            await this.storage.createTicket(ticket);
+            
+            // Iniciar monitoramento de timeout
+            await this.timeout.startTracking(ticket);
+            
+            // Notificar equipe sobre novo ticket
+            const guild = await this.client.guilds.fetch(guildId);
+            await this.notifications.notifyStaff(guild, ticket, 'create');
+            
+            return ticket;
+        } catch (error) {
+            if (error.code === 'DUPLICATE_ENTRY') {
+                throw new Error('TICKET_ALREADY_EXISTS');
+            }
+            throw error;
+        }
     }
 
     async closeTicket(ticketId, closerId, reason) {
