@@ -6,12 +6,12 @@ const {
     ticketStatus
 } = require('../constants/ticketConstants');
 
+// Desativado em favor do ticketInteractions.js
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction, client) {
-        // Ignorar interações que não são de botões ou modais
-        if (!interaction.isButton() && !interaction.isModalSubmit()) return;
-        if (!interaction.customId.startsWith('ticket_')) return;
+        // Este handler foi movido para ticketInteractions.js
+        return;
 
         const ticketManager = new TicketManager(client);
 

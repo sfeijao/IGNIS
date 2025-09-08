@@ -1,4 +1,35 @@
-﻿const { Client, Collection, GatewayIntentBits, Partials, REST, Routes } = require('discord.js');
+﻿const { Client, Collection, GatewayIntentBits, Partials, const eventFiles let eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+
+// Remover ticketHandler.js se existir (foi substituído por ticketInteractions.js)
+eventFiles = eventFiles.filter(file => file !== 'ticketHandler.js');
+
+for (const file of eventFiles) {
+    const filePath = path.join(eventsPath, file);
+    const event = require(filePath);
+    
+    if (event.once) {
+        client.once(event.name, (...args) => event.execute(...args, client));
+    } else {
+        client.on(event.name, (...args) => event.execute(...args, client));
+    }
+    logger.info(`✅ Evento carregado: ${event.name} (${file})`);Sync(eventsPath).filter(file => file.endsWith('.js'));
+
+// Remover ticketHandler.js se existir (foi substituído por ticketInteractions.js)
+if (eventFiles.includes('ticketHandler.js')) {
+    eventFiles.splice(eventFiles.indexOf('ticketHandler.js'), 1);
+}
+
+for (const file of eventFiles) {
+    const filePath = path.join(eventsPath, file);
+    const event = require(filePath);
+    
+    if (event.once) {
+        client.once(event.name, (...args) => event.execute(...args, client));
+    } else {
+        client.on(event.name, (...args) => event.execute(...args, client));
+    }
+    logger.info(`✅ Evento carregado: ${event.name} (${file})`);
+}} = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -6,6 +37,7 @@ require('dotenv').config();
 const config = require('./utils/config');
 const logger = require('./utils/logger');
 const storage = require('./utils/storage');
+const TicketManager = require('./utils/ticketManager');
 
 // Iniciar dashboard se CLIENT_SECRET estiver disponível
 if (config.DISCORD.CLIENT_SECRET) {
@@ -20,11 +52,9 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessages,
-        // GatewayIntentBits.MessageContent, // Removido - só necessário se ler conteúdo de mensagens
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.DirectMessages,
         GatewayIntentBits.GuildVoiceStates,
-        // GatewayIntentBits.GuildPresences // Removido - privilegiado e desnecessário
     ],
     partials: [
         Partials.Message,
