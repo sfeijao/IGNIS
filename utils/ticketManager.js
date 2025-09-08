@@ -282,30 +282,42 @@ class TicketManager {
                 logger.warn(`Could not DM transcript to user ${ticket.user_id}:`, dmError);
             }
 
-            // Avisa que o ticket será fechado
-            await interaction.editReply({
-                content: '✅ O ticket será fechado em 5 segundos...',
-                flags: MessageFlags.Ephemeral
-            });
-
-            // Espera todas as mensagens e logs serem enviados
-            await new Promise(resolve => setTimeout(resolve, 3000));
-
-            // Avisa que está fechando
-            await interaction.channel.send('🔒 Fechando ticket...');
-
-            // Espera a mensagem ser enviada e então deleta o canal
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
             try {
-                await interaction.channel.delete();
-            } catch (deleteError) {
-                logger.error('Error deleting ticket channel:', deleteError);
-                // Se falhar em deletar o canal, atualiza a mensagem
+                // Avisa que o ticket será fechado
                 await interaction.editReply({
-                    content: '❌ Erro ao deletar o canal. Por favor, tente novamente.',
+                    content: '✅ O ticket será fechado em 5 segundos...',
                     flags: MessageFlags.Ephemeral
-                }).catch(() => {}); // Ignora erros aqui
+                });
+
+                // Espera todas as mensagens e logs serem enviados
+                await new Promise(resolve => setTimeout(resolve, 3000));
+
+                // Avisa que está fechando
+                const closeMsg = await interaction.channel.send('🔒 Fechando ticket...').catch(() => null);
+
+                // Espera a mensagem ser enviada e então deleta o canal
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // Deleta o canal
+                await interaction.channel.delete().catch(async (deleteError) => {
+                    logger.error('Error deleting ticket channel:', deleteError);
+                    
+                    // Remove a mensagem de fechamento se ela foi enviada
+                    if (closeMsg) {
+                        await closeMsg.delete().catch(() => {});
+                    }
+
+                    // Tenta atualizar a mensagem original
+                    await interaction.editReply({
+                        content: '❌ Erro ao deletar o canal. Por favor, tente novamente.',
+                        flags: MessageFlags.Ephemeral
+                    }).catch(() => {});
+
+                    throw new Error('Failed to delete channel');
+                });
+            } catch (error) {
+                logger.error('Error in ticket close sequence:', error);
+                throw error; // Re-throw para tratamento no handler principal
             }
 
             return ticket;

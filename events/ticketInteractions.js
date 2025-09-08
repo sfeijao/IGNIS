@@ -28,20 +28,21 @@ module.exports = {
                         });
                     }
 
-                    // Check for existing tickets
-                    const existingTickets = await interaction.client.storage.getUserActiveTickets(
-                        interaction.user.id,
-                        interaction.guildId
-                    );
+                    try {
+                        // Check for existing tickets
+                        const existingTickets = await interaction.client.storage.getUserActiveTickets(
+                            interaction.user.id,
+                            interaction.guildId
+                        );
 
-                    if (existingTickets.length > 0) {
-                        return await interaction.reply({
-                            content: `❌ Você já tem um ticket aberto: <#${existingTickets[0].channel_id}>`,
-                            ephemeral: true
-                        });
-                    }
+                        if (existingTickets.length > 0) {
+                            return await interaction.reply({
+                                content: `❌ Você já tem um ticket aberto: <#${existingTickets[0].channel_id}>`,
+                                flags: MessageFlags.Ephemeral
+                            });
+                        }
 
-                    // Create and show modal
+                        // Create and show modal
                     const modal = new ModalBuilder()
                         .setCustomId(`ticket_modal_${type}`)
                         .setTitle('Criar Novo Ticket');
@@ -58,25 +59,49 @@ module.exports = {
                     const firstActionRow = new ActionRowBuilder().addComponents(descriptionInput);
                     modal.addComponents(firstActionRow);
 
-                    await interaction.showModal(modal);
+                        await interaction.showModal(modal);
+                    } catch (modalError) {
+                        logger.error('Erro ao mostrar modal:', modalError);
+                        if (!interaction.replied) {
+                            await interaction.reply({
+                                content: '❌ Erro ao criar ticket. Por favor, tente novamente.',
+                                flags: MessageFlags.Ephemeral
+                            }).catch(() => {});
+                        }
+                    }
                 } 
                 else {
-                    // Defer the reply first
-                    await interaction.deferReply({ ephemeral: true });
-                    const ticketManager = interaction.client.ticketManager;
+                    try {
+                        // Defer the reply first
+                        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                        const ticketManager = interaction.client.ticketManager;
 
-                    switch (action) {
-                        case 'close':
-                            await ticketManager.handleTicketClose(interaction);
-                            break;
-                        case 'claim':
-                            await ticketManager.handleTicketClaim(interaction);
-                            break;
-                        default:
+                        switch (action) {
+                            case 'close':
+                                await ticketManager.handleTicketClose(interaction);
+                                break;
+                            case 'claim':
+                                await ticketManager.handleTicketClaim(interaction);
+                                break;
+                            default:
+                                await interaction.editReply({
+                                    content: '❌ Ação de ticket inválida.',
+                                    flags: MessageFlags.Ephemeral
+                                });
+                        }
+                    } catch (actionError) {
+                        logger.error('Erro ao processar ação do ticket:', actionError);
+                        if (!interaction.replied && !interaction.deferred) {
+                            await interaction.reply({
+                                content: '❌ Erro ao processar ação. Por favor, tente novamente.',
+                                flags: MessageFlags.Ephemeral
+                            }).catch(() => {});
+                        } else if (interaction.deferred) {
                             await interaction.editReply({
-                                content: '❌ Ação de ticket inválida.',
-                                ephemeral: true
-                            });
+                                content: '❌ Erro ao processar ação. Por favor, tente novamente.',
+                                flags: MessageFlags.Ephemeral
+                            }).catch(() => {});
+                        }
                     }
                 }
             }
