@@ -84,6 +84,15 @@ class SimpleStorage {
         return tickets.filter(ticket => ticket.guild_id === guildId);
     }
     
+    async getUserActiveTickets(userId, guildId) {
+        const tickets = await this.readFile(this.ticketsFile) || [];
+        return tickets.filter(ticket => 
+            ticket.guild_id === guildId && 
+            ticket.user_id === userId && 
+            ticket.status === 'open'
+        );
+    }
+    
     async getTicketByChannel(channelId) {
         const tickets = await this.readFile(this.ticketsFile) || [];
         return tickets.find(ticket => ticket.channel_id === channelId);

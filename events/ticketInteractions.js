@@ -8,9 +8,11 @@ module.exports = {
     async execute(interaction) {
         // Ignorar interações que não são relacionadas a tickets
         if (!interaction.customId?.startsWith('ticket_')) return;
+        
         try {
             // Handle button interactions for tickets
             if (interaction.isButton()) {
+                await interaction.deferReply({ ephemeral: true });
                 const [_, action, type] = interaction.customId.split('_');
 
                 if (action === 'create') {
@@ -20,7 +22,7 @@ module.exports = {
 
                     if (!allowed) {
                         const resetIn = Math.ceil((resetTime - Date.now()) / 60000);
-                        return await interaction.reply({
+                        return await interaction.editReply({
                             content: `❌ Você atingiu o limite de tickets. Tente novamente em ${resetIn} minutos.`,
                             ephemeral: true
                         });
@@ -128,6 +130,12 @@ module.exports = {
             
             // Try to send error response
             try {
+                // Se já foi respondido e não foi adiado, apenas logue o erro
+                if (interaction.replied && !interaction.deferred) {
+                    logger.error('Interação já foi respondida:', error);
+                    return;
+                }
+
                 const response = {
                     content: '❌ Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.',
                     ephemeral: true
@@ -135,7 +143,7 @@ module.exports = {
 
                 if (interaction.deferred) {
                     await interaction.editReply(response);
-                } else {
+                } else if (!interaction.replied) {
                     await interaction.reply(response);
                 }
             } catch (followUpError) {
