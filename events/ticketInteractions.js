@@ -25,7 +25,7 @@ module.exports = {
 
                         if (openTicket) {
                             return await interaction.reply({
-                                content: \`❌ Você já tem um ticket aberto: <#\${openTicket.channel_id}>\`,
+                                content: `❌ Você já tem um ticket aberto: <#${openTicket.channel_id}>`,
                                 ephemeral: true
                             });
                         }
@@ -39,7 +39,7 @@ module.exports = {
                         // Modal de confirmação para fechar ticket
                         if (!id) return;
                         await interaction.showModal({
-                            customId: \`ticket_close_modal_\${id}\`,
+                            customId: `ticket_close_modal_${id}`,
                             title: '🔒 Fechar Ticket',
                             components: [{
                                 type: 1,
@@ -90,7 +90,7 @@ module.exports = {
                         }, 'assign');
 
                         await interaction.reply({
-                            content: \`✅ Ticket atribuído para \${interaction.user}\`
+                            content: `✅ Ticket atribuído para ${interaction.user}`
                         });
                         break;
                 }

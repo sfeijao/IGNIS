@@ -26,7 +26,7 @@ class TicketSystem {
 
             const webhook = await this.client.fetchWebhook(webhookUrl);
             await webhook.send({ embeds: [embed] });
-            logger.info(\`Log de ticket enviado via webhook: \${type}\`, { ticketId: data.id, guildId: guild.id });
+            logger.info(`Log de ticket enviado via webhook: ${type}`, { ticketId: data.id, guildId: guild.id });
 
         } catch (error) {
             logger.error('Erro ao enviar log via webhook', { error: error.message, guildId: guild.id });
@@ -72,7 +72,7 @@ class TicketSystem {
             }, 'close');
 
             // Arquivar e deletar canal
-            await interaction.channel.setName(\`arquivado-\${interaction.channel.name}\`);
+            await interaction.channel.setName(`arquivado-${interaction.channel.name}`);
             setTimeout(() => interaction.channel.delete('Ticket fechado'), 5000);
 
             return await interaction.reply({ content: '✅ Ticket fechado com sucesso!' });
@@ -88,8 +88,8 @@ class TicketSystem {
         try {
             const messages = await channel.messages.fetch({ limit: 100 });
             const transcript = messages.reverse().map(msg => {
-                return \`[\${msg.createdAt.toISOString()}] \${msg.author.tag}: \${msg.content}\`;
-            }).join('\\n');
+                return `[${msg.createdAt.toISOString()}] ${msg.author.tag}: ${msg.content}`;
+            }).join('\n');
             return transcript;
         } catch (error) {
             logger.error('Erro ao gerar transcrição', { error: error.message, channelId: channel.id });
@@ -120,16 +120,16 @@ class TicketSystem {
 
     generateLogFields(data) {
         const fields = [
-            { name: '📝 ID', value: \`#\${data.id}\`, inline: true },
-            { name: '👤 Autor', value: \`<@\${data.user_id}>\`, inline: true }
+            { name: '📝 ID', value: `#${data.id}`, inline: true },
+            { name: '👤 Autor', value: `<@${data.user_id}>`, inline: true }
         ];
 
         if (data.assigned_to) {
-            fields.push({ name: '👨‍💼 Atribuído para', value: \`<@\${data.assigned_to}>\`, inline: true });
+            fields.push({ name: '👨‍💼 Atribuído para', value: `<@${data.assigned_to}>`, inline: true });
         }
 
         if (data.closer) {
-            fields.push({ name: '🔒 Fechado por', value: \`<@\${data.closer.id}>\`, inline: true });
+            fields.push({ name: '🔒 Fechado por', value: `<@${data.closer.id}>`, inline: true });
         }
 
         if (data.reason) {
