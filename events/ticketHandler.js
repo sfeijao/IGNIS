@@ -91,6 +91,8 @@ module.exports = {
 };
 
 // Funções auxiliares
+const webhookManager = require('../utils/webhookManager');
+
 async function handleTicketCreate(interaction, type, ticketManager) {
     // Verificar rate limit
     const rateLimitKey = `ticket:${interaction.user.id}`;
@@ -125,9 +127,69 @@ async function handleTicketCreate(interaction, type, ticketManager) {
     // Mostrar modal para criação do ticket
     const modal = require('../utils/ticketModals').createTicketModal(type);
     
+    try {
+        // Adiar a resposta antes de mostrar o modal
+        await interaction.deferReply({ ephemeral: true });
+        
+        // Mostrar o modal
+        await interaction.showModal(modal);
+
+        // Esperar pela submissão do modal (máximo 10 minutos)
+        const submitted = await interaction.awaitModalSubmit({
+            time: 600000,
+            filter: i => i.customId === `ticket_create_${type}` && i.user.id === interaction.user.id,
+        }).catch(() => null);
+
+        if (submitted) {
+            // Criar o ticket com os dados do modal
+            const ticketData = await ticketManager.createTicket(submitted, type);
+            
+            // Enviar webhook de log se configurado
+            await webhookManager.sendWebhook(interaction.guild.id, 'ticket_created', {
+                embeds: [{
+                    title: 'Ticket Criado',
+                    description: `Um novo ticket foi criado por ${interaction.user.tag}`,
+                    fields: [
+                        { name: 'Tipo', value: type, inline: true },
+                        { name: 'ID', value: ticketData.id, inline: true },
+                        { name: 'Canal', value: `<#${ticketData.channelId}>`, inline: true }
+                    ],
+                    color: 0x00ff00,
+                    timestamp: new Date()
+                }]
+            });
+
+            // Atualizar a resposta diferida
+            await interaction.editReply({
+                content: `✅ Ticket criado com sucesso! <#${ticketData.channelId}>`,
+                ephemeral: true
+            });
+        } else {
+            // Se o usuário não enviar o modal em 10 minutos
+            await interaction.editReply({
+                content: '❌ Tempo esgotado. Por favor, tente criar o ticket novamente.',
+                ephemeral: true
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao criar ticket:', error);
+        try {
+            await interaction.editReply({
+                content: '❌ Ocorreu um erro ao criar o ticket. Por favor, tente novamente.',
+                ephemeral: true
+            });
+        } catch (e) {
+            // Se não conseguir editar a resposta, tentar enviar uma nova
+            await interaction.followUp({
+                content: '❌ Ocorreu um erro ao criar o ticket. Por favor, tente novamente.',
+                ephemeral: true
+            });
+        }
+    }
+    
     // Informar tickets restantes se estiver próximo do limite
     if (remaining <= 1) {
-        await interaction.reply({
+        await interaction.followUp({
             content: `⚠️ Você tem apenas ${remaining} ticket(s) disponível(is) na próxima hora.`,
             ephemeral: true
         });
