@@ -45,9 +45,18 @@ class SimpleStorage {
     
     async writeFile(filePath, data) {
         try {
-            await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+            // Ensure directory exists
+            await fs.mkdir(path.dirname(filePath), { recursive: true });
+            
+            // Convert data to JSON string with proper formatting
+            const jsonString = JSON.stringify(data, null, 2);
+            
+            // Write to file
+            await fs.writeFile(filePath, jsonString, 'utf8');
             return true;
         } catch (error) {
+            console.error('Error writing to file:', error);
+            throw new Error(`Failed to write to file: ${error.message}`);
             console.error('Write error:', error);
             return false;
         }

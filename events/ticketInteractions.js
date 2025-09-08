@@ -12,11 +12,10 @@ module.exports = {
         try {
             // Handle button interactions for tickets
             if (interaction.isButton()) {
-                await interaction.deferReply({ ephemeral: true });
                 const [_, action, type] = interaction.customId.split('_');
 
                 if (action === 'create') {
-                    await interaction.deleteReply(); // Remove the deferred reply before showing modal
+                    // Don't defer for modal actions, show modal directly
                     // Verificar rate limit antes de mostrar o modal
                     const rateLimitKey = `ticket:${interaction.user.id}`;
                     const { allowed, resetTime } = rateLimit.check(rateLimitKey, 3, 3600000);
@@ -82,18 +81,20 @@ module.exports = {
             }
             // Handle modal submissions for ticket creation
             else if (interaction.isModalSubmit()) {
-                await interaction.deferReply({ ephemeral: true });
-                
+                if (!interaction.customId.startsWith('ticket_modal_')) return;
+
                 try {
                     const description = interaction.fields.getTextInputValue('description');
                     
                     if (!description || description.length < 10 || description.length > 500) {
-                        return await interaction.editReply({
+                        await interaction.reply({
                             content: '❌ A descrição deve ter entre 10 e 500 caracteres.',
                             ephemeral: true
                         });
+                        return;
                     }
 
+                    await interaction.deferReply({ ephemeral: true });
                     const [_, __, type] = interaction.customId.split('_');
                     const ticketManager = interaction.client.ticketManager;
                     

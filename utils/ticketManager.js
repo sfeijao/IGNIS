@@ -20,18 +20,21 @@ class TicketManager {
         this.handleTicketClaim = this.handleTicketClaim.bind(this);
     }
 
-    async handleTicketCreate(interaction, type) {
+    async handleTicketCreate(interaction, type, description) {
         try {
-            // Verificar limite de tickets
+            // Get existing tickets
             const existingTickets = await this.storage.getTickets(interaction.guildId);
-            const hasOpenTicket = existingTickets.some(t => 
+            
+            // Check for existing open tickets
+            const userTickets = existingTickets.filter(t => 
                 t.user_id === interaction.user.id && 
-                (t.status === 'open' || t.status === 'assigned')
+                ['open', 'assigned'].includes(t.status)
             );
 
-            if (hasOpenTicket) {
+            if (userTickets.length > 0) {
+                const ticket = userTickets[0];
                 return await interaction.editReply({
-                    content: `❌ Você já tem um ticket aberto.`,
+                    content: `❌ Você já tem um ticket aberto: <#${ticket.channel_id}>`,
                     ephemeral: true
                 });
             }
