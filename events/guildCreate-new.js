@@ -9,9 +9,14 @@ module.exports = {
             logger.info(`Guild joined: ${guild.name} (${guild.id}) - initializing configuration`);
             
             // Initialize guild configuration
-            const config = await storage.getGuildConfig(guild.id);
+            let config = await storage.getGuildConfig(guild.id) || {};
             config.serverName = guild.name;
             config.joinedAt = new Date().toISOString();
+            config.ticketSystem = config.ticketSystem || {
+                logServerId: null,
+                logChannelId: null,
+                deleteInsteadOfArchive: true
+            };
             await storage.setGuildConfig(guild.id, config);
             
             logger.info(`✅ Configuration initialized for guild: ${guild.name} (${guild.id})`);

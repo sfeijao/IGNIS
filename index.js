@@ -43,8 +43,9 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Setup storage
+// Setup storage and ticket manager
 client.storage = storage;
+client.ticketManager = new TicketManager(client);
 
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
