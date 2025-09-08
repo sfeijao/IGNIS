@@ -12,9 +12,11 @@ module.exports = {
         try {
             // Handle button interactions for tickets
             if (interaction.isButton()) {
+                await interaction.deferReply({ ephemeral: true });
                 const [_, action, type] = interaction.customId.split('_');
 
                 if (action === 'create') {
+                    await interaction.deleteReply(); // Remove the deferred reply before showing modal
                     // Verificar rate limit antes de mostrar o modal
                     const rateLimitKey = `ticket:${interaction.user.id}`;
                     const { allowed, resetTime } = rateLimit.check(rateLimitKey, 3, 3600000);
@@ -60,7 +62,7 @@ module.exports = {
                     await interaction.showModal(modal);
                 } 
                 else {
-                    await interaction.deferReply({ ephemeral: true });
+                    // Already deferred reply at the start
                     const ticketManager = interaction.client.ticketManager;
 
                     switch (action) {
@@ -130,16 +132,18 @@ module.exports = {
         } catch (error) {
             logger.error('Erro ao processar interação de ticket:', error);
             
+            // Handle error response
+            const response = {
+                content: '❌ Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.',
+                ephemeral: true
+            };
+
+            // Try to send the error response
             try {
                 if (interaction.replied) {
                     logger.error('Interação já foi respondida:', error);
                     return;
                 }
-
-                const response = {
-                    content: '❌ Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.',
-                    ephemeral: true
-                };
 
                 if (interaction.deferred) {
                     await interaction.editReply(response);
@@ -151,12 +155,4 @@ module.exports = {
             }
         }
     }
-};
-                    await interaction.reply(response);
-                }
-            } catch (followUpError) {
-                logger.error('Erro ao enviar resposta de erro:', followUpError);
-            }
-        }
-    },
 };
