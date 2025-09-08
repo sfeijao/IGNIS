@@ -69,13 +69,13 @@ class WebhookManager {
                 case 'create':
                     embed
                         .setTitle('📩 Ticket Aberto')
-                        .setDescription(\`Ticket criado por \${data.author.tag}\`)
+                        .setDescription(`Ticket criado por ${data.author.tag}`)
                         .addFields([
                             { name: '🆔 ID do Ticket', value: data.ticketId, inline: true },
                             { name: '📁 Categoria', value: data.category || 'N/A', inline: true }
                         ])
                         .setTimestamp()
-                        .setFooter({ text: \`ID do Usuário: \${data.author.id}\` });
+                        .setFooter({ text: `ID do Usuário: ${data.author.id}` });
                     
                     if (data.author.avatarURL) {
                         embed.setThumbnail(data.author.avatarURL());
@@ -85,7 +85,7 @@ class WebhookManager {
                 case 'close':
                     embed
                         .setTitle('🔒 Ticket Encerrado')
-                        .setDescription(\`Ticket encerrado por \${data.closedBy.tag}\`)
+                        .setDescription(`Ticket encerrado por ${data.closedBy.tag}`)
                         .addFields([
                             { name: '🆔 ID do Ticket', value: data.ticketId, inline: true },
                             { name: '⏱️ Duração', value: data.duration || 'N/A', inline: true },
@@ -97,7 +97,7 @@ class WebhookManager {
                 case 'update':
                     embed
                         .setTitle('📝 Ticket Atualizado')
-                        .setDescription(\`Ticket atualizado por \${data.updatedBy.tag}\`)
+                        .setDescription(`Ticket atualizado por ${data.updatedBy.tag}`)
                         .addFields([
                             { name: '🆔 ID do Ticket', value: data.ticketId, inline: true },
                             { name: '📊 Status', value: data.status, inline: true }
@@ -109,7 +109,7 @@ class WebhookManager {
             // Send webhook message
             const payload = {
                 embeds: [embed],
-                username: \`\${webhookInfo.name} Tickets\`,
+                username: `${webhookInfo.name} Tickets`,
                 avatarURL: data.guild?.iconURL?.() || undefined
             };
 
@@ -120,7 +120,7 @@ class WebhookManager {
 
             await webhookInfo.webhook.send(payload);
         } catch (error) {
-            logger.error(\`Error sending webhook for guild \${guildId}:\`, error);
+            logger.error(`Error sending webhook for guild ${guildId}:`, error);
         }
     }
 
