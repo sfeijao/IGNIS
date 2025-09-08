@@ -106,7 +106,7 @@ async function registerCommands() {
         const rest = new REST({ version: '10' }).setToken(config.DISCORD.TOKEN);
         
         await rest.put(
-            Routes.applicationGuildCommands(config.DISCORD.CLIENT_ID, config.DISCORD.GUILD_ID),
+            Routes.applicationCommands(config.DISCORD.CLIENT_ID),
             { body: commands }
         );
         
