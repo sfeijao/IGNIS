@@ -1,4 +1,4 @@
-const { Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+const { Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags } = require('discord.js');
 const logger = require('../utils/logger');
 const rateLimit = require('../utils/rateLimit');
 
@@ -24,7 +24,7 @@ module.exports = {
                         const resetIn = Math.ceil((resetTime - Date.now()) / 60000);
                         return await interaction.reply({
                             content: `❌ Você atingiu o limite de tickets. Tente novamente em ${resetIn} minutos.`,
-                            ephemeral: true
+                            flags: MessageFlags.Ephemeral
                         });
                     }
 
@@ -90,12 +90,12 @@ module.exports = {
                     if (!description || description.length < 10 || description.length > 500) {
                         await interaction.reply({
                             content: '❌ A descrição deve ter entre 10 e 500 caracteres.',
-                            ephemeral: true
+                            flags: MessageFlags.Ephemeral
                         });
                         return;
                     }
 
-                    await interaction.deferReply({ ephemeral: true });
+                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                     const [_, __, type] = interaction.customId.split('_');
                     const ticketManager = interaction.client.ticketManager;
                     

@@ -4,7 +4,8 @@ const {
     EmbedBuilder,
     ButtonBuilder,
     ButtonStyle,
-    ActionRowBuilder
+    ActionRowBuilder,
+    MessageFlags
 } = require('discord.js');
 const { 
     ticketTypes, 
@@ -281,19 +282,31 @@ class TicketManager {
                 logger.warn(`Could not DM transcript to user ${ticket.user_id}:`, dmError);
             }
 
-            // Delete the channel
+            // Avisa que o ticket será fechado
             await interaction.editReply({
                 content: '✅ O ticket será fechado em 5 segundos...',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
 
-            setTimeout(async () => {
-                try {
-                    await interaction.channel.delete();
-                } catch (deleteError) {
-                    logger.error('Error deleting ticket channel:', deleteError);
-                }
-            }, 5000);
+            // Espera todas as mensagens e logs serem enviados
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            // Avisa que está fechando
+            await interaction.channel.send('🔒 Fechando ticket...');
+
+            // Espera a mensagem ser enviada e então deleta o canal
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            try {
+                await interaction.channel.delete();
+            } catch (deleteError) {
+                logger.error('Error deleting ticket channel:', deleteError);
+                // Se falhar em deletar o canal, atualiza a mensagem
+                await interaction.editReply({
+                    content: '❌ Erro ao deletar o canal. Por favor, tente novamente.',
+                    flags: MessageFlags.Ephemeral
+                }).catch(() => {}); // Ignora erros aqui
+            }
 
             return ticket;
         } catch (error) {
