@@ -61,7 +61,8 @@ module.exports = {
                     await interaction.showModal(modal);
                 } 
                 else {
-                    // Already deferred reply at the start
+                    // Defer the reply first
+                    await interaction.deferReply({ ephemeral: true });
                     const ticketManager = interaction.client.ticketManager;
 
                     switch (action) {
@@ -142,11 +143,8 @@ module.exports = {
             // Try to send the error response
             try {
                 if (interaction.replied) {
-                    logger.error('Interação já foi respondida:', error);
-                    return;
-                }
-
-                if (interaction.deferred) {
+                    await interaction.followUp(response);
+                } else if (interaction.deferred) {
                     await interaction.editReply(response);
                 } else {
                     await interaction.reply(response);

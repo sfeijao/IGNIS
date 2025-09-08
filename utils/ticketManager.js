@@ -103,22 +103,40 @@ class TicketManager {
                 return null;
             }
 
-            // Create ticket data
-            const ticket = await this.storage.createTicket({
-                guild_id: interaction.guildId,
-                user_id: interaction.user.id,
-                type: type,
-                description: description,
-                status: 'open',
-                created_at: new Date().toISOString()
-            });
+            try {
+                // Create ticket data with all necessary fields
+                const ticketData = {
+                    guild_id: interaction.guildId,
+                    user_id: interaction.user.id,
+                    type: type,
+                    description: description,
+                    status: 'open',
+                    created_at: new Date().toISOString(),
+                    priority: 'normal',
+                    channel_id: null // será atualizado após criar o canal
+                };
 
-            // Create channel for the ticket
-            const channel = await this.createTicketChannel(interaction.guild, interaction.user, ticket);
-            ticket.channel_id = channel.id;
-            
-            // Update ticket with channel id
-            await this.storage.updateTicket(ticket.id, { channel_id: channel.id });
+                // Create ticket first
+                const ticket = await this.storage.createTicket(ticketData);
+                if (!ticket || !ticket.id) {
+                    throw new Error('Falha ao criar ticket no banco de dados');
+                }
+
+                // Create channel for the ticket
+                const channel = await this.createTicketChannel(interaction.guild, interaction.user, ticket);
+                if (!channel || !channel.id) {
+                    // Se falhar na criação do canal, remova o ticket do banco de dados
+                    await this.storage.deleteTicket(ticket.id).catch(err => logger.error('Erro ao deletar ticket após falha na criação do canal:', err));
+                    throw new Error('Falha ao criar canal do ticket');
+                }
+
+                // Update ticket with channel id
+                ticket.channel_id = channel.id;
+                await this.storage.updateTicket(ticket.id, { channel_id: channel.id });
+                return ticket;
+            } catch (error) {
+                logger.error('Erro ao criar ou atualizar ticket:', error);
+                throw error;
 
             // Send webhook log
             await this.webhooks.sendTicketLog(interaction.guildId, 'create', {
