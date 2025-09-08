@@ -208,44 +208,24 @@ module.exports = {
                         
                         const ticketCategory = await getOrCreateTicketCategory(interaction.guild);
 
-                        // Verificar se já tem ticket aberto
-                        const existingTicket = interaction.guild.channels.cache.find(
-                            c => c.name === `ticket-${interaction.user.username.toLowerCase()}` && c.parentId === ticketCategory.id
-                        );
-
-                        if (existingTicket) {
+                        // Delegar para o sistema de tickets
+                        const ticketManager = interaction.client.ticketManager;
+                        if (!ticketManager) {
+                            logger.error('TicketManager não está inicializado!');
                             return await interaction.editReply({
-                                content: `${EMOJIS.ERROR} Já tens um ticket aberto: ${existingTicket}`
+                                content: `${EMOJIS.ERROR} Sistema de tickets não está disponível no momento.`
                             });
                         }
 
-                        // Criar canal do ticket
-                        const ticketChannel = await interaction.guild.channels.create({
-                            name: `ticket-${interaction.user.username.toLowerCase()}`,
-                            type: ChannelType.GuildText,
-                            parent: ticketCategory.id,
-                            permissionOverwrites: [
-                                {
-                                    id: interaction.guild.id,
-                                    deny: [PermissionFlagsBits.ViewChannel],
-                                },
-                                {
-                                    id: interaction.user.id,
-                                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
-                                },
-                            ],
-                        });
-
-                        // Map de tipos de ticket para emojis e cores
-                        const ticketTypeInfo = {
-                            'suporte': { emoji: '🛠️', color: EMBED_COLORS.PRIMARY, title: 'Suporte Técnico' },
-                            'problema': { emoji: '🚨', color: EMBED_COLORS.ERROR, title: 'Reportar Problema' },
-                            'sugestao': { emoji: '💡', color: EMBED_COLORS.SUCCESS, title: 'Sugestão' },
-                            'moderacao': { emoji: '👤', color: EMBED_COLORS.WARNING, title: 'Questão de Moderação' },
-                            'geral': { emoji: '📝', color: EMBED_COLORS.INFO, title: 'Geral' }
-                        };
-
-                        const typeInfo = ticketTypeInfo[ticketType] || ticketTypeInfo['geral'];
+                        // Delegar para o TicketManager
+                        try {
+                            await ticketManager.handleTicketCreate(interaction, ticketType);
+                        } catch (error) {
+                            logger.error('Erro ao criar ticket:', error);
+                            await interaction.editReply({
+                                content: `${EMOJIS.ERROR} Ocorreu um erro ao criar o ticket. Por favor, tente novamente.`
+                            });
+                        }
 
                         // Embed do ticket
                         const ticketEmbed = new EmbedBuilder()
