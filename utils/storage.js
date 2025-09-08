@@ -122,6 +122,20 @@ class SimpleStorage {
         await this.writeFile(this.configFile, config);
         return true;
     }
+
+    async updateGuildConfig(guildId, updates) {
+        const config = await this.readFile(this.configFile) || {};
+        if (!config[guildId]) config[guildId] = {};
+        
+        // Atualizar as configurações
+        config[guildId] = {
+            ...config[guildId],
+            ...updates
+        };
+        
+        await this.writeFile(this.configFile, config);
+        return config[guildId];
+    }
     
     // Tags methods
     async getUserTags(guildId, userId) {

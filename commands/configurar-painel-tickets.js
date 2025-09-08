@@ -39,7 +39,8 @@ module.exports = {
 
             // Salvar configurações no banco de dados
             try {
-                await interaction.client.storage.updateGuildConfig(interaction.guild.id, {
+                const storage = require('../utils/storage');
+                await storage.updateGuildConfig(interaction.guild.id, {
                     ticketStaffRoleId: staffRole.id,
                     ticketChannelId: targetChannel.id
                 });
