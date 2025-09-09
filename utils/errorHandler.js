@@ -35,10 +35,10 @@ class ErrorHandler {
             .setColor(EMBED_COLORS.ERROR)
             .setTitle(`${EMOJIS.ERROR} Erro no ${context}`)
             .setDescription(this.getErrorMessage(error))
-            .addFields([
+            .addFields(
                 { name: 'ID do Erro', value: `\`${errorId}\``, inline: true },
                 { name: 'Suporte', value: 'Contacta um administrador se o problema persistir', inline: true }
-            ])
+            )
             .setTimestamp();
 
         try {

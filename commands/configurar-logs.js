@@ -87,10 +87,10 @@ module.exports = {
                         .setColor(0x00FF00)
                         .setTitle('🧪 Teste de Webhook')
                         .setDescription('Se você está vendo esta mensagem, o webhook está funcionando corretamente!')
-                        .addFields([
+                        .addFields(
                             { name: 'Servidor', value: interaction.guild.name, inline: true },
                             { name: 'Configurado por', value: interaction.user.tag, inline: true }
-                        ])
+                        )
                         .setTimestamp();
 
                     await webhookManager.sendTicketLog(interaction.guildId, 'test', {

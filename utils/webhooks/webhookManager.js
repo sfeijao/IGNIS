@@ -124,10 +124,10 @@ class WebhookManager {
                     embed
                         .setTitle('📩 Ticket Aberto')
                         .setDescription(`Ticket criado por ${data.author.tag}`)
-                        .addFields([
+                        .addFields(
                             { name: '🆔 ID do Ticket', value: data.ticketId, inline: true },
                             { name: '📁 Categoria', value: data.category || 'N/A', inline: true }
-                        ])
+                        )
                         .setTimestamp()
                         .setFooter({ text: `ID do Usuário: ${data.author.id}` });
                     
@@ -140,11 +140,11 @@ class WebhookManager {
                     embed
                         .setTitle('🔒 Ticket Encerrado')
                         .setDescription(`Ticket encerrado por ${data.closedBy.tag}`)
-                        .addFields([
+                        .addFields(
                             { name: '🆔 ID do Ticket', value: data.ticketId, inline: true },
                             { name: '⏱️ Duração', value: data.duration || 'N/A', inline: true },
                             { name: '📝 Motivo', value: data.reason || 'Não especificado' }
-                        ])
+                        )
                         .setTimestamp();
                     break;
 
@@ -152,10 +152,10 @@ class WebhookManager {
                     embed
                         .setTitle('📝 Ticket Atualizado')
                         .setDescription(`Ticket atualizado por ${data.updatedBy.tag}`)
-                        .addFields([
+                        .addFields(
                             { name: '🆔 ID do Ticket', value: data.ticketId, inline: true },
                             { name: '📊 Status', value: data.status, inline: true }
-                        ])
+                        )
                         .setTimestamp();
                     break;
             }

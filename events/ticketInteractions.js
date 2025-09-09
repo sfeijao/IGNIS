@@ -9,6 +9,12 @@ module.exports = {
         // Ignorar interações que não são relacionadas a tickets
         if (!interaction.customId?.startsWith('ticket_')) return;
 
+        // Verificar se a interação já foi respondida (timeout protection)
+        if (interaction.replied || interaction.deferred) {
+            logger.warn(`Tentativa de processar interação já respondida: ${interaction.customId}`);
+            return;
+        }
+
         try {
             // Handle button interactions for tickets
             if (interaction.isButton()) {
