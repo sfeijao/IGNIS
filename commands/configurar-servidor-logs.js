@@ -37,22 +37,33 @@ module.exports = {
             const channel = interaction.options.getChannel('canal');
             const reset = interaction.options.getBoolean('resetar');
 
-            // Se tem channel, vamos configurar o webhook primeiro
-            if (channel) {
-                const webhookManager = interaction.client.webhooks;
-                if (!webhookManager) {
+            // Se tem serverId, vamos verificar se o bot tem acesso ao servidor
+            if (serverId) {
+                const targetGuild = await interaction.client.guilds.fetch(serverId).catch(() => null);
+                if (!targetGuild) {
                     return await interaction.reply({
-                        content: '❌ Sistema de webhooks não está inicializado.',
+                        content: '❌ Não foi possível encontrar o servidor com o ID fornecido. Verifique se o bot está presente no servidor.',
                         flags: MessageFlags.Ephemeral
                     });
                 }
 
-                const success = await webhookManager.verifyAndSetupWebhook(interaction.guild, channel);
-                if (!success) {
-                    return await interaction.reply({
-                        content: '❌ Não foi possível configurar o webhook no canal selecionado.',
-                        flags: MessageFlags.Ephemeral
-                    });
+                // Se tem channel, vamos configurar o webhook primeiro
+                if (channel) {
+                    const webhookManager = interaction.client.webhooks;
+                    if (!webhookManager) {
+                        return await interaction.reply({
+                            content: '❌ Sistema de webhooks não está inicializado.',
+                            flags: MessageFlags.Ephemeral
+                        });
+                    }
+
+                    const success = await webhookManager.verifyAndSetupWebhook(targetGuild, channel);
+                    if (!success) {
+                        return await interaction.reply({
+                            content: '❌ Não foi possível configurar o webhook no canal selecionado. Verifique se o bot tem permissões adequadas no servidor de logs.',
+                            flags: MessageFlags.Ephemeral
+                        });
+                    }
                 }
             }
 
