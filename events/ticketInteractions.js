@@ -21,34 +21,7 @@ module.exports = {
                 const [_, action, type] = interaction.customId.split('_');
 
                 if (action === 'create') {
-                    // Don't defer for modal actions, show modal directly
-                    // Verificar rate limit antes de mostrar o modal
-                    const rateLimitKey = `ticket:${interaction.user.id}`;
-                    const { allowed, resetTime } = rateLimit.check(rateLimitKey, 3, 3600000);
-
-                    if (!allowed) {
-                        const resetIn = Math.ceil((resetTime - Date.now()) / 60000);
-                        return await interaction.reply({
-                            content: `❌ Você atingiu o limite de tickets. Tente novamente em ${resetIn} minutos.`,
-                            flags: MessageFlags.Ephemeral
-                        });
-                    }
-
-                    try {
-                        // Check for existing tickets
-                        const existingTickets = await interaction.client.storage.getUserActiveTickets(
-                            interaction.user.id,
-                            interaction.guildId
-                        );
-
-                        if (existingTickets.length > 0) {
-                            return await interaction.reply({
-                                content: `❌ Você já tem um ticket aberto: <#${existingTickets[0].channel_id}>`,
-                                flags: MessageFlags.Ephemeral
-                            });
-                        }
-
-                        // Create and show modal
+                    // IMMEDIATE MODAL RESPONSE - sem verificações que demoram
                     const modal = new ModalBuilder()
                         .setCustomId(`ticket_modal_${type}`)
                         .setTitle('Criar Novo Ticket');
@@ -68,16 +41,6 @@ module.exports = {
                     // Immediately try to show modal - no validation checks
                     await interaction.showModal(modal);
                     logger.info('Modal mostrado com sucesso para ticket');
-
-                } catch (error) {
-                    logger.error('Erro ao mostrar modal:', error);
-                    if (!interaction.replied && !interaction.deferred) {
-                        await interaction.reply({
-                            content: '❌ Erro ao criar ticket. Por favor, tente novamente.',
-                            flags: MessageFlags.Ephemeral
-                        }).catch(err => logger.error('Erro ao responder interação:', err));
-                    }
-                }
                 } 
                 else {
                     try {
@@ -130,6 +93,30 @@ module.exports = {
                     }
 
                     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                    
+                    // Verificar rate limit
+                    const rateLimitKey = `ticket:${interaction.user.id}`;
+                    const { allowed, resetTime } = rateLimit.check(rateLimitKey, 3, 3600000);
+
+                    if (!allowed) {
+                        const resetIn = Math.ceil((resetTime - Date.now()) / 60000);
+                        return await interaction.editReply({
+                            content: `❌ Você atingiu o limite de tickets. Tente novamente em ${resetIn} minutos.`
+                        });
+                    }
+
+                    // Check for existing tickets
+                    const existingTickets = await interaction.client.storage.getUserActiveTickets(
+                        interaction.user.id,
+                        interaction.guildId
+                    );
+
+                    if (existingTickets.length > 0) {
+                        return await interaction.editReply({
+                            content: `❌ Você já tem um ticket aberto: <#${existingTickets[0].channel_id}>`
+                        });
+                    }
+                    
                     const [_, __, type] = interaction.customId.split('_');
                     const ticketManager = interaction.client.ticketManager;
                     

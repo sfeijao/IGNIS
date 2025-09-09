@@ -223,67 +223,17 @@ module.exports = {
                             await ticketManager.handleTicketCreate(interaction, ticketType);
                         } catch (error) {
                             logger.error('Erro ao criar ticket:', error);
-                            await interaction.editReply({
-                                content: `${EMOJIS.ERROR} Ocorreu um erro ao criar o ticket. Por favor, tente novamente.`
-                            });
+                            if (!interaction.replied && !interaction.deferred) {
+                                await interaction.reply({
+                                    content: `${EMOJIS.ERROR} Ocorreu um erro ao criar o ticket. Por favor, tente novamente.`,
+                                    ephemeral: true
+                                });
+                            } else {
+                                await interaction.editReply({
+                                    content: `${EMOJIS.ERROR} Ocorreu um erro ao criar o ticket. Por favor, tente novamente.`
+                                });
+                            }
                         }
-
-                        // Obter informações do tipo de ticket
-                        const typeInfo = getTicketTypeInfo(ticketType);
-
-                        // Embed do ticket
-                        const ticketEmbed = new EmbedBuilder()
-                            .setTitle(`${typeInfo.emoji} Ticket Criado - ${typeInfo.title}`)
-                            .setDescription(`Olá ${interaction.user}, o teu ticket foi criado com sucesso!\n\nDescreve o teu problema ou questão em detalhe e a nossa equipa irá ajudar-te rapidamente.`)
-                            .addFields(
-                                { name: '👤 Utilizador', value: `${interaction.user}` || 'Desconhecido', inline: true },
-                                { name: '📂 Categoria', value: typeInfo.title || 'Geral', inline: true },
-                                { name: '🕐 Criado', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true },
-                                { name: '📋 Status', value: '🟢 Aberto', inline: true }
-                            )
-                            .setColor(typeInfo.color || 0x00ff00)
-                            .setTimestamp();
-
-                        // Build full ticket panel with multiple rows of buttons
-                        const row1 = new ActionRowBuilder().addComponents(
-                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_CALL_MEMBER).setLabel('🔔 Chamar Membro').setStyle(ButtonStyle.Secondary),
-                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_ADD_MEMBER).setLabel('➕ Adicionar Membro').setStyle(ButtonStyle.Primary),
-                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_REMOVE_MEMBER).setLabel('❌ Remover Membro').setStyle(ButtonStyle.Danger)
-                        );
-
-                        const row2 = new ActionRowBuilder().addComponents(
-                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_MOVE).setLabel('🔀 Mover Ticket').setStyle(ButtonStyle.Secondary),
-                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_RENAME_CHANNEL).setLabel('📝 Trocar Nome do Canal').setStyle(ButtonStyle.Secondary),
-                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_GREET).setLabel('👋 Saudar Atendimento').setStyle(ButtonStyle.Primary)
-                        );
-
-                        const row3 = new ActionRowBuilder().addComponents(
-                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_INTERNAL_NOTE).setLabel('📝 Observação Interna').setStyle(ButtonStyle.Primary),
-                            new ButtonBuilder().setCustomId(BUTTON_IDS.TICKET_FINALIZE).setLabel('✅ Finalizar Ticket').setStyle(ButtonStyle.Success),
-                            new ButtonBuilder().setCustomId(BUTTON_IDS.CLOSE_TICKET).setLabel('🔒 Fechar Ticket').setStyle(ButtonStyle.Danger)
-                        );
-
-                        // Prefer configured staff role ID for mention, fallback to role name or permission check
-                        let staffRoleId = null;
-                        try {
-                            const db = new Database();
-                            await db.initialize();
-                            const cfg = await db.getGuildConfig(interaction.guild.id, 'staff_role_id');
-                            if (cfg?.value) staffRoleId = cfg.value;
-                        } catch (e) {
-                            // ignore
-                        }
-                        if (!staffRoleId) staffRoleId = interaction.guild.roles.cache.find(r => r.name === 'Staff')?.id || interaction.guild.roles.cache.find(r => r.permissions.has('MANAGE_MESSAGES'))?.id;
-
-                        await ticketChannel.send({
-                            content: `${interaction.user} ${staffRoleId ? `| <@&${staffRoleId}>` : ''}`,
-                            embeds: [ticketEmbed],
-                            components: [row1, row2, row3]
-                        });
-
-                        await interaction.editReply({
-                            content: `${EMOJIS.SUCCESS} Ticket criado: ${ticketChannel}`
-                        });
 
                         // Salvar ticket na base de dados
                         let result = null;

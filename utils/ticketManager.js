@@ -29,24 +29,37 @@ class TicketManager {
     async createTicketChannel(guild, user, ticket) {
         const channelName = `ticket-${ticket.id}`;
 
-        // Encontrar ou criar categoria para tickets
+        // Encontrar categoria para tickets (procura com nomes diferentes)
         let ticketCategory = guild.channels.cache.find(c => 
             c.type === ChannelType.GuildCategory && 
-            (c.name === 'Tickets' || c.name === '🎫 Tickets' || c.name === 'TICKETS')
+            (c.name === 'Tickets' || c.name === '🎫 Tickets' || c.name === 'TICKETS' || c.name === '📁 TICKETS')
         );
 
         if (!ticketCategory) {
-            // Criar categoria se não existir
-            ticketCategory = await guild.channels.create({
-                name: '🎫 Tickets',
-                type: ChannelType.GuildCategory,
-                permissionOverwrites: [
-                    {
-                        id: guild.id,
-                        deny: [PermissionFlagsBits.ViewChannel]
-                    }
-                ]
-            });
+            // Criar categoria se não existir (com timeout para evitar duplicação)
+            try {
+                ticketCategory = await guild.channels.create({
+                    name: '📁 TICKETS',
+                    type: ChannelType.GuildCategory,
+                    permissionOverwrites: [
+                        {
+                            id: guild.id,
+                            deny: [PermissionFlagsBits.ViewChannel]
+                        }
+                    ]
+                });
+                logger.info(`Categoria criada com sucesso: ${ticketCategory.name}`);
+            } catch (error) {
+                // Se falhar, tenta encontrar novamente (pode ter sido criada por outra instância)
+                ticketCategory = guild.channels.cache.find(c => 
+                    c.type === ChannelType.GuildCategory && 
+                    (c.name === 'Tickets' || c.name === '🎫 Tickets' || c.name === 'TICKETS' || c.name === '📁 TICKETS')
+                );
+                if (!ticketCategory) {
+                    throw new Error(`Falha ao criar categoria de tickets: ${error.message}`);
+                }
+                logger.warn('Categoria criada por outra instância, usando existente');
+            }
         }
 
         // Create channel with proper permissions
