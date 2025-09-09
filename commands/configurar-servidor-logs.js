@@ -72,6 +72,24 @@ module.exports = {
                             flags: MessageFlags.Ephemeral
                         });
                     }
+                } else {
+                    // Se não tem canal específico, vamos configurar o webhook automaticamente depois
+                    const webhookManager = interaction.client.webhooks;
+                    if (!webhookManager) {
+                        return await interaction.reply({
+                            content: '❌ Sistema de webhooks não está inicializado.',
+                            flags: MessageFlags.Ephemeral
+                        });
+                    }
+
+                    // Tentar configurar webhook no canal de sistema ou criar um novo
+                    const success = await webhookManager.verifyAndSetupWebhook(targetGuild, null);
+                    if (!success) {
+                        return await interaction.reply({
+                            content: '❌ Não foi possível configurar o webhook no servidor de logs. Verifique se o bot tem permissões adequadas.',
+                            flags: MessageFlags.Ephemeral
+                        });
+                    }
                 }
             }
 
@@ -202,9 +220,14 @@ module.exports = {
             logger.info(`⚙️ Servidor de logs configurado: ${targetServer.name} (${serverId}) por ${interaction.user.tag}`);
 
         } catch (error) {
-            logger.error('❌ Erro no comando configurar-servidor-logs:', { error });
+            logger.error('❌ Erro no comando configurar-servidor-logs:', { 
+                error: error.message, 
+                stack: error.stack,
+                guildId: interaction.guild?.id,
+                userId: interaction.user?.id
+            });
             
-            const errorMessage = '❌ Erro ao configurar servidor de logs.';
+            const errorMessage = `❌ Erro ao configurar servidor de logs: ${error.message}`;
             
             if (!interaction.replied && !interaction.deferred) {
                 await interaction.reply({ content: errorMessage, flags: MessageFlags.Ephemeral });
