@@ -14,6 +14,7 @@ const config = require('./utils/config');
 const logger = require('./utils/logger');
 const storage = require('./utils/storage');
 const TicketManager = require('./utils/ticketManager');
+const WebhookManager = require('./utils/webhooks/webhookManager');
 
 // Iniciar dashboard se CLIENT_SECRET estiver disponível
 if (config.DISCORD.CLIENT_SECRET) {
@@ -46,6 +47,7 @@ client.commands = new Collection();
 // Setup storage and ticket manager
 client.storage = storage;
 client.ticketManager = new TicketManager(client);
+client.webhooks = new WebhookManager();
 
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
