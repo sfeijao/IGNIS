@@ -65,21 +65,19 @@ module.exports = {
                     const firstActionRow = new ActionRowBuilder().addComponents(descriptionInput);
                     modal.addComponents(firstActionRow);
 
-                    // Verificar se a interação ainda é válida
-                    if (!interaction.replied && !interaction.deferred) {
-                        await interaction.showModal(modal);
-                    } else {
-                        logger.warn('Tentativa de mostrar modal em interação já respondida/expirada');
-                    }
-                } catch (modalError) {
-                    logger.error('Erro ao mostrar modal:', modalError);
+                    // Immediately try to show modal - no validation checks
+                    await interaction.showModal(modal);
+                    logger.info('Modal mostrado com sucesso para ticket');
+
+                } catch (error) {
+                    logger.error('Erro ao mostrar modal:', error);
                     if (!interaction.replied && !interaction.deferred) {
                         await interaction.reply({
                             content: '❌ Erro ao criar ticket. Por favor, tente novamente.',
                             flags: MessageFlags.Ephemeral
                         }).catch(err => logger.error('Erro ao responder interação:', err));
                     }
-                    }
+                }
                 } 
                 else {
                     try {

@@ -76,8 +76,8 @@ class TicketManager {
             .setTitle('🎫 Ticket Criado')
             .setDescription('Aguarde um membro da equipe responder.\nDescreva seu problema com detalhes.')
             .addFields(
-                { name: 'Criado por', value: user.tag, inline: true },
-                { name: 'ID do Ticket', value: ticket.id, inline: true },
+                { name: 'Criado por', value: user.tag || 'Desconhecido', inline: true },
+                { name: 'ID do Ticket', value: ticket.id || 'N/A', inline: true },
                 { name: 'Categoria', value: ticket.type || 'Geral', inline: true }
             )
             .setTimestamp();
@@ -214,7 +214,7 @@ class TicketManager {
                 .setTitle('🎫 Ticket em Atendimento')
                 .setDescription(`Ticket sendo atendido por ${interaction.user.tag}`)
                 .addFields(
-                    { name: 'ID do Ticket', value: ticket.id, inline: true },
+                    { name: 'ID do Ticket', value: ticket.id || 'N/A', inline: true },
                     { name: 'Status', value: 'Em atendimento', inline: true }
                 )
                 .setTimestamp();

@@ -236,12 +236,12 @@ module.exports = {
                             .setTitle(`${typeInfo.emoji} Ticket Criado - ${typeInfo.title}`)
                             .setDescription(`Olá ${interaction.user}, o teu ticket foi criado com sucesso!\n\nDescreve o teu problema ou questão em detalhe e a nossa equipa irá ajudar-te rapidamente.`)
                             .addFields(
-                                { name: '👤 Utilizador', value: `${interaction.user}`, inline: true },
-                                { name: '📂 Categoria', value: typeInfo.title, inline: true },
+                                { name: '👤 Utilizador', value: `${interaction.user}` || 'Desconhecido', inline: true },
+                                { name: '📂 Categoria', value: typeInfo.title || 'Geral', inline: true },
                                 { name: '🕐 Criado', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true },
                                 { name: '📋 Status', value: '🟢 Aberto', inline: true }
                             )
-                            .setColor(typeInfo.color)
+                            .setColor(typeInfo.color || 0x00ff00)
                             .setTimestamp();
 
                         // Build full ticket panel with multiple rows of buttons
