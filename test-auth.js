@@ -48,7 +48,7 @@ setTimeout(() => {
 setTimeout(() => {
     console.log('\nTesting Discord bot token...');
     // Token real do seu bot do config.json
-    testAuth('MTQwNDU4NDk0OTI4NTM4ODMzOQ.G4LsTN.J7v1bnFqfUB0Kc9fnb26F5RvjML4J0JqOKzzPQ');
+    testAuth('MTQwNDU4NDk0OTI4NTM4ODMzOQ.GcRiYa.9cr231ajakipPbuj9T6fUK3eJSubWZn4F57DFc');
 }, 3000);
 
 setTimeout(() => {
