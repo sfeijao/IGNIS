@@ -93,9 +93,24 @@ module.exports = {
                 }
             }
 
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
             // Carregar configuração atual
             const config = await storage.getGuildConfig(interaction.guild.id);
             
+            // Inicializar config se não existir
+            if (!config) {
+                const defaultConfig = {
+                    ticketSystem: {
+                        logServerId: null,
+                        logChannelId: null,
+                        deleteInsteadOfArchive: true
+                    }
+                };
+                await storage.setGuildConfig(interaction.guild.id, defaultConfig);
+                config = defaultConfig;
+            }
+
             // Inicializar ticketSystem se não existir
             if (!config.ticketSystem) {
                 config.ticketSystem = {
@@ -105,8 +120,6 @@ module.exports = {
                 };
                 await storage.setGuildConfig(interaction.guild.id, config);
             }
-
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             // Se for para resetar
             if (reset === true) {
