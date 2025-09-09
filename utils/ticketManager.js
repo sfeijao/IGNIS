@@ -89,9 +89,9 @@ class TicketManager {
             .setTitle('🎫 Ticket Criado')
             .setDescription('Aguarde um membro da equipe responder.\nDescreva seu problema com detalhes.')
             .addFields(
-                { name: 'Criado por', value: user.tag || 'Desconhecido', inline: true },
-                { name: 'ID do Ticket', value: ticket.id || 'N/A', inline: true },
-                { name: 'Categoria', value: ticket.type || 'Geral', inline: true }
+                { name: 'Criado por', value: String(user.tag || user.username || 'Desconhecido'), inline: true },
+                { name: 'ID do Ticket', value: String(ticket.id || Date.now()), inline: true },
+                { name: 'Categoria', value: String(ticket.type || 'Geral'), inline: true }
             )
             .setTimestamp();
 
