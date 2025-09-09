@@ -3,6 +3,7 @@ const errorHandler = require('../utils/errorHandler');
 const logger = require('../utils/logger');
 const config = require('../utils/config');
 const { BUTTON_IDS, MODAL_IDS, INPUT_IDS, EMBED_COLORS, EMOJIS, ERROR_MESSAGES } = require('../constants/ui');
+const { getTicketTypeInfo } = require('../utils/ticketModals');
 
 // Função auxiliar para obter ou criar categoria de tickets
 async function getOrCreateTicketCategory(guild) {
@@ -226,6 +227,9 @@ module.exports = {
                                 content: `${EMOJIS.ERROR} Ocorreu um erro ao criar o ticket. Por favor, tente novamente.`
                             });
                         }
+
+                        // Obter informações do tipo de ticket
+                        const typeInfo = getTicketTypeInfo(ticketType);
 
                         // Embed do ticket
                         const ticketEmbed = new EmbedBuilder()

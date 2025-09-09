@@ -29,11 +29,31 @@ class TicketManager {
     async createTicketChannel(guild, user, ticket) {
         const channelName = `ticket-${ticket.id}`;
 
+        // Encontrar ou criar categoria para tickets
+        let ticketCategory = guild.channels.cache.find(c => 
+            c.type === ChannelType.GuildCategory && 
+            (c.name === 'Tickets' || c.name === '🎫 Tickets' || c.name === 'TICKETS')
+        );
+
+        if (!ticketCategory) {
+            // Criar categoria se não existir
+            ticketCategory = await guild.channels.create({
+                name: '🎫 Tickets',
+                type: ChannelType.GuildCategory,
+                permissionOverwrites: [
+                    {
+                        id: guild.id,
+                        deny: [PermissionFlagsBits.ViewChannel]
+                    }
+                ]
+            });
+        }
+
         // Create channel with proper permissions
         const channel = await guild.channels.create({
             name: channelName,
             type: ChannelType.GuildText,
-            parent: guild.systemChannelId,
+            parent: ticketCategory.id,
             permissionOverwrites: [
                 {
                     id: guild.id,
