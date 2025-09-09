@@ -96,7 +96,7 @@ module.exports = {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             // Carregar configuração atual
-            const config = await storage.getGuildConfig(interaction.guild.id);
+            let config = await storage.getGuildConfig(interaction.guild.id);
             
             // Inicializar config se não existir
             if (!config) {
