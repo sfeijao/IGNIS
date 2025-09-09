@@ -11,9 +11,9 @@ module.exports = {
                 .setDescription('ID do servidor onde arquivar tickets')
                 .setRequired(false)
         )
-        .addChannelOption(option =>
-            option.setName('canal')
-                .setDescription('Canal específico para logs (opcional)')
+        .addStringOption(option =>
+            option.setName('canal-id')
+                .setDescription('ID do canal específico para logs (opcional - será criado automaticamente se não fornecido)')
                 .setRequired(false)
         )
         .addBooleanOption(option =>
@@ -34,7 +34,7 @@ module.exports = {
             }
 
             const serverId = interaction.options.getString('servidor-id');
-            const channel = interaction.options.getChannel('canal');
+            const channelId = interaction.options.getString('canal-id');
             const reset = interaction.options.getBoolean('resetar');
 
             // Se tem serverId, vamos verificar se o bot tem acesso ao servidor
@@ -47,8 +47,16 @@ module.exports = {
                     });
                 }
 
-                // Se tem channel, vamos configurar o webhook primeiro
-                if (channel) {
+                // Se tem channelId, vamos verificar se o canal existe no servidor de logs
+                if (channelId) {
+                    const targetChannel = await targetGuild.channels.fetch(channelId).catch(() => null);
+                    if (!targetChannel) {
+                        return await interaction.reply({
+                            content: '❌ Não foi possível encontrar o canal com o ID fornecido no servidor de logs.',
+                            flags: MessageFlags.Ephemeral
+                        });
+                    }
+
                     const webhookManager = interaction.client.webhooks;
                     if (!webhookManager) {
                         return await interaction.reply({
@@ -57,7 +65,7 @@ module.exports = {
                         });
                     }
 
-                    const success = await webhookManager.verifyAndSetupWebhook(targetGuild, channel);
+                    const success = await webhookManager.verifyAndSetupWebhook(targetGuild, targetChannel);
                     if (!success) {
                         return await interaction.reply({
                             content: '❌ Não foi possível configurar o webhook no canal selecionado. Verifique se o bot tem permissões adequadas no servidor de logs.',
@@ -156,13 +164,14 @@ module.exports = {
             config.ticketSystem.logServerId = serverId;
             
             // Se foi especificado um canal, usar esse canal
-            if (channel) {
-                if (channel.guildId !== serverId) {
+            if (channelId) {
+                const targetChannel = await targetServer.channels.fetch(channelId).catch(() => null);
+                if (!targetChannel) {
                     return await interaction.editReply({
-                        content: '❌ O canal especificado não pertence ao servidor de logs configurado.'
+                        content: '❌ Canal especificado não encontrado no servidor de logs.'
                     });
                 }
-                config.ticketSystem.logChannelId = channel.id;
+                config.ticketSystem.logChannelId = channelId;
             } else {
                 config.ticketSystem.logChannelId = null; // Será criado automaticamente
             }
@@ -179,7 +188,7 @@ module.exports = {
                     { name: '🖥️ Servidor', value: `${targetServer.name} (${serverId})`, inline: false },
                     { 
                         name: '📋 Canal', 
-                        value: channel ? `${channel.name} (${channel.id})` : 'Será criado automaticamente: `📋-tickets-arquivados`', 
+                        value: channelId ? `<#${channelId}> (${channelId})` : 'Será criado automaticamente: `📋-tickets-arquivados`', 
                         inline: false 
                     },
                     { name: '📋 Status', value: '✅ Ativo', inline: false },
