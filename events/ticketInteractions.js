@@ -120,22 +120,8 @@ module.exports = {
                     const [_, __, type] = interaction.customId.split('_');
                     const ticketManager = interaction.client.ticketManager;
                     
-                    const ticket = await ticketManager.createTicket(
-                        interaction.guildId,
-                        interaction.user.id,
-                        null,
-                        {
-                            type,
-                            description,
-                            priority: 'normal',
-                            category: type
-                        }
-                    );
-
-                    await interaction.editReply({
-                        content: `✅ Ticket criado com sucesso! <#${ticket.channel_id}>`,
-                        ephemeral: true
-                    });
+                    // Usar o método correto do ticketManager
+                    await ticketManager.handleTicketCreate(interaction, type, description);
                 } catch (error) {
                     logger.error('Erro ao processar modal de ticket:', error);
                     

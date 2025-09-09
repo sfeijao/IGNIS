@@ -204,12 +204,7 @@ module.exports = {
                         logger.debug(`Criando ticket tipo: "${ticketType}" para ${interaction.user.tag}`);
                         logger.interaction('button', customId, interaction, true);
                         
-                        // Defer a resposta para dar mais tempo (15 minutos)
-                        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-                        
-                        const ticketCategory = await getOrCreateTicketCategory(interaction.guild);
-
-                        // Delegar para o sistema de tickets
+                        // Delegar IMEDIATAMENTE para o sistema de tickets - sem defer
                         const ticketManager = interaction.client.ticketManager;
                         if (!ticketManager) {
                             logger.error('TicketManager não está inicializado!');
