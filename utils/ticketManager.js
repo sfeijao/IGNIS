@@ -75,11 +75,11 @@ class TicketManager {
             .setColor(0x00ff00)
             .setTitle('🎫 Ticket Criado')
             .setDescription('Aguarde um membro da equipe responder.\nDescreva seu problema com detalhes.')
-            .addFields([
+            .addFields(
                 { name: 'Criado por', value: user.tag, inline: true },
                 { name: 'ID do Ticket', value: ticket.id, inline: true },
                 { name: 'Categoria', value: ticket.type || 'Geral', inline: true }
-            ])
+            )
             .setTimestamp();
 
         const buttons = new ActionRowBuilder().addComponents(
@@ -213,10 +213,10 @@ class TicketManager {
                 .setColor(0xffa500)
                 .setTitle('🎫 Ticket em Atendimento')
                 .setDescription(`Ticket sendo atendido por ${interaction.user.tag}`)
-                .addFields([
+                .addFields(
                     { name: 'ID do Ticket', value: ticket.id, inline: true },
                     { name: 'Status', value: 'Em atendimento', inline: true }
-                ])
+                )
                 .setTimestamp();
 
             await interaction.editReply({
