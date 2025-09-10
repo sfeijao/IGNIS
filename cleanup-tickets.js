@@ -3,7 +3,6 @@ const Database = require('./website/database/database.js');
 async function cleanupCorruptedTickets() {
     const logger = require('./utils/logger');
     logger.info('🧹 Limpando tickets corrompidos da base de dados...');
-        const logger = require('./utils/logger');
     
     const db = new Database();
     await db.initialize();

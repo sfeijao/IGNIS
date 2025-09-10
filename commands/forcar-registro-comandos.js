@@ -12,15 +12,14 @@ module.exports = {
 
     async execute(interaction) {
         try {
+            await interaction.deferReply({ ephemeral: true });
+
             // Verificar se o usuário é administrador
             if (!interaction.member.permissions.has('Administrator')) {
-                return await interaction.reply({
-                    content: '❌ Apenas administradores podem forçar o registro de comandos.',
-                    ephemeral: true
+                return await interaction.editReply({
+                    content: '❌ Apenas administradores podem forçar o registro de comandos.'
                 });
             }
-
-            await interaction.deferReply({ ephemeral: true });
 
             logger.info(`🔄 Forçando re-registro de comandos solicitado por ${interaction.user.tag}`);
 
@@ -67,11 +66,7 @@ module.exports = {
             
             const errorMessage = `❌ Erro ao re-registrar comandos: ${error.message}`;
             
-            if (!interaction.replied && !interaction.deferred) {
-                await interaction.reply({ content: errorMessage, ephemeral: true });
-            } else {
-                await interaction.editReply({ content: errorMessage });
-            }
+            await interaction.editReply({ content: errorMessage });
         }
     },
 };

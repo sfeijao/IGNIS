@@ -26,6 +26,121 @@ class TicketManager {
         this.webhooks = new WebhookManager();
     }
 
+    // Enviar logs usando o sistema organizados
+    async enviarLogOrganizado(guildId, tipo, dados) {
+        try {
+            const config = await this.storage.getGuildConfig(guildId);
+            const logsOrganizados = config?.logsOrganizados;
+
+            if (!logsOrganizados) {
+                // Fallback para sistema antigo
+                await this.webhooks.sendTicketLog(guildId, tipo, dados);
+                return;
+            }
+
+            // Determinar qual servidor é baseado no guildId
+            let servidorOrigem = null;
+            if (guildId === '1333820000791691284') {
+                servidorOrigem = 'ysnm';
+            } else if (guildId === '1283603691538088027') {
+                servidorOrigem = 'beanny';
+            }
+
+            if (!servidorOrigem || !logsOrganizados[servidorOrigem]) {
+                // Fallback para sistema antigo
+                await this.webhooks.sendTicketLog(guildId, tipo, dados);
+                return;
+            }
+
+            const logConfig = logsOrganizados[servidorOrigem];
+            const { WebhookClient } = require('discord.js');
+            const webhook = new WebhookClient({ url: logConfig.webhookUrl });
+
+            // Criar embed baseado no tipo
+            const embed = this.criarEmbedLog(tipo, dados, servidorOrigem);
+
+            // Configurar mensagem do webhook
+            const webhookData = {
+                embeds: [embed],
+                username: `${servidorOrigem.toUpperCase()} Tickets`,
+                avatarURL: dados.guild?.iconURL?.() || undefined
+            };
+
+            // Adicionar arquivos se fornecidos (para transcrições)
+            if (dados.files && dados.files.length > 0) {
+                webhookData.files = dados.files.map(file => ({
+                    attachment: Buffer.from(file.content),
+                    name: file.name
+                }));
+            }
+
+            await webhook.send(webhookData);
+
+            logger.info(`📋 Log organizado enviado: ${tipo} para ${servidorOrigem.toUpperCase()}`);
+
+        } catch (error) {
+            logger.error('Erro ao enviar log organizado:', error);
+            // Fallback para sistema antigo em caso de erro
+            await this.webhooks.sendTicketLog(guildId, tipo, dados).catch(() => {});
+        }
+    }
+
+    criarEmbedLog(tipo, dados, servidorOrigem) {
+        const { EmbedBuilder } = require('discord.js');
+        const embed = new EmbedBuilder()
+            .setTimestamp()
+            .setFooter({ text: `${servidorOrigem.toUpperCase()} Ticket System` });
+
+        switch (tipo) {
+            case 'create':
+                embed
+                    .setTitle('🎫 Novo Ticket Criado')
+                    .setColor(0x4CAF50)
+                    .setDescription(`Ticket criado por ${dados.author.tag}`)
+                    .addFields(
+                        { name: '🆔 ID', value: dados.ticketId, inline: true },
+                        { name: '📁 Categoria', value: dados.category || 'N/A', inline: true },
+                        { name: '🏷️ Servidor', value: servidorOrigem.toUpperCase(), inline: true }
+                    );
+                
+                if (dados.author.avatarURL) {
+                    embed.setThumbnail(dados.author.avatarURL());
+                }
+                break;
+
+            case 'update':
+                embed
+                    .setTitle('📝 Ticket Atualizado')
+                    .setColor(0xFF9800)
+                    .setDescription(`Ticket reclamado por ${dados.updatedBy.tag}`)
+                    .addFields(
+                        { name: '🆔 ID', value: dados.ticketId, inline: true },
+                        { name: '📊 Status', value: dados.status, inline: true },
+                        { name: '🏷️ Servidor', value: servidorOrigem.toUpperCase(), inline: true }
+                    );
+                break;
+
+            case 'close':
+                embed
+                    .setTitle('🔒 Ticket Fechado')
+                    .setColor(0xF44336)
+                    .setDescription(`Ticket encerrado por ${dados.closedBy.tag}`)
+                    .addFields(
+                        { name: '🆔 ID', value: dados.ticketId, inline: true },
+                        { name: '⏱️ Duração', value: dados.duration || 'N/A', inline: true },
+                        { name: '🏷️ Servidor', value: servidorOrigem.toUpperCase(), inline: true },
+                        { name: '📝 Motivo', value: dados.reason || 'Não especificado' }
+                    );
+
+                if (dados.files && dados.files.length > 0) {
+                    embed.addFields({ name: '📋 Transcrição', value: 'Anexada como arquivo', inline: true });
+                }
+                break;
+        }
+
+        return embed;
+    }
+
     async createTicketChannel(guild, user, ticket) {
         const channelName = `ticket-${ticket.id}`;
 
@@ -168,7 +283,7 @@ class TicketManager {
             await this.storage.updateTicket(ticket.id, { channel_id: channel.id });
 
             // Send webhook log
-            await this.webhooks.sendTicketLog(interaction.guildId, 'create', {
+            await this.enviarLogOrganizado(interaction.guildId, 'create', {
                 author: interaction.user,
                 ticketId: ticket.id,
                 category: type,
@@ -214,7 +329,7 @@ class TicketManager {
             });
 
             // Send webhook log
-            await this.webhooks.sendTicketLog(interaction.guildId, 'update', {
+            await this.enviarLogOrganizado(interaction.guildId, 'update', {
                 ticketId: ticket.id,
                 updatedBy: interaction.user,
                 status: 'Atendimento iniciado',
@@ -290,7 +405,7 @@ class TicketManager {
             });
 
             // Send webhook log with transcript
-            await this.webhooks.sendTicketLog(interaction.guildId, 'close', {
+            await this.enviarLogOrganizado(interaction.guildId, 'close', {
                 author: interaction.user,
                 ticketId: ticket.id,
                 files: [{
