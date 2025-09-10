@@ -94,7 +94,7 @@ process.on('uncaughtException', error => {
 // Função para registrar comandos automaticamente
 async function registerCommands() {
     try {
-    logger.info('🔄 Registrando comandos slash...');
+        logger.info('🔄 Registrando comandos slash...');
         
         const commands = [];
         for (const file of commandFiles) {
@@ -102,20 +102,31 @@ async function registerCommands() {
             const command = require(filePath);
             
             if ('data' in command && 'execute' in command) {
-                commands.push(command.data.toJSON());
+                const commandData = command.data.toJSON();
+                commands.push(commandData);
+                logger.info(`📝 Preparando comando: ${commandData.name} (global: ${!commandData.dm_permission})`);
             }
         }
 
         const rest = new REST({ version: '10' }).setToken(config.DISCORD.TOKEN);
         
-        await rest.put(
+        // Registrar comandos globalmente (disponíveis em todos os servidores)
+        logger.info(`🌐 Registrando ${commands.length} comandos globalmente...`);
+        const result = await rest.put(
             Routes.applicationCommands(config.DISCORD.CLIENT_ID),
             { body: commands }
         );
         
-    logger.info(`✅ ${commands.length} comandos registrados com sucesso!`);
+        logger.info(`✅ ${result.length} comandos registrados com sucesso!`);
+        logger.info('⏰ Nota: Comandos podem demorar até 1 hora para aparecer em todos os servidores devido ao cache do Discord');
+        
+        // Log dos comandos registrados
+        result.forEach(cmd => {
+            logger.info(`   ✓ ${cmd.name}: ${cmd.description}`);
+        });
+        
     } catch (error) {
-    logger.error('❌ Erro ao registrar comandos', { error: error && error.message ? error.message : error, stack: error && error.stack });
+        logger.error('❌ Erro ao registrar comandos', { error: error && error.message ? error.message : error, stack: error && error.stack });
     }
 }
 
