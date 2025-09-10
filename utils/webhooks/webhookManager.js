@@ -220,6 +220,112 @@ class WebhookManager {
             return false;
         }
     }
+
+    // Método para configurar webhook automaticamente para um servidor
+    async setupForGuild(guild) {
+        try {
+            logger.info(`Configurando webhook para o servidor ${guild.name} (${guild.id})`);
+            
+            // Verificar se já existe um webhook válido
+            const existingInfo = this.webhooks.get(guild.id);
+            if (existingInfo?.webhook?.url) {
+                try {
+                    // Tentar usar o webhook existente
+                    await existingInfo.webhook.send({
+                        embeds: [{
+                            title: '✅ Webhook Verificado',
+                            description: 'Sistema de logs cross-server está ativo!',
+                            color: 0x4CAF50,
+                            timestamp: new Date()
+                        }]
+                    });
+                    logger.info(`Webhook existente verificado para ${guild.name}`);
+                    return true;
+                } catch (error) {
+                    logger.warn(`Webhook existente inválido para ${guild.name}, recriando...`);
+                }
+            }
+
+            // Procurar um canal apropriado
+            let channel = null;
+            
+            // 1. Procurar por um canal de logs específico
+            channel = guild.channels.cache.find(c => 
+                c.name.includes('log') && c.type === 0 && 
+                c.permissionsFor(guild.members.me)?.has(['SendMessages', 'ManageWebhooks'])
+            );
+
+            // 2. Se não encontrou, procurar canal de tickets
+            if (!channel) {
+                channel = guild.channels.cache.find(c => 
+                    (c.name.includes('ticket') || c.name.includes('arquivo')) && c.type === 0 && 
+                    c.permissionsFor(guild.members.me)?.has(['SendMessages', 'ManageWebhooks'])
+                );
+            }
+
+            // 3. Se não encontrou, usar canal sistema
+            if (!channel) {
+                channel = guild.systemChannel;
+            }
+
+            // 4. Se ainda não tem canal, criar um
+            if (!channel) {
+                try {
+                    channel = await guild.channels.create({
+                        name: '📋-tickets-logs',
+                        type: 0,
+                        topic: 'Canal automático para logs de tickets cross-server',
+                        reason: 'Configuração automática do sistema de webhooks'
+                    });
+                    logger.info(`Canal de logs criado: ${channel.name} no servidor ${guild.name}`);
+                } catch (createError) {
+                    logger.error(`Erro ao criar canal de logs no servidor ${guild.name}:`, createError);
+                    return false;
+                }
+            }
+
+            if (!channel) {
+                logger.error(`Não foi possível encontrar ou criar um canal válido em ${guild.name}`);
+                return false;
+            }
+
+            // Criar o webhook
+            const webhook = await channel.createWebhook({
+                name: 'YSNM Cross-Server Logs',
+                avatar: 'https://cdn.discordapp.com/avatars/1404584949285388339/3c28165b10ffdde42c3f76692513ca25.webp',
+                reason: 'Configuração automática do sistema de logs cross-server'
+            });
+
+            // Registrar o webhook
+            this.webhooks.set(guild.id, {
+                name: guild.name,
+                webhook: new WebhookClient({ url: webhook.url })
+            });
+
+            await this.saveConfig();
+
+            // Enviar mensagem de confirmação
+            await webhook.send({
+                embeds: [{
+                    title: '🎉 Webhook Configurado!',
+                    description: `Sistema de logs cross-server ativo no canal ${channel.name}`,
+                    color: 0x4CAF50,
+                    fields: [
+                        { name: '📋 Canal', value: `<#${channel.id}>`, inline: true },
+                        { name: '🖥️ Servidor', value: guild.name, inline: true }
+                    ],
+                    timestamp: new Date(),
+                    footer: { text: 'YSNM Cross-Server Logging System' }
+                }]
+            });
+
+            logger.info(`✅ Webhook configurado com sucesso para ${guild.name} no canal ${channel.name}`);
+            return true;
+        } catch (error) {
+            logger.error(`❌ Erro ao configurar webhook para ${guild.name}:`, error);
+            return false;
+        }
+    }
 }
 
 module.exports = WebhookManager;

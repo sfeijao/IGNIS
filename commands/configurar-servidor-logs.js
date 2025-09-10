@@ -210,6 +210,19 @@ module.exports = {
             // Salvar configuração
             await storage.setGuildConfig(interaction.guild.id, config);
 
+            // **CONFIGURAR WEBHOOK AUTOMATICAMENTE**
+            try {
+                const webhookManager = interaction.client.webhooks || interaction.client.ticketManager.webhooks;
+                if (webhookManager && webhookManager.setupForGuild) {
+                    logger.info(`Configurando webhook para servidor ${targetServer.name}...`);
+                    await webhookManager.setupForGuild(targetServer);
+                    logger.info(`✅ Webhook configurado com sucesso para ${targetServer.name}`);
+                }
+            } catch (webhookError) {
+                logger.warn(`⚠️ Aviso: Erro ao configurar webhook automaticamente: ${webhookError.message}`);
+                // Continue execution - webhook failure shouldn't break the command
+            }
+
             // Criar embed de confirmação
             const successEmbed = new EmbedBuilder()
                 .setColor(0x4CAF50)
