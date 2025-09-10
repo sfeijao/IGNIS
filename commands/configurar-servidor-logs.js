@@ -20,8 +20,8 @@ module.exports = {
             option.setName('resetar')
                 .setDescription('Resetar configuração (usar false para desativar servidor de logs)')
                 .setRequired(false)
-        )
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+        ),
+        // Removido .setDefaultMemberPermissions() para disponibilizar globalmente
 
     async execute(interaction) {
         try {

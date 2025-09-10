@@ -9,8 +9,8 @@ module.exports = {
             option.setName('servidor-id')
                 .setDescription('ID do servidor onde testar o webhook')
                 .setRequired(true)
-        )
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+        ),
+        // Removido .setDefaultMemberPermissions() para disponibilizar globalmente
 
     async execute(interaction) {
         try {
