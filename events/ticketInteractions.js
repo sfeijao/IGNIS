@@ -21,26 +21,39 @@ module.exports = {
                 const [_, action, type] = interaction.customId.split('_');
 
                 if (action === 'create') {
-                    // IMMEDIATE MODAL RESPONSE - sem verificações que demoram
-                    const modal = new ModalBuilder()
-                        .setCustomId(`ticket_modal_${type}`)
-                        .setTitle('Criar Novo Ticket');
+                    // CRIAÇÃO DIRETA DE TICKET - sem modal
+                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                    
+                    // Verificar rate limit
+                    const rateLimitKey = `ticket:${interaction.user.id}`;
+                    const { allowed, resetTime } = rateLimit.check(rateLimitKey, 3, 3600000);
 
-                    const descriptionInput = new TextInputBuilder()
-                        .setCustomId('description')
-                        .setLabel('Descreva seu problema/solicitação')
-                        .setStyle(TextInputStyle.Paragraph)
-                        .setPlaceholder('Quanto mais detalhes fornecer, mais rápido poderemos ajudar.')
-                        .setRequired(true)
-                        .setMinLength(10)
-                        .setMaxLength(500);
+                    if (!allowed) {
+                        const resetIn = Math.ceil((resetTime - Date.now()) / 60000);
+                        return await interaction.editReply({
+                            content: `❌ Você atingiu o limite de tickets. Tente novamente em ${resetIn} minutos.`
+                        });
+                    }
 
-                    const firstActionRow = new ActionRowBuilder().addComponents(descriptionInput);
-                    modal.addComponents(firstActionRow);
+                    // Check for existing tickets
+                    const existingTickets = await interaction.client.storage.getUserActiveTickets(
+                        interaction.user.id,
+                        interaction.guildId
+                    );
 
-                    // Immediately try to show modal - no validation checks
-                    await interaction.showModal(modal);
-                    logger.info('Modal mostrado com sucesso para ticket');
+                    if (existingTickets.length > 0) {
+                        return await interaction.editReply({
+                            content: `❌ Você já tem um ticket aberto: <#${existingTickets[0].channel_id}>`
+                        });
+                    }
+                    
+                    const ticketManager = interaction.client.ticketManager;
+                    
+                    // Usar descrição padrão baseada no tipo
+                    const defaultDescription = `Ticket criado para categoria: ${type}`;
+                    
+                    // Criar ticket diretamente
+                    await ticketManager.handleTicketCreate(interaction, type, defaultDescription);
                 } 
                 else {
                     try {
@@ -77,67 +90,7 @@ module.exports = {
                     }
                 }
             }
-            // Handle modal submissions for ticket creation
-            else if (interaction.isModalSubmit()) {
-                if (!interaction.customId.startsWith('ticket_modal_')) return;
-
-                try {
-                    const description = interaction.fields.getTextInputValue('description');
-                    
-                    if (!description || description.length < 10 || description.length > 500) {
-                        await interaction.reply({
-                            content: '❌ A descrição deve ter entre 10 e 500 caracteres.',
-                            flags: MessageFlags.Ephemeral
-                        });
-                        return;
-                    }
-
-                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-                    
-                    // Verificar rate limit
-                    const rateLimitKey = `ticket:${interaction.user.id}`;
-                    const { allowed, resetTime } = rateLimit.check(rateLimitKey, 3, 3600000);
-
-                    if (!allowed) {
-                        const resetIn = Math.ceil((resetTime - Date.now()) / 60000);
-                        return await interaction.editReply({
-                            content: `❌ Você atingiu o limite de tickets. Tente novamente em ${resetIn} minutos.`
-                        });
-                    }
-
-                    // Check for existing tickets
-                    const existingTickets = await interaction.client.storage.getUserActiveTickets(
-                        interaction.user.id,
-                        interaction.guildId
-                    );
-
-                    if (existingTickets.length > 0) {
-                        return await interaction.editReply({
-                            content: `❌ Você já tem um ticket aberto: <#${existingTickets[0].channel_id}>`
-                        });
-                    }
-                    
-                    const [_, __, type] = interaction.customId.split('_');
-                    const ticketManager = interaction.client.ticketManager;
-                    
-                    // Usar o método correto do ticketManager
-                    await ticketManager.handleTicketCreate(interaction, type, description);
-                } catch (error) {
-                    logger.error('Erro ao processar modal de ticket:', error);
-                    
-                    let errorMessage = '❌ Ocorreu um erro ao criar o ticket.';
-                    if (error.message === 'USER_HAS_OPEN_TICKET') {
-                        errorMessage = '❌ Você já possui um ticket aberto.';
-                    }
-
-                    if (!interaction.replied) {
-                        await interaction.editReply({
-                            content: errorMessage,
-                            ephemeral: true
-                        });
-                    }
-                }
-            }
+            // Modal submission handler removed - tickets are now created directly without modals
         } catch (error) {
             logger.error('Erro ao processar interação de ticket:', error);
             
