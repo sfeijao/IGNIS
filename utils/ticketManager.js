@@ -227,7 +227,7 @@ class TicketManager {
                 .setTitle('🎫 Ticket em Atendimento')
                 .setDescription(`Ticket sendo atendido por ${interaction.user.tag}`)
                 .addFields(
-                    { name: 'ID do Ticket', value: ticket.id || 'N/A', inline: true },
+                    { name: 'ID do Ticket', value: String(ticket.id || Date.now()), inline: true },
                     { name: 'Status', value: 'Em atendimento', inline: true }
                 )
                 .setTimestamp();
@@ -304,13 +304,19 @@ class TicketManager {
             // Notify the user
             try {
                 const ticketOwner = await this.client.users.fetch(ticket.user_id);
-                await ticketOwner.send({
-                    content: `Seu ticket foi fechado por ${interaction.user.tag}.`,
-                    files: [{
-                        name: `ticket-${ticket.id}-transcript.txt`,
-                        content: transcript
-                    }]
-                });
+                if (transcript && transcript.length > 0) {
+                    await ticketOwner.send({
+                        content: `Seu ticket foi fechado por ${interaction.user.tag}.`,
+                        files: [{
+                            attachment: Buffer.from(transcript, 'utf8'),
+                            name: `ticket-${ticket.id}-transcript.txt`
+                        }]
+                    });
+                } else {
+                    await ticketOwner.send({
+                        content: `Seu ticket foi fechado por ${interaction.user.tag}.`
+                    });
+                }
             } catch (dmError) {
                 logger.warn(`Could not DM transcript to user ${ticket.user_id}:`, dmError);
             }
