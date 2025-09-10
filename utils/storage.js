@@ -130,7 +130,7 @@ class SimpleStorage {
     async getGuildConfig(guildId, key) {
         const config = await this.readFile(this.configFile) || {};
         const guildConfig = config[guildId] || {};
-        return guildConfig[key] || null;
+        return key ? guildConfig[key] : guildConfig;
     }
     
     async setGuildConfig(guildId, key, value) {

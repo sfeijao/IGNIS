@@ -6,6 +6,15 @@ module.exports = {
     name: Events.ChannelDelete,
     async execute(channel, client) {
         try {
+            // Log detalhado para debug
+            logger.debug('🔍 Channel deletado:', {
+                channelId: channel.id,
+                channelName: channel.name,
+                channelType: channel.type,
+                parentId: channel.parentId,
+                guildId: channel.guild.id
+            });
+
             // Verificar se é um canal de ticket
             if (channel.type === 0 && channel.parentId) { // GuildText channel com categoria
                 const category = channel.parent;
@@ -14,10 +23,18 @@ module.exports = {
                 let isTicketCategory = false;
                 const config = await storage.getGuildConfig(channel.guild.id);
                 
-                if (config.ticketSystem?.categoryId && category && category.id === config.ticketSystem.categoryId) {
+                logger.debug('🔧 Verificando categoria:', {
+                    categoryId: category?.id,
+                    categoryName: category?.name,
+                    configCategoryId: config?.ticketSystem?.categoryId
+                });
+                
+                if (config?.ticketSystem?.categoryId && category && category.id === config.ticketSystem.categoryId) {
                     isTicketCategory = true;
-                } else if (category && category.name === '📁 TICKETS') {
+                    logger.debug('✅ Canal identificado como ticket (por config)');
+                } else if (category && (category.name === '📁 TICKETS' || category.name.includes('TICKETS'))) {
                     isTicketCategory = true;
+                    logger.debug('✅ Canal identificado como ticket (por nome da categoria)');
                 }
 
                 if (isTicketCategory) {
@@ -49,12 +66,25 @@ module.exports = {
                             });
                         }
                     } catch (error) {
-                        logger.error('❌ Erro ao processar ticket apagado:', { error, channelId: channel.id });
+                        logger.error('❌ Erro ao processar ticket apagado:', { 
+                            error: error.message || error, 
+                            stack: error.stack,
+                            channelId: channel.id,
+                            channelName: channel.name,
+                            guildId: channel.guild.id
+                        });
                     }
                 }
             }
         } catch (error) {
-            logger.error('❌ Erro no evento channelDelete:', { error, channelId: channel?.id });
+            logger.error('❌ Erro no evento channelDelete:', { 
+                error: error.message || error, 
+                stack: error.stack,
+                channelId: channel?.id,
+                channelName: channel?.name,
+                channelType: channel?.type,
+                guildId: channel?.guild?.id
+            });
         }
     },
 };
