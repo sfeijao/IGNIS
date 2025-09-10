@@ -111,7 +111,7 @@ class WebhookManager {
     async sendTicketLog(guildId, type, data) {
         const webhookInfo = this.webhooks.get(guildId);
         if (!webhookInfo || !webhookInfo.webhook?.url) {
-            logger.warn(`Webhook não configurado para o servidor ${guildId}. Ticket log não enviado.`);
+            logger.debug(`Webhook não configurado para o servidor ${guildId}. Ticket log não enviado.`);
             return;
         }
 
