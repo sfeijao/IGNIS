@@ -23,13 +23,13 @@ module.exports = {
             logger.info(`🔥 FORÇANDO RE-REGISTRO AGRESSIVO solicitado por ${interaction.user.tag}`);
 
             const config = require('../utils/config');
-            const rest = new REST({ version: '9' }).setToken(config.token);
+            const rest = new REST({ version: '9' }).setToken(config.DISCORD.TOKEN);
 
             await interaction.editReply({ content: '🔄 **Passo 1/4:** Limpando comandos globais existentes...' });
 
             // PASSO 1: LIMPAR TODOS OS COMANDOS GLOBAIS
             try {
-                await rest.put(Routes.applicationCommands(config.clientId), { body: [] });
+                await rest.put(Routes.applicationCommands(config.DISCORD.CLIENT_ID), { body: [] });
                 logger.info('🗑️ Comandos globais limpos');
             } catch (error) {
                 logger.error('Erro ao limpar comandos globais:', error);
@@ -41,7 +41,7 @@ module.exports = {
             const guilds = ['1333820000791691284', '1283603691538088027', '1408278468822565075'];
             for (const guildId of guilds) {
                 try {
-                    await rest.put(Routes.applicationGuildCommands(config.clientId, guildId), { body: [] });
+                    await rest.put(Routes.applicationGuildCommands(config.DISCORD.CLIENT_ID, guildId), { body: [] });
                     logger.info(`🗑️ Comandos limpos do servidor ${guildId}`);
                 } catch (error) {
                     logger.error(`Erro ao limpar comandos do servidor ${guildId}:`, error);
@@ -80,13 +80,13 @@ module.exports = {
             }
 
             // REGISTRAR GLOBALMENTE
-            await rest.put(Routes.applicationCommands(config.clientId), { body: commands });
+            await rest.put(Routes.applicationCommands(config.DISCORD.CLIENT_ID), { body: commands });
             logger.info(`🌍 ${commands.length} comandos re-registrados GLOBALMENTE`);
 
             // REGISTRAR EM CADA SERVIDOR TAMBÉM (redundância)
             for (const guildId of guilds) {
                 try {
-                    await rest.put(Routes.applicationGuildCommands(config.clientId, guildId), { body: commands });
+                    await rest.put(Routes.applicationGuildCommands(config.DISCORD.CLIENT_ID, guildId), { body: commands });
                     logger.info(`🏠 ${commands.length} comandos registrados no servidor ${guildId}`);
                 } catch (error) {
                     logger.error(`Erro ao registrar no servidor ${guildId}:`, error);
