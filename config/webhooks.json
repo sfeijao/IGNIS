@@ -1,9 +1,26 @@
 {
   "webhooks": {
     "1333820000791691284": {
-      "name": "ISNM",
-      "webhook_url": "",
+      "name": "YSNM COMMUNITY",
+      "webhookUrl": "SEU_WEBHOOK_URL_YSNM_AQUI",
+      "enabled": true
+    },
+    "1283603691538088027": {
+      "name": "BEANNY", 
+      "webhookUrl": "SEU_WEBHOOK_URL_BEANNY_AQUI",
       "enabled": true
     }
+  },
+  "logTypes": {
+    "ticket": {
+      "enabled": true,
+      "includeTranscript": true,
+      "format": "embed"
+    }
+  },
+  "config": {
+    "version": "2.0",
+    "lastUpdated": "2025-09-11T23:00:00.000Z",
+    "description": "Sistema simplificado de webhooks - Configure os URLs dos webhooks acima"
   }
 }

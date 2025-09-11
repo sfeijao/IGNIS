@@ -14,7 +14,7 @@ const {
 } = require('../constants/ticketConstants');
 const TicketTimeout = require('./ticketTimeout');
 const NotificationManager = require('./notificationManager');
-const WebhookManager = require('./webhooks/webhookManager');
+const SimpleWebhookManager = require('./SimpleWebhookManager');
 const logger = require('./logger');
 
 class TicketManager {
@@ -23,77 +23,44 @@ class TicketManager {
         this.storage = client.storage;
         this.timeout = new TicketTimeout(client);
         this.notifications = new NotificationManager(client);
-        this.webhooks = new WebhookManager();
+        this.webhooks = new SimpleWebhookManager();
     }
 
-    // Enviar logs usando o sistema organizados
-    async enviarLogOrganizado(guildId, tipo, dados) {
+    // Sistema simplificado de logs
+    async enviarLog(guildId, tipo, dados) {
         try {
-            logger.info(`🔍 [DEBUG] Tentando enviar log organizado - Guild: ${guildId}, Tipo: ${tipo}`);
+            logger.info(`� Enviando log: ${tipo} para guild ${guildId}`);
             
-            const config = await this.storage.getGuildConfig(guildId);
-            const logsOrganizados = config?.logsOrganizados;
-
-            logger.info(`🔍 [DEBUG] Config encontrada: ${!!config}, logsOrganizados: ${!!logsOrganizados}`);
-
-            if (!logsOrganizados) {
-                logger.info(`🔍 [DEBUG] Sem logs organizados, usando sistema antigo`);
-                // Fallback para sistema antigo
-                await this.webhooks.sendTicketLog(guildId, tipo, dados);
-                return;
-            }
-
-            // Determinar qual servidor é baseado no guildId
-            let servidorOrigem = null;
-            if (guildId === '1333820000791691284') {
-                servidorOrigem = 'ysnm';
-            } else if (guildId === '1283603691538088027') {
-                servidorOrigem = 'beanny';
-            }
-
-            logger.info(`🔍 [DEBUG] Servidor origem detectado: ${servidorOrigem}`);
-            logger.info(`🔍 [DEBUG] Config para servidor: ${!!logsOrganizados[servidorOrigem]}`);
-
-            if (!servidorOrigem || !logsOrganizados[servidorOrigem]) {
-                logger.info(`🔍 [DEBUG] Servidor não configurado, usando sistema antigo`);
-                // Fallback para sistema antigo
-                await this.webhooks.sendTicketLog(guildId, tipo, dados);
-                return;
-            }
-
-            const logConfig = logsOrganizados[servidorOrigem];
-            logger.info(`🔍 [DEBUG] Config do log: ${JSON.stringify(logConfig)}`);
+            // Usar o sistema simplificado
+            const sucesso = await this.webhooks.sendTicketLog(guildId, tipo, dados);
             
-            const { WebhookClient } = require('discord.js');
-            const webhook = new WebhookClient({ url: logConfig.webhookUrl });
-
-            // Criar embed baseado no tipo
-            const embed = this.criarEmbedLog(tipo, dados, servidorOrigem);
-
-            // Configurar mensagem do webhook
-            const webhookData = {
-                embeds: [embed],
-                username: `${servidorOrigem.toUpperCase()} Tickets`,
-                avatarURL: dados.guild?.iconURL?.() || undefined
-            };
-
-            // Adicionar arquivos se fornecidos (para transcrições)
-            if (dados.files && dados.files.length > 0) {
-                webhookData.files = dados.files.map(file => ({
-                    attachment: Buffer.from(file.content),
-                    name: file.name
-                }));
+            if (sucesso) {
+                logger.info(`✅ Log enviado com sucesso: ${tipo}`);
+            } else {
+                logger.warn(`⚠️ Falha ao enviar log: ${tipo}`);
             }
-
-            logger.info(`🔍 [DEBUG] Enviando webhook para: ${logConfig.webhookUrl}`);
-            await webhook.send(webhookData);
-
-            logger.info(`📋 Log organizado enviado: ${tipo} para ${servidorOrigem.toUpperCase()}`);
-
+            
         } catch (error) {
-            logger.error('Erro ao enviar log organizado:', error);
-            // Fallback para sistema antigo em caso de erro
-            await this.webhooks.sendTicketLog(guildId, tipo, dados).catch(() => {});
+            logger.error('❌ Erro ao enviar log:', error);
+        }
+    }
+
+    calculateDuration(startTime) {
+        try {
+            const start = new Date(startTime);
+            const end = new Date();
+            const diffMs = end - start;
+            
+            const hours = Math.floor(diffMs / (1000 * 60 * 60));
+            const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            
+            if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            } else {
+                return `${minutes}m`;
+            }
+        } catch {
+            return 'N/A';
         }
     }
 
@@ -295,7 +262,7 @@ class TicketManager {
             await this.storage.updateTicket(ticket.id, { channel_id: channel.id });
 
             // Send webhook log
-            await this.enviarLogOrganizado(interaction.guildId, 'create', {
+            await this.enviarLog(interaction.guildId, 'create', {
                 author: interaction.user,
                 ticketId: ticket.id,
                 category: type,
@@ -341,10 +308,10 @@ class TicketManager {
             });
 
             // Send webhook log
-            await this.enviarLogOrganizado(interaction.guildId, 'update', {
+            await this.enviarLog(interaction.guildId, 'update', {
                 ticketId: ticket.id,
-                updatedBy: interaction.user,
-                status: 'Atendimento iniciado',
+                author: await this.client.users.fetch(ticket.user_id).catch(() => null),
+                claimedBy: interaction.user,
                 guild: interaction.guild
             });
 
@@ -417,15 +384,15 @@ class TicketManager {
             });
 
             // Send webhook log with transcript
-            await this.enviarLogOrganizado(interaction.guildId, 'close', {
-                author: interaction.user,
+            await this.enviarLog(interaction.guildId, 'close', {
                 ticketId: ticket.id,
-                files: [{
-                    name: `ticket-${ticket.id}-transcript.txt`,
-                    content: transcript
-                }],
+                author: await this.client.users.fetch(ticket.user_id).catch(() => null),
+                claimedBy: ticket.assigned_to ? await this.client.users.fetch(ticket.assigned_to).catch(() => null) : null,
+                closedBy: interaction.user,
+                transcript: transcript,
                 guild: interaction.guild,
-                closedBy: interaction.user
+                duration: this.calculateDuration(ticket.created_at),
+                reason: 'Ticket resolvido'
             });
 
             // Notify the user
