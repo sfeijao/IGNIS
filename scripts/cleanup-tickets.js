@@ -1,10 +1,14 @@
-const Database = require('./website/database/database.js');
+// const Database = require('../website/database/database.js');
 
 async function cleanupCorruptedTickets() {
-    const logger = require('./utils/logger');
+    const logger = require('../utils/logger');
     logger.info('🧹 Limpando tickets corrompidos da base de dados...');
     
-    const db = new Database();
+    // TODO: Implementar limpeza usando o storage do cliente quando necessário
+    logger.warn('⚠️ Script de limpeza desabilitado - database.js não encontrado');
+    return;
+    
+    // const db = new Database();
     await db.initialize();
     
     try {

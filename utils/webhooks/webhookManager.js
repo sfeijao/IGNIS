@@ -123,25 +123,29 @@ class WebhookManager {
                 case 'create':
                     embed
                         .setTitle('📩 Ticket Aberto')
-                        .setDescription(`Ticket criado por ${data.author.tag}`)
+                        .setDescription(`Ticket criado por ${data.author?.tag || 'Usuário desconhecido'}`)
                         .addFields(
-                            { name: '🆔 ID do Ticket', value: data.ticketId, inline: true },
+                            { name: '🆔 ID do Ticket', value: data.ticketId || 'N/A', inline: true },
                             { name: '📁 Categoria', value: data.category || 'N/A', inline: true }
                         )
                         .setTimestamp()
-                        .setFooter({ text: `ID do Usuário: ${data.author.id}` });
+                        .setFooter({ text: `ID do Usuário: ${data.author?.id || 'N/A'}` });
                     
-                    if (data.author.avatarURL) {
-                        embed.setThumbnail(data.author.avatarURL());
+                    if (data.author?.avatarURL) {
+                        try {
+                            embed.setThumbnail(data.author.avatarURL());
+                        } catch (error) {
+                            logger.warn('Erro ao definir thumbnail:', error.message);
+                        }
                     }
                     break;
 
                 case 'close':
                     embed
                         .setTitle('🔒 Ticket Encerrado')
-                        .setDescription(`Ticket encerrado por ${data.closedBy.tag}`)
+                        .setDescription(`Ticket encerrado por ${data.closedBy?.tag || 'Usuário desconhecido'}`)
                         .addFields(
-                            { name: '🆔 ID do Ticket', value: data.ticketId, inline: true },
+                            { name: '🆔 ID do Ticket', value: data.ticketId || 'N/A', inline: true },
                             { name: '⏱️ Duração', value: data.duration || 'N/A', inline: true },
                             { name: '📝 Motivo', value: data.reason || 'Não especificado' }
                         )
@@ -151,10 +155,10 @@ class WebhookManager {
                 case 'update':
                     embed
                         .setTitle('📝 Ticket Atualizado')
-                        .setDescription(`Ticket atualizado por ${data.updatedBy.tag}`)
+                        .setDescription(`Ticket atualizado por ${data.updatedBy?.tag || 'Usuário desconhecido'}`)
                         .addFields(
-                            { name: '🆔 ID do Ticket', value: data.ticketId, inline: true },
-                            { name: '📊 Status', value: data.status, inline: true }
+                            { name: '🆔 ID do Ticket', value: data.ticketId || 'N/A', inline: true },
+                            { name: '📊 Status', value: data.status || 'N/A', inline: true }
                         )
                         .setTimestamp();
                     break;

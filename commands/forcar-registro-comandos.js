@@ -23,10 +23,12 @@ module.exports = {
 
             logger.info(`🔄 Forçando re-registro de comandos solicitado por ${interaction.user.tag}`);
 
-            // Carregar todos os comandos
+            // Carregar todos os comandos da pasta commands
             const commands = [];
-            const commandsPath = path.join(__dirname, '..');
-            const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+            const commandsPath = path.join(__dirname);  // Pasta atual (commands/)
+            const commandFiles = fs.readdirSync(commandsPath).filter(file => 
+                file.endsWith('.js') && file !== 'forcar-registro-comandos.js'  // Exclui este próprio arquivo
+            );
 
             for (const file of commandFiles) {
                 const filePath = path.join(commandsPath, file);
