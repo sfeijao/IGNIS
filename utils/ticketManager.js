@@ -29,10 +29,15 @@ class TicketManager {
     // Enviar logs usando o sistema organizados
     async enviarLogOrganizado(guildId, tipo, dados) {
         try {
+            logger.info(`🔍 [DEBUG] Tentando enviar log organizado - Guild: ${guildId}, Tipo: ${tipo}`);
+            
             const config = await this.storage.getGuildConfig(guildId);
             const logsOrganizados = config?.logsOrganizados;
 
+            logger.info(`🔍 [DEBUG] Config encontrada: ${!!config}, logsOrganizados: ${!!logsOrganizados}`);
+
             if (!logsOrganizados) {
+                logger.info(`🔍 [DEBUG] Sem logs organizados, usando sistema antigo`);
                 // Fallback para sistema antigo
                 await this.webhooks.sendTicketLog(guildId, tipo, dados);
                 return;
@@ -46,13 +51,19 @@ class TicketManager {
                 servidorOrigem = 'beanny';
             }
 
+            logger.info(`🔍 [DEBUG] Servidor origem detectado: ${servidorOrigem}`);
+            logger.info(`🔍 [DEBUG] Config para servidor: ${!!logsOrganizados[servidorOrigem]}`);
+
             if (!servidorOrigem || !logsOrganizados[servidorOrigem]) {
+                logger.info(`🔍 [DEBUG] Servidor não configurado, usando sistema antigo`);
                 // Fallback para sistema antigo
                 await this.webhooks.sendTicketLog(guildId, tipo, dados);
                 return;
             }
 
             const logConfig = logsOrganizados[servidorOrigem];
+            logger.info(`🔍 [DEBUG] Config do log: ${JSON.stringify(logConfig)}`);
+            
             const { WebhookClient } = require('discord.js');
             const webhook = new WebhookClient({ url: logConfig.webhookUrl });
 
@@ -74,6 +85,7 @@ class TicketManager {
                 }));
             }
 
+            logger.info(`🔍 [DEBUG] Enviando webhook para: ${logConfig.webhookUrl}`);
             await webhook.send(webhookData);
 
             logger.info(`📋 Log organizado enviado: ${tipo} para ${servidorOrigem.toUpperCase()}`);
