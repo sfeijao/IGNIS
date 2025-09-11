@@ -33,7 +33,7 @@ module.exports = {
                     { name: '🆔 Guild ID', value: guildId, inline: true },
                     { name: '🏷️ Servidor Detectado', value: servidorOrigem || 'Não detectado', inline: true },
                     { name: '⚙️ Config Existe', value: config ? '✅ Sim' : '❌ Não', inline: true },
-                    { name: '📋 Logs Organizados', value: logsOrganizados ? '✅ Configurado' : '❌ Não configurado', inline: true }
+                    { name: '📋 Logs Organizados', value: (logsOrganizados && servidorOrigem && logsOrganizados[servidorOrigem]) ? '✅ Configurado' : '❌ Não configurado', inline: true }
                 )
                 .setTimestamp();
 
