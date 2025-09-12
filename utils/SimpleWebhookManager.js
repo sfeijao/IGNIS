@@ -7,31 +7,26 @@ class SimpleWebhookManager {
     constructor() {
         this.configPath = path.join(__dirname, '../config/webhooks.json');
         this.config = null;
-        this.configLoaded = false;
-        this.loadConfig(); // Carregamento assíncrono
     }
 
+    // Carregar configuração SEMPRE que necessário (sem cache)
     async loadConfig() {
         try {
             const data = await fs.readFile(this.configPath, 'utf8');
             this.config = JSON.parse(data);
-            this.configLoaded = true;
-            logger.info('✅ Configuração de webhooks carregada');
+            return this.config;
         } catch (error) {
             logger.error('❌ Erro ao carregar configuração de webhooks:', error);
             this.config = { webhooks: {}, logTypes: {}, config: {} };
-            this.configLoaded = true;
-        }
-    }
-
-    async ensureConfigLoaded() {
-        if (!this.configLoaded) {
-            await this.loadConfig();
+            return this.config;
         }
     }
 
     async saveConfig() {
         try {
+            // Sempre recarregar antes de salvar
+            await this.loadConfig();
+            
             await fs.writeFile(this.configPath, JSON.stringify(this.config, null, 2), 'utf8');
             logger.info('✅ Configuração de webhooks salva');
         } catch (error) {
@@ -40,7 +35,7 @@ class SimpleWebhookManager {
     }
 
     async getWebhookUrl(guildId) {
-        await this.ensureConfigLoaded();
+        await this.loadConfig(); // SEMPRE recarregar
         
         if (!this.config || !this.config.webhooks) return null;
         
@@ -54,7 +49,7 @@ class SimpleWebhookManager {
     }
 
     async setWebhookUrl(guildId, webhookUrl) {
-        await this.ensureConfigLoaded();
+        await this.loadConfig(); // SEMPRE recarregar
         
         if (!this.config.webhooks) this.config.webhooks = {};
         
