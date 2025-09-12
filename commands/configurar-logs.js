@@ -26,7 +26,11 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('testar')
-                .setDescription('Envia uma mensagem de teste para o webhook')),
+                .setDescription('Envia uma mensagem de teste para o webhook'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('status')
+                .setDescription('Mostra o status atual da configuração de webhooks')),
 
     async execute(interaction) {
         try {
@@ -70,9 +74,18 @@ module.exports = {
                     try {
                         await webhookManager.setWebhookUrl(interaction.guildId, webhookUrl);
                         
-                        await interaction.editReply({
-                            content: '✅ Webhook de logs configurado com sucesso! As configurações são permanentes e persistem após redeploys.'
-                        });
+                        // Verificar se foi salvo corretamente
+                        const savedUrl = await webhookManager.getWebhookUrl(interaction.guildId);
+                        
+                        if (savedUrl) {
+                            await interaction.editReply({
+                                content: '✅ Webhook de logs configurado com sucesso! As configurações são permanentes e persistem após redeploys.\n\n🔍 Use `/configurar-logs testar` para verificar se está funcionando.'
+                            });
+                        } else {
+                            await interaction.editReply({
+                                content: '⚠️ Webhook foi salvo mas não consegue ser recuperado. Verifique com `/configurar-logs status`.'
+                            });
+                        }
                     } catch (error) {
                         logger.error('Erro ao configurar webhook:', error);
                         await interaction.editReply({
@@ -115,6 +128,42 @@ module.exports = {
                         logger.error('Erro ao testar webhook:', error);
                         await interaction.editReply({
                             content: '❌ Erro ao testar webhook. Verifique se está configurado corretamente.'
+                        });
+                    }
+                    break;
+                }
+
+                case 'status': {
+                    try {
+                        await webhookManager.loadConfig();
+                        const webhookUrl = await webhookManager.getWebhookUrl(interaction.guildId);
+                        const config = webhookManager.config;
+                        
+                        if (webhookUrl) {
+                            const maskedUrl = webhookUrl.substring(0, 50) + '...';
+                            await interaction.editReply({
+                                content: `✅ **Status do Webhook:**\n\n🔗 **Configurado:** Sim\n📝 **URL:** \`${maskedUrl}\`\n🟢 **Status:** Ativo\n\n💡 Use \`/configurar-logs testar\` para enviar mensagem de teste.`
+                            });
+                        } else {
+                            const guildConfig = config?.webhooks?.[interaction.guildId];
+                            let statusMsg = '❌ **Status do Webhook:**\n\n🔗 **Configurado:** Não\n\n';
+                            
+                            if (guildConfig) {
+                                statusMsg += `📋 **Configuração encontrada mas inválida:**\n`;
+                                statusMsg += `• URL: \`${guildConfig.webhookUrl || 'Não definido'}\`\n`;
+                                statusMsg += `• Enabled: ${guildConfig.enabled ? '✅' : '❌'}\n\n`;
+                            }
+                            
+                            statusMsg += '💡 Configure com `/configurar-logs adicionar webhook:[SUA_URL]`';
+                            
+                            await interaction.editReply({
+                                content: statusMsg
+                            });
+                        }
+                    } catch (error) {
+                        logger.error('Erro ao verificar status:', error);
+                        await interaction.editReply({
+                            content: '❌ Erro ao verificar status do webhook.'
                         });
                     }
                     break;
