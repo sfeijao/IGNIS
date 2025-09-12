@@ -89,7 +89,7 @@ module.exports = {
                 case 'status':
                 default:
                     const status = webhookManager.getStatus();
-                    const currentUrl = webhookManager.getWebhookUrl(guildId);
+                    const currentUrl = await webhookManager.getWebhookUrl(guildId);
 
                     const statusEmbed = new EmbedBuilder()
                         .setTitle('📊 Status do Sistema de Webhooks')

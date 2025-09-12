@@ -7,17 +7,26 @@ class SimpleWebhookManager {
     constructor() {
         this.configPath = path.join(__dirname, '../config/webhooks.json');
         this.config = null;
-        this.loadConfig();
+        this.configLoaded = false;
+        this.loadConfig(); // Carregamento assíncrono
     }
 
     async loadConfig() {
         try {
             const data = await fs.readFile(this.configPath, 'utf8');
             this.config = JSON.parse(data);
+            this.configLoaded = true;
             logger.info('✅ Configuração de webhooks carregada');
         } catch (error) {
             logger.error('❌ Erro ao carregar configuração de webhooks:', error);
             this.config = { webhooks: {}, logTypes: {}, config: {} };
+            this.configLoaded = true;
+        }
+    }
+
+    async ensureConfigLoaded() {
+        if (!this.configLoaded) {
+            await this.loadConfig();
         }
     }
 
@@ -30,7 +39,9 @@ class SimpleWebhookManager {
         }
     }
 
-    getWebhookUrl(guildId) {
+    async getWebhookUrl(guildId) {
+        await this.ensureConfigLoaded();
+        
         if (!this.config || !this.config.webhooks) return null;
         
         const guildConfig = this.config.webhooks[guildId];
@@ -43,7 +54,7 @@ class SimpleWebhookManager {
     }
 
     async setWebhookUrl(guildId, webhookUrl) {
-        if (!this.config) await this.loadConfig();
+        await this.ensureConfigLoaded();
         
         if (!this.config.webhooks) this.config.webhooks = {};
         
@@ -63,7 +74,7 @@ class SimpleWebhookManager {
 
     async sendTicketLog(guildId, type, data) {
         try {
-            const webhookUrl = this.getWebhookUrl(guildId);
+            const webhookUrl = await this.getWebhookUrl(guildId);
             
             if (!webhookUrl) {
                 logger.warn(`⚠️ Webhook não configurado para guild ${guildId}`);
