@@ -16,6 +16,7 @@ const TicketTimeout = require('./ticketTimeout');
 const NotificationManager = require('./notificationManager');
 const SimpleWebhookManager = require('./SimpleWebhookManager');
 const TicketIdManager = require('./TicketIdManager');
+const { getUserDisplayName } = require('./userHelper');
 const logger = require('./logger');
 
 class TicketManager {
@@ -77,7 +78,7 @@ class TicketManager {
                 embed
                     .setTitle('🎫 Novo Ticket Criado')
                     .setColor(0x4CAF50)
-                    .setDescription(`Ticket criado por ${dados.author.tag}`)
+                    .setDescription(`Ticket criado por ${getUserDisplayName(dados.author, dados.guild)}`)
                     .addFields(
                         { name: '🆔 ID', value: dados.ticketId, inline: true },
                         { name: '📁 Categoria', value: dados.category || 'N/A', inline: true },
@@ -93,7 +94,7 @@ class TicketManager {
                 embed
                     .setTitle('📝 Ticket Atualizado')
                     .setColor(0xFF9800)
-                    .setDescription(`Ticket reclamado por ${dados.updatedBy.tag}`)
+                    .setDescription(`Ticket reclamado por ${getUserDisplayName(dados.updatedBy, dados.guild)}`)
                     .addFields(
                         { name: '🆔 ID', value: dados.ticketId, inline: true },
                         { name: '📊 Status', value: dados.status, inline: true },
@@ -105,7 +106,7 @@ class TicketManager {
                 embed
                     .setTitle('🔒 Ticket Fechado')
                     .setColor(0xF44336)
-                    .setDescription(`Ticket encerrado por ${dados.closedBy.tag}`)
+                    .setDescription(`Ticket encerrado por ${getUserDisplayName(dados.closedBy, dados.guild)}`)
                     .addFields(
                         { name: '🆔 ID', value: dados.ticketId, inline: true },
                         { name: '⏱️ Duração', value: dados.duration || 'N/A', inline: true },
@@ -185,7 +186,7 @@ class TicketManager {
             .setTitle('🎫 Ticket Criado')
             .setDescription('Aguarde um membro da equipe responder.\nDescreva seu problema com detalhes.')
             .addFields(
-                { name: 'Criado por', value: String(user.tag || user.username || 'Desconhecido'), inline: true },
+                { name: 'Criado por', value: String(getUserDisplayName(user, guild) || 'Desconhecido'), inline: true },
                 { name: 'ID do Ticket', value: String(ticket.id || Date.now()), inline: true },
                 { name: 'Categoria', value: String(ticket.type || 'Geral'), inline: true }
             )
@@ -331,7 +332,7 @@ class TicketManager {
             const embed = new EmbedBuilder()
                 .setColor(0xffa500)
                 .setTitle('🎫 Ticket em Atendimento')
-                .setDescription(`Ticket sendo atendido por ${interaction.user.tag}`)
+                .setDescription(`Ticket sendo atendido por ${getUserDisplayName(interaction.user, interaction.guild)}`)
                 .addFields(
                     { name: 'ID do Ticket', value: String(ticket.id || Date.now()), inline: true },
                     { name: 'Status', value: 'Em atendimento', inline: true }
@@ -372,7 +373,7 @@ class TicketManager {
                 .reverse()
                 .map(msg => {
                     const time = msg.createdAt.toLocaleString();
-                    const author = msg.author.tag;
+                    const author = getUserDisplayName(msg.author, interaction.guild);
                     const content = msg.content || '[Sem conteúdo]';
                     
                     let attachments = '';
@@ -425,7 +426,7 @@ class TicketManager {
 🆔 ID do Servidor: ${interaction.guild.id}
 📍 Canal: #${interaction.channel.name}
 🆔 ID do Canal: ${interaction.channel.id}
-👤 Fechado por: ${interaction.user.tag}
+👤 Fechado por: ${getUserDisplayName(interaction.user, interaction.guild)}
 ⏰ Data de Fechamento: ${new Date().toLocaleString('pt-BR')}
 ========================================
 
@@ -441,7 +442,7 @@ Fim da transcrição - Ticket resolvido
 📋 **Informações do Ticket:**
 • **Servidor:** ${interaction.guild.name}
 • **Canal:** #${interaction.channel.name}
-• **Fechado por:** ${interaction.user.tag}
+• **Fechado por:** ${getUserDisplayName(interaction.user, interaction.guild)}
 • **Data:** ${new Date().toLocaleString('pt-BR')}
 
 📎 A transcrição completa está anexada abaixo.`,
@@ -457,7 +458,7 @@ Fim da transcrição - Ticket resolvido
 📋 **Informações do Ticket:**
 • **Servidor:** ${interaction.guild.name}
 • **Canal:** #${interaction.channel.name}
-• **Fechado por:** ${interaction.user.tag}
+• **Fechado por:** ${getUserDisplayName(interaction.user, interaction.guild)}
 • **Data:** ${new Date().toLocaleString('pt-BR')}
 
 ℹ️ Não foram encontradas mensagens para gerar transcrição.`

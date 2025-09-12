@@ -2,6 +2,7 @@ const { WebhookClient, EmbedBuilder } = require('discord.js');
 const fs = require('fs').promises;
 const path = require('path');
 const logger = require('./logger');
+const { getUserDisplayName } = require('./userHelper');
 
 class SimpleWebhookManager {
     constructor() {
@@ -48,6 +49,18 @@ class SimpleWebhookManager {
         await this.loadConfig();
         
         if (!this.config.webhooks) this.config.webhooks = {};
+        
+        if (webhookUrl === null) {
+            // Remover webhook
+            if (this.config.webhooks[guildId]) {
+                delete this.config.webhooks[guildId];
+                if (!this.config.config) this.config.config = {};
+                this.config.config.lastUpdated = new Date().toISOString();
+                await this.saveConfig();
+                logger.info(`✅ Webhook removido para guild ${guildId}`);
+            }
+            return;
+        }
         
         if (!this.config.webhooks[guildId]) {
             this.config.webhooks[guildId] = {
@@ -113,6 +126,9 @@ class SimpleWebhookManager {
     }
 
     createTicketCloseEmbed(data) {
+        const authorDisplayName = getUserDisplayName(data.author, data.guild);
+        const closedByDisplayName = getUserDisplayName(data.closedBy, data.guild);
+        
         const embed = new EmbedBuilder()
             .setTitle('🔒 Ticket Fechado')
             .setColor(0xF44336)
@@ -120,15 +136,16 @@ class SimpleWebhookManager {
                 { name: '🎫 ID Sequencial', value: `#${data.sequentialId || 'N/A'}`, inline: true },
                 { name: '🆔 ID do Canal', value: `\`${data.channelId || 'N/A'}\``, inline: true },
                 { name: '🏷️ Servidor', value: data.guild?.name || 'Desconhecido', inline: true },
-                { name: '👤 Autor do Ticket', value: `<@${data.author?.id}> (${data.author?.tag})`, inline: true },
-                { name: '🔒 Fechado por', value: `<@${data.closedBy?.id}> (${data.closedBy?.tag})`, inline: true },
+                { name: '👤 Autor do Ticket', value: `<@${data.author?.id}> (${authorDisplayName})`, inline: true },
+                { name: '🔒 Fechado por', value: `<@${data.closedBy?.id}> (${closedByDisplayName})`, inline: true },
                 { name: '📅 Data de Fechamento', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
             )
             .setTimestamp()
             .setFooter({ text: 'Sistema de Tickets YSNM' });
 
         if (data.claimedBy) {
-            embed.addFields({ name: '👨‍💼 Foi assumido por', value: `<@${data.claimedBy.id}> (${data.claimedBy.tag})`, inline: true });
+            const claimedByDisplayName = getUserDisplayName(data.claimedBy, data.guild);
+            embed.addFields({ name: '👨‍💼 Foi assumido por', value: `<@${data.claimedBy.id}> (${claimedByDisplayName})`, inline: true });
         }
 
         if (data.duration) {

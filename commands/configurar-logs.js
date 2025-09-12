@@ -3,6 +3,7 @@ const {
     PermissionFlagsBits,
     EmbedBuilder
 } = require('discord.js');
+const logger = require('../utils/logger');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -45,18 +46,15 @@ module.exports = {
                         });
                     }
 
-                    const success = await webhookManager.addWebhook(
-                        interaction.guildId,
-                        interaction.guild.name,
-                        webhookUrl
-                    );
-
-                    if (success) {
+                    try {
+                        await webhookManager.setWebhookUrl(interaction.guildId, webhookUrl);
+                        
                         await interaction.editReply({
-                            content: '✅ Webhook de logs configurado com sucesso!',
+                            content: '✅ Webhook de logs configurado com sucesso! As configurações são permanentes e persistem após redeploys.',
                             ephemeral: true
                         });
-                    } else {
+                    } catch (error) {
+                        logger.error('Erro ao configurar webhook:', error);
                         await interaction.editReply({
                             content: '❌ Erro ao configurar webhook. Verifique a URL e tente novamente.',
                             ephemeral: true
@@ -66,14 +64,15 @@ module.exports = {
                 }
 
                 case 'remover': {
-                    const success = await webhookManager.removeWebhook(interaction.guildId);
-
-                    if (success) {
+                    try {
+                        await webhookManager.setWebhookUrl(interaction.guildId, null);
+                        
                         await interaction.editReply({
                             content: '✅ Webhook de logs removido com sucesso!',
                             ephemeral: true
                         });
-                    } else {
+                    } catch (error) {
+                        logger.error('Erro ao remover webhook:', error);
                         await interaction.editReply({
                             content: '❌ Erro ao remover webhook.',
                             ephemeral: true
@@ -83,27 +82,27 @@ module.exports = {
                 }
 
                 case 'testar': {
-                    const testEmbed = new EmbedBuilder()
-                        .setColor(0x00FF00)
-                        .setTitle('🧪 Teste de Webhook')
-                        .setDescription('Se você está vendo esta mensagem, o webhook está funcionando corretamente!')
-                        .addFields(
-                            { name: 'Servidor', value: interaction.guild.name, inline: true },
-                            { name: 'Configurado por', value: interaction.user.tag, inline: true }
-                        )
-                        .setTimestamp();
-
-                    await webhookManager.sendTicketLog(interaction.guildId, 'test', {
-                        guild: interaction.guild,
-                        author: interaction.user,
-                        ticketId: 'TEST-001',
-                        category: 'Teste'
-                    });
-
-                    await interaction.editReply({
-                        content: '✅ Mensagem de teste enviada! Verifique o canal de logs.',
-                        ephemeral: true
-                    });
+                    try {
+                        const success = await webhookManager.testWebhook(interaction.guildId);
+                        
+                        if (success) {
+                            await interaction.editReply({
+                                content: '✅ Mensagem de teste enviada! Verifique o canal de logs.',
+                                ephemeral: true
+                            });
+                        } else {
+                            await interaction.editReply({
+                                content: '❌ Webhook não configurado ou inválido. Configure primeiro com `/configurar-logs adicionar`.',
+                                ephemeral: true
+                            });
+                        }
+                    } catch (error) {
+                        logger.error('Erro ao testar webhook:', error);
+                        await interaction.editReply({
+                            content: '❌ Erro ao testar webhook. Verifique se está configurado corretamente.',
+                            ephemeral: true
+                        });
+                    }
                     break;
                 }
             }
