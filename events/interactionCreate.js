@@ -337,6 +337,71 @@ module.exports = {
                                 await db.updateTicketStatus(ticketRecord.id, 'closed', interaction.user.id, `Fechado via interação por ${interaction.user.tag}`);
                                 await db.updateTicket(ticketRecord.id, { archived: 1 });
 
+                                // 🔥 ENVIAR LOG SIMPLIFICADO PARA WEBHOOK
+                                try {
+                                    const ticketManager = interaction.client.ticketManager;
+                                    if (ticketManager) {
+                                        // Coletar mensagens para transcript
+                                        let transcriptText = '';
+                                        try {
+                                            const messages = await db.db ? await new Promise((res, rej) => {
+                                                db.db.all('SELECT tm.user_id, u.username, tm.message, tm.created_at FROM ticket_messages tm LEFT JOIN users u ON tm.user_id = u.discord_id WHERE tm.ticket_id = ? ORDER BY tm.id ASC', [ticketRecord.id], (err, rows) => {
+                                                    if (err) return rej(err);
+                                                    res(rows || []);
+                                                });
+                                            }) : [];
+                                            
+                                            // Gerar transcript textual
+                                            transcriptText = `TRANSCRIÇÃO DO TICKET #${ticketRecord.id}
+========================================
+Data de criação: ${new Date(ticketRecord.created_at).toLocaleString('pt-BR')}
+Usuário: ${ticketRecord.user_id}
+Canal: #${interaction.channel.name}
+Servidor: ${interaction.guild.name}
+========================================
+
+`;
+                                            
+                                            if (messages && messages.length > 0) {
+                                                messages.forEach(msg => {
+                                                    const timestamp = new Date(msg.created_at).toLocaleTimeString('pt-BR');
+                                                    transcriptText += `[${timestamp}] ${msg.username || 'Usuário'}: ${msg.message}\n`;
+                                                });
+                                            } else {
+                                                transcriptText += '(Nenhuma mensagem registrada)\n';
+                                            }
+                                            
+                                            transcriptText += `\n========================================
+Ticket fechado por: ${interaction.user.tag}
+Data de fechamento: ${new Date().toLocaleString('pt-BR')}
+========================================`;
+                                        } catch (transcriptError) {
+                                            logger.warn('Erro ao gerar transcript:', transcriptError);
+                                            transcriptText = `Erro ao gerar transcript para ticket #${ticketRecord.id}`;
+                                        }
+
+                                        // Buscar informações do autor e staff
+                                        const author = await interaction.client.users.fetch(ticketRecord.user_id).catch(() => null);
+                                        const assignedStaff = ticketRecord.assigned_to ? await interaction.client.users.fetch(ticketRecord.assigned_to).catch(() => null) : null;
+
+                                        const logData = {
+                                            ticketId: ticketRecord.id,
+                                            author: author || { id: ticketRecord.user_id, tag: 'Usuário Desconhecido' },
+                                            claimedBy: assignedStaff,
+                                            closedBy: interaction.user,
+                                            transcript: transcriptText,
+                                            guild: interaction.guild,
+                                            duration: ticketManager.calculateDuration(ticketRecord.created_at),
+                                            reason: 'Ticket resolvido'
+                                        };
+
+                                        await ticketManager.enviarLog(interaction.guildId, 'close', logData);
+                                        logger.info(`📨 Log simplificado enviado para ticket #${ticketRecord.id}`);
+                                    }
+                                } catch (logError) {
+                                    logger.error('Erro ao enviar log simplificado:', logError);
+                                }
+
                                     // Enviar webhooks de arquivo (suporta múltiplos) se configurados e ainda não enviados
                                     try {
                                         const guildId = interaction.guild ? interaction.guild.id : ticketRecord.guild_id;
