@@ -3,187 +3,179 @@ const {
     PermissionFlagsBits,
     EmbedBuilder
 } = require('discord.js');
+const RobustWebhookManager = require('../utils/RobustWebhookManager');
 const logger = require('../utils/logger');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('configurar-logs')
-        .setDescription('Configura o webhook para logs de tickets')
+        .setDescription('Sistema robusto de configuração de webhooks para logs')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addSubcommand(subcommand =>
             subcommand
                 .setName('adicionar')
-                .setDescription('Adiciona ou atualiza o webhook de logs')
+                .setDescription('Configura webhook para logs (testado automaticamente)')
                 .addStringOption(option =>
                     option
                         .setName('webhook')
                         .setDescription('URL do webhook do Discord')
-                        .setRequired(true)))
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName('remover')
-                .setDescription('Remove o webhook de logs atual'))
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName('testar')
-                .setDescription('Envia uma mensagem de teste para o webhook'))
+                        .setRequired(true))
+                .addStringOption(option =>
+                    option
+                        .setName('tipos')
+                        .setDescription('Tipos de logs (padrão: apenas fechamentos)')
+                        .addChoices(
+                            { name: 'Apenas fechamentos', value: 'close' },
+                            { name: 'Criação e fechamentos', value: 'create,close' },
+                            { name: 'Todos (criar, assumir, fechar)', value: 'create,claim,close' }
+                        )))
         .addSubcommand(subcommand =>
             subcommand
                 .setName('status')
-                .setDescription('Mostra o status atual da configuração de webhooks')),
+                .setDescription('Mostra configuração atual e testa conexão'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('testar')
+                .setDescription('Envia mensagem de teste'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('remover')
+                .setDescription('Remove configuração de webhook')),
 
     async execute(interaction) {
+        const webhookManager = new RobustWebhookManager();
+        
         try {
-            // Tentar defer reply com timeout
-            await Promise.race([
-                interaction.deferReply({ ephemeral: true }),
-                new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Defer timeout')), 2000)
-                )
-            ]);
+            await interaction.deferReply({ ephemeral: true });
         } catch (error) {
-            logger.error('Erro no defer reply:', error);
-            try {
-                if (!interaction.replied && !interaction.deferred) {
-                    await interaction.reply({ 
-                        content: '❌ Erro interno. Tente novamente em alguns segundos.', 
-                        ephemeral: true 
-                    });
-                }
-                return;
-            } catch (replyError) {
-                logger.error('Erro ao responder com erro:', replyError);
-                return;
-            }
+            logger.error('Erro no defer:', error);
+            return;
         }
 
         const subcommand = interaction.options.getSubcommand();
-        const webhookManager = interaction.client.ticketManager.webhooks;
 
         try {
             switch (subcommand) {
                 case 'adicionar': {
                     const webhookUrl = interaction.options.getString('webhook');
-
-                    if (!webhookUrl.startsWith('https://discord.com/api/webhooks/')) {
-                        return await interaction.editReply({
-                            content: '❌ URL de webhook inválida! Certifique-se de copiar a URL completa do webhook.'
-                        });
+                    const tiposOption = interaction.options.getString('tipos') || 'close';
+                    
+                    let tipos = ['ticket_close']; // Padrão
+                    if (tiposOption === 'create,close') {
+                        tipos = ['ticket_create', 'ticket_close'];
+                    } else if (tiposOption === 'create,claim,close') {
+                        tipos = ['ticket_create', 'ticket_claim', 'ticket_close'];
                     }
 
-                    try {
-                        await webhookManager.setWebhookUrl(interaction.guildId, webhookUrl);
-                        
-                        // Verificar se foi salvo corretamente
-                        const savedUrl = await webhookManager.getWebhookUrl(interaction.guildId);
-                        
-                        if (savedUrl) {
-                            await interaction.editReply({
-                                content: '✅ Webhook de logs configurado com sucesso! As configurações são permanentes e persistem após redeploys.\n\n🔍 Use `/configurar-logs testar` para verificar se está funcionando.'
-                            });
-                        } else {
-                            await interaction.editReply({
-                                content: '⚠️ Webhook foi salvo mas não consegue ser recuperado. Verifique com `/configurar-logs status`.'
-                            });
-                        }
-                    } catch (error) {
-                        logger.error('Erro ao configurar webhook:', error);
-                        await interaction.editReply({
-                            content: '❌ Erro ao configurar webhook. Verifique a URL e tente novamente.'
-                        });
-                    }
-                    break;
-                }
+                    await interaction.editReply({
+                        content: '🔄 **Configurando webhook...**\n\n• Validando URL...\n• Testando conexão...\n• Salvando configuração...'
+                    });
 
-                case 'remover': {
-                    try {
-                        await webhookManager.setWebhookUrl(interaction.guildId, null);
-                        
-                        await interaction.editReply({
-                            content: '✅ Webhook de logs removido com sucesso!'
-                        });
-                    } catch (error) {
-                        logger.error('Erro ao remover webhook:', error);
-                        await interaction.editReply({
-                            content: '❌ Erro ao remover webhook.'
-                        });
-                    }
-                    break;
-                }
+                    const result = await webhookManager.setWebhook(
+                        interaction.guildId,
+                        interaction.guild.name,
+                        webhookUrl,
+                        tipos
+                    );
 
-                case 'testar': {
-                    try {
-                        const success = await webhookManager.testWebhook(interaction.guildId);
-                        
-                        if (success) {
-                            await interaction.editReply({
-                                content: '✅ Mensagem de teste enviada! Verifique o canal de logs.'
-                            });
-                        } else {
-                            await interaction.editReply({
-                                content: '❌ Webhook não configurado ou inválido. Configure primeiro com `/configurar-logs adicionar`.'
-                            });
-                        }
-                    } catch (error) {
-                        logger.error('Erro ao testar webhook:', error);
+                    if (result.success) {
+                        const tiposTexto = tipos.map(t => t.replace('ticket_', '')).join(', ');
                         await interaction.editReply({
-                            content: '❌ Erro ao testar webhook. Verifique se está configurado corretamente.'
+                            content: `✅ **Webhook configurado com sucesso!**\n\n📋 **Detalhes:**\n• **Servidor:** ${interaction.guild.name}\n• **Tipos de log:** ${tiposTexto}\n• **Status:** Ativo e testado\n• **Persistência:** Automática (sobrevive a redeploys)\n\n🎯 **Pronto para usar!** Os logs serão enviados automaticamente.`
+                        });
+                    } else {
+                        await interaction.editReply({
+                            content: `❌ **Erro ao configurar webhook**\n\n🚫 **Motivo:** ${result.error}\n\n💡 **Dicas:**\n• Verifique se a URL está correta\n• Certifique-se que o webhook existe\n• Teste com outro webhook se necessário`
                         });
                     }
                     break;
                 }
 
                 case 'status': {
-                    try {
-                        await webhookManager.loadConfig();
-                        const webhookUrl = await webhookManager.getWebhookUrl(interaction.guildId);
-                        const config = webhookManager.config;
+                    await interaction.editReply({
+                        content: '🔍 **Verificando configuração...**'
+                    });
+
+                    const status = await webhookManager.getStatus(interaction.guildId);
+                    
+                    if (status.configured && status.enabled) {
+                        const tiposTexto = status.types.map(t => t.replace('ticket_', '')).join(', ');
+                        const urlMask = status.url ? `${status.url.substring(0, 50)}...` : 'N/A';
                         
-                        if (webhookUrl) {
-                            const maskedUrl = webhookUrl.substring(0, 50) + '...';
-                            await interaction.editReply({
-                                content: `✅ **Status do Webhook:**\n\n🔗 **Configurado:** Sim\n📝 **URL:** \`${maskedUrl}\`\n🟢 **Status:** Ativo\n\n💡 Use \`/configurar-logs testar\` para enviar mensagem de teste.`
-                            });
-                        } else {
-                            const guildConfig = config?.webhooks?.[interaction.guildId];
-                            let statusMsg = '❌ **Status do Webhook:**\n\n🔗 **Configurado:** Não\n\n';
-                            
-                            if (guildConfig) {
-                                statusMsg += `📋 **Configuração encontrada mas inválida:**\n`;
-                                statusMsg += `• URL: \`${guildConfig.webhookUrl || 'Não definido'}\`\n`;
-                                statusMsg += `• Enabled: ${guildConfig.enabled ? '✅' : '❌'}\n\n`;
-                            }
-                            
-                            statusMsg += '💡 Configure com `/configurar-logs adicionar webhook:[SUA_URL]`';
-                            
-                            await interaction.editReply({
-                                content: statusMsg
-                            });
-                        }
-                    } catch (error) {
-                        logger.error('Erro ao verificar status:', error);
                         await interaction.editReply({
-                            content: '❌ Erro ao verificar status do webhook.'
+                            content: `✅ **Webhook Configurado e Ativo**\n\n📋 **Configuração Atual:**\n• **Nome:** ${status.name}\n• **URL:** \`${urlMask}\`\n• **Tipos:** ${tiposTexto}\n• **Criado:** <t:${Math.floor(new Date(status.created).getTime() / 1000)}:R>\n\n🟢 **Status:** Funcionando corretamente\n\n💡 Use \`/configurar-logs testar\` para enviar mensagem de teste.`
+                        });
+                    } else if (status.configured) {
+                        await interaction.editReply({
+                            content: `⚠️ **Webhook Configurado mas Inativo**\n\n❌ **Problema detectado**\n• Webhook existe mas não está funcionando\n• Pode ter sido removido do Discord\n\n🔧 **Solução:** Reconfigure com \`/configurar-logs adicionar\``
+                        });
+                    } else {
+                        await interaction.editReply({
+                            content: `❌ **Webhook Não Configurado**\n\n📝 **Para configurar:**\n1. Crie um webhook no canal de logs\n2. Use \`/configurar-logs adicionar webhook:[URL]\`\n\n💡 **Dica:** O sistema testará automaticamente se o webhook funciona.`
+                        });
+                    }
+                    break;
+                }
+
+                case 'testar': {
+                    await interaction.editReply({
+                        content: '🧪 **Enviando mensagem de teste...**'
+                    });
+
+                    const testData = {
+                        sequentialId: 999,
+                        channelId: interaction.channelId,
+                        guild: interaction.guild,
+                        author: { 
+                            id: '123456789',
+                            username: 'TestUser',
+                            tag: 'TestUser#1234'
+                        },
+                        closedBy: interaction.user,
+                        transcript: 'Esta é uma transcrição de teste para verificar se o webhook está funcionando corretamente.'
+                    };
+
+                    const result = await webhookManager.sendLog(interaction.guildId, 'ticket_close', testData);
+
+                    if (result.success) {
+                        await interaction.editReply({
+                            content: '✅ **Teste enviado com sucesso!**\n\n🎯 Verifique seu canal de logs para ver a mensagem de teste.\n\n💡 Se não apareceu, verifique se o webhook ainda existe no Discord.'
+                        });
+                    } else if (result.reason === 'not_configured') {
+                        await interaction.editReply({
+                            content: '❌ **Webhook não configurado**\n\n� Configure primeiro com `/configurar-logs adicionar`'
+                        });
+                    } else {
+                        await interaction.editReply({
+                            content: `❌ **Erro no teste**\n\n🚫 **Problema:** ${result.error || result.reason}\n\n🔧 **Solução:** Reconfigure o webhook`
+                        });
+                    }
+                    break;
+                }
+
+                case 'remover': {
+                    const result = await webhookManager.removeWebhook(interaction.guildId);
+                    
+                    if (result.success) {
+                        await interaction.editReply({
+                            content: '✅ **Webhook removido com sucesso!**\n\nOs logs não serão mais enviados até configurar novamente.'
+                        });
+                    } else {
+                        await interaction.editReply({
+                            content: `❌ **Erro:** ${result.error}`
                         });
                     }
                     break;
                 }
             }
         } catch (error) {
-            logger.error('Erro ao executar comando de webhook:', error);
+            logger.error('Erro no comando configurar-logs:', error);
             try {
-                if (interaction.deferred) {
-                    await interaction.editReply({
-                        content: '❌ Ocorreu um erro ao processar o comando. Tente novamente mais tarde.'
-                    });
-                } else if (!interaction.replied) {
-                    await interaction.reply({
-                        content: '❌ Ocorreu um erro ao processar o comando. Tente novamente mais tarde.',
-                        ephemeral: true
-                    });
-                }
+                await interaction.editReply({
+                    content: `❌ **Erro interno**\n\n🚫 ${error.message}\n\n🔧 Tente novamente ou contate o suporte.`
+                });
             } catch (replyError) {
-                logger.error('Erro ao responder com erro final:', replyError);
+                logger.error('Erro ao responder erro:', replyError);
             }
         }
     }

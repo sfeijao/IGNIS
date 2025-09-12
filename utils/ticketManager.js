@@ -14,7 +14,7 @@ const {
 } = require('../constants/ticketConstants');
 const TicketTimeout = require('./ticketTimeout');
 const NotificationManager = require('./notificationManager');
-const SimpleWebhookManager = require('./SimpleWebhookManager');
+const RobustWebhookManager = require('./RobustWebhookManager');
 const TicketIdManager = require('./TicketIdManager');
 const { getUserDisplayName } = require('./userHelper');
 const logger = require('./logger');
@@ -25,26 +25,34 @@ class TicketManager {
         this.storage = client.storage;
         this.timeout = new TicketTimeout(client);
         this.notifications = new NotificationManager(client);
-        this.webhooks = new SimpleWebhookManager();
+        this.webhooks = new RobustWebhookManager();
         this.ticketIdManager = new TicketIdManager();
     }
 
-    // Sistema simplificado de logs
+    // Sistema robusto de logs
     async enviarLog(guildId, tipo, dados) {
         try {
-            logger.info(`� Enviando log: ${tipo} para guild ${guildId}`);
+            logger.info(`📨 Enviando log: ${tipo} para guild ${guildId}`);
             
-            // Usar o sistema simplificado
-            const sucesso = await this.webhooks.sendTicketLog(guildId, tipo, dados);
+            // Mapear tipos antigos para novos
+            let logType = tipo;
+            if (tipo === 'create') logType = 'ticket_create';
+            if (tipo === 'update' || tipo === 'claim') logType = 'ticket_claim';
+            if (tipo === 'close') logType = 'ticket_close';
             
-            if (sucesso) {
-                logger.info(`✅ Log enviado com sucesso: ${tipo}`);
+            const resultado = await this.webhooks.sendLog(guildId, logType, dados);
+            
+            if (resultado.success) {
+                logger.info(`✅ Log '${logType}' enviado com sucesso`);
             } else {
-                logger.warn(`⚠️ Falha ao enviar log: ${tipo}`);
+                logger.warn(`⚠️ Log '${logType}' não enviado: ${resultado.reason || resultado.error}`);
             }
+            
+            return resultado.success;
             
         } catch (error) {
             logger.error('❌ Erro ao enviar log:', error);
+            return false;
         }
     }
 
