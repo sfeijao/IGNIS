@@ -29,7 +29,29 @@ module.exports = {
                 .setDescription('Envia uma mensagem de teste para o webhook')),
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        try {
+            // Tentar defer reply com timeout
+            await Promise.race([
+                interaction.deferReply({ ephemeral: true }),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Defer timeout')), 2000)
+                )
+            ]);
+        } catch (error) {
+            logger.error('Erro no defer reply:', error);
+            try {
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({ 
+                        content: '❌ Erro interno. Tente novamente em alguns segundos.', 
+                        ephemeral: true 
+                    });
+                }
+                return;
+            } catch (replyError) {
+                logger.error('Erro ao responder com erro:', replyError);
+                return;
+            }
+        }
 
         const subcommand = interaction.options.getSubcommand();
         const webhookManager = interaction.client.ticketManager.webhooks;
@@ -41,8 +63,7 @@ module.exports = {
 
                     if (!webhookUrl.startsWith('https://discord.com/api/webhooks/')) {
                         return await interaction.editReply({
-                            content: '❌ URL de webhook inválida! Certifique-se de copiar a URL completa do webhook.',
-                            ephemeral: true
+                            content: '❌ URL de webhook inválida! Certifique-se de copiar a URL completa do webhook.'
                         });
                     }
 
@@ -50,14 +71,12 @@ module.exports = {
                         await webhookManager.setWebhookUrl(interaction.guildId, webhookUrl);
                         
                         await interaction.editReply({
-                            content: '✅ Webhook de logs configurado com sucesso! As configurações são permanentes e persistem após redeploys.',
-                            ephemeral: true
+                            content: '✅ Webhook de logs configurado com sucesso! As configurações são permanentes e persistem após redeploys.'
                         });
                     } catch (error) {
                         logger.error('Erro ao configurar webhook:', error);
                         await interaction.editReply({
-                            content: '❌ Erro ao configurar webhook. Verifique a URL e tente novamente.',
-                            ephemeral: true
+                            content: '❌ Erro ao configurar webhook. Verifique a URL e tente novamente.'
                         });
                     }
                     break;
@@ -68,14 +87,12 @@ module.exports = {
                         await webhookManager.setWebhookUrl(interaction.guildId, null);
                         
                         await interaction.editReply({
-                            content: '✅ Webhook de logs removido com sucesso!',
-                            ephemeral: true
+                            content: '✅ Webhook de logs removido com sucesso!'
                         });
                     } catch (error) {
                         logger.error('Erro ao remover webhook:', error);
                         await interaction.editReply({
-                            content: '❌ Erro ao remover webhook.',
-                            ephemeral: true
+                            content: '❌ Erro ao remover webhook.'
                         });
                     }
                     break;
@@ -87,31 +104,38 @@ module.exports = {
                         
                         if (success) {
                             await interaction.editReply({
-                                content: '✅ Mensagem de teste enviada! Verifique o canal de logs.',
-                                ephemeral: true
+                                content: '✅ Mensagem de teste enviada! Verifique o canal de logs.'
                             });
                         } else {
                             await interaction.editReply({
-                                content: '❌ Webhook não configurado ou inválido. Configure primeiro com `/configurar-logs adicionar`.',
-                                ephemeral: true
+                                content: '❌ Webhook não configurado ou inválido. Configure primeiro com `/configurar-logs adicionar`.'
                             });
                         }
                     } catch (error) {
                         logger.error('Erro ao testar webhook:', error);
                         await interaction.editReply({
-                            content: '❌ Erro ao testar webhook. Verifique se está configurado corretamente.',
-                            ephemeral: true
+                            content: '❌ Erro ao testar webhook. Verifique se está configurado corretamente.'
                         });
                     }
                     break;
                 }
             }
         } catch (error) {
-            console.error('Erro ao executar comando de webhook:', error);
-            await interaction.editReply({
-                content: '❌ Ocorreu um erro ao processar o comando. Tente novamente mais tarde.',
-                ephemeral: true
-            });
+            logger.error('Erro ao executar comando de webhook:', error);
+            try {
+                if (interaction.deferred) {
+                    await interaction.editReply({
+                        content: '❌ Ocorreu um erro ao processar o comando. Tente novamente mais tarde.'
+                    });
+                } else if (!interaction.replied) {
+                    await interaction.reply({
+                        content: '❌ Ocorreu um erro ao processar o comando. Tente novamente mais tarde.',
+                        ephemeral: true
+                    });
+                }
+            } catch (replyError) {
+                logger.error('Erro ao responder com erro final:', replyError);
+            }
         }
     }
 };
