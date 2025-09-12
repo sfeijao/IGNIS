@@ -15,6 +15,7 @@ const {
 const TicketTimeout = require('./ticketTimeout');
 const NotificationManager = require('./notificationManager');
 const SimpleWebhookManager = require('./SimpleWebhookManager');
+const TicketIdManager = require('./TicketIdManager');
 const logger = require('./logger');
 
 class TicketManager {
@@ -24,6 +25,7 @@ class TicketManager {
         this.timeout = new TicketTimeout(client);
         this.notifications = new NotificationManager(client);
         this.webhooks = new SimpleWebhookManager();
+        this.ticketIdManager = new TicketIdManager();
     }
 
     // Sistema simplificado de logs
@@ -261,10 +263,20 @@ class TicketManager {
             ticket.channel_id = channel.id;
             await this.storage.updateTicket(ticket.id, { channel_id: channel.id });
 
+            // 🎫 REGISTRAR ID SEQUENCIAL DO TICKET
+            const sequentialId = await this.ticketIdManager.registerTicket(
+                interaction.guildId, 
+                channel.id, 
+                interaction.user.id
+            );
+            
+            logger.info(`🎫 Ticket criado: ID sequencial ${sequentialId} para canal ${channel.id}`);
+
             // Send webhook log
             await this.enviarLog(interaction.guildId, 'create', {
                 author: interaction.user,
                 ticketId: ticket.id,
+                sequentialId: sequentialId,
                 category: type,
                 guild: interaction.guild
             });
@@ -383,9 +395,15 @@ class TicketManager {
                 last_activity: new Date().toISOString()
             });
 
+            // 🎫 OBTER ID SEQUENCIAL DO TICKET
+            const ticketInfo = await this.ticketIdManager.getTicketByChannel(interaction.channelId);
+            const sequentialId = ticketInfo ? ticketInfo.sequentialId : 'N/A';
+
             // Send webhook log with transcript
             await this.enviarLog(interaction.guildId, 'close', {
                 ticketId: ticket.id,
+                sequentialId: sequentialId,
+                channelId: interaction.channelId,
                 author: await this.client.users.fetch(ticket.user_id).catch(() => null),
                 claimedBy: ticket.assigned_to ? await this.client.users.fetch(ticket.assigned_to).catch(() => null) : null,
                 closedBy: interaction.user,
@@ -395,20 +413,54 @@ class TicketManager {
                 reason: 'Ticket resolvido'
             });
 
-            // Notify the user
+            // Notify the user with enhanced transcript
             try {
                 const ticketOwner = await this.client.users.fetch(ticket.user_id);
+                
                 if (transcript && transcript.length > 0) {
+                    // Criar transcript melhorado com informações do servidor
+                    const enhancedTranscript = `🎫 TRANSCRIÇÃO DO TICKET
+========================================
+🏷️ Servidor: ${interaction.guild.name}
+🆔 ID do Servidor: ${interaction.guild.id}
+📍 Canal: #${interaction.channel.name}
+🆔 ID do Canal: ${interaction.channel.id}
+👤 Fechado por: ${interaction.user.tag}
+⏰ Data de Fechamento: ${new Date().toLocaleString('pt-BR')}
+========================================
+
+${transcript}
+
+========================================
+Fim da transcrição - Ticket resolvido
+========================================`;
+
                     await ticketOwner.send({
-                        content: `Seu ticket foi fechado por ${interaction.user.tag}.`,
+                        content: `🔒 **SEU TICKET FOI FECHADO**
+
+📋 **Informações do Ticket:**
+• **Servidor:** ${interaction.guild.name}
+• **Canal:** #${interaction.channel.name}
+• **Fechado por:** ${interaction.user.tag}
+• **Data:** ${new Date().toLocaleString('pt-BR')}
+
+📎 A transcrição completa está anexada abaixo.`,
                         files: [{
-                            attachment: Buffer.from(transcript, 'utf8'),
-                            name: `ticket-${ticket.id}-transcript.txt`
+                            attachment: Buffer.from(enhancedTranscript, 'utf8'),
+                            name: `ticket-${ticket.id}-${interaction.guild.name.replace(/[^a-zA-Z0-9]/g, '_')}-transcript.txt`
                         }]
                     });
                 } else {
                     await ticketOwner.send({
-                        content: `Seu ticket foi fechado por ${interaction.user.tag}.`
+                        content: `🔒 **SEU TICKET FOI FECHADO**
+
+📋 **Informações do Ticket:**
+• **Servidor:** ${interaction.guild.name}
+• **Canal:** #${interaction.channel.name}
+• **Fechado por:** ${interaction.user.tag}
+• **Data:** ${new Date().toLocaleString('pt-BR')}
+
+ℹ️ Não foram encontradas mensagens para gerar transcrição.`
                     });
                 }
             } catch (dmError) {
