@@ -135,7 +135,8 @@ class TicketPermissionManager {
         };
         
         this.cache = new Map(); // Cache de permissões
-        this.loadConfig();
+        this.config = { ...this.defaultConfig }; // Inicializar com configuração padrão
+        this.loadConfig(); // Carregar configuração salva (assíncrono)
     }
 
     // Carregar configuração
@@ -171,6 +172,11 @@ class TicketPermissionManager {
 
     // Verificar se utilizador pode criar tickets
     canCreateTicket(member, category = 'suporte') {
+        // Garantir que a configuração está carregada
+        if (!this.config) {
+            this.config = { ...this.defaultConfig };
+        }
+        
         const cacheKey = `create:${member.id}:${category}`;
         
         if (this.cache.has(cacheKey)) {
@@ -407,8 +413,13 @@ class TicketPermissionManager {
     isStaff(member) {
         if (!member || !member.roles) return false;
         
+        // Garantir que a configuração está carregada
+        if (!this.config) {
+            this.config = { ...this.defaultConfig };
+        }
+        
         // Verificar roles configuradas manualmente
-        if (this.config.staffRoles.length > 0) {
+        if (this.config.staffRoles && this.config.staffRoles.length > 0) {
             const hasConfiguredRole = this.config.staffRoles.some(roleId => 
                 member.roles.cache.has(roleId)
             );
@@ -705,10 +716,18 @@ class TicketPermissionManager {
 
     // Configurar automaticamente cargos de staff para um servidor
     async autoConfigureStaffRoles(guild) {
+        // Garantir que a configuração está carregada
+        if (!this.config) {
+            this.config = { ...this.defaultConfig };
+        }
+        
         const detectedRoles = this.autoDetectStaffRoles(guild);
         const roleIds = detectedRoles.map(role => role.id);
         
         // Atualizar configuração
+        if (!this.config.staffRoles) {
+            this.config.staffRoles = [];
+        }
         this.config.staffRoles = [...new Set([...this.config.staffRoles, ...roleIds])];
         await this.saveConfig();
         
