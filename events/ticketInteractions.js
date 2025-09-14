@@ -153,6 +153,15 @@ module.exports = {
         }
 
         try {
+            // Handle select menu interactions for tickets
+            if (interaction.isStringSelectMenu()) {
+                if (interaction.customId === 'ticket_priority_select') {
+                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                    await handlePrioritySelection(interaction);
+                    return;
+                }
+            }
+
             // Handle button interactions for tickets
             if (interaction.isButton()) {
                 const parts = interaction.customId.split('_');
@@ -383,4 +392,71 @@ async function handleTicketRename(interaction) {
     await interaction.editReply({
         embeds: [embed]
     });
+}
+
+// Handler para seleção de prioridade
+async function handlePrioritySelection(interaction) {
+    const selectedPriority = interaction.values[0];
+    
+    const priorityMap = {
+        'high': { emoji: '🔴', name: 'Alta Prioridade', color: 0xFF0000 },
+        'normal': { emoji: '🟡', name: 'Prioridade Normal', color: 0xFFD700 },
+        'low': { emoji: '🟢', name: 'Baixa Prioridade', color: 0x00FF00 }
+    };
+
+    const priority = priorityMap[selectedPriority];
+    
+    if (!priority) {
+        return await interaction.editReply({
+            content: '❌ Prioridade inválida selecionada.',
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
+    // Atualizar o nome do canal se possível
+    try {
+        const channel = interaction.channel;
+        const currentName = channel.name;
+        
+        // Remover indicadores de prioridade antigos
+        let newName = currentName.replace(/^(🔴|🟡|🟢)/, '');
+        
+        // Adicionar novo indicador de prioridade
+        newName = `${priority.emoji}${newName}`;
+        
+        await channel.setName(newName);
+        
+        const successEmbed = new EmbedBuilder()
+            .setColor(priority.color)
+            .setTitle('⚡ Prioridade Atualizada')
+            .setDescription(`A prioridade do ticket foi alterada para **${priority.name}**`)
+            .addFields(
+                { name: '🎯 Nova Prioridade', value: `${priority.emoji} ${priority.name}`, inline: true },
+                { name: '🏷️ Canal Atualizado', value: `${priority.emoji} Nome do canal atualizado`, inline: true },
+                { name: '⏰ Alterado em', value: `<t:${Math.floor(Date.now() / 1000)}:f>`, inline: true }
+            )
+            .setTimestamp();
+
+        await interaction.editReply({
+            embeds: [successEmbed]
+        });
+
+        // Log da alteração de prioridade
+        logger.info(`🎯 Prioridade do ticket ${channel.id} alterada para ${priority.name} por ${interaction.user.tag}`);
+        
+    } catch (error) {
+        logger.error('Erro ao alterar prioridade:', error);
+        
+        const errorEmbed = new EmbedBuilder()
+            .setColor(0xFF0000)
+            .setTitle('❌ Erro ao Alterar Prioridade')
+            .setDescription('Não foi possível alterar o nome do canal, mas a prioridade foi registrada.')
+            .addFields(
+                { name: '🎯 Prioridade Selecionada', value: `${priority.emoji} ${priority.name}`, inline: true }
+            );
+
+        await interaction.editReply({
+            embeds: [errorEmbed]
+        });
+    }
 }
