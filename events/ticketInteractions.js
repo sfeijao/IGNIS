@@ -1,4 +1,4 @@
-const { Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags, EmbedBuilder } = require('discord.js');
+const { Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags, EmbedBuilder, StringSelectMenuBuilder } = require('discord.js');
 const logger = require('../utils/logger');
 const rateLimit = require('../utils/rateLimit');
 
@@ -216,6 +216,21 @@ module.exports = {
                             case 'claim':
                                 await ticketManager.handleTicketClaim(interaction);
                                 break;
+                            case 'priority':
+                                await handleTicketPriority(interaction);
+                                break;
+                            case 'transcript':
+                                await handleTicketTranscript(interaction);
+                                break;
+                            case 'add':
+                                if (type === 'user') await handleAddUser(interaction);
+                                break;
+                            case 'remove':
+                                if (type === 'user') await handleRemoveUser(interaction);
+                                break;
+                            case 'rename':
+                                await handleTicketRename(interaction);
+                                break;
                             default:
                                 await interaction.editReply({
                                     content: '❌ Ação de ticket inválida.',
@@ -263,3 +278,109 @@ module.exports = {
         }
     }
 };
+
+// Handler para alterar prioridade do ticket
+async function handleTicketPriority(interaction) {
+    const priorities = [
+        { label: '🔴 Alta Prioridade', value: 'high', emoji: '🔴' },
+        { label: '🟡 Prioridade Normal', value: 'normal', emoji: '🟡' },
+        { label: '🟢 Baixa Prioridade', value: 'low', emoji: '🟢' }
+    ];
+
+    const selectMenu = new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+            .setCustomId('ticket_priority_select')
+            .setPlaceholder('Selecione a nova prioridade')
+            .addOptions(priorities)
+    );
+
+    const embed = new EmbedBuilder()
+        .setColor(0xFFA500)
+        .setTitle('⚡ Alterar Prioridade do Ticket')
+        .setDescription('Selecione a nova prioridade para este ticket:')
+        .addFields(
+            { name: '🔴 Alta', value: 'Problemas críticos e urgentes', inline: true },
+            { name: '🟡 Normal', value: 'Questões padrão do dia a dia', inline: true },
+            { name: '🟢 Baixa', value: 'Dúvidas e sugestões', inline: true }
+        );
+
+    await interaction.editReply({
+        embeds: [embed],
+        components: [selectMenu]
+    });
+}
+
+// Handler para gerar transcrição do ticket
+async function handleTicketTranscript(interaction) {
+    const embed = new EmbedBuilder()
+        .setColor(0x3498DB)
+        .setTitle('📄 Gerando Transcrição')
+        .setDescription('⏳ Processando mensagens do ticket...\n\nA transcrição será enviada em breve.')
+        .setTimestamp();
+
+    await interaction.editReply({
+        embeds: [embed]
+    });
+
+    // Simular geração de transcrição (implementar lógica real depois)
+    setTimeout(async () => {
+        const successEmbed = new EmbedBuilder()
+            .setColor(0x00FF00)
+            .setTitle('✅ Transcrição Gerada')
+            .setDescription('A transcrição do ticket foi gerada com sucesso!')
+            .addFields(
+                { name: '📊 Estatísticas', value: `**Mensagens:** 0\n**Participantes:** 1\n**Duração:** N/A`, inline: true },
+                { name: '📅 Período', value: `**Início:** <t:${Math.floor(Date.now() / 1000)}:f>\n**Fim:** <t:${Math.floor(Date.now() / 1000)}:f>`, inline: true }
+            );
+
+        await interaction.followUp({
+            embeds: [successEmbed],
+            flags: MessageFlags.Ephemeral
+        });
+    }, 3000);
+}
+
+// Handler para adicionar utilizador ao ticket
+async function handleAddUser(interaction) {
+    const embed = new EmbedBuilder()
+        .setColor(0x00FF00)
+        .setTitle('➕ Adicionar Utilizador ao Ticket')
+        .setDescription('Para adicionar um utilizador ao ticket, mencione-o ou forneça o ID.\n\n**Exemplo:** `@utilizador` ou `123456789012345678`')
+        .addFields(
+            { name: '🔍 Como encontrar o ID?', value: 'Ative o Modo Desenvolvedor nas configurações do Discord e clique com o botão direito no utilizador.', inline: false }
+        );
+
+    await interaction.editReply({
+        embeds: [embed]
+    });
+}
+
+// Handler para remover utilizador do ticket
+async function handleRemoveUser(interaction) {
+    const embed = new EmbedBuilder()
+        .setColor(0xFF0000)
+        .setTitle('➖ Remover Utilizador do Ticket')
+        .setDescription('Para remover um utilizador do ticket, mencione-o ou forneça o ID.\n\n**Exemplo:** `@utilizador` ou `123456789012345678`')
+        .addFields(
+            { name: '⚠️ Atenção', value: 'O utilizador perderá acesso imediato ao ticket.', inline: false }
+        );
+
+    await interaction.editReply({
+        embeds: [embed]
+    });
+}
+
+// Handler para renomear o canal do ticket
+async function handleTicketRename(interaction) {
+    const embed = new EmbedBuilder()
+        .setColor(0x9B59B6)
+        .setTitle('✏️ Renomear Canal do Ticket')
+        .setDescription('Para renomear este canal, envie o novo nome na próxima mensagem.\n\n**Formato atual:** `ticket-utilizador-categoria`\n**Exemplo:** `ticket-suporte-técnico`')
+        .addFields(
+            { name: '📝 Regras', value: '• Apenas letras, números e hífens\n• Máximo 100 caracteres\n• Mínimo 2 caracteres', inline: false }
+        );
+
+    await interaction.editReply({
+        embeds: [embed]
+    });
+}

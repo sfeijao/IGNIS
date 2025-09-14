@@ -46,7 +46,7 @@ module.exports = {
         const webhookManager = new RobustWebhookManager();
         
         try {
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: 64 }); // MessageFlags.Ephemeral
         } catch (error) {
             logger.error('Erro no defer:', error);
             return;

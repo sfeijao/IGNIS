@@ -190,17 +190,54 @@ class TicketManager {
 
         // Send initial message in the channel
         const embed = new EmbedBuilder()
-            .setColor(0x00ff00)
-            .setTitle('🎫 Ticket Criado')
-            .setDescription('Aguarde um membro da equipe responder.\nDescreva seu problema com detalhes.')
+            .setColor(0x3498DB) // Azul profissional
+            .setTitle('🎫 Sistema de Suporte Avançado')
+            .setDescription([
+                '### 🛡️ **Ticket Criado com Sucesso!**',
+                '',
+                '**Como funciona o nosso sistema:**',
+                '• ⚡ **Resposta Rápida** - Nossa equipe responderá em breve',
+                '• 🔒 **Privacidade Total** - Apenas você e nossa equipe podem ver',
+                '• 📊 **Rastreamento** - Histórico completo de interações',
+                '',
+                '**📋 Instruções:**',
+                '1️⃣ Descreva seu problema com **máximo de detalhes**',
+                '2️⃣ Inclua prints/evidências se necessário',
+                '3️⃣ Mantenha-se disponível para esclarecimentos',
+                '',
+                '🎯 **Nosso compromisso: Solução eficiente e profissional!**'
+            ].join('\n'))
             .addFields(
-                { name: 'Criado por', value: String(getUserDisplayName(user, guild) || 'Desconhecido'), inline: true },
-                { name: 'ID do Ticket', value: String(ticket.id || Date.now()), inline: true },
-                { name: 'Categoria', value: String(ticket.type || 'Geral'), inline: true }
+                { 
+                    name: '👤 Utilizador', 
+                    value: `${getUserDisplayName(user, guild) || 'Desconhecido'}\n🆔 \`${user.id}\``, 
+                    inline: true 
+                },
+                { 
+                    name: '🎫 Informações do Ticket', 
+                    value: `**ID:** \`${ticket.id || Date.now()}\`\n**Categoria:** ${ticket.type || 'Geral'}`, 
+                    inline: true 
+                },
+                { 
+                    name: '📅 Criado em', 
+                    value: `<t:${Math.floor(Date.now() / 1000)}:F>\n<t:${Math.floor(Date.now() / 1000)}:R>`, 
+                    inline: true 
+                },
+                {
+                    name: '🌟 Status do Atendimento',
+                    value: '```🟡 Aguardando Staff```',
+                    inline: false
+                }
             )
+            .setThumbnail('https://cdn.discordapp.com/attachments/1234567890/placeholder-ticket-icon.png')
+            .setFooter({ 
+                text: '🔒 Ticket Privado | Sistema Avançado de Suporte',
+                iconURL: guild.iconURL({ dynamic: true })
+            })
             .setTimestamp();
 
-        const buttons = new ActionRowBuilder().addComponents(
+        // Painel de controle avançado
+        const controlPanel = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('ticket_close')
                 .setLabel('Fechar Ticket')
@@ -210,13 +247,47 @@ class TicketManager {
                 .setCustomId('ticket_claim')
                 .setLabel('Atender Ticket')
                 .setStyle(ButtonStyle.Success)
-                .setEmoji('✋')
+                .setEmoji('👋'),
+            new ButtonBuilder()
+                .setCustomId('ticket_priority')
+                .setLabel('Alterar Prioridade')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('⚡'),
+            new ButtonBuilder()
+                .setCustomId('ticket_transcript')
+                .setLabel('Gerar Transcrição')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('📄')
+        );
+
+        // Segunda linha de botões
+        const utilityPanel = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('ticket_add_user')
+                .setLabel('Adicionar Utilizador')
+                .setStyle(ButtonStyle.Primary)
+                .setEmoji('➕'),
+            new ButtonBuilder()
+                .setCustomId('ticket_remove_user')
+                .setLabel('Remover Utilizador')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('➖'),
+            new ButtonBuilder()
+                .setCustomId('ticket_info')
+                .setLabel('Informações')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('ℹ️'),
+            new ButtonBuilder()
+                .setCustomId('ticket_rename')
+                .setLabel('Renomear Canal')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('✏️')
         );
 
         await channel.send({
-            content: `<@${user.id}> seu ticket foi criado!`,
+            content: `🎯 <@${user.id}> **Bem-vindo ao sistema de suporte!**\n\n🛡️ **Ticket criado com sucesso** - Nossa equipe foi notificada automaticamente.`,
             embeds: [embed],
-            components: [buttons]
+            components: [controlPanel, utilityPanel]
         });
 
         return channel;
