@@ -153,6 +153,17 @@ module.exports = {
         }
 
         try {
+            // Handle modal submissions for tickets
+            if (interaction.isModalSubmit()) {
+                if (interaction.customId === 'ticket_add_user_modal') {
+                    await handleAddUserModal(interaction);
+                    return;
+                } else if (interaction.customId === 'ticket_remove_user_modal') {
+                    await handleRemoveUserModal(interaction);
+                    return;
+                }
+            }
+
             // Handle select menu interactions for tickets
             if (interaction.isStringSelectMenu()) {
                 if (interaction.customId === 'ticket_priority_select') {
@@ -324,59 +335,203 @@ async function handleTicketTranscript(interaction) {
     const embed = new EmbedBuilder()
         .setColor(0x3498DB)
         .setTitle('📄 Gerando Transcrição')
-        .setDescription('⏳ Processando mensagens do ticket...\n\nA transcrição será enviada em breve.')
+        .setDescription('⏳ Coletando mensagens do ticket...\n\nProcesso iniciado, aguarde...')
         .setTimestamp();
 
     await interaction.editReply({
         embeds: [embed]
     });
 
-    // Simular geração de transcrição (implementar lógica real depois)
-    setTimeout(async () => {
+    try {
+        const channel = interaction.channel;
+        const messages = await channel.messages.fetch({ limit: 100 });
+        const messageArray = Array.from(messages.values()).reverse();
+        
+        // Criar transcrição em texto
+        let transcript = `=== TRANSCRIÇÃO DO TICKET ===\n`;
+        transcript += `Canal: ${channel.name}\n`;
+        transcript += `ID do Canal: ${channel.id}\n`;
+        transcript += `Gerado em: ${new Date().toLocaleString('pt-PT')}\n`;
+        transcript += `Gerado por: ${interaction.user.tag}\n`;
+        transcript += `Total de Mensagens: ${messageArray.length}\n`;
+        transcript += `\n${'='.repeat(50)}\n\n`;
+        
+        const participants = new Set();
+        
+        for (const message of messageArray) {
+            const timestamp = message.createdAt.toLocaleString('pt-PT');
+            const author = message.author.tag;
+            participants.add(author);
+            
+            transcript += `[${timestamp}] ${author}: `;
+            
+            if (message.content) {
+                transcript += message.content;
+            }
+            
+            if (message.embeds.length > 0) {
+                transcript += ' [EMBED]';
+                for (const embed of message.embeds) {
+                    if (embed.title) transcript += ` Título: ${embed.title}`;
+                    if (embed.description) transcript += ` Descrição: ${embed.description}`;
+                }
+            }
+            
+            if (message.attachments.size > 0) {
+                transcript += ' [ANEXOS: ';
+                transcript += Array.from(message.attachments.values()).map(att => att.name).join(', ');
+                transcript += ']';
+            }
+            
+            transcript += '\n';
+        }
+        
+        transcript += `\n${'='.repeat(50)}\n`;
+        transcript += `Participantes (${participants.size}): ${Array.from(participants).join(', ')}\n`;
+        transcript += `Fim da transcrição`;
+        
+        // Criar arquivo
+        const fs = require('fs');
+        const path = require('path');
+        
+        const fileName = `transcript-${channel.name}-${Date.now()}.txt`;
+        const filePath = path.join(__dirname, '..', 'logs', fileName);
+        
+        // Garantir que o diretório existe
+        const logDir = path.join(__dirname, '..', 'logs');
+        if (!fs.existsSync(logDir)) {
+            fs.mkdirSync(logDir, { recursive: true });
+        }
+        
+        fs.writeFileSync(filePath, transcript, 'utf8');
+        
+        // Calcular estatísticas
+        const startTime = messageArray[0]?.createdAt || new Date();
+        const endTime = messageArray[messageArray.length - 1]?.createdAt || new Date();
+        const duration = Math.abs(endTime - startTime);
+        const hours = Math.floor(duration / (1000 * 60 * 60));
+        const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
+        
         const successEmbed = new EmbedBuilder()
             .setColor(0x00FF00)
             .setTitle('✅ Transcrição Gerada')
             .setDescription('A transcrição do ticket foi gerada com sucesso!')
             .addFields(
-                { name: '📊 Estatísticas', value: `**Mensagens:** 0\n**Participantes:** 1\n**Duração:** N/A`, inline: true },
-                { name: '📅 Período', value: `**Início:** <t:${Math.floor(Date.now() / 1000)}:f>\n**Fim:** <t:${Math.floor(Date.now() / 1000)}:f>`, inline: true }
-            );
+                { 
+                    name: '📊 Estatísticas', 
+                    value: `**Mensagens:** ${messageArray.length}\n**Participantes:** ${participants.size}\n**Duração:** ${hours}h ${minutes}m`, 
+                    inline: true 
+                },
+                { 
+                    name: '📅 Período', 
+                    value: `**Início:** <t:${Math.floor(startTime.getTime() / 1000)}:f>\n**Fim:** <t:${Math.floor(endTime.getTime() / 1000)}:f>`, 
+                    inline: true 
+                },
+                {
+                    name: '📄 Arquivo',
+                    value: `**Nome:** \`${fileName}\`\n**Tamanho:** ${(transcript.length / 1024).toFixed(2)} KB`,
+                    inline: false
+                }
+            )
+            .setTimestamp();
 
         await interaction.followUp({
             embeds: [successEmbed],
+            files: [{
+                attachment: filePath,
+                name: fileName
+            }],
             flags: MessageFlags.Ephemeral
         });
-    }, 3000);
+        
+        // Log da operação
+        logger.info(`📄 Transcrição gerada para ticket ${channel.id} por ${interaction.user.tag} - ${messageArray.length} mensagens`);
+        
+        // Limpar arquivo após 10 segundos (opcional)
+        setTimeout(() => {
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+                logger.info(`🗑️ Arquivo de transcrição temporário removido: ${fileName}`);
+            }
+        }, 10000);
+        
+    } catch (error) {
+        logger.error('Erro ao gerar transcrição:', error);
+        
+        const errorEmbed = new EmbedBuilder()
+            .setColor(0xFF0000)
+            .setTitle('❌ Erro na Transcrição')
+            .setDescription('Ocorreu um erro ao gerar a transcrição do ticket.')
+            .addFields(
+                { name: '🐛 Erro', value: error.message || 'Erro desconhecido', inline: false }
+            )
+            .setTimestamp();
+
+        await interaction.followUp({
+            embeds: [errorEmbed],
+            flags: MessageFlags.Ephemeral
+        });
+    }
 }
 
 // Handler para adicionar utilizador ao ticket
 async function handleAddUser(interaction) {
-    const embed = new EmbedBuilder()
-        .setColor(0x00FF00)
-        .setTitle('➕ Adicionar Utilizador ao Ticket')
-        .setDescription('Para adicionar um utilizador ao ticket, mencione-o ou forneça o ID.\n\n**Exemplo:** `@utilizador` ou `123456789012345678`')
-        .addFields(
-            { name: '🔍 Como encontrar o ID?', value: 'Ative o Modo Desenvolvedor nas configurações do Discord e clique com o botão direito no utilizador.', inline: false }
-        );
+    const modal = new ModalBuilder()
+        .setCustomId('ticket_add_user_modal')
+        .setTitle('➕ Adicionar Utilizador ao Ticket');
 
-    await interaction.editReply({
-        embeds: [embed]
-    });
+    const userInput = new TextInputBuilder()
+        .setCustomId('user_id_input')
+        .setLabel('ID ou Menção do Utilizador')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('@utilizador ou 123456789012345678')
+        .setRequired(true)
+        .setMaxLength(100);
+
+    const reasonInput = new TextInputBuilder()
+        .setCustomId('reason_input')
+        .setLabel('Motivo (Opcional)')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('Motivo para adicionar o utilizador...')
+        .setRequired(false)
+        .setMaxLength(200);
+
+    const firstRow = new ActionRowBuilder().addComponents(userInput);
+    const secondRow = new ActionRowBuilder().addComponents(reasonInput);
+    
+    modal.addComponents(firstRow, secondRow);
+    
+    await interaction.showModal(modal);
 }
 
 // Handler para remover utilizador do ticket
 async function handleRemoveUser(interaction) {
-    const embed = new EmbedBuilder()
-        .setColor(0xFF0000)
-        .setTitle('➖ Remover Utilizador do Ticket')
-        .setDescription('Para remover um utilizador do ticket, mencione-o ou forneça o ID.\n\n**Exemplo:** `@utilizador` ou `123456789012345678`')
-        .addFields(
-            { name: '⚠️ Atenção', value: 'O utilizador perderá acesso imediato ao ticket.', inline: false }
-        );
+    const modal = new ModalBuilder()
+        .setCustomId('ticket_remove_user_modal')
+        .setTitle('➖ Remover Utilizador do Ticket');
 
-    await interaction.editReply({
-        embeds: [embed]
-    });
+    const userInput = new TextInputBuilder()
+        .setCustomId('user_id_input')
+        .setLabel('ID ou Menção do Utilizador')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('@utilizador ou 123456789012345678')
+        .setRequired(true)
+        .setMaxLength(100);
+
+    const reasonInput = new TextInputBuilder()
+        .setCustomId('reason_input')
+        .setLabel('Motivo (Opcional)')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('Motivo para remover o utilizador...')
+        .setRequired(false)
+        .setMaxLength(200);
+
+    const firstRow = new ActionRowBuilder().addComponents(userInput);
+    const secondRow = new ActionRowBuilder().addComponents(reasonInput);
+    
+    modal.addComponents(firstRow, secondRow);
+    
+    await interaction.showModal(modal);
 }
 
 // Handler para renomear o canal do ticket
@@ -457,6 +612,176 @@ async function handlePrioritySelection(interaction) {
 
         await interaction.editReply({
             embeds: [errorEmbed]
+        });
+    }
+}
+
+// Handler para modal de adicionar utilizador
+async function handleAddUserModal(interaction) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    
+    const userInput = interaction.fields.getTextInputValue('user_id_input');
+    const reason = interaction.fields.getTextInputValue('reason_input') || 'Sem motivo especificado';
+    
+    try {
+        // Extrair ID do utilizador (remover <@> se for menção)
+        const userId = userInput.replace(/[<@!>]/g, '');
+        
+        // Validar se é um ID válido
+        if (!/^\d{17,19}$/.test(userId)) {
+            return await interaction.editReply({
+                content: '❌ ID de utilizador inválido. Use um ID válido ou mencione o utilizador.',
+                flags: MessageFlags.Ephemeral
+            });
+        }
+        
+        // Buscar o membro
+        const guild = interaction.guild;
+        const member = await guild.members.fetch(userId).catch(() => null);
+        
+        if (!member) {
+            return await interaction.editReply({
+                content: '❌ Utilizador não encontrado neste servidor.',
+                flags: MessageFlags.Ephemeral
+            });
+        }
+        
+        // Verificar se já tem acesso
+        const channel = interaction.channel;
+        const permissions = channel.permissionsFor(member);
+        
+        if (permissions && permissions.has('ViewChannel')) {
+            return await interaction.editReply({
+                content: `❌ ${member.user.tag} já tem acesso a este ticket.`,
+                flags: MessageFlags.Ephemeral
+            });
+        }
+        
+        // Adicionar permissões
+        await channel.permissionOverwrites.edit(member, {
+            ViewChannel: true,
+            SendMessages: true,
+            ReadMessageHistory: true,
+            AttachFiles: true,
+            EmbedLinks: true
+        });
+        
+        // Enviar mensagem de confirmação
+        const successEmbed = new EmbedBuilder()
+            .setColor(0x00FF00)
+            .setTitle('➕ Utilizador Adicionado')
+            .setDescription(`${member.user.tag} foi adicionado ao ticket com sucesso!`)
+            .addFields(
+                { name: '👤 Utilizador', value: `${member.user.tag} (${member.user.id})`, inline: true },
+                { name: '🎯 Motivo', value: reason, inline: true },
+                { name: '⏰ Adicionado em', value: `<t:${Math.floor(Date.now() / 1000)}:f>`, inline: true }
+            )
+            .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+            .setTimestamp();
+        
+        await interaction.editReply({
+            embeds: [successEmbed]
+        });
+        
+        // Mensagem no canal do ticket
+        await channel.send({
+            content: `🎯 ${member} foi adicionado ao ticket por ${interaction.user}`,
+            embeds: [new EmbedBuilder()
+                .setColor(0x00FF00)
+                .setDescription(`**Motivo:** ${reason}`)
+                .setTimestamp()
+            ]
+        });
+        
+        logger.info(`➕ Utilizador ${member.user.tag} adicionado ao ticket ${channel.id} por ${interaction.user.tag}`);
+        
+    } catch (error) {
+        logger.error('Erro ao adicionar utilizador ao ticket:', error);
+        await interaction.editReply({
+            content: '❌ Erro ao adicionar utilizador. Verifique as permissões do bot.',
+            flags: MessageFlags.Ephemeral
+        });
+    }
+}
+
+// Handler para modal de remover utilizador
+async function handleRemoveUserModal(interaction) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    
+    const userInput = interaction.fields.getTextInputValue('user_id_input');
+    const reason = interaction.fields.getTextInputValue('reason_input') || 'Sem motivo especificado';
+    
+    try {
+        // Extrair ID do utilizador
+        const userId = userInput.replace(/[<@!>]/g, '');
+        
+        // Validar ID
+        if (!/^\d{17,19}$/.test(userId)) {
+            return await interaction.editReply({
+                content: '❌ ID de utilizador inválido. Use um ID válido ou mencione o utilizador.',
+                flags: MessageFlags.Ephemeral
+            });
+        }
+        
+        // Buscar o membro
+        const guild = interaction.guild;
+        const member = await guild.members.fetch(userId).catch(() => null);
+        
+        if (!member) {
+            return await interaction.editReply({
+                content: '❌ Utilizador não encontrado neste servidor.',
+                flags: MessageFlags.Ephemeral
+            });
+        }
+        
+        // Verificar se tem acesso
+        const channel = interaction.channel;
+        const permissions = channel.permissionsFor(member);
+        
+        if (!permissions || !permissions.has('ViewChannel')) {
+            return await interaction.editReply({
+                content: `❌ ${member.user.tag} não tem acesso a este ticket.`,
+                flags: MessageFlags.Ephemeral
+            });
+        }
+        
+        // Remover permissões
+        await channel.permissionOverwrites.delete(member);
+        
+        // Enviar mensagem de confirmação
+        const successEmbed = new EmbedBuilder()
+            .setColor(0xFF6B6B)
+            .setTitle('➖ Utilizador Removido')
+            .setDescription(`${member.user.tag} foi removido do ticket com sucesso!`)
+            .addFields(
+                { name: '👤 Utilizador', value: `${member.user.tag} (${member.user.id})`, inline: true },
+                { name: '🎯 Motivo', value: reason, inline: true },
+                { name: '⏰ Removido em', value: `<t:${Math.floor(Date.now() / 1000)}:f>`, inline: true }
+            )
+            .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+            .setTimestamp();
+        
+        await interaction.editReply({
+            embeds: [successEmbed]
+        });
+        
+        // Mensagem no canal do ticket
+        await channel.send({
+            content: `🚫 ${member.user.tag} foi removido do ticket por ${interaction.user}`,
+            embeds: [new EmbedBuilder()
+                .setColor(0xFF6B6B)
+                .setDescription(`**Motivo:** ${reason}`)
+                .setTimestamp()
+            ]
+        });
+        
+        logger.info(`➖ Utilizador ${member.user.tag} removido do ticket ${channel.id} por ${interaction.user.tag}`);
+        
+    } catch (error) {
+        logger.error('Erro ao remover utilizador do ticket:', error);
+        await interaction.editReply({
+            content: '❌ Erro ao remover utilizador. Verifique as permissões do bot.',
+            flags: MessageFlags.Ephemeral
         });
     }
 }
