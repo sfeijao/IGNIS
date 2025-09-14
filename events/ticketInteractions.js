@@ -1,6 +1,143 @@
-const { Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags } = require('discord.js');
+const { Events, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags, EmbedBuilder } = require('discord.js');
 const logger = require('../utils/logger');
 const rateLimit = require('../utils/rateLimit');
+
+// Handler para botão de System Status
+async function handleSystemStatus(interaction) {
+    const visualAssets = require('../assets/visual-assets');
+
+    const statusEmbed = new EmbedBuilder()
+        .setColor('#00D26A')
+        .setTitle('📊 **STATUS DO SISTEMA**')
+        .setThumbnail(visualAssets.realImages.supportIcon)
+        .setDescription([
+            '### 🔋 **SERVIÇOS OPERACIONAIS**',
+            '',
+            '🟢 **Bot Principal:** `ONLINE`',
+            '🟢 **Sistema de Tickets:** `OPERACIONAL`',
+            '🟢 **Base de Dados:** `CONECTADA`',
+            '🟢 **Webhooks:** `FUNCIONAIS`',
+            '🟢 **Auto-detecção Staff:** `ATIVA`',
+            '',
+            '### 📈 **ESTATÍSTICAS EM TEMPO REAL**',
+            '',
+            `📍 **Servidor:** ${interaction.guild.name}`,
+            `👥 **Membros Online:** ${interaction.guild.members.cache.filter(m => !m.user.bot && m.presence?.status !== 'offline').size}`,
+            `🎫 **Tickets Ativos:** Em funcionamento`,
+            `⚡ **Latência:** ${interaction.client.ws.ping}ms`,
+            '',
+            '### ⏱️ **TEMPO DE RESPOSTA**',
+            '',
+            '🎯 **Meta SLA:** < 15 minutos',
+            '📊 **Uptime:** 99.9%',
+            '🔄 **Última Atualização:** Agora',
+            '',
+            '> 💡 **Sistema monitorizado 24/7**'
+        ].join('\n'))
+        .addFields(
+            {
+                name: '🏢 Infraestrutura',
+                value: '`Railway Platform`',
+                inline: true
+            },
+            {
+                name: '⚡ Performance',
+                value: '`Excelente`',
+                inline: true
+            },
+            {
+                name: '🔒 Segurança',
+                value: '`Ativa`',
+                inline: true
+            }
+        )
+        .setFooter({ 
+            text: 'Sistema de Tickets v2.0 • Status verificado',
+            iconURL: interaction.client.user.displayAvatarURL()
+        })
+        .setTimestamp();
+
+    await interaction.editReply({
+        embeds: [statusEmbed]
+    });
+}
+
+// Handler para botão de Support Info
+async function handleSupportInfo(interaction) {
+    const visualAssets = require('../assets/visual-assets');
+
+    const infoEmbed = new EmbedBuilder()
+        .setColor('#5865F2')
+        .setTitle('💼 **INFORMAÇÕES DE SUPORTE**')
+        .setThumbnail(visualAssets.realImages.supportIcon)
+        .setImage(visualAssets.realImages.supportBanner)
+        .setDescription([
+            '### 📋 **COMO USAR O SISTEMA**',
+            '',
+            '**1️⃣ CRIAR TICKET**',
+            '└ Clique no botão do departamento apropriado',
+            '└ Um canal privado será criado automaticamente',
+            '',
+            '**2️⃣ AGUARDAR RESPOSTA**',
+            '└ Nossa equipe será notificada instantaneamente',
+            '└ Tempo médio de resposta: **15 minutos**',
+            '',
+            '**3️⃣ COMUNICAÇÃO**',
+            '└ Forneça o máximo de detalhes possível',
+            '└ Anexe capturas de ecrã se necessário',
+            '',
+            '### 🎯 **DEPARTAMENTOS DISPONÍVEIS**',
+            '',
+            '🔧 **Suporte Técnico**',
+            '• Problemas com configurações',
+            '• Bugs e falhas técnicas',
+            '• Assistência com funcionalidades',
+            '',
+            '⚠️ **Reportar Problemas**',
+            '• Incidentes críticos',
+            '• Falhas graves do sistema',
+            '• Emergências técnicas',
+            '',
+            '🛡️ **Moderação e Segurança**',
+            '• Denúncias de utilizadores',
+            '• Violações de regras',
+            '• Questões disciplinares',
+            '',
+            '### ⚡ **RECURSOS AVANÇADOS**',
+            '',
+            '• **🤖 Detecção Automática** de staff',
+            '• **🔒 Canais Privados** seguros',
+            '• **📊 Transcrições** completas',
+            '• **⚡ Notificações** instantâneas',
+            '• **📈 Estatísticas** detalhadas'
+        ].join('\n'))
+        .addFields(
+            {
+                name: '⏰ Horário de Funcionamento',
+                value: '`24 horas por dia, 7 dias por semana`',
+                inline: true
+            },
+            {
+                name: '📞 Canais de Contacto',
+                value: '`Sistema de Tickets apenas`',
+                inline: true
+            },
+            {
+                name: '🌐 Idiomas Suportados',
+                value: '`Português • Inglês`',
+                inline: true
+            }
+        )
+        .setFooter({ 
+            text: 'Precisa de ajuda? Crie um ticket usando os botões acima',
+            iconURL: interaction.guild.iconURL({ dynamic: true })
+        })
+        .setTimestamp();
+
+    await interaction.editReply({
+        embeds: [infoEmbed]
+    });
+}
 
 module.exports = {
     name: Events.InteractionCreate,
@@ -69,10 +206,10 @@ module.exports = {
                                 await ticketManager.handleTicketClaim(interaction);
                                 break;
                             case 'status':
-                                await this.handleSystemStatus(interaction);
+                                await handleSystemStatus(interaction);
                                 break;
                             case 'info':
-                                await this.handleSupportInfo(interaction);
+                                await handleSupportInfo(interaction);
                                 break;
                             default:
                                 await interaction.editReply({
@@ -119,144 +256,5 @@ module.exports = {
                 logger.error('Erro ao enviar resposta de erro:', followUpError);
             }
         }
-    },
-
-    // Handler para botão de System Status
-    async handleSystemStatus(interaction) {
-        const { EmbedBuilder } = require('discord.js');
-        const visualAssets = require('../assets/visual-assets');
-
-        const statusEmbed = new EmbedBuilder()
-            .setColor('#00D26A')
-            .setTitle('📊 **STATUS DO SISTEMA**')
-            .setThumbnail(visualAssets.realImages.supportIcon)
-            .setDescription([
-                '### 🔋 **SERVIÇOS OPERACIONAIS**',
-                '',
-                '🟢 **Bot Principal:** `ONLINE`',
-                '🟢 **Sistema de Tickets:** `OPERACIONAL`',
-                '🟢 **Base de Dados:** `CONECTADA`',
-                '🟢 **Webhooks:** `FUNCIONAIS`',
-                '🟢 **Auto-detecção Staff:** `ATIVA`',
-                '',
-                '### 📈 **ESTATÍSTICAS EM TEMPO REAL**',
-                '',
-                `📍 **Servidor:** ${interaction.guild.name}`,
-                `👥 **Membros Online:** ${interaction.guild.members.cache.filter(m => !m.user.bot && m.presence?.status !== 'offline').size}`,
-                `🎫 **Tickets Ativos:** Em funcionamento`,
-                `⚡ **Latência:** ${interaction.client.ws.ping}ms`,
-                '',
-                '### ⏱️ **TEMPO DE RESPOSTA**',
-                '',
-                '🎯 **Meta SLA:** < 15 minutos',
-                '📊 **Uptime:** 99.9%',
-                '🔄 **Última Atualização:** Agora',
-                '',
-                '> 💡 **Sistema monitorizado 24/7**'
-            ].join('\n'))
-            .addFields(
-                {
-                    name: '🏢 Infraestrutura',
-                    value: '`Railway Platform`',
-                    inline: true
-                },
-                {
-                    name: '⚡ Performance',
-                    value: '`Excelente`',
-                    inline: true
-                },
-                {
-                    name: '🔒 Segurança',
-                    value: '`Ativa`',
-                    inline: true
-                }
-            )
-            .setFooter({ 
-                text: 'Sistema de Tickets v2.0 • Status verificado',
-                iconURL: interaction.client.user.displayAvatarURL()
-            })
-            .setTimestamp();
-
-        await interaction.editReply({
-            embeds: [statusEmbed]
-        });
-    },
-
-    // Handler para botão de Support Info
-    async handleSupportInfo(interaction) {
-        const { EmbedBuilder } = require('discord.js');
-        const visualAssets = require('../assets/visual-assets');
-
-        const infoEmbed = new EmbedBuilder()
-            .setColor('#5865F2')
-            .setTitle('💼 **INFORMAÇÕES DE SUPORTE**')
-            .setThumbnail(visualAssets.realImages.supportIcon)
-            .setImage(visualAssets.realImages.supportBanner)
-            .setDescription([
-                '### 📋 **COMO USAR O SISTEMA**',
-                '',
-                '**1️⃣ CRIAR TICKET**',
-                '└ Clique no botão do departamento apropriado',
-                '└ Um canal privado será criado automaticamente',
-                '',
-                '**2️⃣ AGUARDAR RESPOSTA**',
-                '└ Nossa equipe será notificada instantaneamente',
-                '└ Tempo médio de resposta: **15 minutos**',
-                '',
-                '**3️⃣ COMUNICAÇÃO**',
-                '└ Forneça o máximo de detalhes possível',
-                '└ Anexe capturas de ecrã se necessário',
-                '',
-                '### 🎯 **DEPARTAMENTOS DISPONÍVEIS**',
-                '',
-                '🔧 **Suporte Técnico**',
-                '• Problemas com configurações',
-                '• Bugs e falhas técnicas',
-                '• Assistência com funcionalidades',
-                '',
-                '⚠️ **Reportar Problemas**',
-                '• Incidentes críticos',
-                '• Falhas graves do sistema',
-                '• Emergências técnicas',
-                '',
-                '🛡️ **Moderação e Segurança**',
-                '• Denúncias de utilizadores',
-                '• Violações de regras',
-                '• Questões disciplinares',
-                '',
-                '### ⚡ **RECURSOS AVANÇADOS**',
-                '',
-                '• **🤖 Detecção Automática** de staff',
-                '• **🔒 Canais Privados** seguros',
-                '• **📊 Transcrições** completas',
-                '• **⚡ Notificações** instantâneas',
-                '• **📈 Estatísticas** detalhadas'
-            ].join('\n'))
-            .addFields(
-                {
-                    name: '⏰ Horário de Funcionamento',
-                    value: '`24 horas por dia, 7 dias por semana`',
-                    inline: true
-                },
-                {
-                    name: '📞 Canais de Contacto',
-                    value: '`Sistema de Tickets apenas`',
-                    inline: true
-                },
-                {
-                    name: '🌐 Idiomas Suportados',
-                    value: '`Português • Inglês`',
-                    inline: true
-                }
-            )
-            .setFooter({ 
-                text: 'Precisa de ajuda? Crie um ticket usando os botões acima',
-                iconURL: interaction.guild.iconURL({ dynamic: true })
-            })
-            .setTimestamp();
-
-        await interaction.editReply({
-            embeds: [infoEmbed]
-        });
     }
 };

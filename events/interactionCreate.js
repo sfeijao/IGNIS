@@ -120,6 +120,12 @@ module.exports = {
             // Botões
             if (interaction.isButton()) {
                 const customId = interaction.customId;
+                
+                // Se for botão de ticket, ignorar aqui (será processado pelo ticketInteractions.js)
+                if (customId?.startsWith('ticket_')) {
+                    return;
+                }
+                
                 logger.debug(`Botão pressionado - ID: "${customId}" por ${interaction.user.tag}`);
                 logger.debug(`IDs disponíveis - CLOSE_TICKET: "${BUTTON_IDS.CLOSE_TICKET}", CONFIRM_CLOSE: "${BUTTON_IDS.CONFIRM_CLOSE}"`);
 
