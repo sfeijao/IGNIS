@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require('discord.js');
 const TicketPermissionManager = require('../utils/TicketPermissionManager');
+const visualAssets = require('../assets/visual-assets');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -27,80 +28,69 @@ module.exports = {
             const permissionManager = new TicketPermissionManager();
             const autoConfigResult = await permissionManager.autoConfigureStaffRoles(interaction.guild);
 
-            // Criar embed do painel - Design ultra profissional
+            // Criar embed do painel - Design brasileiro profissional
             const embed = new EmbedBuilder()
-                .setColor('#0D1117') // GitHub dark
-                .setTitle('⚡ **CENTRO DE SUPORTE AVANÇADO**')
+                .setColor('#1E1F22') // Discord dark
+                .setTitle('🎯 **CENTRAL DE ATENDIMENTO**')
+                .setImage(visualAssets.realImages.supportBanner) // Banner real
+                .setThumbnail(visualAssets.realImages.supportIcon) // Ícone real
                 .setDescription([
-                    '```ansi',
-                    '\u001b[2;36m▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀\u001b[0m',
-                    '\u001b[1;37m           SISTEMA PROFISSIONAL V2.0\u001b[0m',
-                    '\u001b[2;36m▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄\u001b[0m',
-                    '```',
+                    '### 🏢 **DEPARTAMENTOS DISPONÍVEIS**',
                     '',
-                    '### 🏢 **DEPARTAMENTOS ESPECIALIZADOS**',
+                    '🔧 **SUPORTE TÉCNICO**',
+                    '└ *Configurações, bugs e problemas técnicos*',
                     '',
-                    '┌─ **🔧 TECHNICAL SUPPORT**',
-                    '│  └ *Configurações • Troubleshooting • Integrações*',
-                    '│',
-                    '├─ **⚠️ INCIDENT REPORTING**', 
-                    '│  └ *Bugs críticos • Falhas de sistema • Emergências*',
-                    '│',
-                    '└─ **🛡️ SECURITY & MODERATION**',
-                    '   └ *Violações • Spam • Comportamento inadequado*',
+                    '⚠️ **REPORTAR PROBLEMAS**', 
+                    '└ *Falhas críticas e incidentes graves*',
                     '',
-                    '### 📈 **MÉTRICAS DE PERFORMANCE**',
+                    '🛡️ **MODERAÇÃO E SEGURANÇA**',
+                    '└ *Denúncias, violações e questões disciplinares*',
                     '',
-                    '```yaml',
-                    'SLA Response Time: < 15 minutes',
-                    'Uptime Guarantee: 99.9%',
-                    'Staff Availability: 24/7',
-                    'Priority System: Critical > High > Normal',
-                    '```',
-                    '',
-                    '> **💡 AI-Powered Staff Detection:** Sistema inteligente ativo',
-                    '> **🔒 Enterprise Security:** Canal privado criptografado',
-                    '> **📊 Real-time Analytics:** Métricas em tempo real'
+                    '� **Como funciona:**',
+                    '• Clique no botão do departamento desejado',
+                    '• Um canal privado será criado automaticamente',
+                    '• Nossa equipe será notificada instantaneamente',
+                    '• Tempo médio de resposta: **15 minutos**'
                 ].join('\n'))
                 .addFields(
                     {
-                        name: '🏢 Enterprise Server',
+                        name: '🏢 Servidor',
                         value: `\`${interaction.guild.name}\``,
                         inline: true
                     },
                     {
-                        name: '👥 Staff Online',
-                        value: `\`${interaction.guild.members.cache.filter(m => !m.user.bot && m.presence?.status !== 'offline').size}\``,
+                        name: '�‍💼 Staff Disponível',
+                        value: `\`${interaction.guild.members.cache.filter(m => !m.user.bot && m.presence?.status !== 'offline').size} membros\``,
                         inline: true
                     },
                     {
-                        name: '⚡ System Status',
-                        value: '`🟢 OPERATIONAL`',
+                        name: '🟢 Status do Sistema',
+                        value: '`ONLINE`',
                         inline: true
                     }
                 )
                 .setFooter({ 
-                    text: `${interaction.guild.name} • Enterprise Support System v2.0 • Powered by YSNM`,
+                    text: `${interaction.guild.name} • Sistema de Tickets v2.0 • Powered by YSNM`,
                     iconURL: interaction.guild.iconURL({ dynamic: true })
                 })
                 .setTimestamp();
 
-            // Criar botões com design profissional
+            // Criar botões com design brasileiro
             const row1 = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('create_ticket_technical')
-                        .setLabel('TECHNICAL SUPPORT')
+                        .setLabel('SUPORTE TÉCNICO')
                         .setEmoji('🔧')
                         .setStyle(ButtonStyle.Primary),
                     new ButtonBuilder()
                         .setCustomId('create_ticket_incident')
-                        .setLabel('INCIDENT REPORT')
+                        .setLabel('REPORTAR PROBLEMA')
                         .setEmoji('⚠️')
                         .setStyle(ButtonStyle.Danger),
                     new ButtonBuilder()
                         .setCustomId('create_ticket_moderation')
-                        .setLabel('SECURITY & MOD')
+                        .setLabel('MODERAÇÃO')
                         .setEmoji('🛡️')
                         .setStyle(ButtonStyle.Secondary)
                 );
@@ -110,12 +100,12 @@ module.exports = {
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('ticket_status')
-                        .setLabel('System Status')
+                        .setLabel('Status do Sistema')
                         .setEmoji('📊')
                         .setStyle(ButtonStyle.Success),
                     new ButtonBuilder()
                         .setCustomId('ticket_info')
-                        .setLabel('Support Info')
+                        .setLabel('Informações')
                         .setEmoji('💼')
                         .setStyle(ButtonStyle.Secondary)
                 );
@@ -126,55 +116,57 @@ module.exports = {
                 components: [row1, row2]
             });
 
-            // Embed de confirmação com informações detalhadas
+            // Embed de confirmação profissional
             const confirmEmbed = new EmbedBuilder()
                 .setColor('#00D26A') // Verde sucesso
-                .setTitle('✅ **SISTEMA CONFIGURADO COM SUCESSO**')
+                .setTitle('✅ **PAINEL CONFIGURADO COM SUCESSO!**')
+                .setThumbnail(visualAssets.realImages.successIcon) // Ícone real
+                .setImage(visualAssets.realImages.successBanner) // Banner real
                 .setDescription([
-                    '### 🎯 **PAINEL PROFISSIONAL INSTALADO**',
+                    '### 🎯 **SISTEMA INSTALADO**',
                     '',
-                    `**📍 Canal de Deploy:** ${targetChannel}`,
-                    `**🆔 Message ID:** \`${message.id}\``,
+                    `**📍 Canal:** ${targetChannel}`,
+                    `**🆔 ID da Mensagem:** \`${message.id}\``,
                     '',
-                    '### 🔄 **AUTO-CONFIGURAÇÃO EXECUTADA**',
+                    '### 🔄 **CONFIGURAÇÃO AUTOMÁTICA**',
                     '',
                     autoConfigResult.success ? 
-                        `✅ **Staff Roles Detectados:** \`${autoConfigResult.rolesFound}\`` :
+                        `✅ **Cargos de Staff Detectados:** \`${autoConfigResult.rolesFound}\`` :
                         `⚠️ **Aviso:** ${autoConfigResult.message}`,
                     '',
                     '### ⚡ **RECURSOS ATIVADOS**',
                     '',
-                    '• **🤖 Detecção Automática:** Sistema inteligente de staff',
-                    '• **🔒 Segurança Avançada:** Permissões por canal privado',
-                    '• **📊 Analytics:** Métricas em tempo real',
-                    '• **⚡ Performance:** Resposta < 500ms',
+                    '• **🤖 Detecção Automática** de staff',
+                    '• **🔒 Canais Privados** seguros',
+                    '• **📊 Estatísticas** em tempo real',
+                    '• **⚡ Resposta Rápida** garantida',
                     '',
-                    '### 🛠️ **PRÓXIMOS PASSOS**',
+                    '### � **PRÓXIMOS PASSOS**',
                     '',
-                    '1. Teste o painel criando um ticket',
-                    '2. Configure categorias personalizadas se necessário',
-                    '3. Monitore logs com `/logs-sistema`',
-                    '4. Verifique performance com `/diagnostico`'
+                    '1. 🧪 Teste criando um ticket',
+                    '2. ⚙️ Configure categorias personalizadas',
+                    '3. 📝 Monitore com `/logs-sistema`',
+                    '4. 🔍 Verifique com `/diagnostico`'
                 ].join('\n'))
                 .addFields(
                     {
-                        name: '🎨 Design Level',
-                        value: '`Enterprise Professional`',
+                        name: '🎨 Nível de Design',
+                        value: '`Profissional Brasileiro`',
                         inline: true
                     },
                     {
-                        name: '🚀 Version',
-                        value: '`v2.0 Advanced`',
+                        name: '🚀 Versão',
+                        value: '`v2.0 Avançado`',
                         inline: true
                     },
                     {
-                        name: '⏱️ Setup Time',
+                        name: '⏱️ Tempo de Instalação',
                         value: '`< 3 segundos`',
                         inline: true
                     }
                 )
                 .setFooter({ 
-                    text: 'Sistema configurado e testado • Pronto para produção',
+                    text: 'Sistema configurado e testado • Pronto para uso',
                     iconURL: interaction.client.user.displayAvatarURL()
                 })
                 .setTimestamp();
@@ -188,7 +180,8 @@ module.exports = {
             
             const errorEmbed = new EmbedBuilder()
                 .setColor('#FF6B6B')
-                .setTitle('❌ **ERRO DE CONFIGURAÇÃO**')
+                .setTitle('❌ **ERRO NA CONFIGURAÇÃO**')
+                .setThumbnail(visualAssets.realImages.errorIcon) // Ícone real
                 .setDescription([
                     '**Falha ao configurar o sistema de tickets**',
                     '',
@@ -196,7 +189,7 @@ module.exports = {
                     `${error.message}`,
                     `\`\`\``,
                     '',
-                    '**Possíveis soluções:**',
+                    '**💡 Possíveis soluções:**',
                     '• Verificar permissões do bot no canal',
                     '• Tentar novamente em alguns segundos',
                     '• Usar `/diagnostico` para análise detalhada'
