@@ -17,12 +17,12 @@ module.exports = {
             if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
                 return await interaction.reply({
                     content: '⛔ **Acesso Negado** | Você precisa de permissões de administrador para usar este comando.',
-                    ephemeral: true
+                    flags: 64 // MessageFlags.Ephemeral
                 });
             }
 
             const targetChannel = interaction.options.getChannel('canal') || interaction.channel;
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: 64 }); // MessageFlags.Ephemeral
 
             // Auto-configurar cargos de staff
             const permissionManager = new TicketPermissionManager();
@@ -199,7 +199,7 @@ module.exports = {
             if (interaction.deferred) {
                 await interaction.editReply({ embeds: [errorEmbed] });
             } else {
-                await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+                await interaction.reply({ embeds: [errorEmbed], flags: 64 }); // MessageFlags.Ephemeral
             }
         }
     },
