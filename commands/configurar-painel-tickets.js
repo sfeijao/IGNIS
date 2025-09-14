@@ -79,17 +79,17 @@ module.exports = {
             const row1 = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
-                        .setCustomId('create_ticket_technical')
+                        .setCustomId('ticket_create_technical')
                         .setLabel('SUPORTE TÉCNICO')
                         .setEmoji('🔧')
                         .setStyle(ButtonStyle.Primary),
                     new ButtonBuilder()
-                        .setCustomId('create_ticket_incident')
+                        .setCustomId('ticket_create_incident')
                         .setLabel('REPORTAR PROBLEMA')
                         .setEmoji('⚠️')
                         .setStyle(ButtonStyle.Danger),
                     new ButtonBuilder()
-                        .setCustomId('create_ticket_moderation')
+                        .setCustomId('ticket_create_moderation')
                         .setLabel('MODERAÇÃO')
                         .setEmoji('🛡️')
                         .setStyle(ButtonStyle.Secondary)
@@ -99,12 +99,12 @@ module.exports = {
             const row2 = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
-                        .setCustomId('ticket_status')
+                        .setCustomId('ticket_status_info')
                         .setLabel('Status do Sistema')
                         .setEmoji('📊')
                         .setStyle(ButtonStyle.Success),
                     new ButtonBuilder()
-                        .setCustomId('ticket_info')
+                        .setCustomId('ticket_info_support')
                         .setLabel('Informações')
                         .setEmoji('💼')
                         .setStyle(ButtonStyle.Secondary)

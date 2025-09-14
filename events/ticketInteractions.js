@@ -155,7 +155,8 @@ module.exports = {
         try {
             // Handle button interactions for tickets
             if (interaction.isButton()) {
-                const [_, action, type] = interaction.customId.split('_');
+                const parts = interaction.customId.split('_');
+                const [prefix, action, type] = parts;
 
                 if (action === 'create') {
                     // CRIAÇÃO DIRETA DE TICKET - sem modal
@@ -192,6 +193,16 @@ module.exports = {
                     // Criar ticket diretamente
                     await ticketManager.handleTicketCreate(interaction, type, defaultDescription);
                 } 
+                else if (action === 'status') {
+                    // Botão de Status do Sistema
+                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                    await handleSystemStatus(interaction);
+                }
+                else if (action === 'info') {
+                    // Botão de Informações
+                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                    await handleSupportInfo(interaction);
+                }
                 else {
                     try {
                         // Defer the reply first
@@ -204,12 +215,6 @@ module.exports = {
                                 break;
                             case 'claim':
                                 await ticketManager.handleTicketClaim(interaction);
-                                break;
-                            case 'status':
-                                await handleSystemStatus(interaction);
-                                break;
-                            case 'info':
-                                await handleSupportInfo(interaction);
                                 break;
                             default:
                                 await interaction.editReply({
