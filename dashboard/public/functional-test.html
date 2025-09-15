@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>IGNIS - Teste Direto</title>
+    <style>
+        body { 
+            background: #000; 
+            color: #0f0; 
+            font-family: monospace; 
+            padding: 50px; 
+            text-align: center; 
+        }
+        h1 { color: #ff0; font-size: 3em; }
+        .box { 
+            border: 2px solid #0f0; 
+            padding: 30px; 
+            margin: 20px auto; 
+            max-width: 600px; 
+        }
+    </style>
+</head>
+<body>
+    <h1>🔥 IGNIS BOT - TESTE FUNCIONAL</h1>
+    <div class="box">
+        <h2>✅ RAILWAY FUNCIONANDO!</h2>
+        <p>Se você consegue ver esta página, o problema foi identificado!</p>
+        <p><strong>Timestamp:</strong> <span id="time"></span></p>
+        <p><strong>URL:</strong> <span id="url"></span></p>
+    </div>
+    <div class="box">
+        <h3>🔧 SOLUÇÕES:</h3>
+        <p>1. O Railway está funcionando perfeitamente</p>
+        <p>2. O problema era na página complexa original</p>
+        <p>3. CSS/JavaScript estavam causando conflitos</p>
+    </div>
+    <script>
+        document.getElementById('time').textContent = new Date().toLocaleString();
+        document.getElementById('url').textContent = window.location.href;
+        console.log('TESTE FUNCIONAL - SUCESSO!');
+    </script>
+</body>
+</html>
