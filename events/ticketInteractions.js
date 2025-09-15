@@ -218,11 +218,6 @@ module.exports = {
                     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                     await handleSystemStatus(interaction);
                 }
-                else if (action === 'info') {
-                    // Botão de Informações
-                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-                    await handleSupportInfo(interaction);
-                }
                 else {
                     try {
                         const ticketManager = interaction.client.ticketManager;
@@ -773,13 +768,28 @@ async function handleRemoveUserModal(interaction) {
         });
         
         // Mensagem no canal do ticket
+        const removalEmbed = new EmbedBuilder()
+            .setColor(0xFF6B6B)
+            .setTitle('🚫 Utilizador Removido do Ticket')
+            .setDescription([
+                `### � **${member.user.tag}** foi removido do sistema de suporte`,
+                '',
+                `**🔒 Acesso revogado:** O utilizador já não pode ver nem participar neste ticket`,
+                `**👮 Removido por:** ${interaction.user.tag}`,
+                `**📝 Motivo:** ${reason}`,
+                `**⏰ Data/Hora:** <t:${Math.floor(Date.now() / 1000)}:f>`,
+                '',
+                '> *Esta ação foi registrada no sistema de logs para auditoria*'
+            ].join('\n'))
+            .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+            .setFooter({ 
+                text: '🛡️ Sistema de Gestão de Tickets | Ação de Moderação',
+                iconURL: interaction.guild.iconURL({ dynamic: true })
+            })
+            .setTimestamp();
+
         await channel.send({
-            content: `🚫 ${member.user.tag} foi removido do ticket por ${interaction.user}`,
-            embeds: [new EmbedBuilder()
-                .setColor(0xFF6B6B)
-                .setDescription(`**Motivo:** ${reason}`)
-                .setTimestamp()
-            ]
+            embeds: [removalEmbed]
         });
         
         logger.info(`➖ Utilizador ${member.user.tag} removido do ticket ${channel.id} por ${interaction.user.tag}`);

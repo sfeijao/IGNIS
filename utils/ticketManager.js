@@ -273,11 +273,6 @@ class TicketManager {
                 .setStyle(ButtonStyle.Secondary)
                 .setEmoji('➖'),
             new ButtonBuilder()
-                .setCustomId('ticket_info')
-                .setLabel('Informações')
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('ℹ️'),
-            new ButtonBuilder()
                 .setCustomId('ticket_rename')
                 .setLabel('Renomear Canal')
                 .setStyle(ButtonStyle.Secondary)
