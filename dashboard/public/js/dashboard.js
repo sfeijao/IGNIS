@@ -888,18 +888,19 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
     }
     
     showTicketStatistics() {
-        this.showNotification('Estatísticas detalhadas de tickets em desenvolvimento', 'info');
+        if (!this.currentGuild) {
+            this.showError('Selecione um servidor primeiro');
+            return;
+        }
+        
+        // Carregar estatísticas reais do sistema de tickets
+        this.loadAdvancedTickets().then(() => {
+            this.showNotification('Estatísticas de tickets carregadas com sucesso!', 'success');
+        }).catch(error => {
+            console.error('Erro ao carregar estatísticas:', error);
+            this.showError('Erro ao carregar estatísticas de tickets');
+        });
     }
-}
-
-// Control panel functions - Enhanced Ticket System
-function configureTickets() {
-    if (!dashboard.currentGuild) {
-        dashboard.showError('Nenhum servidor selecionado');
-        return;
-    }
-    
-    dashboard.showNotification('Configuração de tickets em desenvolvimento', 'info');
 }
 
 function viewTickets() {
@@ -909,15 +910,6 @@ function viewTickets() {
     }
     
     dashboard.loadAdvancedTickets();
-}
-
-function ticketStats() {
-    if (!dashboard.currentGuild) {
-        dashboard.showError('Nenhum servidor selecionado');
-        return;
-    }
-    
-    dashboard.showTicketStatistics();
 }
 
 function configureVerification() {
@@ -998,7 +990,8 @@ function viewAllTickets() {
         return;
     }
     
-    dashboard.showNotification('Visualização completa de tickets em desenvolvimento', 'info');
+    // Usar a função de tickets avançados já implementada
+    dashboard.loadAdvancedTickets();
 }
 
 // Additional CSS for notifications and ticket cards
@@ -1164,15 +1157,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Global functions for ticket system
 window.configureTickets = () => {
-    dashboard.showNotification('Configuração de tickets em desenvolvimento', 'info');
+    if (!dashboard.currentGuild) {
+        dashboard.showError('Selecione um servidor primeiro');
+        return;
+    }
+    
+    // Redirecionar para seção de configuração de tickets
+    const ticketSection = document.getElementById('ticket-configuration');
+    if (ticketSection) {
+        ticketSection.scrollIntoView({ behavior: 'smooth' });
+        dashboard.showNotification('Configure o sistema de tickets abaixo', 'info');
+    } else {
+        dashboard.showNotification('Painel de configuração em breve', 'info');
+    }
 };
 
 window.viewTickets = () => {
+    if (!dashboard.currentGuild) {
+        dashboard.showError('Selecione um servidor primeiro');
+        return;
+    }
     dashboard.loadAdvancedTickets();
 };
 
 window.ticketStats = () => {
-    dashboard.showNotification('Estatísticas detalhadas em desenvolvimento', 'info');
+    if (!dashboard.currentGuild) {
+        dashboard.showError('Selecione um servidor primeiro');
+        return;
+    }
+    dashboard.showTicketStatistics();
 };
 
 // Export for global access
