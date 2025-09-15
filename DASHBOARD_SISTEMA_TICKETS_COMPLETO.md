@@ -1,4 +1,4 @@
-# 🎉 DASHBOARD YSNM - SISTEMA DE TICKETS IMPLEMENTADO
+# 🎉 DASHBOARD IGNIS - SISTEMA DE TICKETS IMPLEMENTADO
 
 ## ✅ STATUS: COMPLETO E OPERACIONAL
 
@@ -113,7 +113,7 @@ handleTicketAction()        // Ações de tickets
 
 ### 🎯 Resultado Final
 
-O dashboard YSNM agora possui um **sistema completo de gestão de tickets** integrado ao Discord, com:
+O dashboard IGNIS agora possui um **sistema completo de gestão de tickets** integrado ao Discord, com:
 
 - **Interface moderna e responsiva**
 - **Funcionalidades completas** (visualizar, claim, fechar, adicionar notas)
