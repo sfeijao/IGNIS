@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IGNIS Bot - Dashboard</title>
+    <title>🔥 IGNIS Bot - Dashboard Avançado</title>
     <style>
         * {
             margin: 0;
@@ -12,125 +12,349 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0F1419 0%, #1a1a2e 100%);
-            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 25%, #21262d 50%, #30363d 75%, #161b22 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            color: #f0f6fc;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow-x: hidden;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #7c3aed;
+            border-radius: 50%;
+            opacity: 0.6;
+            animation: float 20s linear infinite;
+        }
+        
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.6;
+            }
+            90% {
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateY(-100vh) rotate(360deg);
+                opacity: 0;
+            }
         }
         
         .container {
-            max-width: 900px;
-            padding: 40px;
+            max-width: 1000px;
+            padding: 60px 40px;
             text-align: center;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-            border: 1px solid rgba(153, 50, 204, 0.3);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            background: rgba(13, 17, 23, 0.85);
+            border-radius: 24px;
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            backdrop-filter: blur(20px);
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(124, 58, 237, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+            z-index: 2;
+            animation: containerGlow 3s ease-in-out infinite alternate;
+        }
+        
+        @keyframes containerGlow {
+            0% { box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(124, 58, 237, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+            100% { box-shadow: 0 20px 60px rgba(124, 58, 237, 0.2), 0 0 0 1px rgba(124, 58, 237, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15); }
         }
         
         .logo {
-            font-size: 4rem;
+            font-size: 5rem;
             margin-bottom: 20px;
+            animation: logoSpin 10s ease-in-out infinite;
+            filter: drop-shadow(0 0 20px #7c3aed);
+        }
+        
+        @keyframes logoSpin {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(2deg) scale(1.05); }
+            75% { transform: rotate(-2deg) scale(1.05); }
         }
         
         h1 {
-            color: #9932CC;
-            font-size: 3rem;
+            background: linear-gradient(135deg, #7c3aed 0%, #a855f7 25%, #c084fc 50%, #e879f9 75%, #f0abfc 100%);
+            background-size: 300% 300%;
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: textGradient 4s ease infinite;
+            font-size: 3.5rem;
             margin-bottom: 20px;
-            font-weight: 700;
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+        
+        @keyframes textGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
         
         .subtitle {
-            font-size: 1.3rem;
-            color: #cdd6f4;
-            margin-bottom: 30px;
+            font-size: 1.4rem;
+            color: #8b949e;
+            margin-bottom: 40px;
             opacity: 0.9;
+            line-height: 1.6;
+            animation: fadeIn 1s ease-out 0.5s both;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 0.9; transform: translateY(0); }
         }
         
         .status-box {
-            background: rgba(0, 255, 0, 0.1);
-            border: 2px solid #00FF00;
-            border-radius: 10px;
-            padding: 20px;
-            margin: 30px 0;
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.15) 100%);
+            border: 2px solid;
+            border-image: linear-gradient(135deg, #22c55e, #10b981) 1;
+            border-radius: 16px;
+            padding: 25px;
+            margin: 40px 0;
+            position: relative;
+            overflow: hidden;
+            animation: statusPulse 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes statusPulse {
+            0% { border-image: linear-gradient(135deg, #22c55e, #10b981) 1; }
+            100% { border-image: linear-gradient(135deg, #10b981, #22c55e) 1; }
+        }
+        
+        .status-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.2), transparent);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .status-box h2 {
+            color: #22c55e;
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
         }
         
         .buttons {
             display: flex;
-            gap: 20px;
+            gap: 25px;
             justify-content: center;
             flex-wrap: wrap;
-            margin: 30px 0;
+            margin: 40px 0;
         }
         
         .btn {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            padding: 15px 30px;
-            background: linear-gradient(135deg, #7B68EE, #9932CC);
+            gap: 12px;
+            padding: 18px 36px;
+            background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%);
+            background-size: 200% 200%;
             color: white;
             text-decoration: none;
-            border-radius: 12px;
+            border-radius: 16px;
             font-weight: 600;
-            font-size: 1rem;
-            transition: all 0.3s ease;
+            font-size: 1.1rem;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
         
         .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(123, 104, 238, 0.3);
-            border-color: #7B68EE;
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 
+                0 20px 40px rgba(124, 58, 237, 0.4),
+                0 0 40px rgba(124, 58, 237, 0.3);
+            border-color: #a855f7;
+            background-position: 100% 100%;
+        }
+        
+        .btn:hover::before {
+            opacity: 1;
+        }
+        
+        .btn:active {
+            transform: translateY(-2px) scale(1.02);
         }
         
         .btn.secondary {
-            background: rgba(123, 104, 238, 0.2);
-            border: 2px solid #7B68EE;
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(168, 85, 247, 0.3) 100%);
+            border: 2px solid #7c3aed;
+            backdrop-filter: blur(10px);
+        }
+        
+        .btn.secondary:hover {
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.4) 0%, rgba(168, 85, 247, 0.5) 100%);
+            border-color: #a855f7;
         }
         
         .info {
-            margin-top: 40px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            border-left: 4px solid #9932CC;
+            margin-top: 50px;
+            padding: 30px;
+            background: linear-gradient(135deg, rgba(13, 17, 23, 0.8) 0%, rgba(22, 27, 34, 0.9) 100%);
+            border-radius: 20px;
+            border-left: 4px solid #7c3aed;
+            border-top: 1px solid rgba(124, 58, 237, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .info::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, #7c3aed, #a855f7, #c084fc);
+            animation: borderGlow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes borderGlow {
+            0% { box-shadow: 0 0 10px #7c3aed; }
+            100% { box-shadow: 0 0 20px #a855f7; }
+        }
+        
+        .info h3 {
+            color: #7c3aed;
+            font-size: 1.6rem;
+            margin-bottom: 20px;
+            font-weight: 700;
         }
         
         .features {
-            margin-top: 30px;
+            margin-top: 25px;
             text-align: left;
         }
         
         .features ul {
             list-style: none;
             padding: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
         }
         
         .features li {
-            padding: 8px 0;
+            padding: 15px;
             position: relative;
-            padding-left: 30px;
+            padding-left: 50px;
+            background: rgba(124, 58, 237, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(124, 58, 237, 0.2);
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        .features li:hover {
+            background: rgba(124, 58, 237, 0.1);
+            border-color: rgba(124, 58, 237, 0.4);
+            transform: translateX(5px);
         }
         
         .features li::before {
             content: "🔥";
             position: absolute;
-            left: 0;
+            left: 15px;
+            top: 15px;
+            font-size: 1.3rem;
+            animation: iconBounce 2s ease-in-out infinite;
+        }
+        
+        @keyframes iconBounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .stats {
+            margin-top: 40px;
+            padding: 25px;
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(168, 85, 247, 0.05));
+            border-radius: 16px;
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            font-size: 0.95rem;
+            color: #8b949e;
+        }
+        
+        .stats p {
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .stats strong {
+            color: #f0f6fc;
         }
         
         @media (max-width: 768px) {
             .container {
                 margin: 20px;
-                padding: 30px;
+                padding: 40px 30px;
             }
             
             h1 {
-                font-size: 2.5rem;
+                font-size: 2.8rem;
+            }
+            
+            .logo {
+                font-size: 4rem;
             }
             
             .buttons {
@@ -140,20 +364,52 @@
             
             .btn {
                 width: 100%;
-                max-width: 280px;
+                max-width: 320px;
+            }
+            
+            .features ul {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                margin: 10px;
+                padding: 30px 20px;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            .logo {
+                font-size: 3rem;
             }
         }
     </style>
 </head>
 <body>
+    <!-- Partículas de fundo -->
+    <div class="particles">
+        <div class="particle" style="left: 10%; animation-delay: 0s;"></div>
+        <div class="particle" style="left: 20%; animation-delay: 2s;"></div>
+        <div class="particle" style="left: 30%; animation-delay: 4s;"></div>
+        <div class="particle" style="left: 40%; animation-delay: 6s;"></div>
+        <div class="particle" style="left: 50%; animation-delay: 8s;"></div>
+        <div class="particle" style="left: 60%; animation-delay: 10s;"></div>
+        <div class="particle" style="left: 70%; animation-delay: 12s;"></div>
+        <div class="particle" style="left: 80%; animation-delay: 14s;"></div>
+        <div class="particle" style="left: 90%; animation-delay: 16s;"></div>
+    </div>
+
     <div class="container">
         <div class="logo">🔥</div>
         <h1>IGNIS Bot</h1>
-        <p class="subtitle">Sistema Avançado de Gestão para Discord</p>
+        <p class="subtitle">Sistema Avançado de Gestão para Discord<br>Potência, Elegância e Performance em Harmonia</p>
         
         <div class="status-box">
             <h2>✅ SISTEMA ONLINE</h2>
-            <p>Bot conectado e funcionando perfeitamente!</p>
+            <p>Bot conectado e funcionando perfeitamente! Todos os sistemas operacionais.</p>
         </div>
         
         <div class="buttons">
@@ -170,37 +426,94 @@
             <div class="features">
                 <ul>
                     <li>Sistema de Tickets Avançado</li>
-                    <li>Moderação Automática</li>
+                    <li>Moderação Automática Inteligente</li>
                     <li>Verificação de Membros</li>
                     <li>Gestão de Cargos e Tags</li>
-                    <li>Logs Detalhados</li>
+                    <li>Sistema de Logs Detalhados</li>
                     <li>Dashboard Web Completo</li>
                 </ul>
             </div>
         </div>
         
-        <div style="margin-top: 30px; font-size: 0.9rem; opacity: 0.7;">
+        <div class="stats">
             <p>🌐 <strong>URL:</strong> <span id="url"></span></p>
             <p>⏰ <strong>Carregado em:</strong> <span id="time"></span></p>
+            <p>🚀 <strong>Status:</strong> Totalmente Operacional</p>
         </div>
     </div>
 
     <script>
-        // Informações de debug
+        // Informações de debug e status
         document.getElementById('url').textContent = window.location.href;
-        document.getElementById('time').textContent = new Date().toLocaleString();
+        document.getElementById('time').textContent = new Date().toLocaleString('pt-PT', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
         
-        // Console log para debug
-        console.log('🔥 IGNIS Bot - Página carregada com sucesso!');
-        console.log('Timestamp:', new Date());
-        console.log('Location:', window.location.href);
+        // Console logs melhorados
+        console.log('%c🔥 IGNIS Bot - Dashboard Premium', 'color: #7c3aed; font-size: 20px; font-weight: bold;');
+        console.log('%c✅ Sistema carregado com sucesso!', 'color: #22c55e; font-size: 14px;');
+        console.log('%c📊 Timestamp:', new Date(), 'color: #8b949e;');
+        console.log('%c🌐 Location:', window.location.href, 'color: #8b949e;');
         
-        // Verificar se CSS está carregando
+        // Verificar se CSS está carregando corretamente
         setTimeout(() => {
             const computedStyle = window.getComputedStyle(document.body);
-            console.log('Background-color:', computedStyle.backgroundColor);
-            console.log('CSS carregado:', computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)');
-        }, 100);
+            const backgroundImage = computedStyle.backgroundImage;
+            
+            if (backgroundImage && backgroundImage !== 'none') {
+                console.log('%c🎨 CSS carregado corretamente!', 'color: #22c55e;');
+            } else {
+                console.warn('%c⚠️ Possível problema com CSS', 'color: #f59e0b;');
+            }
+        }, 500);
+        
+        // Efeito de partículas dinâmicas (opcional)
+        function createRandomParticle() {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 20 + 's';
+            particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+            
+            document.querySelector('.particles').appendChild(particle);
+            
+            // Remove a partícula após a animação
+            setTimeout(() => {
+                if (particle.parentNode) {
+                    particle.parentNode.removeChild(particle);
+                }
+            }, 25000);
+        }
+        
+        // Criar partículas ocasionais
+        setInterval(createRandomParticle, 3000);
+        
+        // Efeito de brilho nos botões
+        document.querySelectorAll('.btn').forEach(btn => {
+            btn.addEventListener('mouseenter', function() {
+                console.log('✨ Botão hover:', this.textContent.trim());
+            });
+        });
+        
+        // Status de conectividade
+        window.addEventListener('online', () => {
+            console.log('%c🌐 Conexão restaurada', 'color: #22c55e;');
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('%c❌ Conexão perdida', 'color: #ef4444;');
+        });
+        
+        // Performance tracking
+        window.addEventListener('load', () => {
+            const loadTime = performance.now();
+            console.log(`%c⚡ Página carregada em ${loadTime.toFixed(2)}ms`, 'color: #7c3aed;');
+        });
     </script>
 </body>
 </html>
