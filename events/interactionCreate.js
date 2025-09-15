@@ -950,6 +950,287 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
                     }
                     return;
                 }
+
+                // ========================================
+                // SISTEMA AVANÇADO DE PAINÉIS - NOVO
+                // ========================================
+                
+                // Handler para menu de seleção de categoria
+                if (customId === 'ticket_category_select') {
+                    try {
+                        const selectedCategory = interaction.values[0];
+                        const categoryType = selectedCategory.replace('ticket_', '');
+                        
+                        // Verificar se usuário já tem ticket aberto
+                        const existingTicket = interaction.guild.channels.cache.find(channel => 
+                            channel.name.includes(interaction.user.username.toLowerCase()) && 
+                            channel.name.includes('ticket')
+                        );
+                        
+                        if (existingTicket) {
+                            return await interaction.reply({
+                                content: `⚠️ **Ticket Existente**\\nVocê já possui um ticket aberto: ${existingTicket}\\nFeche o ticket atual antes de abrir um novo.`,
+                                ephemeral: true
+                            });
+                        }
+
+                        // Criar modal baseado na categoria
+                        const modal = new ModalBuilder()
+                            .setCustomId(`ticket_modal_${categoryType}`)
+                            .setTitle(`🎫 ${getCategoryDisplayName(categoryType)}`);
+
+                        const subjectInput = new TextInputBuilder()
+                            .setCustomId('ticket_subject')
+                            .setLabel('Assunto do Ticket')
+                            .setStyle(TextInputStyle.Short)
+                            .setPlaceholder('Descreva brevemente o motivo do contato...')
+                            .setRequired(true)
+                            .setMaxLength(100);
+
+                        const descriptionInput = new TextInputBuilder()
+                            .setCustomId('ticket_description')
+                            .setLabel('Descrição Detalhada')
+                            .setStyle(TextInputStyle.Paragraph)
+                            .setPlaceholder(getPlaceholderText(categoryType))
+                            .setRequired(true)
+                            .setMaxLength(1000);
+
+                        const priorityInput = new TextInputBuilder()
+                            .setCustomId('ticket_priority')
+                            .setLabel('Prioridade (baixa/média/alta)')
+                            .setStyle(TextInputStyle.Short)
+                            .setPlaceholder('baixa')
+                            .setRequired(false)
+                            .setMaxLength(10);
+
+                        modal.addComponents(
+                            new ActionRowBuilder().addComponents(subjectInput),
+                            new ActionRowBuilder().addComponents(descriptionInput),
+                            new ActionRowBuilder().addComponents(priorityInput)
+                        );
+
+                        await interaction.showModal(modal);
+                    } catch (error) {
+                        logger.error('Erro no menu de categoria:', error);
+                        await interaction.reply({
+                            content: '❌ Erro ao processar seleção. Tente novamente.',
+                            ephemeral: true
+                        });
+                    }
+                    return;
+                }
+
+                // Handler para botões de ação rápida
+                if (customId === 'ticket_emergency') {
+                    try {
+                        // Criar ticket de emergência imediatamente
+                        const category = await getOrCreateTicketCategory(interaction.guild);
+                        const channelName = `🚨emergency-${interaction.user.username}-${Date.now().toString().slice(-4)}`;
+
+                        const ticketChannel = await interaction.guild.channels.create({
+                            name: channelName,
+                            type: ChannelType.GuildText,
+                            parent: category.id,
+                            permissionOverwrites: [
+                                {
+                                    id: interaction.guild.id,
+                                    deny: [PermissionFlagsBits.ViewChannel]
+                                },
+                                {
+                                    id: interaction.user.id,
+                                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
+                                }
+                            ]
+                        });
+
+                        const emergencyEmbed = new EmbedBuilder()
+                            .setColor('#FF0000')
+                            .setTitle('🚨 TICKET DE EMERGÊNCIA')
+                            .setDescription([
+                                `**Usuário:** ${interaction.user}`,
+                                `**Criado:** <t:${Math.floor(Date.now() / 1000)}:R>`,
+                                '',
+                                '⚠️ **ATENÇÃO EQUIPE**',
+                                'Este é um ticket de emergência que requer atenção imediata.',
+                                '',
+                                'Por favor, descreva a situação de emergência:'
+                            ].join('\\n'))
+                            .setTimestamp();
+
+                        await ticketChannel.send({
+                            content: `${interaction.user} @here`,
+                            embeds: [emergencyEmbed]
+                        });
+
+                        await interaction.reply({
+                            content: `🚨 **Ticket de emergência criado:** ${ticketChannel}\\nNossa equipe foi notificada imediatamente.`,
+                            ephemeral: true
+                        });
+
+                    } catch (error) {
+                        logger.error('Erro ao criar ticket emergência:', error);
+                        await interaction.reply({
+                            content: '❌ Erro ao criar ticket de emergência. Contacte um administrador.',
+                            ephemeral: true
+                        });
+                    }
+                    return;
+                }
+
+                if (customId === 'ticket_status_check') {
+                    const statusEmbed = new EmbedBuilder()
+                        .setColor('#00D4AA')
+                        .setTitle('📊 Status do Sistema')
+                        .setDescription([
+                            '### 🟢 **SISTEMA OPERACIONAL**',
+                            '',
+                            '✅ **Bot:** Online',
+                            '✅ **Base de Dados:** Conectada', 
+                            '✅ **Tickets:** Funcionais',
+                            `✅ **Latência:** ${interaction.client.ws.ping}ms`,
+                            '',
+                            `🎫 **Tickets Ativos:** ${interaction.guild.channels.cache.filter(c => c.name.includes('ticket')).size}`,
+                            `👥 **Staff Online:** ${interaction.guild.members.cache.filter(m => !m.user.bot && m.presence?.status !== 'offline').size}`
+                        ].join('\\n'))
+                        .setTimestamp();
+
+                    await interaction.reply({ embeds: [statusEmbed], ephemeral: true });
+                    return;
+                }
+
+                if (customId === 'ticket_my_tickets') {
+                    const userTickets = interaction.guild.channels.cache.filter(channel => 
+                        channel.name.includes(interaction.user.username.toLowerCase()) && 
+                        channel.name.includes('ticket')
+                    );
+
+                    const ticketsEmbed = new EmbedBuilder()
+                        .setColor('#5865F2')
+                        .setTitle('📋 Meus Tickets')
+                        .setDescription(
+                            userTickets.size > 0 
+                                ? `Você possui **${userTickets.size}** ticket(s) ativo(s):\\n${userTickets.map(t => `• ${t}`).join('\\n')}`
+                                : 'Você não possui tickets ativos no momento.'
+                        )
+                        .setTimestamp();
+
+                    await interaction.reply({ embeds: [ticketsEmbed], ephemeral: true });
+                    return;
+                }
+
+                if (customId === 'ticket_faq') {
+                    const faqEmbed = new EmbedBuilder()
+                        .setColor('#FEE75C')
+                        .setTitle('❓ Perguntas Frequentes')
+                        .setDescription([
+                            '### 🔍 **DÚVIDAS COMUNS**',
+                            '',
+                            '**P:** Como abrir um ticket?',
+                            '**R:** Use o menu acima e selecione a categoria adequada.',
+                            '',
+                            '**P:** Quanto tempo demora o atendimento?',
+                            '**R:** Nossa meta é responder em até 15 minutos.',
+                            '',
+                            '**P:** Posso ter múltiplos tickets?',
+                            '**R:** Apenas um ticket por usuário por vez.',
+                            '',
+                            '**P:** Como fechar um ticket?',
+                            '**R:** Clique no botão "Fechar Ticket" ou peça ao staff.',
+                            '',
+                            '💡 **Ainda com dúvidas?** Abra um ticket na categoria "Ajuda Geral"'
+                        ].join('\\n'))
+                        .setTimestamp();
+
+                    await interaction.reply({ embeds: [faqEmbed], ephemeral: true });
+                    return;
+                }
+
+                // Handler para modais do sistema avançado
+                if (customId.startsWith('ticket_modal_')) {
+                    try {
+                        const categoryType = customId.replace('ticket_modal_', '');
+                        const subject = interaction.fields.getTextInputValue('ticket_subject');
+                        const description = interaction.fields.getTextInputValue('ticket_description');
+                        const priority = interaction.fields.getTextInputValue('ticket_priority') || 'média';
+
+                        await interaction.deferReply({ ephemeral: true });
+
+                        // Criar ticket avançado
+                        const category = await getOrCreateTicketCategory(interaction.guild);
+                        const channelName = `${getCategoryEmoji(categoryType)}-${categoryType}-${interaction.user.username}-${Date.now().toString().slice(-4)}`;
+
+                        const ticketChannel = await interaction.guild.channels.create({
+                            name: channelName,
+                            type: ChannelType.GuildText,
+                            parent: category.id,
+                            topic: `Ticket: ${subject} | Usuário: ${interaction.user.tag} | Prioridade: ${priority}`,
+                            permissionOverwrites: [
+                                {
+                                    id: interaction.guild.id,
+                                    deny: [PermissionFlagsBits.ViewChannel]
+                                },
+                                {
+                                    id: interaction.user.id,
+                                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
+                                }
+                            ]
+                        });
+
+                        // Embed do ticket
+                        const ticketEmbed = new EmbedBuilder()
+                            .setColor(getPriorityColor(priority))
+                            .setTitle(`🎫 ${getCategoryDisplayName(categoryType)}`)
+                            .setDescription([
+                                `**📋 Assunto:** ${subject}`,
+                                `**👤 Usuário:** ${interaction.user}`,
+                                `**🏷️ Categoria:** ${getCategoryDisplayName(categoryType)}`,
+                                `**⚡ Prioridade:** ${priority.toUpperCase()}`,
+                                `**📅 Criado:** <t:${Math.floor(Date.now() / 1000)}:R>`,
+                                '',
+                                '**📝 Descrição:**',
+                                description
+                            ].join('\\n'))
+                            .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
+                            .setTimestamp();
+
+                        // Botões de controle
+                        const controlButtons = new ActionRowBuilder()
+                            .addComponents(
+                                new ButtonBuilder()
+                                    .setCustomId('ticket_claim')
+                                    .setLabel('Assumir Ticket')
+                                    .setEmoji('✋')
+                                    .setStyle(ButtonStyle.Primary),
+                                new ButtonBuilder()
+                                    .setCustomId('ticket_close')
+                                    .setLabel('Fechar Ticket')
+                                    .setEmoji('🔒')
+                                    .setStyle(ButtonStyle.Danger),
+                                new ButtonBuilder()
+                                    .setCustomId('ticket_priority_change')
+                                    .setLabel('Alterar Prioridade')
+                                    .setEmoji('⚡')
+                                    .setStyle(ButtonStyle.Secondary)
+                            );
+
+                        await ticketChannel.send({
+                            content: `${interaction.user} Ticket criado com sucesso! A equipe será notificada.`,
+                            embeds: [ticketEmbed],
+                            components: [controlButtons]
+                        });
+
+                        await interaction.editReply({
+                            content: `✅ **Ticket criado com sucesso!**\\n🎫 **Canal:** ${ticketChannel}\\n⚡ **Prioridade:** ${priority}`
+                        });
+
+                    } catch (error) {
+                        logger.error('Erro ao criar ticket via modal:', error);
+                        await interaction.editReply({
+                            content: '❌ Erro ao criar ticket. Contacte um administrador.'
+                        });
+                    }
+                    return;
+                }
             }
 
         } catch (error) {
@@ -957,3 +1238,72 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
         }
     }
 };
+
+// Funções auxiliares para o sistema avançado
+function getCategoryDisplayName(category) {
+    const names = {
+        'technical': 'Suporte Técnico',
+        'account': 'Problemas de Conta', 
+        'report': 'Denúncia',
+        'suggestion': 'Sugestão',
+        'support': 'Suporte Geral',
+        'billing': 'Financeiro',
+        'feedback': 'Feedback',
+        'partnership': 'Parcerias',
+        'bug': 'Report de Bug',
+        'appeal': 'Recurso',
+        'general': 'Ajuda Geral',
+        'staff': 'Candidatura Staff',
+        'vip': 'Suporte VIP',
+        'premium': 'Premium Support',
+        'urgent': 'Urgente',
+        'private': 'Privado'
+    };
+    return names[category] || 'Ticket Geral';
+}
+
+function getCategoryEmoji(category) {
+    const emojis = {
+        'technical': '🔧',
+        'account': '👤',
+        'report': '🚫', 
+        'suggestion': '💡',
+        'support': '💻',
+        'billing': '💰',
+        'feedback': '📝',
+        'partnership': '🤝',
+        'bug': '🐛',
+        'appeal': '⚖️',
+        'general': '❓',
+        'staff': '👑',
+        'vip': '👑',
+        'premium': '💎',
+        'urgent': '🚨',
+        'private': '🔒'
+    };
+    return emojis[category] || '🎫';
+}
+
+function getPlaceholderText(category) {
+    const placeholders = {
+        'technical': 'Descreva o problema técnico que está enfrentando...',
+        'account': 'Explique qual problema está tendo com sua conta...',
+        'report': 'Descreva detalhadamente o que deseja reportar...',
+        'suggestion': 'Compartilhe sua ideia ou sugestão de melhoria...',
+        'support': 'Explique como podemos ajudá-lo...',
+        'billing': 'Descreva sua questão financeira ou de pagamento...',
+        'feedback': 'Compartilhe seu feedback sobre nossos serviços...',
+        'partnership': 'Descreva sua proposta de parceria...'
+    };
+    return placeholders[category] || 'Descreva detalhadamente sua solicitação...';
+}
+
+function getPriorityColor(priority) {
+    const colors = {
+        'baixa': '#00D4AA',
+        'média': '#FEE75C', 
+        'alta': '#FF6B6B',
+        'urgente': '#FF0000'
+    };
+    return colors[priority.toLowerCase()] || colors['média'];
+}
