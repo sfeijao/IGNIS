@@ -45,7 +45,7 @@ class TicketManager {
             if (resultado.success) {
                 logger.info(`✅ Log '${logType}' enviado com sucesso`);
             } else {
-                logger.warn(`⚠️ Log '${logType}' não enviado: ${resultado.reason || resultado.error}`);
+                logger.warn(`⚠️ Log '${logType}' nao enviado: ${resultado.reason || resultado.error}`);
             }
             
             return resultado.success;
@@ -117,9 +117,9 @@ class TicketManager {
                     .setDescription(`Ticket encerrado por ${getUserDisplayName(dados.closedBy, dados.guild)}`)
                     .addFields(
                         { name: '🆔 ID', value: dados.ticketId, inline: true },
-                        { name: '⏱️ Duração', value: dados.duration || 'N/A', inline: true },
+                        { name: '⏱️ Duracao', value: dados.duration || 'N/A', inline: true },
                         { name: '🏷️ Servidor', value: servidorOrigem.toUpperCase(), inline: true },
-                        { name: '📝 Motivo', value: dados.reason || 'Não especificado' }
+                        { name: '📝 Motivo', value: dados.reason || 'Nao especificado' }
                     );
 
                 if (dados.files && dados.files.length > 0) {
@@ -193,15 +193,15 @@ class TicketManager {
             .setColor('#5865F2') // Discord Blurple moderno e elegante
             .setTitle('🎫 TICKET DE SUPORTE PREMIUM')
             .setDescription([
-                '### 🚀 **SISTEMA DE ATENDIMENTO AVANÇADO**',
+                '### 🚀 **SISTEMA DE ATENDIMENTO AVANCADO**',
                 '',
                 '> **🎯 Bem-vindo ao nosso sistema de suporte profissional!**',
-                '> Sua solicitação foi registrada com sucesso e nossa equipe especializada foi notificada automaticamente.',
+                '> Sua solicitacao foi registrada com sucesso e nossa equipe especializada foi notificada automaticamente.',
                 '',
-                '### ⚡ **GARANTIAS DO NOSSO SERVIÇO:**',
+                '### ⚡ **GARANTIAS DO NOSSO SERVICO:**',
                 '',
                 '🟢 **Tempo de Resposta:** `≤ 15 minutos`',
-                '🎯 **Resolução Média:** `45 minutos`',
+                '🎯 **Resolucao Media:** `45 minutos`',
                 '🛡️ **Disponibilidade:** `24/7`',
                 '🔒 **Privacidade:** `100% Protegida`',
                 '📊 **Rastreamento:** `Completo e Transparente`',
@@ -299,8 +299,8 @@ class TicketManager {
                 `🎯 <@${user.id}> **Ticket Premium Criado!**`,
                 '',
                 '### 🚀 **SISTEMA ATIVO**',
-                '✅ **Notificação enviada** - Staff será alertado automaticamente',
-                '📊 **Rastreamento ativo** - Todas as interações são monitoradas',
+                '✅ **Notificacao enviada** - Staff sera alertado automaticamente',
+                '📊 **Rastreamento ativo** - Todas as interacoes sao monitoradas',
                 '🛡️ **Privacidade garantida** - Canal exclusivo e seguro',
                 '',
                 '**💡 Dica:** Use os botões abaixo para interagir com o ticket'
