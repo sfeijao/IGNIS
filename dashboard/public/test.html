@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGNIS Bot - Teste Simples</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            font-family: Arial, sans-serif;
+            background: #0F1419;
+            color: #fff;
+            text-align: center;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            background: rgba(153, 50, 204, 0.1);
+            border-radius: 12px;
+            border: 2px solid #9932CC;
+        }
+        h1 {
+            color: #9932CC;
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 15px 30px;
+            margin: 10px;
+            background: #7B68EE;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #9932CC;
+        }
+        .status {
+            background: rgba(0, 255, 0, 0.2);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #00FF00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 IGNIS Bot</h1>
+        <div class="status">
+            <h2>✅ SISTEMA FUNCIONANDO</h2>
+            <p>Se você consegue ver esta página, o Railway está funcionando perfeitamente!</p>
+        </div>
+        
+        <h3>🚀 Acesso ao Dashboard</h3>
+        <p>Clique no botão abaixo para acessar o dashboard principal:</p>
+        
+        <a href="/login" class="btn">🔑 Fazer Login</a>
+        <a href="/dashboard" class="btn">📊 Dashboard</a>
+        <a href="/auth/debug" class="btn">🔧 Debug OAuth</a>
+        
+        <div style="margin-top: 40px; padding: 20px; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
+            <h3>🔍 Informações de Diagnóstico</h3>
+            <p><strong>Data/Hora:</strong> <span id="datetime"></span></p>
+            <p><strong>URL Atual:</strong> <span id="current-url"></span></p>
+            <p><strong>User Agent:</strong> <span id="user-agent"></span></p>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <h3>📋 Links Úteis</h3>
+            <a href="https://github.com/sfeijao/IGNIS" class="btn">GitHub</a>
+            <a href="/health" class="btn">Health Check</a>
+        </div>
+    </div>
+
+    <script>
+        // Preencher informações de diagnóstico
+        document.getElementById('datetime').textContent = new Date().toLocaleString();
+        document.getElementById('current-url').textContent = window.location.href;
+        document.getElementById('user-agent').textContent = navigator.userAgent.substring(0, 100) + '...';
+        
+        // Log para debug
+        console.log('🔥 IGNIS Bot - Página de teste carregada com sucesso!');
+        console.log('Timestamp:', new Date());
+        console.log('URL:', window.location.href);
+    </script>
+</body>
+</html>
