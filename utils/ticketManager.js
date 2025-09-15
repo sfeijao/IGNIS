@@ -257,7 +257,7 @@ class TicketManager {
                 .setCustomId('ticket_claim')
                 .setLabel('Atender Ticket')
                 .setStyle(ButtonStyle.Success)
-                .setEmoji('�‍💼'),
+                .setEmoji('�'),
             new ButtonBuilder()
                 .setCustomId('ticket_priority')
                 .setLabel('Definir Prioridade')
@@ -272,7 +272,7 @@ class TicketManager {
                 .setCustomId('ticket_close')
                 .setLabel('Fechar')
                 .setStyle(ButtonStyle.Danger)
-                .setEmoji('�')
+                .setEmoji('🔒')
         );
 
         // Painel de gestão de utilizadores

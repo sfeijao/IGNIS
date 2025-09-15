@@ -149,12 +149,27 @@ class TicketPermissionManager {
                 this.config = { ...this.defaultConfig };
             } else {
                 const data = await fs.readFile(this.configPath, 'utf8');
-                this.config = { ...this.defaultConfig, ...JSON.parse(data) };
+                
+                // Verificar se o arquivo não está vazio
+                if (!data.trim()) {
+                    logger.warn('Arquivo de configuração vazio, criando configuração padrão');
+                    await this.saveConfig(this.defaultConfig);
+                    this.config = { ...this.defaultConfig };
+                } else {
+                    this.config = { ...this.defaultConfig, ...JSON.parse(data) };
+                }
             }
             
             logger.info('Configuração de permissões carregada');
         } catch (error) {
             logger.error('Erro ao carregar configuração de permissões:', error);
+            // Se houve erro, recriar o arquivo com configuração padrão
+            try {
+                await this.saveConfig(this.defaultConfig);
+                logger.info('Configuração padrão restaurada');
+            } catch (saveError) {
+                logger.error('Erro ao salvar configuração padrão:', saveError);
+            }
             this.config = { ...this.defaultConfig };
         }
     }
