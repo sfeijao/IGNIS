@@ -95,25 +95,10 @@ module.exports = {
                         .setStyle(ButtonStyle.Secondary)
                 );
 
-            // Segunda linha com botões informativos
-            const row2 = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('ticket_status_info')
-                        .setLabel('Status do Sistema')
-                        .setEmoji('📊')
-                        .setStyle(ButtonStyle.Success),
-                    new ButtonBuilder()
-                        .setCustomId('ticket_info_support')
-                        .setLabel('Informações')
-                        .setEmoji('💼')
-                        .setStyle(ButtonStyle.Secondary)
-                );
-
             // Enviar painel no canal especificado
             const message = await targetChannel.send({
                 embeds: [embed],
-                components: [row1, row2]
+                components: [row1]
             });
 
             // Embed de confirmação profissional

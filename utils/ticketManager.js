@@ -190,88 +190,103 @@ class TicketManager {
 
         // Send initial message in the channel
         const embed = new EmbedBuilder()
-            .setColor(0x3498DB) // Azul profissional
-            .setTitle('🎫 Sistema de Suporte Avançado')
+            .setColor('#5865F2') // Discord Blurple moderno e elegante
+            .setTitle('🎫 TICKET DE SUPORTE PREMIUM')
             .setDescription([
-                '### 🛡️ **Ticket Criado com Sucesso!**',
+                '### � **SISTEMA DE ATENDIMENTO AVANÇADO**',
                 '',
-                '**Como funciona o nosso sistema:**',
-                '• ⚡ **Resposta Rápida** - Nossa equipe responderá em breve',
-                '• 🔒 **Privacidade Total** - Apenas você e nossa equipe podem ver',
-                '• 📊 **Rastreamento** - Histórico completo de interações',
+                '> **🎯 Bem-vindo ao nosso sistema de suporte profissional!**',
+                '> Sua solicitação foi registrada com sucesso e nossa equipe especializada foi notificada automaticamente.',
                 '',
-                '**📋 Instruções:**',
-                '1️⃣ Descreva seu problema com **máximo de detalhes**',
-                '2️⃣ Inclua prints/evidências se necessário',
-                '3️⃣ Mantenha-se disponível para esclarecimentos',
+                '### ⚡ **GARANTIAS DO NOSSO SERVIÇO:**',
                 '',
-                '🎯 **Nosso compromisso: Solução eficiente e profissional!**'
+                '� **Tempo de Resposta:** `≤ 15 minutos`',
+                '🎯 **Resolução Média:** `45 minutos`',
+                '🛡️ **Disponibilidade:** `24/7`',
+                '🔒 **Privacidade:** `100% Protegida`',
+                '📊 **Rastreamento:** `Completo e Transparente`',
+                '',
+                '### 📋 **COMO PROCEDER:**',
+                '',
+                '**1.** 📝 **Descreva** seu problema com o máximo de detalhes',
+                '**2.** 📎 **Anexe evidências** (screenshots, logs, vídeos)',
+                '**3.** ⏰ **Aguarde** - Um especialista assumirá em breve',
+                '**4.** 💬 **Mantenha-se disponível** para esclarecimentos',
+                '',
+                '💼 *Histórico completo mantido para garantir excelência no atendimento*'
             ].join('\n'))
             .addFields(
                 { 
-                    name: '👤 Utilizador', 
-                    value: `${getUserDisplayName(user, guild) || 'Desconhecido'}\n🆔 \`${user.id}\``, 
+                    name: '👤 SOLICITANTE', 
+                    value: [
+                        `**Nome:** ${getUserDisplayName(user, guild) || 'Desconhecido'}`,
+                        `**Tag:** \`${user.tag}\``,
+                        `**ID:** \`${user.id}\``
+                    ].join('\n'), 
                     inline: true 
                 },
                 { 
-                    name: '🎫 Informações do Ticket', 
-                    value: `**ID:** \`${ticket.id || Date.now()}\`\n**Categoria:** ${ticket.type || 'Geral'}`, 
+                    name: '🎫 DETALHES DO TICKET', 
+                    value: [
+                        `**Ticket ID:** \`#${String(ticket.id || Date.now()).slice(-6)}\``,
+                        `**Categoria:** \`${ticket.type || 'Suporte Geral'}\``,
+                        `**Prioridade:** \`🟡 Normal\``
+                    ].join('\n'), 
                     inline: true 
                 },
                 { 
-                    name: '📅 Criado em', 
-                    value: `<t:${Math.floor(Date.now() / 1000)}:F>\n<t:${Math.floor(Date.now() / 1000)}:R>`, 
+                    name: '⏰ INFORMAÇÕES TEMPORAIS', 
+                    value: [
+                        `**Criado:** <t:${Math.floor(Date.now() / 1000)}:f>`,
+                        `**Há:** <t:${Math.floor(Date.now() / 1000)}:R>`,
+                        `**Status:** \`🟡 Aguardando Atendimento\``
+                    ].join('\n'), 
                     inline: true 
-                },
-                {
-                    name: '🌟 Status do Atendimento',
-                    value: '```🟡 Aguardando Staff```',
-                    inline: false
                 }
             )
-            .setThumbnail('https://cdn.discordapp.com/attachments/1234567890/placeholder-ticket-icon.png')
+            .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
             .setFooter({ 
-                text: '🔒 Ticket Privado | Sistema Avançado de Suporte',
+                text: `${guild.name} • Sistema de Tickets Avançado • YSNM v2.5 Premium`,
                 iconURL: guild.iconURL({ dynamic: true })
             })
             .setTimestamp();
 
-        // Painel de controle avançado
-        const controlPanel = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('ticket_close')
-                .setLabel('Fechar Ticket')
-                .setStyle(ButtonStyle.Danger)
-                .setEmoji('🔒'),
+        // Painel de controle principal - Design Premium
+        const mainControlPanel = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('ticket_claim')
                 .setLabel('Atender Ticket')
                 .setStyle(ButtonStyle.Success)
-                .setEmoji('👋'),
+                .setEmoji('�‍💼'),
             new ButtonBuilder()
                 .setCustomId('ticket_priority')
-                .setLabel('Alterar Prioridade')
-                .setStyle(ButtonStyle.Secondary)
+                .setLabel('Definir Prioridade')
+                .setStyle(ButtonStyle.Primary)
                 .setEmoji('⚡'),
             new ButtonBuilder()
                 .setCustomId('ticket_transcript')
-                .setLabel('Gerar Transcrição')
+                .setLabel('Transcrição')
                 .setStyle(ButtonStyle.Secondary)
-                .setEmoji('📄')
+                .setEmoji('📋'),
+            new ButtonBuilder()
+                .setCustomId('ticket_close')
+                .setLabel('Fechar')
+                .setStyle(ButtonStyle.Danger)
+                .setEmoji('�')
         );
 
-        // Segunda linha de botões
-        const utilityPanel = new ActionRowBuilder().addComponents(
+        // Painel de gestão de utilizadores
+        const userManagementPanel = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('ticket_add_user')
                 .setLabel('Adicionar Utilizador')
                 .setStyle(ButtonStyle.Primary)
-                .setEmoji('➕'),
+                .setEmoji('👥'),
             new ButtonBuilder()
                 .setCustomId('ticket_remove_user')
                 .setLabel('Remover Utilizador')
                 .setStyle(ButtonStyle.Secondary)
-                .setEmoji('➖'),
+                .setEmoji('👤'),
             new ButtonBuilder()
                 .setCustomId('ticket_rename')
                 .setLabel('Renomear Canal')
@@ -280,9 +295,18 @@ class TicketManager {
         );
 
         await channel.send({
-            content: `🎯 <@${user.id}> **Bem-vindo ao sistema de suporte!**\n\n🛡️ **Ticket criado com sucesso** - Nossa equipe foi notificada automaticamente.`,
+            content: [
+                `🎯 <@${user.id}> **Ticket Premium Criado!**`,
+                '',
+                '### 🚀 **SISTEMA ATIVO**',
+                '✅ **Notificação enviada** - Staff será alertado automaticamente',
+                '📊 **Rastreamento ativo** - Todas as interações são monitoradas',
+                '🛡️ **Privacidade garantida** - Canal exclusivo e seguro',
+                '',
+                '**💡 Dica:** Use os botões abaixo para interagir com o ticket'
+            ].join('\n'),
             embeds: [embed],
-            components: [controlPanel, utilityPanel]
+            components: [mainControlPanel, userManagementPanel]
         });
 
         return channel;
@@ -394,6 +418,37 @@ class TicketManager {
                 last_activity: new Date().toISOString()
             });
 
+            // Renomear canal automaticamente: (tipo-ticket)-(nome-do-staff)
+            try {
+                const staffName = interaction.user.username.toLowerCase()
+                    .replace(/[^a-z0-9]/g, '-')
+                    .replace(/-+/g, '-')
+                    .replace(/^-|-$/g, '');
+                
+                // Mapear tipos de ticket para nomes mais limpos
+                const typeMap = {
+                    'technical': 'suporte',
+                    'incident': 'problema',
+                    'moderation': 'moderacao',
+                    'support': 'ajuda',
+                    'bug': 'bug',
+                    'general': 'geral'
+                };
+                
+                const ticketType = typeMap[ticket.type] || ticket.type || 'ticket';
+                const ticketTypeClean = ticketType.toLowerCase()
+                    .replace(/[^a-z0-9]/g, '-')
+                    .replace(/-+/g, '-')
+                    .replace(/^-|-$/g, '');
+                
+                const newChannelName = `${ticketTypeClean}-${staffName}`;
+                
+                await interaction.channel.setName(newChannelName);
+                logger.info(`Canal renomeado para: ${newChannelName} (ticket assumido por ${interaction.user.tag})`);
+            } catch (error) {
+                logger.warn('Erro ao renomear canal automaticamente:', error);
+            }
+
             // Send webhook log
             await this.enviarLog(interaction.guildId, 'update', {
                 ticketId: ticket.id,
@@ -402,25 +457,69 @@ class TicketManager {
                 guild: interaction.guild
             });
 
-            // Update channel message
-            const embed = new EmbedBuilder()
-                .setColor(0xffa500)
-                .setTitle('🎫 Ticket em Atendimento')
-                .setDescription(`Ticket sendo atendido por ${getUserDisplayName(interaction.user, interaction.guild)}`)
+            // Update channel message - Design melhorado
+            const claimEmbed = new EmbedBuilder()
+                .setColor('#00D26A') // Verde sucesso brilhante
+                .setTitle('👨‍💼 TICKET ASSUMIDO PELO STAFF')
+                .setDescription([
+                    '### ✅ **ATENDIMENTO INICIADO**',
+                    '',
+                    `> **${getUserDisplayName(interaction.user, interaction.guild)}** assumiu o atendimento deste ticket`,
+                    '> O processo de resolução foi oficialmente iniciado.',
+                    '',
+                    '### 🎯 **PRÓXIMOS PASSOS:**',
+                    '',
+                    '**1.** 🔍 **Análise detalhada** do problema reportado',
+                    '**2.** 💬 **Comunicação direta** com esclarecimentos',
+                    '**3.** 🔧 **Implementação** da solução adequada',
+                    '**4.** ✅ **Verificação** e fechamento do ticket',
+                    '',
+                    '💡 *Mantenha-se ativo no canal para agilizar o processo*'
+                ].join('\n'))
                 .addFields(
-                    { name: 'ID do Ticket', value: String(ticket.id || Date.now()), inline: true },
-                    { name: 'Status', value: 'Em atendimento', inline: true }
+                    { 
+                        name: '👤 RESPONSÁVEL', 
+                        value: [
+                            `**Staff:** ${getUserDisplayName(interaction.user, interaction.guild)}`,
+                            `**Tag:** \`${interaction.user.tag}\``,
+                            `**ID:** \`${interaction.user.id}\``
+                        ].join('\n'), 
+                        inline: true 
+                    },
+                    { 
+                        name: '🎫 STATUS ATUALIZADO', 
+                        value: [
+                            `**Ticket ID:** \`#${String(ticket.id || Date.now()).slice(-6)}\``,
+                            `**Status:** \`🟢 Em Atendimento\``,
+                            `**Prioridade:** \`🟡 Normal\``
+                        ].join('\n'), 
+                        inline: true 
+                    },
+                    {
+                        name: '⏰ TIMELINE',
+                        value: [
+                            `**Assumido:** <t:${Math.floor(Date.now() / 1000)}:f>`,
+                            `**Há:** <t:${Math.floor(Date.now() / 1000)}:R>`,
+                            `**Canal renomeado:** Automaticamente`
+                        ].join('\n'),
+                        inline: true
+                    }
                 )
+                .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
+                .setFooter({ 
+                    text: `${interaction.guild.name} • Staff em Ação • YSNM v2.5`,
+                    iconURL: interaction.guild.iconURL({ dynamic: true })
+                })
                 .setTimestamp();
 
             await interaction.editReply({
-                content: `✅ Você assumiu o atendimento deste ticket.`,
+                content: `✅ **Atendimento assumido com sucesso!** Você agora é responsável por este ticket.`,
                 ephemeral: true
             });
 
             await interaction.channel.send({
-                content: `📝 Ticket assumido por ${interaction.user}`,
-                embeds: [embed]
+                content: `� **ATENÇÃO:** Staff assumiu o atendimento! <@${ticket.user_id}>`,
+                embeds: [claimEmbed]
             });
 
             return ticket;

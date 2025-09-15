@@ -161,6 +161,9 @@ module.exports = {
                 } else if (interaction.customId === 'ticket_remove_user_modal') {
                     await handleRemoveUserModal(interaction);
                     return;
+                } else if (interaction.customId === 'ticket_rename_modal') {
+                    await handleRenameModal(interaction);
+                    return;
                 }
             }
 
@@ -538,17 +541,33 @@ async function handleRemoveUser(interaction) {
 
 // Handler para renomear o canal do ticket
 async function handleTicketRename(interaction) {
-    const embed = new EmbedBuilder()
-        .setColor(0x9B59B6)
-        .setTitle('✏️ Renomear Canal do Ticket')
-        .setDescription('Para renomear este canal, envie o novo nome na próxima mensagem.\n\n**Formato atual:** `ticket-utilizador-categoria`\n**Exemplo:** `ticket-suporte-técnico`')
-        .addFields(
-            { name: '📝 Regras', value: '• Apenas letras, números e hífens\n• Máximo 100 caracteres\n• Mínimo 2 caracteres', inline: false }
-        );
+    const modal = new ModalBuilder()
+        .setCustomId('ticket_rename_modal')
+        .setTitle('✏️ Renomear Canal do Ticket');
 
-    await interaction.editReply({
-        embeds: [embed]
-    });
+    const nameInput = new TextInputBuilder()
+        .setCustomId('new_channel_name')
+        .setLabel('Novo Nome do Canal')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('Ex: suporte-tecnico, problema-login, bug-reportado')
+        .setRequired(true)
+        .setMinLength(2)
+        .setMaxLength(50);
+
+    const reasonInput = new TextInputBuilder()
+        .setCustomId('rename_reason')
+        .setLabel('Motivo da Alteração (Opcional)')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('Motivo para renomear o canal...')
+        .setRequired(false)
+        .setMaxLength(100);
+
+    const firstRow = new ActionRowBuilder().addComponents(nameInput);
+    const secondRow = new ActionRowBuilder().addComponents(reasonInput);
+    
+    modal.addComponents(firstRow, secondRow);
+    
+    await interaction.showModal(modal);
 }
 
 // Handler para seleção de prioridade
@@ -814,6 +833,99 @@ async function handleRemoveUserModal(interaction) {
         logger.error('Erro ao remover utilizador do ticket:', error);
         await interaction.editReply({
             content: '❌ Erro ao remover utilizador. Verifique as permissões do bot.',
+            flags: MessageFlags.Ephemeral
+        });
+    }
+}
+
+// Handler para processar o modal de renomeação
+async function handleRenameModal(interaction) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    
+    try {
+        const newName = interaction.fields.getTextInputValue('new_channel_name');
+        const reason = interaction.fields.getTextInputValue('rename_reason') || 'Não especificado';
+        
+        // Validar o nome
+        const cleanName = newName.toLowerCase()
+            .replace(/[^a-z0-9\-]/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '');
+            
+        if (cleanName.length < 2) {
+            return await interaction.editReply({
+                content: '❌ Nome inválido. Use pelo menos 2 caracteres válidos.',
+                flags: MessageFlags.Ephemeral
+            });
+        }
+        
+        const channel = interaction.channel;
+        const oldName = channel.name;
+        
+        // Renomear o canal
+        await channel.setName(cleanName);
+        
+        // Embed de confirmação profissional
+        const renameEmbed = new EmbedBuilder()
+            .setColor('#9B59B6')
+            .setTitle('✏️ Canal Renomeado com Sucesso')
+            .setDescription([
+                '### 🔄 **ALTERAÇÃO DE NOME REALIZADA**',
+                '',
+                `> O canal foi renomeado conforme solicitado`,
+                '> Todas as permissões e configurações foram mantidas.',
+                '',
+                '### 📋 **DETALHES DA ALTERAÇÃO:**',
+                '',
+                `**Nome anterior:** \`${oldName}\``,
+                `**Nome atual:** \`${cleanName}\``,
+                `**Motivo:** ${reason}`,
+                `**Alterado por:** ${interaction.user.tag}`,
+                '',
+                '> *Esta ação foi registrada no sistema de logs para auditoria*'
+            ].join('\n'))
+            .addFields(
+                {
+                    name: '👤 RESPONSÁVEL',
+                    value: [
+                        `**Staff:** ${interaction.user.tag}`,
+                        `**ID:** \`${interaction.user.id}\``,
+                        `**Data:** <t:${Math.floor(Date.now() / 1000)}:f>`
+                    ].join('\n'),
+                    inline: true
+                },
+                {
+                    name: '📝 INFORMAÇÕES',
+                    value: [
+                        `**Canal:** #${cleanName}`,
+                        `**Categoria:** Ticket de Suporte`,
+                        `**Status:** Ativo e Funcional`
+                    ].join('\n'),
+                    inline: true
+                }
+            )
+            .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
+            .setFooter({ 
+                text: '🛡️ Sistema de Gestão de Tickets | Ação de Moderação',
+                iconURL: interaction.guild.iconURL({ dynamic: true })
+            })
+            .setTimestamp();
+        
+        await interaction.editReply({
+            content: '✅ Canal renomeado com sucesso!',
+            flags: MessageFlags.Ephemeral
+        });
+        
+        await channel.send({
+            embeds: [renameEmbed]
+        });
+        
+        logger.info(`✏️ Canal ${oldName} renomeado para ${cleanName} por ${interaction.user.tag}`);
+        
+    } catch (error) {
+        logger.error('Erro ao renomear canal:', error);
+        await interaction.editReply({
+            content: '❌ Erro ao renomear canal. Verifique as permissões do bot.',
             flags: MessageFlags.Ephemeral
         });
     }
