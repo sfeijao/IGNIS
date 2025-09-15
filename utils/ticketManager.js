@@ -196,7 +196,6 @@ class TicketManager {
                 '### 🚀 **SISTEMA DE ATENDIMENTO AVANCADO**',
                 '',
                 '> **🎯 Bem-vindo ao nosso sistema de suporte profissional!**',
-                '> Sua solicitacao foi registrada com sucesso e nossa equipe especializada foi notificada automaticamente.',
                 '',
                 '### ⚡ **GARANTIAS DO NOSSO SERVICO:**',
                 '',
@@ -299,9 +298,6 @@ class TicketManager {
                 `🎯 <@${user.id}> **Ticket Premium Criado!**`,
                 '',
                 '### 🚀 **SISTEMA ATIVO**',
-                '✅ **Notificacao enviada** - Staff sera alertado automaticamente',
-                '📊 **Rastreamento ativo** - Todas as interacoes sao monitoradas',
-                '🛡️ **Privacidade garantida** - Canal exclusivo e seguro',
                 '',
                 '**💡 Dica:** Use os botões abaixo para interagir com o ticket'
             ].join('\n'),
