@@ -225,37 +225,44 @@ module.exports = {
                 }
                 else {
                     try {
-                        // Defer the reply first
-                        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                         const ticketManager = interaction.client.ticketManager;
+                        
+                        // Ações que precisam de modal (não fazer defer)
+                        if ((action === 'add' && type === 'user') || (action === 'remove' && type === 'user')) {
+                            switch (action) {
+                                case 'add':
+                                    if (type === 'user') await handleAddUser(interaction);
+                                    break;
+                                case 'remove':
+                                    if (type === 'user') await handleRemoveUser(interaction);
+                                    break;
+                            }
+                        } else {
+                            // Defer the reply first para outras ações
+                            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-                        switch (action) {
-                            case 'close':
-                                await ticketManager.handleTicketClose(interaction);
-                                break;
-                            case 'claim':
-                                await ticketManager.handleTicketClaim(interaction);
-                                break;
-                            case 'priority':
-                                await handleTicketPriority(interaction);
-                                break;
-                            case 'transcript':
-                                await handleTicketTranscript(interaction);
-                                break;
-                            case 'add':
-                                if (type === 'user') await handleAddUser(interaction);
-                                break;
-                            case 'remove':
-                                if (type === 'user') await handleRemoveUser(interaction);
-                                break;
-                            case 'rename':
-                                await handleTicketRename(interaction);
-                                break;
-                            default:
-                                await interaction.editReply({
-                                    content: '❌ Ação de ticket inválida.',
-                                    flags: MessageFlags.Ephemeral
-                                });
+                            switch (action) {
+                                case 'close':
+                                    await ticketManager.handleTicketClose(interaction);
+                                    break;
+                                case 'claim':
+                                    await ticketManager.handleTicketClaim(interaction);
+                                    break;
+                                case 'priority':
+                                    await handleTicketPriority(interaction);
+                                    break;
+                                case 'transcript':
+                                    await handleTicketTranscript(interaction);
+                                    break;
+                                case 'rename':
+                                    await handleTicketRename(interaction);
+                                    break;
+                                default:
+                                    await interaction.editReply({
+                                        content: '❌ Ação de ticket inválida.',
+                                        flags: MessageFlags.Ephemeral
+                                    });
+                            }
                         }
                     } catch (actionError) {
                         logger.error('Erro ao processar ação do ticket:', actionError);
