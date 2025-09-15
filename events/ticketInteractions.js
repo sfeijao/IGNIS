@@ -236,30 +236,32 @@ module.exports = {
                                     break;
                             }
                         } else {
-                            // Defer the reply first para outras ações
-                            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                            // Para ações que usam modal, não podemos deferir a resposta
+                            if (action === 'rename') {
+                                await handleTicketRename(interaction);
+                            } else {
+                                // Defer the reply first para outras ações
+                                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-                            switch (action) {
-                                case 'close':
-                                    await ticketManager.handleTicketClose(interaction);
-                                    break;
-                                case 'claim':
-                                    await ticketManager.handleTicketClaim(interaction);
-                                    break;
-                                case 'priority':
-                                    await handleTicketPriority(interaction);
-                                    break;
-                                case 'transcript':
-                                    await handleTicketTranscript(interaction);
-                                    break;
-                                case 'rename':
-                                    await handleTicketRename(interaction);
-                                    break;
-                                default:
-                                    await interaction.editReply({
-                                        content: '❌ Ação de ticket inválida.',
-                                        flags: MessageFlags.Ephemeral
-                                    });
+                                switch (action) {
+                                    case 'close':
+                                        await ticketManager.handleTicketClose(interaction);
+                                        break;
+                                    case 'claim':
+                                        await ticketManager.handleTicketClaim(interaction);
+                                        break;
+                                    case 'priority':
+                                        await handleTicketPriority(interaction);
+                                        break;
+                                    case 'transcript':
+                                        await handleTicketTranscript(interaction);
+                                        break;
+                                    default:
+                                        await interaction.editReply({
+                                            content: '❌ Ação de ticket inválida.',
+                                            flags: MessageFlags.Ephemeral
+                                        });
+                                }
                             }
                         }
                     } catch (actionError) {
@@ -481,6 +483,12 @@ async function handleTicketTranscript(interaction) {
 
 // Handler para adicionar utilizador ao ticket
 async function handleAddUser(interaction) {
+    // Verificar se a interação já foi respondida ou deferida
+    if (interaction.replied || interaction.deferred) {
+        console.warn('⚠️ Tentativa de mostrar modal em interação já respondida/deferida');
+        return;
+    }
+
     const modal = new ModalBuilder()
         .setCustomId('ticket_add_user_modal')
         .setTitle('➕ Adicionar Utilizador ao Ticket');
@@ -511,6 +519,12 @@ async function handleAddUser(interaction) {
 
 // Handler para remover utilizador do ticket
 async function handleRemoveUser(interaction) {
+    // Verificar se a interação já foi respondida ou deferida
+    if (interaction.replied || interaction.deferred) {
+        console.warn('⚠️ Tentativa de mostrar modal em interação já respondida/deferida');
+        return;
+    }
+
     const modal = new ModalBuilder()
         .setCustomId('ticket_remove_user_modal')
         .setTitle('➖ Remover Utilizador do Ticket');
@@ -541,6 +555,12 @@ async function handleRemoveUser(interaction) {
 
 // Handler para renomear o canal do ticket
 async function handleTicketRename(interaction) {
+    // Verificar se a interação já foi respondida ou deferida
+    if (interaction.replied || interaction.deferred) {
+        console.warn('⚠️ Tentativa de mostrar modal em interação já respondida/deferida');
+        return;
+    }
+
     const modal = new ModalBuilder()
         .setCustomId('ticket_rename_modal')
         .setTitle('✏️ Renomear Canal do Ticket');
