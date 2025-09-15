@@ -64,7 +64,7 @@ class SimpleWebhookManager {
         
         if (!this.config.webhooks[guildId]) {
             this.config.webhooks[guildId] = {
-                name: guildId === '1333820000791691284' ? 'YSNM COMMUNITY' : 'BEANNY',
+                name: guildId === '1333820000791691284' ? 'IGNIS COMMUNITY' : 'BEANNY',
                 enabled: true
             };
         }
@@ -141,7 +141,7 @@ class SimpleWebhookManager {
                 { name: '📅 Data de Fechamento', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
             )
             .setTimestamp()
-            .setFooter({ text: 'Sistema de Tickets YSNM' });
+            .setFooter({ text: 'Sistema de Tickets IGNIS' });
 
         if (data.claimedBy) {
             const claimedByDisplayName = getUserDisplayName(data.claimedBy, data.guild);

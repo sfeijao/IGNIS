@@ -238,7 +238,7 @@ class RobustWebhookManager {
     createLogEmbed(logType, data) {
         const embed = new EmbedBuilder()
             .setTimestamp()
-            .setFooter({ text: 'YSNM Ticket System' });
+            .setFooter({ text: 'IGNIS Ticket System' });
 
         switch (logType) {
             case 'ticket_close':

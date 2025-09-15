@@ -1,8 +1,8 @@
 {
   "webhooks": {
     "1333820000791691284": {
-      "name": "YSNM COMMUNITY",
-      "webhookUrl": "SEU_WEBHOOK_URL_YSNM_AQUI",
+      "name": "IGNIS COMMUNITY",
+      "webhookUrl": "SEU_WEBHOOK_URL_IGNIS_AQUI",
       "enabled": true
     },
     "1283603691538088027": {

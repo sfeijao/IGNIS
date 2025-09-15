@@ -195,15 +195,11 @@ class TicketManager {
             .setDescription([
                 '### 🚀 **SISTEMA DE ATENDIMENTO**',
                 '',
-                '> **🎯 Bem-vindo ao nosso sistema de**',
+                '> **🎯 Bem-vindo ao nosso sistema de suporte!**',
                 '',
                 '### ⚡ **GARANTIAS DO NOSSO SERVICO:**',
                 '',
-                '🟢 **Tempo de Resposta:**',
-                '🎯 **Resolucao Media:**',
                 '🛡️ **Disponibilidade:** `24/7`',
-                '🔒 **Privacidade:** `100% Protegida`',
-                '📊 **Rastreamento:**',
                 '',
                 '### 📋 **COMO PROCEDER:**',
                 '',
@@ -236,8 +232,6 @@ class TicketManager {
                 { 
                     name: '⏰ INFORMAÇÕES TEMPORAIS', 
                     value: [
-                        `**Criado:** <t:${Math.floor(Date.now() / 1000)}:f>`,
-                        `**Há:** <t:${Math.floor(Date.now() / 1000)}:R>`,
                         `**Status:** \`🟡 Aguardando Atendimento\``
                     ].join('\n'), 
                     inline: true 
@@ -245,7 +239,7 @@ class TicketManager {
             )
             .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
             .setFooter({ 
-                text: `${guild.name} • Sistema de Tickets Avançado • YSNM v2.5`,
+                text: `${guild.name} • Sistema de Tickets Avançado • IGNIS v2.5`,
                 iconURL: guild.iconURL({ dynamic: true })
             })
             .setTimestamp();
@@ -503,7 +497,7 @@ class TicketManager {
                 )
                 .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
                 .setFooter({ 
-                    text: `${interaction.guild.name} • Staff em Ação • YSNM v2.5`,
+                    text: `${interaction.guild.name} • Staff em Ação • IGNIS v2.5`,
                     iconURL: interaction.guild.iconURL({ dynamic: true })
                 })
                 .setTimestamp();

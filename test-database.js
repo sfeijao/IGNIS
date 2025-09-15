@@ -4,7 +4,7 @@ const path = require('path');
 
 console.log('🔍 Testando estrutura da base de dados SQLite...');
 
-const dbPath = path.join(__dirname, 'website', 'database', 'ysnm_dashboard.db');
+const dbPath = path.join(__dirname, 'website', 'database', 'ignis_dashboard.db');
 
 // Verificar se o ficheiro da base de dados existe
 const fs = require('fs');

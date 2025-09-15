@@ -88,7 +88,7 @@ class WebhookManager {
 
             // Cria um novo webhook
             const webhook = await channel.createWebhook({
-                name: 'YSNM Logs',
+                name: 'IGNIS Logs',
                 avatar: 'https://cdn.discordapp.com/avatars/1404584949285388339/3c28165b10ffdde42c3f76692513ca25.webp',
                 reason: 'Configuração automática do sistema de logs'
             });
@@ -295,7 +295,7 @@ class WebhookManager {
 
             // Criar o webhook
             const webhook = await channel.createWebhook({
-                name: 'YSNM Cross-Server Logs',
+                name: 'IGNIS Cross-Server Logs',
                 avatar: 'https://cdn.discordapp.com/avatars/1404584949285388339/3c28165b10ffdde42c3f76692513ca25.webp',
                 reason: 'Configuração automática do sistema de logs cross-server'
             });
@@ -319,7 +319,7 @@ class WebhookManager {
                         { name: '🖥️ Servidor', value: guild.name, inline: true }
                     ],
                     timestamp: new Date(),
-                    footer: { text: 'YSNM Cross-Server Logging System' }
+                    footer: { text: 'IGNIS Cross-Server Logging System' }
                 }]
             });
 

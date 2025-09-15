@@ -2,7 +2,7 @@
 // Execute este script para testar a funcionalidade
 
 async function testProductionDelete() {
-    const baseUrl = 'https://ysnmbot-alberto.up.railway.app';
+    const baseUrl = 'https://ignisbot-alberto.up.railway.app';
     
     console.log('🧪 Testando DELETE de tickets na produção...');
     console.log('📡 URL:', baseUrl);

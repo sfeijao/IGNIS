@@ -70,7 +70,7 @@ module.exports = {
                     }
                 )
                 .setFooter({ 
-                    text: `${interaction.guild.name} • Sistema de Tickets v2.0 • Powered by YSNM`,
+                    text: `${interaction.guild.name} • Sistema de Tickets v2.0 • Powered by IGNIS`,
                     iconURL: interaction.guild.iconURL({ dynamic: true })
                 })
                 .setTimestamp();

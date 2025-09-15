@@ -22,7 +22,7 @@ const config = {
     
     // Website Configuration
     WEBSITE: {
-        BASE_URL: process.env.BASE_URL || (isProd ? 'https://ysnmbot-alberto.up.railway.app' : 'http://localhost:4000'),
+        BASE_URL: process.env.BASE_URL || (isProd ? 'https://ignisbot-alberto.up.railway.app' : 'http://localhost:4000'),
         SESSION_SECRET: process.env.SESSION_SECRET,
         PORT: parseInt(process.env.PORT) || 4000,
         CALLBACK_URL: process.env.CALLBACK_URL || '/auth/discord/callback',
@@ -46,7 +46,7 @@ const config = {
     
     // Database Configuration
     DATABASE: {
-        PATH: process.env.DATABASE_PATH || './website/database/ysnm_dashboard.db',
+        PATH: process.env.DATABASE_PATH || './website/database/ignis_dashboard.db',
     },
     
     // Webhooks Configuration

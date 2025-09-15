@@ -10,7 +10,7 @@ module.exports = {
         if (!interaction.isStringSelectMenu() || !interaction.customId.startsWith('select_log_channel_')) return;
 
         try {
-            const servidorOrigem = interaction.customId.split('_')[3]; // select_log_channel_ysnm -> ysnm
+            const servidorOrigem = interaction.customId.split('_')[3]; // select_log_channel_ignis -> ignis
             const canalSelecionado = interaction.values[0];
 
             await interaction.deferUpdate();
@@ -55,7 +55,7 @@ module.exports = {
                 // Tentar criar webhook automaticamente
                 try {
                     const novoWebhook = await canal.createWebhook({
-                        name: `YSNM Logs - ${servidorOrigem.toUpperCase()}`,
+                        name: `IGNIS Logs - ${servidorOrigem.toUpperCase()}`,
                         avatar: 'https://cdn.discordapp.com/avatars/1404584949285388339/3c28165b10ffdde42c3f76692513ca25.webp',
                         reason: `Configuração automática de logs para ${servidorOrigem.toUpperCase()}`
                     });
@@ -115,7 +115,7 @@ module.exports = {
                         { name: '👤 Configurado por', value: `<@${interaction.user.id}>`, inline: true }
                     ],
                     timestamp: new Date(),
-                    footer: { text: 'YSNM Logs Organizados - Sistema Ativo' }
+                    footer: { text: 'IGNIS Logs Organizados - Sistema Ativo' }
                 }]
             });
 
@@ -134,7 +134,7 @@ module.exports = {
                     { name: '⚙️ Status', value: '✅ Ativo', inline: true },
                     { name: '🕒 Configurado em', value: new Date().toLocaleString('pt-BR'), inline: true }
                 )
-                .setFooter({ text: 'Sistema de Logs Organizados YSNM' })
+                .setFooter({ text: 'Sistema de Logs Organizados IGNIS' })
                 .setTimestamp();
 
             await interaction.editReply({
