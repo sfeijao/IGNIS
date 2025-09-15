@@ -511,12 +511,12 @@ class IGNISDashboard {
                 
                 <div class="ticket-footer">
                     <div class="ticket-owner">
-                        <img src="${ticket.ownerAvatar || '/assets/default-avatar.png'}" alt="Avatar" class="user-avatar-small">
+                        <img src="${ticket.ownerAvatar || '/default-avatar.svg'}" alt="Avatar" class="user-avatar-small">
                         <span>${ticket.ownerTag}</span>
                     </div>
                     ${ticket.claimedByTag ? `
                         <div class="ticket-claimed">
-                            <img src="${ticket.claimedByAvatar || '/assets/default-avatar.png'}" alt="Avatar" class="user-avatar-small">
+                            <img src="${ticket.claimedByAvatar || '/default-avatar.svg'}" alt="Avatar" class="user-avatar-small">
                             <span>Reclamado por ${ticket.claimedByTag}</span>
                         </div>
                     ` : ''}
@@ -643,7 +643,7 @@ class IGNISDashboard {
                                     <div class="info-item">
                                         <label>Criado por</label>
                                         <div class="user-info">
-                                            <img src="${ticket.ownerAvatar || '/assets/default-avatar.png'}" alt="Avatar" class="user-avatar-small">
+                                            <img src="${ticket.ownerAvatar || '/default-avatar.svg'}" alt="Avatar" class="user-avatar-small">
                                             <span>${ticket.ownerTag}</span>
                                         </div>
                                     </div>
@@ -655,7 +655,7 @@ class IGNISDashboard {
                                         <div class="info-item">
                                             <label>Reclamado por</label>
                                             <div class="user-info">
-                                                <img src="${ticket.claimedByAvatar || '/assets/default-avatar.png'}" alt="Avatar" class="user-avatar-small">
+                                                <img src="${ticket.claimedByAvatar || '/default-avatar.svg'}" alt="Avatar" class="user-avatar-small">
                                                 <span>${ticket.claimedByTag}</span>
                                             </div>
                                         </div>
@@ -739,7 +739,7 @@ class IGNISDashboard {
         return messages.map(msg => `
             <div class="message-item">
                 <div class="message-header">
-                    <img src="${msg.author.avatar || '/assets/default-avatar.png'}" alt="Avatar" class="user-avatar-small">
+                    <img src="${msg.author.avatar || '/default-avatar.svg'}" alt="Avatar" class="user-avatar-small">
                     <span class="message-author">${msg.author.username}#${msg.author.discriminator}</span>
                     <span class="message-time">${new Date(msg.timestamp).toLocaleString('pt-PT')}</span>
                 </div>
@@ -911,12 +911,6 @@ function ticketStats() {
     }
     
     dashboard.showTicketStatistics();
-}
-        dashboard.showError('Nenhum servidor selecionado');
-        return;
-    }
-    
-    dashboard.showNotification('Estatísticas de tickets em desenvolvimento', 'info');
 }
 
 function configureVerification() {
