@@ -9,7 +9,14 @@ class IGNISDashboard {
     }
     
     async init() {
-        console.log('🚀 Inicializando IGNIS Dashboard...');
+        // ========================================
+// IGNIS Dashboard - Sistema de Tickets Avançado
+// Desenvolvido para gestão completa de tickets Discord
+// ========================================
+
+// Note: Arquivos como sharebx.js, css.js são de extensões do navegador, não nosso código
+
+console.log('🚀 Inicializando IGNIS Dashboard...');
         
         try {
             await this.loadUser();
@@ -1157,15 +1164,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Global functions for ticket system
 window.configureTickets = () => {
-    dashboard.showInfo('Configuração de tickets em desenvolvimento');
+    dashboard.showNotification('Configuração de tickets em desenvolvimento', 'info');
 };
 
 window.viewTickets = () => {
-    dashboard.loadTickets();
+    dashboard.loadAdvancedTickets();
 };
 
 window.ticketStats = () => {
-    dashboard.showInfo('Estatísticas detalhadas em desenvolvimento');
+    dashboard.showNotification('Estatísticas detalhadas em desenvolvimento', 'info');
 };
 
 // Export for global access
