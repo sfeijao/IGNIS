@@ -5,7 +5,7 @@ const logger = require('./utils/logger');
 
 logger.info('🔄 Iniciando migração da base de dados...');
 
-const dbPath = path.join(__dirname, 'website', 'database', 'ysnm_dashboard.db');
+const dbPath = path.join(__dirname, 'website', 'database', 'ignis_dashboard.db');
 
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {

@@ -178,7 +178,7 @@ class CommandDeployer {
         } = options;
 
         try {
-            console.log('🎯 YSNM Bot - Deploy de Comandos');
+            console.log('🎯 IGNIS Bot - Deploy de Comandos');
             console.log('=====================================');
             
             // Validar configuração

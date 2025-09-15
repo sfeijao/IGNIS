@@ -1,6 +1,6 @@
 @echo off
 echo =====================================
-echo    YSNM Bot - Sistema de Monitoramento
+echo    IGNIS Bot - Sistema de Monitoramento
 echo =====================================
 echo.
 echo [%TIME%] Iniciando sistema de monitoramento...
@@ -10,7 +10,7 @@ echo.
 echo [%TIME%] Verificando status do bot...
 
 REM Verificar se o bot está rodando
-tasklist /FI "IMAGENAME eq node.exe" /FI "WINDOWTITLE eq *YSNM*" 2>NUL | find /I /N "node.exe" >NUL
+tasklist /FI "IMAGENAME eq node.exe" /FI "WINDOWTITLE eq *IGNIS*" 2>NUL | find /I /N "node.exe" >NUL
 if "%ERRORLEVEL%"=="0" (
     echo [%TIME%] ✅ Bot está online
 ) else (

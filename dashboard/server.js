@@ -19,7 +19,7 @@ const getCallbackURL = () => {
     
     // Auto-detect based on environment  
     const baseUrl = process.env.NODE_ENV === 'production' 
-        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'ysnmbot-alberto.up.railway.app'}`
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'ignisbot-alberto.up.railway.app'}`
         : `http://localhost:${PORT}`;
     
     return `${baseUrl}/auth/discord/callback`;
@@ -32,7 +32,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Session configuration
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'ysnm-dashboard-development-secret-2024',
+    secret: process.env.SESSION_SECRET || 'ignis-dashboard-development-secret-2024',
     resave: false,
     saveUninitialized: false,
     cookie: {

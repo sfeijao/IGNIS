@@ -3,7 +3,7 @@ const { sendArchivedTicketWebhook } = require('../website/utils/webhookSender');
 (async () => {
   const tests = [
     {
-      guild: 'YSNM',
+      guild: 'IGNIS',
       url: 'https://discord.com/api/webhooks/1409372170743972091/MZ6aCMlvH4iCFP_9DiUloLYkY_TPXPwiWP1XUu5_IOcq8HLk3OHhYizE4eBxMxrIEtjq'
     },
     {

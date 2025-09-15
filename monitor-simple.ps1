@@ -1,4 +1,4 @@
-# YSNM Bot Monitor Script
+# IGNIS Bot Monitor Script
 param(
     [int]$CheckInterval = 30
 )
@@ -38,7 +38,7 @@ function Test-BotHealth {
 
 function Start-Bot {
     try {
-        Write-Log "Starting YSNM Bot..."
+        Write-Log "Starting IGNIS Bot..."
         Set-Location $BotPath
         
         # Verificar se o arquivo index.js existe
@@ -71,7 +71,7 @@ function Start-Bot {
     }
 }
 
-Write-Log "=== YSNM Bot Monitor Started ==="
+Write-Log "=== IGNIS Bot Monitor Started ==="
 
 while ($true) {
     $botProcess = Test-BotProcess

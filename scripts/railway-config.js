@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-console.log('🚂 YSNM Bot - Railway Configuration Helper');
+console.log('🚂 IGNIS Bot - Railway Configuration Helper');
 console.log('==========================================');
 
 // Read current .env file
@@ -33,7 +33,7 @@ envLines.forEach(line => {
     
     // Skip localhost URLs and development specific vars
     if (key === 'BASE_URL' && value.includes('localhost')) {
-        railwayVars[key] = 'https://ysnmbot-alberto.up.railway.app';
+        railwayVars[key] = 'https://ignisbot-alberto.up.railway.app';
     } else if (key === 'NODE_ENV') {
         railwayVars[key] = 'production';
     } else if (key === 'PORT') {
@@ -63,7 +63,7 @@ const requiredVars = [
     'DISCORD_CLIENT_ID=[your_client_id]', 
     'DISCORD_CLIENT_SECRET=[your_client_secret]',
     'DISCORD_GUILD_ID=[your_guild_id]',
-    'BASE_URL=https://ysnmbot-alberto.up.railway.app',
+    'BASE_URL=https://ignisbot-alberto.up.railway.app',
     'SESSION_SECRET=[random_32_char_string]'
 ];
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * 🚂 YSNM Bot - Railway Smart Starter
+ * 🚂 IGNIS Bot - Railway Smart Starter
  * 
  * Script inteligente para iniciar o bot no Railway com detecção automática
  * da configuração disponível e fallback para modo bot-only se necessário.
@@ -10,7 +10,7 @@
 const config = require('./utils/config');
 const logger = require('./utils/logger');
 
-logger.info('🚂 === YSNM Bot - Railway Smart Starter ===');
+logger.info('🚂 === IGNIS Bot - Railway Smart Starter ===');
 logger.info(`⏰ Timestamp: ${new Date().toISOString()}`);
 logger.info('🌍 NODE_ENV', { NODE_ENV: process.env.NODE_ENV });
 logger.info('🚂 RAILWAY_ENVIRONMENT', { RAILWAY_ENVIRONMENT_NAME: process.env.RAILWAY_ENVIRONMENT_NAME });

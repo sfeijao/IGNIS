@@ -1,7 +1,7 @@
 {
-  "name": "ysnm-community-bot",
+  "name": "ignis-community-bot",
   "version": "2.1.1",
-  "description": "🤖 Bot Discord completo para YSNM Community com sistema de verificação, tags, status roxo e administração avançada",
+  "description": "🤖 Bot Discord completo para IGNIS Community com sistema de verificação, tags, status roxo e administração avançada",
   "main": "index.js",
   "scripts": {
     "start": "node railway-start.js",
@@ -29,12 +29,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sfeijao/YSNM_BOT.git"
+    "url": "git+https://github.com/sfeijao/IGNIS_BOT.git"
   },
   "keywords": [
     "discord",
     "bot",
-    "ysnm",
+    "ignis",
     "community",
     "slash-commands",
     "discord.js",

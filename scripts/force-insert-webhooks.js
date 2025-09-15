@@ -1,9 +1,9 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const dbPath = path.join(__dirname, '..', 'website', 'database', 'ysnm_dashboard.db');
+const dbPath = path.join(__dirname, '..', 'website', 'database', 'ignis_dashboard.db');
 const webhooksToInsert = [
   { guild_id: '1283603691538088027', url: 'https://discord.com/api/webhooks/1411464971388321792/_0BSDYEfcKCNrrhJ67YseUOd1NZwIKZGble5SUCNJOxXC3KlPhcBqVCrnpKx6cCBoNMw', name: 'Beanny tickets' },
-  { guild_id: '1333820000791691284', url: 'https://discord.com/api/webhooks/1409372170743972091/MZ6aCMlvH4iCFP_9DiUloLYkY_TPXPwiWP1XUu5_IOcq8HLk3OHhYizE4eBxMxrIEtjq', name: 'YSNM tickets' }
+  { guild_id: '1333820000791691284', url: 'https://discord.com/api/webhooks/1409372170743972091/MZ6aCMlvH4iCFP_9DiUloLYkY_TPXPwiWP1XUu5_IOcq8HLk3OHhYizE4eBxMxrIEtjq', name: 'IGNIS tickets' }
 ];
 
 const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {

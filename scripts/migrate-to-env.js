@@ -32,7 +32,7 @@ try {
     
     // Construir novo conteúdo .env
     const newEnvContent = `# =================================
-# YSNM BOT - CONFIGURAÇÃO MIGRADA
+# IGNIS BOT - CONFIGURAÇÃO MIGRADA
 # =================================
 
 # Ambiente
@@ -63,7 +63,7 @@ ADMIN_ROLE_ID=${config.roles?.admin || ''}
 OWNER_ROLE_ID=${config.roles?.owner || ''}
 
 # Database
-DATABASE_PATH=./website/database/ysnm_dashboard.db
+DATABASE_PATH=./website/database/ignis_dashboard.db
 
 # Webhooks (se existirem)
 WEBHOOK_LOGS=${config.webhooks?.logs || ''}
