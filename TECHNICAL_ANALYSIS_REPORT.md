@@ -1,4 +1,4 @@
-# 🔍 RELATÓRIO TÉCNICO COMPLETO - YSNM BOT
+# 🔍 RELATÓRIO TÉCNICO COMPLETO - IGNIS BOT
 
 **Data:** 25 de Agosto de 2025  
 **Versão:** 2.1.1  
@@ -9,7 +9,7 @@
 
 ## 📊 RESUMO EXECUTIVO
 
-O YSNM Bot é um sistema Discord completo com dashboard web, sistema de tickets, analytics e moderação. A arquitetura é sólida mas apresenta **vulnerabilidades críticas de segurança** que precisam ser corrigidas imediatamente.
+O IGNIS Bot é um sistema Discord completo com dashboard web, sistema de tickets, analytics e moderação. A arquitetura é sólida mas apresenta **vulnerabilidades críticas de segurança** que precisam ser corrigidas imediatamente.
 
 ### 🎯 Funcionalidades Principais Identificadas
 - ✅ Sistema de verificação de membros
@@ -397,7 +397,7 @@ CLIENT_ID=${CLIENT_ID}
 CLIENT_SECRET=${CLIENT_SECRET}
 GUILD_ID=${GUILD_ID}
 SESSION_SECRET=${SESSION_SECRET}
-DATABASE_URL=file:./ysnm_dashboard.db
+DATABASE_URL=file:./ignis_dashboard.db
 LOG_LEVEL=info
 ```
 
@@ -464,7 +464,7 @@ CMD ["node", "index.js"]
 
 ## 🎉 CONCLUSÃO
 
-O YSNM Bot tem uma arquitetura sólida e funcionalidades impressionantes. As correções de segurança são **CRÍTICAS** e devem ser implementadas imediatamente. Após isso, as melhorias sugeridas transformarão o bot em uma solução enterprise-ready.
+O IGNIS Bot tem uma arquitetura sólida e funcionalidades impressionantes. As correções de segurança são **CRÍTICAS** e devem ser implementadas imediatamente. Após isso, as melhorias sugeridas transformarão o bot em uma solução enterprise-ready.
 
 ### Próximos Passos Recomendados:
 1. **URGENTE:** Corrigir vulnerabilidades de segurança

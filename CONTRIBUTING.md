@@ -1,6 +1,6 @@
-# 🤝 Contribuindo para YSNM Discord Bot
+# 🤝 Contribuindo para IGNIS Discord Bot
 
-Obrigado por considerar contribuir para o YSNM Discord Bot! Seguindo essas diretrizes, você ajuda a manter o projeto organizado e funcional.
+Obrigado por considerar contribuir para o IGNIS Discord Bot! Seguindo essas diretrizes, você ajuda a manter o projeto organizado e funcional.
 
 ## 📋 Como Contribuir
 
@@ -8,7 +8,7 @@ Obrigado por considerar contribuir para o YSNM Discord Bot! Seguindo essas diret
 
 Se encontraste um bug, por favor:
 
-1. **Verifica** se já existe uma [issue](https://github.com/SEU_USUARIO/YSNM-Discord-Bot/issues) relacionada
+1. **Verifica** se já existe uma [issue](https://github.com/SEU_USUARIO/IGNIS-Discord-Bot/issues) relacionada
 2. **Cria** uma nova issue com o template de bug
 3. **Inclui** informações detalhadas:
    - Versão do Node.js
@@ -155,7 +155,7 @@ Qualquer informação adicional.
 
 - **Issues** - Para bugs e feature requests
 - **Discussions** - Para dúvidas e ideias gerais
-- **Discord** - Para comunicação rápida ([YSNM Community](https://discord.gg/ysnm))
+- **Discord** - Para comunicação rápida ([IGNIS Community](https://discord.gg/ignis))
 
 ## 🏆 Reconhecimento
 
@@ -174,4 +174,4 @@ Se tens dúvidas sobre como contribuir:
 
 ---
 
-**Obrigado por contribuíres para o YSNM Discord Bot! 💜**
+**Obrigado por contribuíres para o IGNIS Discord Bot! 💜**

@@ -1,35 +1,34 @@
-# 🤖 YSNM Community Discord Bot
-
-<div align="center">
+# 🤖 IGNIS Community Discord Bot
 
 ![Discord](https://img.shields.io/badge/Discord.js-v14.14.1-blue.svg)
 ![Node.js](https://img.shields.io/badge/Node.js-16.9.0+-green.svg)
 ![Railway](https://img.shields.io/badge/Railway-Deploy%20Ready-purple.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-**Bot Discord completo para a comunidade YSNM com sistema de verificação, gestão de tags, logs automáticos e tema roxo personalizado.**
+**Bot Discord completo para a comunidade IGNIS com sistema de verificação, gestão de tags, logs automáticos e tema roxo personalizado.**
 
 [🚀 Deploy no Railway](#-deploy-no-railway) • [📖 Documentação](#-comandos-disponíveis) • [⚙️ Configuração](#️-configuração)
-
-</div>
 
 ---
 
 ## 🚀 Funcionalidades
 
 ### 🔐 **Sistema de Verificação Automática**
+
 - ✅ Painel de verificação com botão interativo
 - 📝 Logs automáticos de novos membros verificados
 - 🎉 Mensagens de boas-vindas personalizadas
 - 🛡️ Proteção anti-spam e verificação dupla
 
 ### 🏷️ **Sistema de Tags/Cargos Avançado**
+
 - 👑 Painel de gestão de tags para staff
 - 📋 Solicitação de tags especiais pelos utilizadores
 - 🎯 Tags básicas (VIP, Member) e administrativas (Mod, Support)
 - ✅ Sistema de aprovação automático para cargos especiais
 
-### 📊 **Painel de Status em Tempo Real** 
+### 📊 **Painel de Status em Tempo Real**
+
 - 💜 **Tema roxo personalizado** (#7B68EE, #9932CC, #8B5FBF)
 - 📈 Monitorização em tempo real do servidor
 - 🔄 Botões interativos (Atualizar, Detalhes, Sistema)
@@ -37,6 +36,7 @@
 - 🌐 Status da API Discord e base de dados
 
 ### 📝 **Sistema de Logs Completo**
+
 - 📥 Logs automáticos de verificações
 - 👥 Logs de entrada/saída de membros
 - ⚡ Logs de ações administrativas
@@ -74,7 +74,7 @@
 1. **Fork este repositório** no GitHub
 2. **Acesse [Railway.app](https://railway.app)** e faça login
 3. **Clique em "New Project"** → **"Deploy from GitHub repo"**
-4. **Selecione o repositório** YSNM que você fez fork
+4. **Selecione o repositório** IGNIS que você fez fork
 5. **Adicione as variáveis de ambiente** (ver [Configuração](#️-configuração))
 6. **Clique em Deploy** - O Railway detecta automaticamente as configurações!
 
@@ -82,8 +82,8 @@
 
 ```bash
 # 1. Clone o repositório
-git clone https://github.com/SEU_USUARIO/YSNM-Discord-Bot.git
-cd YSNM-Discord-Bot
+git clone https://github.com/SEU_USUARIO/IGNIS-Discord-Bot.git
+cd IGNIS-Discord-Bot
 
 # 2. Instale dependências
 npm install
@@ -162,8 +162,8 @@ O bot inclui um arquivo `config.json` pré-configurado:
 
 ## 🛠️ Estrutura do Projeto
 
-```
-YSNM-Discord-Bot/
+```text
+IGNIS-Discord-Bot/
 ├── 📁 commands/           # Comandos do bot
 │   ├── ajuda.js          # Sistema de ajuda
 │   ├── configurar-status.js   # Painel roxo de status
@@ -215,7 +215,7 @@ The repo includes an example local receiver under `examples/private-receiver/` w
 ### 1. **Criar Aplicação Discord**
 1. Acesse [Discord Developer Portal](https://discord.com/developers/applications)
 2. Clique em **"New Application"**
-3. Nomeie como **"YSNM Bot"**
+3. Nomeie como **"IGNIS Bot"**
 4. Vá para **"Bot"** → **"Add Bot"**
 5. Copie o **Token** (DISCORD_TOKEN)
 6. Copie o **Application ID** (CLIENT_ID)
@@ -232,9 +232,10 @@ Em **OAuth2** → **URL Generator**:
 
 ---
 
-##  Funcionalidades Técnicas
+## Funcionalidades Técnicas
 
 ### 🎨 **Tema Roxo Personalizado**
+
 - **Cores principais**: `#7B68EE`, `#9932CC`, `#8B5FBF`
 - **Embeds responsivos** com gradientes roxos
 - **Botões interativos** com emojis funcionais
@@ -318,24 +319,22 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para de
 - 📘 [Documentação Discord.js](https://discord.js.org/)
 - 🚀 [Railway Docs](https://docs.railway.app/)
 - 🤖 [Discord Developer Portal](https://discord.com/developers/applications)
-- 💜 [YSNM Community](https://discord.gg/ysnm)
+- 💜 [IGNIS Community](https://discord.gg/ignis)
 
 ---
 
-<div align="center">
+**Desenvolvido com 💜 para IGNIS Community**
 
-**Desenvolvido com 💜 para YSNM Community**
+[![Discord](https://img.shields.io/discord/GUILD_ID?color=7289da&logo=discord&logoColor=white)](https://discord.gg/ignis)
+[![GitHub](https://img.shields.io/github/stars/USUARIO/IGNIS-Discord-Bot?style=social)](https://github.com/USUARIO/IGNIS-Discord-Bot)
 
-[![Discord](https://img.shields.io/discord/GUILD_ID?color=7289da&logo=discord&logoColor=white)](https://discord.gg/ysnm)
-[![GitHub](https://img.shields.io/github/stars/USUARIO/YSNM-Discord-Bot?style=social)](https://github.com/USUARIO/YSNM-Discord-Bot)
-
-</div>
 ```bash
 git clone <seu-repositorio>
-cd ysnm-community-bot
+cd ignis-community-bot
 ```
 
 ### 2. Instalar Dependências
+
 ```bash
 npm install
 ```
@@ -469,7 +468,7 @@ Crie os seguintes cargos:
 ## 📁 Estrutura do Projeto
 
 ```
-ysnm-community-bot/
+ignis-community-bot/
 ├── commands/           # Comandos slash
 │   ├── ajuda.js
 │   ├── configurar-verificacao.js
@@ -540,7 +539,7 @@ module.exports = {
 
 ## 📞 Suporte
 
-Para suporte, entre em contacto através do servidor Discord da YSNM Community.
+Para suporte, entre em contacto através do servidor Discord da IGNIS Community.
 
 ## 📄 Licença
 
@@ -548,4 +547,4 @@ Este projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes
 
 ---
 
-Desenvolvido com ❤️ para a YSNM Community
+Desenvolvido com ❤️ para a IGNIS Community

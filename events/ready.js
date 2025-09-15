@@ -30,7 +30,7 @@ module.exports = {
     logger.info('==========================================');
 
         // Definir status inicial
-        client.user.setActivity('YSNM COMMUNITY', { type: ActivityType.Watching });
+        client.user.setActivity('IGNIS COMMUNITY', { type: ActivityType.Watching });
         
         // Sistema de atualização automática do status a cada 2 minutos
         setInterval(async () => {
@@ -137,7 +137,7 @@ async function handleStartupLogs(client) {
 
                 const updateEmbed = new EmbedBuilder()
                     .setColor('#9932CC')
-                    .setTitle('🚀 YSNM Bot - Deploy Realizado')
+                    .setTitle('🚀 IGNIS Bot - Deploy Realizado')
                     .setDescription('```yaml\n🟢 Nova Versão Implementada\n📊 Sistema Atualizado no Railway\n⚡ Funcionamento Otimizado\n```')
                     .addFields(
                         { name: `📋 Changelog v${latestRelease.version}:`, value: `\`\`\`diff\n${changesText}\`\`\``, inline: false },
@@ -149,7 +149,7 @@ async function handleStartupLogs(client) {
                         { name: '📅 Deploy', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true }
                     )
                     .setTimestamp()
-                    .setFooter({ text: 'YSNM Bot System • Railway Deploy', iconURL: client.user.displayAvatarURL() });
+                    .setFooter({ text: 'IGNIS Bot System • Railway Deploy', iconURL: client.user.displayAvatarURL() });
 
                 await updatesChannel.send({ embeds: [updateEmbed] });
                 
@@ -168,7 +168,7 @@ async function handleStartupLogs(client) {
         if (logsChannel) {
             const startEmbed = new EmbedBuilder()
                 .setColor('#9932CC')
-                .setTitle('🟢 YSNM Bot Iniciado')
+                .setTitle('🟢 IGNIS Bot Iniciado')
                 .setDescription('```yaml\n🟢 Bot Online e Operacional\n📊 Todos os Sistemas Ativos\n⚡ Pronto para Utilização\n```')
                 .addFields(
                     { name: '🎯 Status', value: '`Online`', inline: true },
@@ -176,7 +176,7 @@ async function handleStartupLogs(client) {
                     { name: '👥 Membros', value: `\`${guild.memberCount}\``, inline: true }
                 )
                 .setTimestamp()
-                .setFooter({ text: 'YSNM Bot System', iconURL: client.user.displayAvatarURL() });
+                .setFooter({ text: 'IGNIS Bot System', iconURL: client.user.displayAvatarURL() });
 
             await logsChannel.send({ embeds: [startEmbed] });
         }

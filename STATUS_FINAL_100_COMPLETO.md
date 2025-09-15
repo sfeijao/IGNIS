@@ -1,4 +1,4 @@
-# 🎉 PROJETO YSNM BOT - STATUS FINAL: 100% COMPLETO
+# 🎉 PROJETO IGNIS BOT - STATUS FINAL: 100% COMPLETO
 
 ## ✅ FASE A - SEGURANÇA (100% CONCLUÍDA)
 
@@ -118,8 +118,8 @@
 ### ✅ BOT STATUS: ONLINE E OPERACIONAL
 ```
 ==========================================
-✅ YSNMbot#2419 está online!
-🎯 Conectado como: YSNMbot
+✅ IGNISbot#2419 está online!
+🎯 Conectado como: IGNISbot
 🌐 Servidores: 2
 👥 Utilizadores: 25
 ==========================================
@@ -149,7 +149,7 @@
 
 ## 🏆 CONCLUSÃO
 
-**O projeto YSNM Bot está 100% COMPLETO e FUNCIONANDO!**
+**O projeto IGNIS Bot está 100% COMPLETO e FUNCIONANDO!**
 
 ✅ **Todas as vulnerabilidades de segurança foram corrigidas**
 ✅ **Todo o código foi refatorado e otimizado**  

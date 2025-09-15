@@ -1,6 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const dbPath = path.join(__dirname, '..', 'website', 'database', 'ysnm_dashboard.db');
+const dbPath = path.join(__dirname, '..', 'website', 'database', 'ignis_dashboard.db');
 const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => { if (err) { console.error(err); process.exit(2); } });
 
 // For each guild_id+url, keep the newest row (largest created_at or id), delete older duplicates

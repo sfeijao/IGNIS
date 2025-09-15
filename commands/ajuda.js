@@ -9,7 +9,7 @@ module.exports = {
         try {
             const embed = new EmbedBuilder()
                 .setColor('#9932CC')
-                .setTitle('🤖 YSNM Bot - Comandos')
+                .setTitle('🤖 IGNIS Bot - Comandos')
                 .setDescription('Comandos disponíveis para o bot\n\n' +
                     '**Comandos Básicos:**\n' +
                     '`/ping` - Testa resposta do bot\n' +
@@ -29,7 +29,7 @@ module.exports = {
                     '• Status em tempo real\n' +
                     '• Gestão de cargos por botões')
                 .setTimestamp()
-                .setFooter({ text: 'YSNM Bot • YSNM COMMUNITY' });
+                .setFooter({ text: 'IGNIS Bot • IGNIS COMMUNITY' });
 
             await interaction.reply({ embeds: [embed] });
                 const logger = require('../utils/logger');

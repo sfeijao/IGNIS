@@ -1,4 +1,4 @@
-# YSNM Bot — Local Start Instructions
+# IGNIS Bot — Local Start Instructions
 
 This file documents minimal steps to start the bot + dashboard locally for development.
 
@@ -46,7 +46,7 @@ Security
 
 Troubleshooting
 - If port 4000 is in use, stop the existing node process or change `PORT` env.
-- Database file: `website/database/ysnm_dashboard.db` — backup before schema changes.
+- Database file: `website/database/ignis_dashboard.db` — backup before schema changes.
 
 Contact
-- Repo: https://github.com/sfeijao/YSNM_BOT
+- Repo: https://github.com/sfeijao/IGNIS_BOT

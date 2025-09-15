@@ -1,6 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const dbPath = path.join(__dirname, '..', 'website', 'database', 'ysnm_dashboard.db');
+const dbPath = path.join(__dirname, '..', 'website', 'database', 'ignis_dashboard.db');
 const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
   if (err) { console.error('Failed to open DB:', err.message); process.exit(2); }
   console.log('Opened DB:', dbPath);

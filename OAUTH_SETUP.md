@@ -7,7 +7,7 @@ Erro 400 no OAuth2: `Bad Request` - indica que o `redirect_uri` não está confi
 
 ### 1. Acesse o Discord Developer Portal
 - Vá para: https://discord.com/developers/applications
-- Selecione a aplicação do YSNM Bot (ID: `1404584949285388339`)
+- Selecione a aplicação do IGNIS Bot (ID: `1404584949285388339`)
 
 ### 2. Configure OAuth2 Redirects
 Na seção **OAuth2** → **Redirects**:
@@ -19,7 +19,7 @@ http://localhost:4000/auth/discord/callback
 
 **Para produção Railway:**
 ```
-https://ysnmbot-alberto.up.railway.app/auth/discord/callback
+https://ignisbot.up.railway.app/auth/discord/callback
 ```
 
 ### 3. Configurar Scopes
@@ -43,8 +43,8 @@ Acesse: `http://localhost:4000/auth/debug` para ver a configuração atual.
 - Debug OAuth: http://localhost:4000/auth/debug
 
 **Produção:**
-- Dashboard: https://ysnmbot-alberto.up.railway.app
-- Login: https://ysnmbot-alberto.up.railway.app/login
+- Dashboard: https://ignisbot.up.railway.app
+- Login: https://ignisbot.up.railway.app/login
 
 ## 📝 Variáveis de Ambiente Necessárias
 
@@ -67,4 +67,4 @@ DISCORD_GUILD_ID=seu_guild_id_aqui
 ## ⚡ Solução Rápida
 Se o problema persistir, adicione ambas as URLs no Discord Developer Portal:
 - `http://localhost:4000/auth/discord/callback`
-- `https://ysnmbot-alberto.up.railway.app/auth/discord/callback`
+- `https://ignisbot.up.railway.app/auth/discord/callback`

@@ -19,7 +19,7 @@ O erro 400 no OAuth2 Discord indica que o `redirect_uri` não está autorizado n
 
 **3. Para produção (Railway), adicione também:**
   ```
-  https://ysnmbot-alberto.up.railway.app/auth/discord/callback
+  https://ignisbot.up.railway.app/auth/discord/callback
   ```
 
 ### 🧪 Teste

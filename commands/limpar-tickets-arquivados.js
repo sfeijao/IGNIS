@@ -61,7 +61,7 @@ module.exports = {
                     { name: '📁 Canais a remover', value: archivedChannels.map(c => `• ${c.name}`).slice(0, 10).join('\n') + (archivedChannels.size > 10 ? `\n• ... e mais ${archivedChannels.size - 10} canais` : ''), inline: false },
                     { name: '⚠️ Aviso', value: 'Esta ação é **irreversível**. Os canais serão permanentemente deletados.', inline: false }
                 )
-                .setFooter({ text: 'Sistema de Tickets YSNM - Limpeza' })
+                .setFooter({ text: 'Sistema de Tickets IGNIS - Limpeza' })
                 .setTimestamp();
 
             await interaction.editReply({
@@ -90,7 +90,7 @@ module.exports = {
                         .setColor(0xFFEB3B)
                         .setTitle('🔄 Removendo Tickets Arquivados')
                         .setDescription('Processando...')
-                        .setFooter({ text: 'Sistema de Tickets YSNM' })
+                        .setFooter({ text: 'Sistema de Tickets IGNIS' })
                         .setTimestamp();
 
                     await interaction.editReply({ embeds: [progressEmbed], content: null });
@@ -121,7 +121,7 @@ module.exports = {
                             { name: '❌ Erros', value: errors.toString(), inline: true },
                             { name: '📅 Critério', value: `Mais de ${days} dias`, inline: true }
                         )
-                        .setFooter({ text: 'Sistema de Tickets YSNM - Limpeza Concluída' })
+                        .setFooter({ text: 'Sistema de Tickets IGNIS - Limpeza Concluída' })
                         .setTimestamp();
 
                     await interaction.editReply({ embeds: [resultEmbed] });
@@ -131,7 +131,7 @@ module.exports = {
                         .setColor(0x9E9E9E)
                         .setTitle('❌ Operação Cancelada')
                         .setDescription('A limpeza de tickets arquivados foi cancelada.')
-                        .setFooter({ text: 'Sistema de Tickets YSNM' })
+                        .setFooter({ text: 'Sistema de Tickets IGNIS' })
                         .setTimestamp();
 
                     await interaction.editReply({ embeds: [cancelEmbed], content: null });

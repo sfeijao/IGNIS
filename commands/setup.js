@@ -42,7 +42,7 @@ module.exports = {
                     { name: 'Members', value: interaction.guild.memberCount.toString(), inline: true }
                 )
                 .setTimestamp()
-                .setFooter({ text: 'YSNM Bot Configuration' });
+                .setFooter({ text: 'IGNIS Bot Configuration' });
 
             await interaction.editReply({ embeds: [embed] });
         } 
@@ -64,7 +64,7 @@ module.exports = {
                     { name: 'Config File', value: 'JSON Storage', inline: true }
                 )
                 .setTimestamp()
-                .setFooter({ text: 'YSNM Bot Configuration' });
+                .setFooter({ text: 'IGNIS Bot Configuration' });
 
             await interaction.editReply({ embeds: [embed] });
         }

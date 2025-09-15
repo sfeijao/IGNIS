@@ -16,7 +16,7 @@ npm run smoke:local
 
 3. If you prefer manual steps:
 
-- Start server in one terminal: `npm run server` (wait for "YSNM Dashboard rodando")
+- Start server in one terminal: `npm run server` (wait for "IGNIS Dashboard rodando")
 - In another terminal run: `npm run smoke:fetch`
 - Then: `npm run smoke:headless`
 

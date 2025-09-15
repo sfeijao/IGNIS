@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * 🩺 YSNM Bot - Health Check & Quick Status
+ * 🩺 IGNIS Bot - Health Check & Quick Status
  * 
  * Este arquivo é um health check simples para verificar se o bot está funcionando
  * corretamente no Railway. Não requer autenticação e verifica componentes básicos.
@@ -12,7 +12,7 @@ const config = require('./utils/config');
 const logger = require('./utils/logger');
 
 async function healthCheck() {
-    logger.info('🩺 === YSNM Bot Health Check ===');
+    logger.info('🩺 === IGNIS Bot Health Check ===');
     logger.info(`⏰ Timestamp: ${new Date().toISOString()}`);
     logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     logger.info(`🚂 Railway: ${process.env.RAILWAY_ENVIRONMENT_NAME || 'local'}`);

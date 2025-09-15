@@ -1,5 +1,5 @@
-// YSNM Dashboard - Modern JavaScript
-class YSNMDashboard {
+// IGNIS Dashboard - Modern JavaScript
+class IGNISDashboard {
     constructor() {
         this.currentGuild = null;
         this.user = null;
@@ -9,7 +9,7 @@ class YSNMDashboard {
     }
     
     async init() {
-        console.log('🚀 Inicializando YSNM Dashboard...');
+        console.log('🚀 Inicializando IGNIS Dashboard...');
         
         try {
             await this.loadUser();
@@ -136,7 +136,7 @@ class YSNMDashboard {
                         <i class="fas fa-server"></i>
                     </div>
                     <h3>Nenhum servidor encontrado</h3>
-                    <p>Você não tem acesso de administrador em nenhum servidor onde o YSNM Bot esteja instalado.</p>
+                    <p>Você não tem acesso de administrador em nenhum servidor onde o IGNIS Bot esteja instalado.</p>
                     <a href="https://discord.com/api/oauth2/authorize?client_id=${window.BOT_CLIENT_ID || 'YOUR_BOT_ID'}&permissions=8&scope=bot" 
                        class="btn btn-primary" target="_blank" rel="noopener">
                         <i class="fab fa-discord"></i>
@@ -644,8 +644,8 @@ document.head.appendChild(styleSheet);
 // Initialize dashboard when DOM is loaded
 let dashboard;
 document.addEventListener('DOMContentLoaded', () => {
-    dashboard = new YSNMDashboard();
+    dashboard = new IGNISDashboard();
 });
 
 // Export for global access
-window.YSNMDashboard = YSNMDashboard;
+window.IGNISDashboard = IGNISDashboard;

@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo 🚀 YSNM Discord Bot - Setup GitHub
+echo 🚀 IGNIS Discord Bot - Setup GitHub
 echo ========================================
 echo.
 
@@ -13,7 +13,7 @@ git add .
 echo.
 
 echo 💾 Fazendo primeiro commit...
-git commit -m "🎉 Initial commit: YSNM Discord Bot v2.1.0
+git commit -m "🎉 Initial commit: IGNIS Discord Bot v2.1.0
 
 ✨ Features:
 - 🤖 9 comandos slash completos
@@ -29,7 +29,7 @@ git commit -m "🎉 Initial commit: YSNM Discord Bot v2.1.0
 echo.
 
 echo 🌐 Conectando ao GitHub...
-echo Repositório já existe em: https://github.com/sfeijao/YSNM_BOT
+echo Repositório já existe em: https://github.com/sfeijao/IGNIS_BOT
 echo Para fazer upload das alterações:
 echo.
 echo git add .

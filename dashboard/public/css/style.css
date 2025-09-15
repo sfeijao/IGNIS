@@ -1,4 +1,4 @@
-/* YSNM Dashboard - Modern Design with Glassmorphism & Neumorphism */
+/* IGNIS Dashboard - Modern Design with Glassmorphism & Neumorphism */
 
 :root {
     /* Purple Theme Colors */
@@ -109,8 +109,8 @@ body {
 /* Glass Card Component */
 .glass-card {
     background: var(--glass-bg);
-    backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
     box-shadow: var(--glass-shadow);
@@ -146,8 +146,8 @@ body {
     z-index: 1000;
     padding: var(--space-md) 0;
     background: var(--glass-bg);
-    backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--glass-border);
 }
 
@@ -236,8 +236,8 @@ body {
 
 .btn-glass {
     background: var(--glass-bg);
-    backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
     color: var(--text-primary);
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * 🤖 YSNM Bot - Modo Bot-Only (sem website)
+ * 🤖 IGNIS Bot - Modo Bot-Only (sem website)
  * 
  * Script para iniciar apenas o bot Discord sem a interface web.
  * Útil para debugging e deployment quando CLIENT_SECRET não está disponível.
@@ -13,7 +13,7 @@ const path = require('path');
 const config = require('./utils/config');
 const logger = require('./utils/logger');
 
-logger.info('🤖 === YSNM Bot - Modo Bot-Only ===');
+logger.info('🤖 === IGNIS Bot - Modo Bot-Only ===');
 logger.info('⏰ Iniciando em: %s', new Date().toISOString());
 logger.info('🌍 Environment: %s', process.env.NODE_ENV || 'development');
 logger.info('🚂 Railway: %s', process.env.RAILWAY_ENVIRONMENT_NAME || 'local');

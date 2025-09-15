@@ -22,7 +22,7 @@ module.exports = {
 
         const embed = new EmbedBuilder()
             .setColor('#7B68EE')
-            .setTitle('📊 Status do Servidor YSNM')
+            .setTitle('📊 Status do Servidor IGNIS')
             .setDescription('**Monitor de Status em Tempo Real**')
             .addFields(
                 {
@@ -53,7 +53,7 @@ module.exports = {
             )
             .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
             .setFooter({
-                text: `YSNM Bot • Última atualização`,
+                text: `IGNIS Bot • Última atualização`,
                 iconURL: interaction.client.user.displayAvatarURL()
             })
             .setTimestamp();
@@ -102,7 +102,7 @@ module.exports = {
             if (buttonInteraction.customId === 'refresh_status') {
                 const refreshEmbed = new EmbedBuilder()
                     .setColor('#9932CC')
-                    .setTitle('📊 Status do Servidor YSNM')
+                    .setTitle('📊 Status do Servidor IGNIS')
                     .setDescription('**Monitor de Status em Tempo Real**')
                     .addFields(
                         {
@@ -133,7 +133,7 @@ module.exports = {
                     )
                     .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
                     .setFooter({
-                        text: `YSNM Bot • Atualizado agora`,
+                        text: `IGNIS Bot • Atualizado agora`,
                         iconURL: interaction.client.user.displayAvatarURL()
                     })
                     .setTimestamp();
@@ -165,7 +165,7 @@ module.exports = {
                         }
                     )
                     .setFooter({
-                        text: 'YSNM Bot • Status Detalhado',
+                        text: 'IGNIS Bot • Status Detalhado',
                         iconURL: interaction.client.user.displayAvatarURL()
                     })
                     .setTimestamp();
@@ -182,7 +182,7 @@ module.exports = {
                     .addFields(
                         {
                             name: '🏷️ Versão do Bot',
-                            value: '```YSNM Bot v2.1.0\nBuild: 2024.01.15```',
+                            value: '```IGNIS Bot v2.1.0\nBuild: 2024.01.15```',
                             inline: true
                         },
                         {
@@ -192,7 +192,7 @@ module.exports = {
                         },
                         {
                             name: '👨‍💻 Desenvolvedor',
-                            value: '```YSNM Development Team\nSuporte: 24/7```',
+                            value: '```IGNIS Development Team\nSuporte: 24/7```',
                             inline: true
                         },
                         {
@@ -202,7 +202,7 @@ module.exports = {
                         }
                     )
                     .setFooter({
-                        text: 'YSNM Bot • Informações do Sistema',
+                        text: 'IGNIS Bot • Informações do Sistema',
                         iconURL: interaction.client.user.displayAvatarURL()
                     })
                     .setTimestamp();

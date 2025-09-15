@@ -93,5 +93,5 @@ website/public_backups_html/
 *backup*
 
 # Local SQLite DB
-website/database/ysnm_dashboard.db
+website/database/ignis_dashboard.db
 

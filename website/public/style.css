@@ -1,0 +1,15 @@
+/* Website Styles */
+.loading-container {
+    text-align: center;
+    padding: 40px;
+    color: #6c7086;
+}
+
+.loading-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.loading-text {
+    font-size: 18px;
+}

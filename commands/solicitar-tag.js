@@ -17,7 +17,7 @@ module.exports = {
                            '• O sistema é mais organizado e controlado pelos administradores\n\n' +
                            '📍 **Procure pelos painéis de pedidos de tags nos canais apropriados!**')
             .setFooter({
-                text: 'YSNM Community • Sistema de Tags',
+                text: 'IGNIS Community • Sistema de Tags',
                 iconURL: interaction.client.user.displayAvatarURL()
             })
             .setTimestamp();

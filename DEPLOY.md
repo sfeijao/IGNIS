@@ -1,4 +1,4 @@
-# 🚀 DEPLOY RÁPIDO - YSNM Discord Bot
+# 🚀 DEPLOY RÁPIDO - IGNIS Discord Bot
 
 ## ⚡ Railway Deploy em 5 Passos
 
@@ -11,7 +11,7 @@
 ### 2. 🔗 **Conectar Railway**
 1. Acede a [railway.app](https://railway.app)
 2. Clica **"New Project"** → **"Deploy from GitHub repo"**
-3. Seleciona o repositório **YSNM-Discord-Bot**
+3. Seleciona o repositório **IGNIS-Discord-Bot**
 4. Railway detecta automaticamente o Node.js
 
 ### 3. ⚙️ **Configurar Variáveis de Ambiente**
@@ -49,7 +49,7 @@ SUPPORT_ROLE_ID=1333825387162554398
 
 ### 5. ✅ **Verificar Status**
 - No Railway Dashboard: **"Deployments"**
-- Logs devem mostrar: **"✅ YSNMbot está online!"**
+- Logs devem mostrar: **"✅ IGNISbot está online!"**
 
 ---
 
@@ -94,8 +94,8 @@ npm run deploy
 
 ##  Suporte
 
-- 🐛 **Bugs**: [Issues GitHub](https://github.com/SEU_USUARIO/YSNM-Discord-Bot/issues)
-- 💬 **Discussões**: [Discord YSNM](https://discord.gg/ysnm)
+- 🐛 **Bugs**: [Issues GitHub](https://github.com/SEU_USUARIO/IGNIS-Discord-Bot/issues)
+- 💬 **Discussões**: [Discord IGNIS](https://discord.gg/ignis)
 - 📖 **Docs**: [README completo](README.md)
 
 ---

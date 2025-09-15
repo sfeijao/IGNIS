@@ -24,7 +24,7 @@ module.exports = {
         const embed = new EmbedBuilder()
             .setColor('#9932CC')
             .setTitle('🏷️ Solicitação de Tags Especiais')
-            .setDescription(`**Bem-vindo ao sistema de tags da YSNM Community!**\n\n` +
+            .setDescription(`**Bem-vindo ao sistema de tags da IGNIS Community!**\n\n` +
                 `Para solicitar uma tag especial, seleciona a opção desejada no menu abaixo e explica o motivo do teu pedido.\n\n` +
                 `**🎯 Tags Disponíveis:**\n` +
                 `⭐ **VIP** - Acesso especial VIP à comunidade\n` +
@@ -38,7 +38,7 @@ module.exports = {
                 `4️⃣ Receberás uma resposta por mensagem privada\n\n` +
                 `⚠️ **Importante:** Tags administrativas (Moderador, Suporte) requerem experiência comprovada.`)
             .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
-            .setFooter({ text: 'YSNM Community • Sistema de Tags' })
+            .setFooter({ text: 'IGNIS Community • Sistema de Tags' })
             .setTimestamp();
 
         const selectMenu = new StringSelectMenuBuilder()

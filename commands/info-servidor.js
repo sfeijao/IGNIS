@@ -46,7 +46,7 @@ module.exports = {
                 { name: '🏷️ Cargos', value: `${guild.roles.cache.size}`, inline: true }
             ])
             .setTimestamp()
-            .setFooter({ text: `YSNM Community • Sistema de Informações` });
+            .setFooter({ text: `IGNIS Community • Sistema de Informações` });
 
         await interaction.reply({ embeds: [embed] });
     },

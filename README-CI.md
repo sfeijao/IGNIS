@@ -1,6 +1,6 @@
-# YSNM_BOT — Quick dev guide
+# IGNIS_BOT — Quick dev guide
 
-This repository contains the YSNM Discord bot and the website dashboard.
+This repository contains the IGNIS Discord bot and the website dashboard.
 
 Quick commands
 
@@ -30,6 +30,6 @@ npm run server
 
 Notes
 
-- The test scripts use the local SQLite file `website/ysnm_dashboard.db` and will create backups before migrations.
+- The test scripts use the local SQLite file `website/ignis_dashboard.db` and will create backups before migrations.
 - CI runs unit tests then e2e tests on pushes and PRs to `main` via `.github/workflows/ci.yml`.
 

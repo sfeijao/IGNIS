@@ -26,7 +26,7 @@ module.exports = {
             
             const embed = new EmbedBuilder()
                 .setColor(hasEssentialPerms ? EMBED_COLORS.SUCCESS : EMBED_COLORS.WARNING)
-                .setTitle(`${EMOJIS.BOT} Status do Bot YSNM`)
+                .setTitle(`${EMOJIS.BOT} Status do Bot IGNIS`)
                 .addFields(
                     { name: '🆔 Bot ID', value: interaction.client.user.id, inline: true },
                     { name: '🏷️ Bot Tag', value: interaction.client.user.tag, inline: true },
@@ -43,7 +43,7 @@ module.exports = {
                 )
                 .setTimestamp()
                 .setFooter({ 
-                    text: `Sistema YSNM v2.1.1 • ${hasEssentialPerms ? 'Funcionando' : 'Limitado'}`,
+                    text: `Sistema IGNIS v2.1.1 • ${hasEssentialPerms ? 'Funcionando' : 'Limitado'}`,
                     iconURL: interaction.client.user.displayAvatarURL()
                 });
 

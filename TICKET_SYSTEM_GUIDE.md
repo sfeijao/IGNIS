@@ -1,4 +1,4 @@
-# Sistema de Tickets YSNM - Guia de Utilização
+# Sistema de Tickets IGNIS - Guia de Utilização
 
 ## 🎫 Funcionalidades Implementadas
 
@@ -97,5 +97,5 @@
 
 ---
 
-**Sistema desenvolvido para o YSNM Bot Dashboard**  
+**Sistema desenvolvido para o IGNIS Bot Dashboard**  
 *Versão atualizada com funcionalidades avançadas de gestão de tickets*

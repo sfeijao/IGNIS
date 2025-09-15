@@ -43,7 +43,7 @@ module.exports = {
                 '• Divirta-se!')
             .setThumbnail(interaction.guild.iconURL({ dynamic: true, size: 256 }))
             .setFooter({ 
-                text: 'YSNM COMMUNITY™ • Sistema de verificação seguro • 2025'
+                text: 'IGNIS COMMUNITY™ • Sistema de verificação seguro • 2025'
             })
             .setTimestamp();
 

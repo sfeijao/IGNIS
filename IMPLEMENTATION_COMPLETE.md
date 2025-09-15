@@ -1,4 +1,4 @@
-# ✅ Sistema de Tickets YSNM - Implementação Completa
+# ✅ Sistema de Tickets IGNIS - Implementação Completa
 
 ## 🎯 Status Final: **TOTALMENTE FUNCIONAL**
 
@@ -82,7 +82,7 @@
 
 ## 🎉 Resultado Final
 
-O **Sistema de Tickets YSNM** está agora **100% funcional** com todas as funcionalidades solicitadas:
+O **Sistema de Tickets IGNIS** está agora **100% funcional** com todas as funcionalidades solicitadas:
 
 - ✅ Interface moderna e intuitiva
 - ✅ Gestão completa de usuários múltiplos
@@ -96,5 +96,5 @@ O **Sistema de Tickets YSNM** está agora **100% funcional** com todas as funcio
 
 ---
 
-**Desenvolvido para YSNM Discord Bot**  
+**Desenvolvido para IGNIS Discord Bot**  
 *Sistema completo de gestão de tickets com funcionalidades avançadas*

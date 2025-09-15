@@ -101,4 +101,4 @@ try {
 
 ---
 
-**🎊 O bot Discord YSNM está agora completamente estável e livre de erros de voiceStateUpdate!**
+**🎊 O bot Discord IGNIS está agora completamente estável e livre de erros de voiceStateUpdate!**

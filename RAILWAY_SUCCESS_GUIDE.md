@@ -1,4 +1,4 @@
-# 🚂 YSNM Bot - Railway Deployment Success Guide
+# 🚂 IGNIS Bot - Railway Deployment Success Guide
 
 ## 📋 TL;DR - Quick Fix
 O seu bot agora tem **startup inteligente** que automaticamente detecta a configuração disponível no Railway e escolhe o melhor modo de operação.

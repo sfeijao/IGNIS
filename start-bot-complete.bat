@@ -1,12 +1,12 @@
 @echo off
-title YSNM Bot - Dashboard Completo
+title IGNIS Bot - Dashboard Completo
 echo ========================================
-echo      YSNM Bot + Dashboard
+echo      IGNIS Bot + Dashboard
 echo ========================================
 echo.
 echo 🚀 Iniciando bot completo com dashboard...
 echo 📊 Dashboard disponível em: http://localhost:4000
-echo 🤖 Bot Discord: YSNMbot
+echo 🤖 Bot Discord: IGNISbot
 echo.
 cd /d "%~dp0"
 node index.js

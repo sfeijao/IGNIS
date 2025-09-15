@@ -72,7 +72,7 @@ module.exports = {
             const welcomeEmbed = new EmbedBuilder()
                 .setColor(EMBED_COLORS.INFO)
                 .setTitle(`${EMOJIS.SUCCESS} Bem-vindo ${member.user.username}!`)
-                .setDescription(`Bem-vindo ao **YSNM Community**!\n\n` +
+                .setDescription(`Bem-vindo ao **IGNIS Community**!\n\n` +
                     '1. Lê as regras do servidor\n' +
                     '2. Completa a verificação\n' +
                     '3. Escolhe as tuas tags\n' +
@@ -80,7 +80,7 @@ module.exports = {
                 .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }))
                 .setTimestamp()
                 .setFooter({ 
-                    text: 'YSNM Community', 
+                    text: 'IGNIS Community', 
                     iconURL: member.user.displayAvatarURL() 
                 });
 

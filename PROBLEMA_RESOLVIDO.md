@@ -41,7 +41,7 @@ const callbackURL = isProduction ?
 const callbackURL = isProduction ? 
     (config.WEBSITE?.production?.redirectUri || 
      process.env.CALLBACK_URL || 
-     'https://ysnmbot-alberto.up.railway.app/auth/discord/callback') : '...';
+     'https://ignisbot.up.railway.app/auth/discord/callback') : '...';
 ```
 
 ### 🔧 **3. Suporte a Typos (utils/config.js)**

@@ -7,7 +7,7 @@ const Database = require('../website/database/database');
     const db = new Database();
     await db.initialize();
 
-    // IDs conhecidos (YSNM e Beanny) — podes adicionar outros aqui
+    // IDs conhecidos (IGNIS e Beanny) — podes adicionar outros aqui
     const guildIds = ['1333820000791691284', '1283603691538088027'];
     const keys = ['log_channel_id', 'ticket_category_id', 'staff_role_id', 'verify_role_id'];
 

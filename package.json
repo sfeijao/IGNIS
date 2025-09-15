@@ -43,12 +43,12 @@
     "railway",
     "purple-theme"
   ],
-  "author": "YSNM Community",
+  "author": "IGNIS Community",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/sfeijao/YSNM_BOT/issues"
+    "url": "https://github.com/sfeijao/IGNIS_BOT/issues"
   },
-  "homepage": "https://github.com/sfeijao/YSNM_BOT#readme",
+  "homepage": "https://github.com/sfeijao/IGNIS_BOT#readme",
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "discord.js": "^14.14.1",

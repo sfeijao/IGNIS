@@ -8,7 +8,7 @@ Os erros 401 (Unauthorized) no dashboard Railway foram corrigidos! Agora o dashb
 ### ✅ **Método 1: Token Automático (Recomendado)**
 O dashboard agora usa automaticamente `admin-token` quando detecta ambiente Railway.
 
-1. Acesse: `https://ysnmbot-alberto.up.railway.app/dashboard`
+1. Acesse: `https://ignisbot.up.railway.app/dashboard`
 2. Dashboard deve carregar automaticamente
 3. Se aparecer erro de auth, use Método 2
 
@@ -26,7 +26,7 @@ Se o método automático falhar:
 ### ✅ **Método 3: Via URL**
 Adicione token diretamente na URL:
 ```
-https://ysnmbot-alberto.up.railway.app/dashboard?token=admin-token
+https://ignisbot.up.railway.app/dashboard?token=admin-token
 ```
 
 ### ✅ **Método 4: Discord OAuth (Se Disponível)**

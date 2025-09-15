@@ -82,7 +82,7 @@ module.exports = {
             // 📊 Embed principal
             const performanceEmbed = new EmbedBuilder()
                 .setColor(memoryUsed > 300 ? '#FF6B6B' : ping > 300 ? '#FFE66D' : '#4ECDC4')
-                .setTitle('📊 Monitor de Performance YSNM')
+                .setTitle('📊 Monitor de Performance IGNIS')
                 .setDescription('**Status em tempo real do sistema**')
                 .addFields(
                     {
