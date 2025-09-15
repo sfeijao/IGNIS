@@ -193,14 +193,14 @@ class TicketManager {
             .setColor('#5865F2') // Discord Blurple moderno e elegante
             .setTitle('🎫 TICKET DE SUPORTE PREMIUM')
             .setDescription([
-                '### � **SISTEMA DE ATENDIMENTO AVANÇADO**',
+                '### 🚀 **SISTEMA DE ATENDIMENTO AVANÇADO**',
                 '',
                 '> **🎯 Bem-vindo ao nosso sistema de suporte profissional!**',
                 '> Sua solicitação foi registrada com sucesso e nossa equipe especializada foi notificada automaticamente.',
                 '',
                 '### ⚡ **GARANTIAS DO NOSSO SERVIÇO:**',
                 '',
-                '� **Tempo de Resposta:** `≤ 15 minutos`',
+                '🟢 **Tempo de Resposta:** `≤ 15 minutos`',
                 '🎯 **Resolução Média:** `45 minutos`',
                 '🛡️ **Disponibilidade:** `24/7`',
                 '🔒 **Privacidade:** `100% Protegida`',
@@ -257,7 +257,7 @@ class TicketManager {
                 .setCustomId('ticket_claim')
                 .setLabel('Atender Ticket')
                 .setStyle(ButtonStyle.Success)
-                .setEmoji('�'),
+                .setEmoji('👋'),
             new ButtonBuilder()
                 .setCustomId('ticket_priority')
                 .setLabel('Definir Prioridade')
@@ -518,7 +518,7 @@ class TicketManager {
             });
 
             await interaction.channel.send({
-                content: `� **ATENÇÃO:** Staff assumiu o atendimento! <@${ticket.user_id}>`,
+                content: `🎫 **ATENÇÃO:** Staff assumiu o atendimento! <@${ticket.user_id}>`,
                 embeds: [claimEmbed]
             });
 
