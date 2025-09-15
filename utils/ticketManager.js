@@ -457,12 +457,6 @@ class TicketManager {
                     `> **${getUserDisplayName(interaction.user, interaction.guild)}** assumiu o atendimento deste ticket`,
                     '> O processo de resolução foi oficialmente iniciado.',
                     '',
-                    '### 🎯 **PRÓXIMOS PASSOS:**',
-                    '',
-                    '**1.** 🔍 **Análise detalhada** do problema reportado',
-                    '**2.** 💬 **Comunicação direta** com esclarecimentos',
-                    '**3.** 🔧 **Implementação** da solução adequada',
-                    '**4.** ✅ **Verificação** e fechamento do ticket',
                     '',
                     '💡 *Mantenha-se ativo no canal para agilizar o processo*'
                 ].join('\n'))
@@ -472,24 +466,19 @@ class TicketManager {
                         value: [
                             `**Staff:** ${getUserDisplayName(interaction.user, interaction.guild)}`,
                             `**Tag:** \`${interaction.user.tag}\``,
-                            `**ID:** \`${interaction.user.id}\``
                         ].join('\n'), 
                         inline: true 
                     },
                     { 
                         name: '🎫 STATUS ATUALIZADO', 
                         value: [
-                            `**Ticket ID:** \`#${String(ticket.id || Date.now()).slice(-6)}\``,
                             `**Status:** \`🟢 Em Atendimento\``,
-                            `**Prioridade:** \`🟡 Normal\``
                         ].join('\n'), 
                         inline: true 
                     },
                     {
                         name: '⏰ TIMELINE',
                         value: [
-                            `**Assumido:** <t:${Math.floor(Date.now() / 1000)}:f>`,
-                            `**Há:** <t:${Math.floor(Date.now() / 1000)}:R>`,
                             `**Canal renomeado:** Automaticamente`
                         ].join('\n'),
                         inline: true
