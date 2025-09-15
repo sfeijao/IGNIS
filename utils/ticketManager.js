@@ -191,19 +191,19 @@ class TicketManager {
         // Send initial message in the channel
         const embed = new EmbedBuilder()
             .setColor('#5865F2') // Discord Blurple moderno e elegante
-            .setTitle('🎫 TICKET DE SUPORTE PREMIUM')
+            .setTitle('🎫 TICKET DE SUPORTE')
             .setDescription([
-                '### 🚀 **SISTEMA DE ATENDIMENTO AVANCADO**',
+                '### 🚀 **SISTEMA DE ATENDIMENTO**',
                 '',
-                '> **🎯 Bem-vindo ao nosso sistema de suporte profissional!**',
+                '> **🎯 Bem-vindo ao nosso sistema de**',
                 '',
                 '### ⚡ **GARANTIAS DO NOSSO SERVICO:**',
                 '',
-                '🟢 **Tempo de Resposta:** `≤ 15 minutos`',
-                '🎯 **Resolucao Media:** `45 minutos`',
+                '🟢 **Tempo de Resposta:**',
+                '🎯 **Resolucao Media:**',
                 '🛡️ **Disponibilidade:** `24/7`',
                 '🔒 **Privacidade:** `100% Protegida`',
-                '📊 **Rastreamento:** `Completo e Transparente`',
+                '📊 **Rastreamento:**',
                 '',
                 '### 📋 **COMO PROCEDER:**',
                 '',
@@ -245,12 +245,12 @@ class TicketManager {
             )
             .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
             .setFooter({ 
-                text: `${guild.name} • Sistema de Tickets Avançado • YSNM v2.5 Premium`,
+                text: `${guild.name} • Sistema de Tickets Avançado • YSNM v2.5`,
                 iconURL: guild.iconURL({ dynamic: true })
             })
             .setTimestamp();
 
-        // Painel de controle principal - Design Premium
+        // Painel de controle principal - Design
         const mainControlPanel = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('ticket_claim')
@@ -295,7 +295,7 @@ class TicketManager {
 
         await channel.send({
             content: [
-                `🎯 <@${user.id}> **Ticket Premium Criado!**`,
+                `🎯 <@${user.id}> **Ticket Criado!**`,
                 '',
                 '### 🚀 **SISTEMA ATIVO**',
                 '',
