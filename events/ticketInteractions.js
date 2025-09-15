@@ -686,13 +686,29 @@ async function handleAddUserModal(interaction) {
         });
         
         // Mensagem no canal do ticket
+        const additionEmbed = new EmbedBuilder()
+            .setColor(0x4CAF50)
+            .setTitle('✅ Utilizador Adicionado ao Ticket')
+            .setDescription([
+                `### 🎯 **${member.user.tag}** foi adicionado ao sistema de suporte`,
+                '',
+                `**🔓 Acesso concedido:** O utilizador pode agora ver e participar neste ticket`,
+                `**👤 Adicionado por:** ${interaction.user.tag}`,
+                `**📝 Motivo:** ${reason}`,
+                `**⏰ Data/Hora:** <t:${Math.floor(Date.now() / 1000)}:f>`,
+                '',
+                '> *Esta ação foi registrada no sistema de logs para auditoria*'
+            ].join('\n'))
+            .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+            .setFooter({ 
+                text: '🛡️ Sistema de Gestão de Tickets | Ação de Moderação',
+                iconURL: interaction.guild.iconURL({ dynamic: true })
+            })
+            .setTimestamp();
+
         await channel.send({
-            content: `🎯 ${member} foi adicionado ao ticket por ${interaction.user}`,
-            embeds: [new EmbedBuilder()
-                .setColor(0x00FF00)
-                .setDescription(`**Motivo:** ${reason}`)
-                .setTimestamp()
-            ]
+            content: `🎯 ${member}`,
+            embeds: [additionEmbed]
         });
         
         logger.info(`➕ Utilizador ${member.user.tag} adicionado ao ticket ${channel.id} por ${interaction.user.tag}`);
