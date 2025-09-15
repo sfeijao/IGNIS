@@ -4,7 +4,6 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Dashboard - IGNIS Bot</title>
-    <link rel="stylesheet" href="/public/css/style.css" />
     <link rel="stylesheet" href="style.css" />
     <style>
       body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial; margin:0; background:#0F1419; color:#fff }
@@ -13,29 +12,52 @@
       .navbar-content { display:flex; justify-content:space-between; align-items:center; padding:16px 0; height:60px }
       .navbar-brand { font-size:22px; font-weight:700; color:#cdd6f4; display:flex; align-items:center; gap:8px }
       .navbar-user { display:flex; align-items:center; gap:12px; color:#bac2de }
-      .user-avatar { width:32px; height:32px; border-radius:50%; border:2px solid #6c7086 }
-      .logout-btn { color:#fff; opacity:0.9 }
+      .user-avatar { width:32px; height:32px; border-radius:50%; border:2px solid #6c7086; background: #9932CC; display: flex; align-items: center; justify-content: center; }
+      .logout-btn { color:#fff; opacity:0.9; text-decoration: none; padding: 8px 16px; background: #7B68EE; border-radius: 4px; }
+      .logout-btn:hover { background: #9932CC; }
+      .ignis-logo { color: #9932CC; font-weight: bold; }
     </style>
 </head>
 <body>
     <nav class="navbar">
       <div class="navbar-content container">
-        <div class="navbar-brand"> IGNIS Dashboard</div>
+        <div class="navbar-brand">🔥 <span class="ignis-logo">IGNIS</span> Dashboard</div>
         <div class="navbar-user">
-          <img id="userAvatar" src="/assets/default-avatar.png" alt="Avatar" class="user-avatar">
-          <span id="userName">Carregando...</span>
-          <a href="/logout" class="logout-btn">Logout</a>
+          <div class="user-avatar">👤</div>
+          <span id="userName">IGNIS Bot</span>
+          <a href="https://ignisbot.up.railway.app" class="logout-btn">Dashboard Principal</a>
         </div>
       </div>
     </nav>
     <div class="container">
       <div id="dashboard-content">
         <div class="loading-container">
-          <div class="loading-icon"></div>
-          <div class="loading-text">Carregando dashboard...</div>
+          <div class="loading-icon">🔥</div>
+          <div class="loading-text">
+            <h2 class="website-title">IGNIS Bot Website</h2>
+            <p>Sistema de Discord Bot completo com funcionalidades avançadas</p>
+            <div class="links-container">
+              <a href="https://ignisbot.up.railway.app" class="btn-link">
+                🚀 Dashboard Principal
+              </a>
+              <a href="https://github.com/sfeijao/IGNIS" class="btn-link">
+                📋 GitHub
+              </a>
+            </div>
+            <div class="features-box">
+              <h3 class="features-title">Funcionalidades:</h3>
+              <ul class="features-list">
+                <li>🎫 Sistema de Tickets Avançado</li>
+                <li>🔐 Sistema de Verificação</li>
+                <li>🏷️ Gestão de Tags/Cargos</li>
+                <li>📊 Painel de Status em Tempo Real</li>
+                <li>📝 Sistema de Logs Completo</li>
+                <li>💜 Tema Roxo Personalizado</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-    <script src="/public/js/script.js"></script>
 </body>
 </html>

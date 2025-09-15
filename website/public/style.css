@@ -13,3 +13,46 @@
 .loading-text {
     font-size: 18px;
 }
+
+.website-title {
+    color: #9932CC;
+    margin-bottom: 16px;
+}
+
+.links-container {
+    margin-top: 24px;
+}
+
+.btn-link {
+    color: #7B68EE;
+    text-decoration: none;
+    padding: 12px 24px;
+    background: rgba(123, 104, 238, 0.2);
+    border: 1px solid #7B68EE;
+    border-radius: 8px;
+    margin: 8px;
+    display: inline-block;
+    transition: background 0.3s ease;
+}
+
+.btn-link:hover {
+    background: rgba(123, 104, 238, 0.4);
+}
+
+.features-box {
+    margin-top: 32px;
+    padding: 20px;
+    background: rgba(153, 50, 204, 0.1);
+    border-radius: 8px;
+    border-left: 4px solid #9932CC;
+}
+
+.features-title {
+    color: #9932CC;
+    margin-top: 0;
+}
+
+.features-list {
+    text-align: left;
+    color: #cdd6f4;
+}
