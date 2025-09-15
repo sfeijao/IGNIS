@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGNIS Bot - Página Inicial</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="home-page">
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content fade-in">
+                <div class="hero-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <h1>IGNIS Bot</h1>
+                <p class="hero-subtitle">
+                    Sistema completo de gestão para servidores Discord
+                </p>
+                <p class="hero-description">
+                    Moderação avançada, sistema de tickets, verificação de membros e muito mais.
+                    Gerencie o seu servidor Discord com facilidade e eficiência.
+                </p>
+                <div class="hero-actions">
+                    <a href="/login" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Aceder ao Dashboard
+                    </a>
+                    <a href="https://discord.com/api/oauth2/authorize?client_id=YOUR_BOT_ID&permissions=8&scope=bot" class="btn btn-glass" target="_blank" rel="noopener">
+                        <i class="fab fa-discord"></i>
+                        Adicionar ao Servidor
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <div class="section-header text-center">
+                <h2 class="section-title">Funcionalidades Principais</h2>
+                <p class="text-secondary">
+                    Tudo que precisa para gerir o seu servidor Discord
+                </p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card glass-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-ticket-alt"></i>
+                    </div>
+                    <h3>Sistema de Tickets</h3>
+                    <p>
+                        Sistema avançado de tickets com categorias, prioridades e logs via webhook.
+                        Gestão completa de suporte ao utilizador.
+                    </p>
+                    <ul>
+                        <li>Múltiplas categorias</li>
+                        <li>Sistema de prioridades</li>
+                        <li>Logs automáticos</li>
+                        <li>Interface intuitiva</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card glass-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <h3>Verificação de Membros</h3>
+                    <p>
+                        Sistema completo de verificação com formulários personalizados
+                        e atribuição automática de cargos.
+                    </p>
+                    <ul>
+                        <li>Formulários personalizados</li>
+                        <li>Verificação automática</li>
+                        <li>Controlo de acesso</li>
+                        <li>Anti-spam integrado</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card glass-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-tags"></i>
+                    </div>
+                    <h3>Sistema de Tags</h3>
+                    <p>
+                        Gestão avançada de tags personalizadas para membros.
+                        Organização e categorização eficiente.
+                    </p>
+                    <ul>
+                        <li>Tags personalizadas</li>
+                        <li>Gestão por staff</li>
+                        <li>Sistema de categorias</li>
+                        <li>Interface visual</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card glass-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Analytics & Logs</h3>
+                    <p>
+                        Estatísticas detalhadas do servidor e sistema completo
+                        de logs para todas as ações.
+                    </p>
+                    <ul>
+                        <li>Estatísticas em tempo real</li>
+                        <li>Logs detalhados</li>
+                        <li>Webhooks configuráveis</li>
+                        <li>Relatórios automáticos</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card glass-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-hammer"></i>
+                    </div>
+                    <h3>Moderação Avançada</h3>
+                    <p>
+                        Ferramentas completas de moderação com comandos
+                        personalizados e ações automatizadas.
+                    </p>
+                    <ul>
+                        <li>Comandos de moderação</li>
+                        <li>Auto-moderação</li>
+                        <li>Filtros de conteúdo</li>
+                        <li>Sistema de warns</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card glass-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3>Multi-Servidor</h3>
+                    <p>
+                        Suporte completo para múltiplos servidores.
+                        Configurações independentes e gestão centralizada.
+                    </p>
+                    <ul>
+                        <li>Múltiplos servidores</li>
+                        <li>Configurações independentes</li>
+                        <li>Dashboard centralizado</li>
+                        <li>Sincronização automática</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats-section">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-card glass-card text-center">
+                    <div class="stat-value">99.9%</div>
+                    <div class="stat-label">Uptime</div>
+                </div>
+                <div class="stat-card glass-card text-center">
+                    <div class="stat-value">24/7</div>
+                    <div class="stat-label">Suporte</div>
+                </div>
+                <div class="stat-card glass-card text-center">
+                    <div class="stat-value">∞</div>
+                    <div class="stat-label">Servidores</div>
+                </div>
+                <div class="stat-card glass-card text-center">
+                    <div class="stat-value">2025</div>
+                    <div class="stat-label">Desde</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content glass-card text-center">
+                <h2>Pronto para começar?</h2>
+                <p>
+                    Junte-se a milhares de servidores que já utilizam o IGNIS Bot
+                    para gestão avançada e moderação eficiente.
+                </p>
+                <div class="cta-actions">
+                    <a href="/login" class="btn btn-primary">
+                        <i class="fas fa-rocket"></i>
+                        Começar Agora
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <style>
+        .home-page {
+            background: linear-gradient(-45deg, 
+                var(--bg-primary), 
+                var(--bg-secondary), 
+                var(--bg-tertiary), 
+                #1a1a2e
+            );
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: var(--space-2xl) 0;
+        }
+
+        .hero-avatar {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto var(--space-xl);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: var(--radius-xl);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: white;
+            box-shadow: 0 16px 48px rgba(139, 92, 246, 0.3);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            font-weight: 900;
+            margin-bottom: var(--space-lg);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: var(--space-lg);
+            color: var(--text-secondary);
+        }
+
+        .hero-description {
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto var(--space-2xl);
+            color: var(--text-muted);
+            line-height: 1.8;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: var(--space-lg);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .features {
+            padding: var(--space-2xl) 0;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: var(--space-xl);
+            margin-top: var(--space-2xl);
+        }
+
+        .feature-card {
+            padding: var(--space-2xl);
+            text-align: center;
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto var(--space-lg);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: var(--radius-xl);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: var(--space-md);
+            background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            margin-bottom: var(--space-lg);
+            line-height: 1.6;
+        }
+
+        .feature-card ul {
+            list-style: none;
+            padding: 0;
+            text-align: left;
+        }
+
+        .feature-card li {
+            padding: var(--space-xs) 0;
+            color: var(--text-muted);
+            position: relative;
+            padding-left: var(--space-lg);
+        }
+
+        .feature-card li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .stats-section {
+            padding: var(--space-2xl) 0;
+        }
+
+        .cta-section {
+            padding: var(--space-2xl) 0;
+        }
+
+        .cta-content {
+            padding: var(--space-2xl);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .cta-content h2 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: var(--space-lg);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .cta-content p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-xl);
+            line-height: 1.7;
+        }
+
+        .cta-actions {
+            display: flex;
+            justify-content: center;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .hero-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</body>
+</html>
