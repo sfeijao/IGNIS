@@ -375,9 +375,517 @@ class IGNISDashboard {
         div.textContent = text || '';
         return div.innerHTML;
     }
+    
+    // Advanced Ticket System Functions
+    async loadAdvancedTickets() {
+        if (!this.currentGuild) return;
+        
+        const ticketsContainer = document.getElementById('ticketsList');
+        if (!ticketsContainer) return;
+        
+        try {
+            ticketsContainer.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    Carregando tickets avançados...
+                </div>
+            `;
+            
+            const response = await fetch(`/api/guild/${this.currentGuild}/tickets`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.renderAdvancedTickets(data.tickets, data.stats);
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (error) {
+            console.error('Erro ao carregar tickets:', error);
+            ticketsContainer.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Erro ao carregar tickets: ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    renderAdvancedTickets(tickets, stats) {
+        const ticketsContainer = document.getElementById('ticketsList');
+        
+        if (tickets.length === 0) {
+            ticketsContainer.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas fa-ticket-alt"></i>
+                    </div>
+                    <h3>Nenhum ticket encontrado</h3>
+                    <p>Este servidor ainda não possui tickets criados.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        const ticketCards = tickets.map(ticket => this.createAdvancedTicketCard(ticket)).join('');
+        const statsHtml = this.createAdvancedTicketStats(stats);
+        
+        ticketsContainer.innerHTML = `
+            ${statsHtml}
+            <div class="tickets-grid">
+                ${ticketCards}
+            </div>
+        `;
+    }
+    
+    createAdvancedTicketStats(stats) {
+        return `
+            <div class="ticket-stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon total">
+                        <i class="fas fa-ticket-alt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">${stats.total}</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon open">
+                        <i class="fas fa-unlock"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">${stats.open}</div>
+                        <div class="stat-label">Abertos</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon claimed">
+                        <i class="fas fa-hand-paper"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">${stats.claimed}</div>
+                        <div class="stat-label">Reclamados</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon closed">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">${stats.closed}</div>
+                        <div class="stat-label">Fechados</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    createAdvancedTicketCard(ticket) {
+        const statusClass = this.getTicketStatusClass(ticket.status);
+        const statusIcon = this.getTicketStatusIcon(ticket.status);
+        
+        return `
+            <div class="ticket-card advanced ${statusClass}" onclick="dashboard.openAdvancedTicketModal('${ticket.ticketId}')">
+                <div class="ticket-header">
+                    <div class="ticket-id">#${ticket.ticketId}</div>
+                    <div class="ticket-status">
+                        <i class="fas ${statusIcon}"></i>
+                        ${this.formatTicketStatus(ticket.status)}
+                    </div>
+                </div>
+                
+                <div class="ticket-info">
+                    <div class="ticket-category">
+                        <i class="fas fa-tag"></i>
+                        ${ticket.category || 'Geral'}
+                    </div>
+                    <div class="ticket-time">
+                        <i class="fas fa-clock"></i>
+                        ${ticket.timeAgo}
+                    </div>
+                </div>
+                
+                <div class="ticket-description">
+                    ${ticket.description || 'Sem descrição'}
+                </div>
+                
+                <div class="ticket-footer">
+                    <div class="ticket-owner">
+                        <img src="${ticket.ownerAvatar || '/assets/default-avatar.png'}" alt="Avatar" class="user-avatar-small">
+                        <span>${ticket.ownerTag}</span>
+                    </div>
+                    ${ticket.claimedByTag ? `
+                        <div class="ticket-claimed">
+                            <img src="${ticket.claimedByAvatar || '/assets/default-avatar.png'}" alt="Avatar" class="user-avatar-small">
+                            <span>Reclamado por ${ticket.claimedByTag}</span>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <div class="ticket-actions">
+                    ${this.getAdvancedTicketActions(ticket)}
+                </div>
+            </div>
+        `;
+    }
+    
+    getTicketStatusClass(status) {
+        const classes = {
+            'open': 'status-open',
+            'claimed': 'status-claimed',
+            'closed': 'status-closed',
+            'pending': 'status-pending'
+        };
+        return classes[status] || 'status-unknown';
+    }
+    
+    getTicketStatusIcon(status) {
+        const icons = {
+            'open': 'fa-unlock',
+            'claimed': 'fa-hand-paper',
+            'closed': 'fa-lock',
+            'pending': 'fa-clock'
+        };
+        return icons[status] || 'fa-question';
+    }
+    
+    formatTicketStatus(status) {
+        const labels = {
+            'open': 'Aberto',
+            'claimed': 'Reclamado',
+            'closed': 'Fechado',
+            'pending': 'Pendente'
+        };
+        return labels[status] || status;
+    }
+    
+    getAdvancedTicketActions(ticket) {
+        let actions = [];
+        
+        if (ticket.status === 'open') {
+            actions.push(`
+                <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); dashboard.claimAdvancedTicket('${ticket.ticketId}')">
+                    <i class="fas fa-hand-paper"></i>
+                    Reclamar
+                </button>
+            `);
+        }
+        
+        if (['open', 'claimed'].includes(ticket.status)) {
+            actions.push(`
+                <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); dashboard.closeAdvancedTicket('${ticket.ticketId}')">
+                    <i class="fas fa-times"></i>
+                    Fechar
+                </button>
+            `);
+        }
+        
+        if (ticket.status === 'closed') {
+            actions.push(`
+                <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); dashboard.reopenAdvancedTicket('${ticket.ticketId}')">
+                    <i class="fas fa-redo"></i>
+                    Reabrir
+                </button>
+            `);
+        }
+        
+        return actions.join('');
+    }
+    
+    async openAdvancedTicketModal(ticketId) {
+        try {
+            const response = await fetch(`/api/guild/${this.currentGuild}/tickets/${ticketId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showAdvancedTicketDetails(data.ticket);
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (error) {
+            console.error('Erro ao carregar detalhes do ticket:', error);
+            this.showError('Erro ao carregar detalhes do ticket');
+        }
+    }
+    
+    showAdvancedTicketDetails(ticket) {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content ticket-modal">
+                <div class="modal-header">
+                    <h2>
+                        <i class="fas fa-ticket-alt"></i>
+                        Ticket #${ticket.ticketId}
+                    </h2>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="ticket-details-grid">
+                        <div class="ticket-info-panel">
+                            <div class="info-card">
+                                <h3>Informações do Ticket</h3>
+                                <div class="info-grid">
+                                    <div class="info-item">
+                                        <label>Status</label>
+                                        <span class="ticket-status ${this.getTicketStatusClass(ticket.status)}">
+                                            <i class="fas ${this.getTicketStatusIcon(ticket.status)}"></i>
+                                            ${this.formatTicketStatus(ticket.status)}
+                                        </span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Categoria</label>
+                                        <span>${ticket.category || 'Geral'}</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Criado por</label>
+                                        <div class="user-info">
+                                            <img src="${ticket.ownerAvatar || '/assets/default-avatar.png'}" alt="Avatar" class="user-avatar-small">
+                                            <span>${ticket.ownerTag}</span>
+                                        </div>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Criado em</label>
+                                        <span>${new Date(ticket.createdAt).toLocaleString('pt-PT')}</span>
+                                    </div>
+                                    ${ticket.claimedByTag ? `
+                                        <div class="info-item">
+                                            <label>Reclamado por</label>
+                                            <div class="user-info">
+                                                <img src="${ticket.claimedByAvatar || '/assets/default-avatar.png'}" alt="Avatar" class="user-avatar-small">
+                                                <span>${ticket.claimedByTag}</span>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            
+                            <div class="actions-card">
+                                <h3>Ações</h3>
+                                <div class="action-buttons">
+                                    ${this.getModalAdvancedTicketActions(ticket)}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="ticket-messages-panel">
+                            <div class="messages-card">
+                                <h3>Histórico de Mensagens</h3>
+                                <div class="messages-container">
+                                    ${this.renderAdvancedTicketMessages(ticket.messages)}
+                                </div>
+                            </div>
+                            
+                            <div class="add-note-card">
+                                <h3>Adicionar Nota</h3>
+                                <div class="note-form">
+                                    <textarea id="ticketNote" placeholder="Adicionar uma nota interna..."></textarea>
+                                    <button class="btn btn-primary" onclick="dashboard.addAdvancedTicketNote('${ticket.ticketId}')">
+                                        <i class="fas fa-plus"></i>
+                                        Adicionar Nota
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+    
+    getModalAdvancedTicketActions(ticket) {
+        let actions = [];
+        
+        if (ticket.status === 'open') {
+            actions.push(`
+                <button class="btn btn-primary" onclick="dashboard.claimAdvancedTicket('${ticket.ticketId}', true)">
+                    <i class="fas fa-hand-paper"></i>
+                    Reclamar Ticket
+                </button>
+            `);
+        }
+        
+        if (['open', 'claimed'].includes(ticket.status)) {
+            actions.push(`
+                <button class="btn btn-danger" onclick="dashboard.closeAdvancedTicket('${ticket.ticketId}', true)">
+                    <i class="fas fa-times"></i>
+                    Fechar Ticket
+                </button>
+            `);
+        }
+        
+        if (ticket.status === 'closed') {
+            actions.push(`
+                <button class="btn btn-success" onclick="dashboard.reopenAdvancedTicket('${ticket.ticketId}', true)">
+                    <i class="fas fa-redo"></i>
+                    Reabrir Ticket
+                </button>
+            `);
+        }
+        
+        return actions.join('');
+    }
+    
+    renderAdvancedTicketMessages(messages) {
+        if (!messages || messages.length === 0) {
+            return '<div class="no-messages">Nenhuma mensagem encontrada</div>';
+        }
+        
+        return messages.map(msg => `
+            <div class="message-item">
+                <div class="message-header">
+                    <img src="${msg.author.avatar || '/assets/default-avatar.png'}" alt="Avatar" class="user-avatar-small">
+                    <span class="message-author">${msg.author.username}#${msg.author.discriminator}</span>
+                    <span class="message-time">${new Date(msg.timestamp).toLocaleString('pt-PT')}</span>
+                </div>
+                <div class="message-content">${msg.content || '<em>Mensagem vazia</em>'}</div>
+                ${msg.embeds.length > 0 ? `
+                    <div class="message-embeds">
+                        ${msg.embeds.map(embed => `
+                            <div class="embed-item">
+                                ${embed.title ? `<div class="embed-title">${embed.title}</div>` : ''}
+                                ${embed.description ? `<div class="embed-description">${embed.description}</div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+    }
+    
+    async claimAdvancedTicket(ticketId, fromModal = false) {
+        try {
+            const response = await fetch(`/api/guild/${this.currentGuild}/tickets/${ticketId}/action`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: 'claim' })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showSuccess('Ticket reclamado com sucesso!');
+                if (fromModal) {
+                    document.querySelector('.modal-overlay')?.remove();
+                }
+                await this.loadAdvancedTickets();
+            } else {
+                throw new Error(data.message);
+            }
+        } catch (error) {
+            console.error('Erro ao reclamar ticket:', error);
+            this.showError('Erro ao reclamar ticket: ' + error.message);
+        }
+    }
+    
+    async closeAdvancedTicket(ticketId, fromModal = false) {
+        const reason = prompt('Motivo do fechamento (opcional):');
+        
+        try {
+            const response = await fetch(`/api/guild/${this.currentGuild}/tickets/${ticketId}/action`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    action: 'close',
+                    data: { reason: reason || 'Fechado via dashboard' }
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showSuccess('Ticket fechado com sucesso!');
+                if (fromModal) {
+                    document.querySelector('.modal-overlay')?.remove();
+                }
+                await this.loadAdvancedTickets();
+            } else {
+                throw new Error(data.message);
+            }
+        } catch (error) {
+            console.error('Erro ao fechar ticket:', error);
+            this.showError('Erro ao fechar ticket: ' + error.message);
+        }
+    }
+    
+    async reopenAdvancedTicket(ticketId, fromModal = false) {
+        try {
+            const response = await fetch(`/api/guild/${this.currentGuild}/tickets/${ticketId}/action`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: 'reopen' })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showSuccess('Ticket reaberto com sucesso!');
+                if (fromModal) {
+                    document.querySelector('.modal-overlay')?.remove();
+                }
+                await this.loadAdvancedTickets();
+            } else {
+                throw new Error(data.message);
+            }
+        } catch (error) {
+            console.error('Erro ao reabrir ticket:', error);
+            this.showError('Erro ao reabrir ticket: ' + error.message);
+        }
+    }
+    
+    async addAdvancedTicketNote(ticketId) {
+        const noteContent = document.getElementById('ticketNote').value.trim();
+        
+        if (!noteContent) {
+            this.showError('Por favor, digite uma nota');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/guild/${this.currentGuild}/tickets/${ticketId}/action`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    action: 'addNote',
+                    data: { content: noteContent }
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showSuccess('Nota adicionada com sucesso!');
+                document.getElementById('ticketNote').value = '';
+                // Refresh ticket details
+                this.openAdvancedTicketModal(ticketId);
+            } else {
+                throw new Error(data.message);
+            }
+        } catch (error) {
+            console.error('Erro ao adicionar nota:', error);
+            this.showError('Erro ao adicionar nota: ' + error.message);
+        }
+    }
+    
+    showTicketStatistics() {
+        this.showNotification('Estatísticas detalhadas de tickets em desenvolvimento', 'info');
+    }
 }
 
-// Control panel functions
+// Control panel functions - Enhanced Ticket System
 function configureTickets() {
     if (!dashboard.currentGuild) {
         dashboard.showError('Nenhum servidor selecionado');
@@ -393,11 +901,17 @@ function viewTickets() {
         return;
     }
     
-    dashboard.showNotification('Visualização de tickets em desenvolvimento', 'info');
+    dashboard.loadAdvancedTickets();
 }
 
 function ticketStats() {
     if (!dashboard.currentGuild) {
+        dashboard.showError('Nenhum servidor selecionado');
+        return;
+    }
+    
+    dashboard.showTicketStatistics();
+}
         dashboard.showError('Nenhum servidor selecionado');
         return;
     }
@@ -646,6 +1160,19 @@ let dashboard;
 document.addEventListener('DOMContentLoaded', () => {
     dashboard = new IGNISDashboard();
 });
+
+// Global functions for ticket system
+window.configureTickets = () => {
+    dashboard.showInfo('Configuração de tickets em desenvolvimento');
+};
+
+window.viewTickets = () => {
+    dashboard.loadTickets();
+};
+
+window.ticketStats = () => {
+    dashboard.showInfo('Estatísticas detalhadas em desenvolvimento');
+};
 
 // Export for global access
 window.IGNISDashboard = IGNISDashboard;

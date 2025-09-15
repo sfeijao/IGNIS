@@ -1,0 +1,40 @@
+{
+  "test-ticket-1757974116803": {
+    "ticketId": "test-ticket-1757974116803",
+    "channelId": "123456789",
+    "guildId": "1333820000791691284",
+    "ownerId": "123456789",
+    "category": "Suporte",
+    "status": "fechado",
+    "claimedBy": null,
+    "createdAt": "2025-09-15T22:08:36.803Z",
+    "updatedAt": "2025-09-15T22:08:36.819Z",
+    "closedAt": "2025-09-15T22:08:36.819Z",
+    "priority": "medium",
+    "language": "pt",
+    "notes": [],
+    "logs": [
+      {
+        "type": "created",
+        "by": "123456789",
+        "at": "2025-09-15T22:08:36.803Z",
+        "extra": {
+          "category": "Suporte"
+        }
+      },
+      {
+        "type": "closed",
+        "by": "test-system",
+        "at": "2025-09-15T22:08:36.820Z",
+        "extra": {
+          "reason": "Teste finalizado"
+        }
+      }
+    ],
+    "transcripts": [],
+    "escalated": false,
+    "locked": false,
+    "closeReason": "Teste finalizado",
+    "closedBy": "test-system"
+  }
+}

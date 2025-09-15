@@ -247,20 +247,278 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
     try {
         const guildId = req.params.guildId;
         const client = global.discordClient;
-        const storage = client?.storage;
         
-        if (!storage) {
-            return res.status(500).json({ success: false, error: 'Storage not available' });
+        if (!client) {
+            return res.status(500).json({ success: false, error: 'Bot not available' });
         }
+
+        // Verificar se o usuário tem permissões no servidor
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) {
+            return res.status(404).json({ success: false, error: 'Guild not found' });
+        }
+
+        // Usar o TicketDatabase diretamente
+        const TicketDatabase = require('../utils/TicketDatabase');
+        const ticketDB = new TicketDatabase();
+        await ticketDB.init();
         
-        const tickets = await storage.getTickets(guildId);
-        res.json({ success: true, tickets });
+        // Filtrar tickets por servidor
+        const allTickets = Array.from(ticketDB.tickets.values());
+        const guildTickets = allTickets.filter(ticket => ticket.guildId === guildId);
+        
+        // Enriquecer dados dos tickets com informações do Discord
+        const enrichedTickets = await Promise.all(guildTickets.map(async (ticket) => {
+            try {
+                const channel = guild.channels.cache.get(ticket.channelId);
+                const owner = await client.users.fetch(ticket.ownerId).catch(() => null);
+                const claimedBy = ticket.claimedBy ? await client.users.fetch(ticket.claimedBy).catch(() => null) : null;
+                
+                return {
+                    ...ticket,
+                    channelExists: !!channel,
+                    channelName: channel?.name || 'Canal deletado',
+                    ownerTag: owner ? `${owner.username}#${owner.discriminator}` : 'Usuário desconhecido',
+                    ownerAvatar: owner?.displayAvatarURL({ size: 32 }) || null,
+                    claimedByTag: claimedBy ? `${claimedBy.username}#${claimedBy.discriminator}` : null,
+                    claimedByAvatar: claimedBy?.displayAvatarURL({ size: 32 }) || null,
+                    timeAgo: formatTimeAgo(new Date(ticket.createdAt))
+                };
+            } catch (error) {
+                logger.error(`Erro ao enriquecer ticket ${ticket.ticketId}:`, error);
+                return {
+                    ...ticket,
+                    channelExists: false,
+                    channelName: 'Erro ao carregar',
+                    ownerTag: 'Erro ao carregar',
+                    ownerAvatar: null,
+                    claimedByTag: null,
+                    claimedByAvatar: null,
+                    timeAgo: formatTimeAgo(new Date(ticket.createdAt))
+                };
+            }
+        }));
+        
+        // Estatísticas dos tickets
+        const stats = {
+            total: guildTickets.length,
+            open: guildTickets.filter(t => t.status === 'open').length,
+            claimed: guildTickets.filter(t => t.status === 'claimed').length,
+            closed: guildTickets.filter(t => t.status === 'closed').length,
+            pending: guildTickets.filter(t => t.status === 'pending').length
+        };
+        
+        res.json({ 
+            success: true, 
+            tickets: enrichedTickets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+            stats 
+        });
         
     } catch (error) {
         logger.error('Error fetching tickets:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch tickets' });
     }
 });
+
+// Nova rota para detalhes de um ticket específico
+app.get('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    
+    try {
+        const { guildId, ticketId } = req.params;
+        const client = global.discordClient;
+        
+        if (!client) {
+            return res.status(500).json({ success: false, error: 'Bot not available' });
+        }
+
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) {
+            return res.status(404).json({ success: false, error: 'Guild not found' });
+        }
+
+        const TicketDatabase = require('../utils/TicketDatabase');
+        const ticketDB = new TicketDatabase();
+        await ticketDB.init();
+        
+        const ticket = ticketDB.getTicket(ticketId);
+        if (!ticket || ticket.guildId !== guildId) {
+            return res.status(404).json({ success: false, error: 'Ticket not found' });
+        }
+
+        // Buscar mensagens do canal do ticket
+        let messages = [];
+        const channel = guild.channels.cache.get(ticket.channelId);
+        if (channel) {
+            try {
+                const fetchedMessages = await channel.messages.fetch({ limit: 100 });
+                messages = fetchedMessages.map(msg => ({
+                    id: msg.id,
+                    content: msg.content,
+                    author: {
+                        id: msg.author.id,
+                        username: msg.author.username,
+                        discriminator: msg.author.discriminator,
+                        avatar: msg.author.displayAvatarURL({ size: 32 })
+                    },
+                    timestamp: msg.createdAt,
+                    embeds: msg.embeds.map(embed => ({
+                        title: embed.title,
+                        description: embed.description,
+                        color: embed.color
+                    }))
+                })).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            } catch (error) {
+                logger.error('Erro ao buscar mensagens do ticket:', error);
+            }
+        }
+
+        // Enriquecer dados do ticket
+        const owner = await client.users.fetch(ticket.ownerId).catch(() => null);
+        const claimedBy = ticket.claimedBy ? await client.users.fetch(ticket.claimedBy).catch(() => null) : null;
+
+        const enrichedTicket = {
+            ...ticket,
+            channelExists: !!channel,
+            channelName: channel?.name || 'Canal deletado',
+            ownerTag: owner ? `${owner.username}#${owner.discriminator}` : 'Usuário desconhecido',
+            ownerAvatar: owner?.displayAvatarURL({ size: 64 }) || null,
+            claimedByTag: claimedBy ? `${claimedBy.username}#${claimedBy.discriminator}` : null,
+            claimedByAvatar: claimedBy?.displayAvatarURL({ size: 64 }) || null,
+            timeAgo: formatTimeAgo(new Date(ticket.createdAt)),
+            messages
+        };
+
+        res.json({ success: true, ticket: enrichedTicket });
+        
+    } catch (error) {
+        logger.error('Error fetching ticket details:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch ticket details' });
+    }
+});
+
+// Rota para ações em tickets (claim, close, etc.)
+app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    
+    try {
+        const { guildId, ticketId } = req.params;
+        const { action, data } = req.body;
+        const client = global.discordClient;
+        
+        if (!client) {
+            return res.status(500).json({ success: false, error: 'Bot not available' });
+        }
+
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) {
+            return res.status(404).json({ success: false, error: 'Guild not found' });
+        }
+
+        // Verificar se o usuário é membro do servidor
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) {
+            return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+        }
+
+        const TicketDatabase = require('../utils/TicketDatabase');
+        const ticketDB = new TicketDatabase();
+        await ticketDB.init();
+        
+        const ticket = ticketDB.getTicket(ticketId);
+        if (!ticket || ticket.guildId !== guildId) {
+            return res.status(404).json({ success: false, error: 'Ticket not found' });
+        }
+
+        let success = false;
+        let message = '';
+
+        switch (action) {
+            case 'claim':
+                if (ticket.status === 'open') {
+                    await ticketDB.updateTicket(ticketId, {
+                        status: 'claimed',
+                        claimedBy: req.user.id,
+                        claimedAt: new Date().toISOString()
+                    });
+                    success = true;
+                    message = 'Ticket claimed successfully';
+                } else {
+                    message = 'Ticket cannot be claimed';
+                }
+                break;
+
+            case 'close':
+                if (['open', 'claimed'].includes(ticket.status)) {
+                    await ticketDB.updateTicket(ticketId, {
+                        status: 'closed',
+                        closedBy: req.user.id,
+                        closedAt: new Date().toISOString(),
+                        closeReason: data?.reason || 'Closed via dashboard'
+                    });
+                    success = true;
+                    message = 'Ticket closed successfully';
+                } else {
+                    message = 'Ticket cannot be closed';
+                }
+                break;
+
+            case 'reopen':
+                if (ticket.status === 'closed') {
+                    await ticketDB.updateTicket(ticketId, {
+                        status: 'open',
+                        reopenedBy: req.user.id,
+                        reopenedAt: new Date().toISOString()
+                    });
+                    success = true;
+                    message = 'Ticket reopened successfully';
+                } else {
+                    message = 'Ticket cannot be reopened';
+                }
+                break;
+
+            case 'addNote':
+                const notes = ticket.notes || [];
+                notes.push({
+                    id: Date.now().toString(),
+                    content: data.content,
+                    author: req.user.id,
+                    timestamp: new Date().toISOString()
+                });
+                await ticketDB.updateTicket(ticketId, { notes });
+                success = true;
+                message = 'Note added successfully';
+                break;
+
+            default:
+                message = 'Invalid action';
+        }
+
+        res.json({ success, message });
+        
+    } catch (error) {
+        logger.error('Error performing ticket action:', error);
+        res.status(500).json({ success: false, error: 'Failed to perform action' });
+    }
+});
+
+// Função helper para formatar tempo
+function formatTimeAgo(date) {
+    const now = new Date();
+    const diff = now - date;
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    if (days > 0) return `${days}d atrás`;
+    if (hours > 0) return `${hours}h atrás`;
+    if (minutes > 0) return `${minutes}m atrás`;
+    return 'Agora mesmo';
+}
 
 // Start server only if not in bot-only mode
 if (config.DISCORD.CLIENT_SECRET) {
