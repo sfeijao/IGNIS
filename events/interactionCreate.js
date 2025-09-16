@@ -1179,44 +1179,84 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
                         // Embed do ticket
                         const ticketEmbed = new EmbedBuilder()
                             .setColor(getPriorityColor(priority))
-                            .setTitle(`🎫 ${getCategoryDisplayName(categoryType)}`)
+                            .setTitle(`🎫 **${getCategoryDisplayName(categoryType).toUpperCase()} TICKET**`)
                             .setDescription([
-                                `**📋 Assunto:** ${subject}`,
-                                `**👤 Usuário:** ${interaction.user}`,
-                                `**🏷️ Categoria:** ${getCategoryDisplayName(categoryType)}`,
-                                `**⚡ Prioridade:** ${priority.toUpperCase()}`,
-                                `**📅 Criado:** <t:${Math.floor(Date.now() / 1000)}:R>`,
+                                '### 📋 **INFORMAÇÕES DO TICKET**',
                                 '',
-                                '**📝 Descrição:**',
-                                description
+                                `🏷️ **Categoria:** \`${getCategoryDisplayName(categoryType)}\``,
+                                `👤 **Criado por:** ${interaction.user}`,
+                                `⚡ **Prioridade:** \`${priority.toUpperCase()}\``,
+                                `📅 **Data:** <t:${Math.floor(Date.now() / 1000)}:R>`,
+                                `🆔 **ID:** \`${ticketChannel.id}\``,
+                                '',
+                                '### 💬 **ASSUNTO**',
+                                `\`\`\`${subject}\`\`\``,
+                                '',
+                                '### 📝 **DESCRIÇÃO DETALHADA**',
+                                `\`\`\`${description}\`\`\``,
+                                '',
+                                '### 🎯 **PRÓXIMOS PASSOS**',
+                                '```',
+                                '1️⃣ Staff assumirá o ticket',
+                                '2️⃣ Análise do problema reportado',  
+                                '3️⃣ Resolução personalizada',
+                                '4️⃣ Confirmação de satisfação',
+                                '```',
+                                '',
+                                '> 💡 **Nossa equipe responde em média 15 minutos**'
                             ].join('\\n'))
-                            .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
+                            .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
+                            .setImage('https://via.placeholder.com/600x100/5865F2/FFFFFF?text=IGNIS+SUPPORT+SYSTEM')
+                            .setFooter({ 
+                                text: `${interaction.guild.name} • IGNIS Ticket System • Ticket #${Date.now().toString().slice(-6)}`,
+                                iconURL: interaction.guild.iconURL({ dynamic: true })
+                            })
                             .setTimestamp();
 
-                        // Botões de controle
+                        // Botões de controle avançados
                         const controlButtons = new ActionRowBuilder()
                             .addComponents(
                                 new ButtonBuilder()
                                     .setCustomId('ticket_claim')
-                                    .setLabel('Assumir Ticket')
-                                    .setEmoji('✋')
-                                    .setStyle(ButtonStyle.Primary),
+                                    .setLabel('ASSUMIR TICKET')
+                                    .setEmoji('👑')
+                                    .setStyle(ButtonStyle.Success),
                                 new ButtonBuilder()
                                     .setCustomId('ticket_close')
-                                    .setLabel('Fechar Ticket')
+                                    .setLabel('FECHAR TICKET')
                                     .setEmoji('🔒')
                                     .setStyle(ButtonStyle.Danger),
                                 new ButtonBuilder()
                                     .setCustomId('ticket_priority_change')
-                                    .setLabel('Alterar Prioridade')
+                                    .setLabel('PRIORIDADE')
                                     .setEmoji('⚡')
                                     .setStyle(ButtonStyle.Secondary)
                             );
 
+                        // Segunda linha de botões - Ações extras
+                        const extraButtons = new ActionRowBuilder()
+                            .addComponents(
+                                new ButtonBuilder()
+                                    .setCustomId('ticket_add_member')
+                                    .setLabel('ADICIONAR MEMBRO')
+                                    .setEmoji('➕')
+                                    .setStyle(ButtonStyle.Primary),
+                                new ButtonBuilder()
+                                    .setCustomId('ticket_transcript')
+                                    .setLabel('TRANSCRIÇÃO')
+                                    .setEmoji('📄')
+                                    .setStyle(ButtonStyle.Secondary),
+                                new ButtonBuilder()
+                                    .setCustomId('ticket_escalate')
+                                    .setLabel('ESCALAR')
+                                    .setEmoji('📈')
+                                    .setStyle(ButtonStyle.Secondary)
+                            );
+
                         await ticketChannel.send({
-                            content: `${interaction.user} Ticket criado com sucesso! A equipe será notificada.`,
+                            content: `${interaction.user} **Ticket criado com sucesso!** 🎉\\n\\n🛎️ **Nossa equipe foi notificada e responderá em breve.**`,
                             embeds: [ticketEmbed],
-                            components: [controlButtons]
+                            components: [controlButtons, extraButtons]
                         });
 
                         await interaction.editReply({
