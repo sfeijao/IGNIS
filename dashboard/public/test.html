@@ -47,6 +47,15 @@
             margin: 20px 0;
             border-left: 4px solid #00FF00;
         }
+        .diagnostic-info {
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        .useful-links {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -64,14 +73,14 @@
         <a href="/dashboard" class="btn">📊 Dashboard</a>
         <a href="/auth/debug" class="btn">🔧 Debug OAuth</a>
         
-        <div style="margin-top: 40px; padding: 20px; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
+        <div class="diagnostic-info">
             <h3>🔍 Informações de Diagnóstico</h3>
             <p><strong>Data/Hora:</strong> <span id="datetime"></span></p>
             <p><strong>URL Atual:</strong> <span id="current-url"></span></p>
             <p><strong>User Agent:</strong> <span id="user-agent"></span></p>
         </div>
         
-        <div style="margin-top: 20px;">
+        <div class="useful-links">
             <h3>📋 Links Úteis</h3>
             <a href="https://github.com/sfeijao/IGNIS" class="btn">GitHub</a>
             <a href="/health" class="btn">Health Check</a>

@@ -28,6 +28,7 @@
             background: rgba(255, 255, 255, 0.05);
             border-radius: 20px;
             border: 1px solid rgba(153, 50, 204, 0.3);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
@@ -86,6 +87,12 @@
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(123, 104, 238, 0.3);
             border-color: #7B68EE;
+        }
+        
+        .info-footer {
+            margin-top: 30px;
+            font-size: 0.9rem;
+            opacity: 0.7;
         }
         
         .btn.secondary {
@@ -179,7 +186,7 @@
             </div>
         </div>
         
-        <div style="margin-top: 30px; font-size: 0.9rem; opacity: 0.7;">
+        <div class="info-footer">
             <p>🌐 <strong>URL:</strong> <span id="url"></span></p>
             <p>⏰ <strong>Carregado em:</strong> <span id="time"></span></p>
         </div>
