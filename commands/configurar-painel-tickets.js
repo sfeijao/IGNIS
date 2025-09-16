@@ -30,68 +30,73 @@ module.exports = {
 
             // Criar embed do painel - Design brasileiro profissional
             const embed = new EmbedBuilder()
-                .setColor('#1E1F22') // Discord dark
-                .setTitle('🎯 **CENTRAL DE ATENDIMENTO**')
+                .setColor('#5865F2') // Discord Blurple moderno
+                .setTitle('� **CENTRO DE SUPORTE PREMIUM**')
                 .setImage(visualAssets.realImages.supportBanner) // Banner real
                 .setThumbnail(visualAssets.realImages.supportIcon) // Ícone real
                 .setDescription([
-                    '### 🏢 **DEPARTAMENTOS DISPONÍVEIS**',
+                    '## � **DEPARTAMENTOS ESPECIALIZADOS**',
                     '',
-                    '🔧 **SUPORTE TÉCNICO**',
-                    '└ *Configurações, bugs e problemas técnicos*',
+                    '```yaml',
+                    '🔧 SUPORTE TÉCNICO:',
+                    '   • Configurações e integrações',
+                    '   • Resolução de bugs críticos',
+                    '   • Otimização de performance',
                     '',
-                    '⚠️ **REPORTAR PROBLEMAS**', 
-                    '└ *Falhas críticas e incidentes graves*',
+                    '⚠️ REPORTAR PROBLEMAS:',
+                    '   • Incidentes e falhas graves',
+                    '   • Análise de logs e debugging',
+                    '   • Suporte de emergência 24/7',
                     '',
-                    '🛡️ **MODERAÇÃO E SEGURANÇA**',
-                    '└ *Denúncias, violações e questões disciplinares*',
+                    '🛡️ MODERAÇÃO & SEGURANÇA:',
+                    '   • Denúncias e investigações',
+                    '   • Violações e sanções',
+                    '   • Questões disciplinares',
+                    '```',
                     '',
-                    '� **Como funciona:**',
-                    '• Clique no botão do departamento desejado',
-                    '• Um canal privado será criado automaticamente',
-                    '• Nossa equipe será notificada instantaneamente',
-                    '• Tempo médio de resposta: **15 minutos**'
+                    '## ⚡ **PROCESSO AUTOMATIZADO**',
+                    '• **Resposta instantânea** - Notificação imediata da equipe',
+                    '• **Canal privado** - Criação automática e segura',
+                    '• **Suporte 24/7** - Atendimento profissional contínuo',
+                    '• **SLA garantido** - Tempo médio de resposta: **≤ 15 min**'
                 ].join('\n'))
                 .addFields(
                     {
-                        name: '🏢 Servidor',
-                        value: `\`${interaction.guild.name}\``,
+                        name: '🏢 Servidor Premium',
+                        value: `**${interaction.guild.name}**`,
                         inline: true
                     },
                     {
-                        name: '�‍💼 Staff Disponível',
-                        value: `\`${interaction.guild.members.cache.filter(m => !m.user.bot && m.presence?.status !== 'offline').size} membros\``,
+                        name: '� Staff Online',
+                        value: `**${interaction.guild.members.cache.filter(m => !m.user.bot && m.presence?.status !== 'offline').size}** disponíveis`,
                         inline: true
                     },
                     {
-                        name: '🟢 Status do Sistema',
-                        value: '`ONLINE`',
+                        name: '⚡ Sistema Premium',
+                        value: '**OPERACIONAL**',
                         inline: true
                     }
                 )
                 .setFooter({ 
-                    text: `${interaction.guild.name} • Sistema de Tickets v2.0 • Powered by IGNIS`,
+                    text: `${interaction.guild.name} • Sistema Premium v3.0 • Powered by IGNIS TECH`,
                     iconURL: interaction.guild.iconURL({ dynamic: true })
                 })
                 .setTimestamp();
 
-            // Criar botões com design brasileiro
+            // Criar botões com design premium moderno
             const row1 = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('ticket:create:technical')
-                        .setLabel('SUPORTE TÉCNICO')
-                        .setEmoji('🔧')
+                        .setLabel('🔧 SUPORTE TÉCNICO')
                         .setStyle(ButtonStyle.Primary),
                     new ButtonBuilder()
                         .setCustomId('ticket:create:incident')
-                        .setLabel('REPORTAR PROBLEMA')
-                        .setEmoji('⚠️')
+                        .setLabel('⚠️ REPORTAR PROBLEMA')
                         .setStyle(ButtonStyle.Danger),
                     new ButtonBuilder()
                         .setCustomId('ticket:create:moderation')
-                        .setLabel('MODERAÇÃO')
-                        .setEmoji('🛡️')
+                        .setLabel('🛡️ MODERAÇÃO & SEGURANÇA')
                         .setStyle(ButtonStyle.Secondary)
                 );
 
