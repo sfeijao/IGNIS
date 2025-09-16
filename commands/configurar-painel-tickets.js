@@ -31,11 +31,11 @@ module.exports = {
             // Criar embed do painel - Design brasileiro profissional
             const embed = new EmbedBuilder()
                 .setColor('#5865F2') // Discord Blurple moderno
-                .setTitle('� **CENTRO DE SUPORTE PREMIUM**')
+                .setTitle('🛠️ **CENTRO DE SUPORTE IGNIS**')
                 .setImage(visualAssets.realImages.supportBanner) // Banner real
                 .setThumbnail(visualAssets.realImages.supportIcon) // Ícone real
                 .setDescription([
-                    '## � **DEPARTAMENTOS ESPECIALIZADOS**',
+                    '## 🏠 **DEPARTAMENTOS ESPECIALIZADOS**',
                     '',
                     '```yaml',
                     '🔧 SUPORTE TÉCNICO:',
@@ -62,7 +62,7 @@ module.exports = {
                 ].join('\n'))
                 .addFields(
                     {
-                        name: '🏢 Servidor Premium',
+                        name: '🏢 Servidor',
                         value: `**${interaction.guild.name}**`,
                         inline: true
                     },
@@ -72,13 +72,13 @@ module.exports = {
                         inline: true
                     },
                     {
-                        name: '⚡ Sistema Premium',
+                        name: '⚡ Sistema Status',
                         value: '**OPERACIONAL**',
                         inline: true
                     }
                 )
                 .setFooter({ 
-                    text: `${interaction.guild.name} • Sistema Premium v3.0 • Powered by IGNIS TECH`,
+                    text: `${interaction.guild.name} • Sistema v3.0 • Powered by IGNIS TECH`,
                     iconURL: interaction.guild.iconURL({ dynamic: true })
                 })
                 .setTimestamp();

@@ -2,7 +2,7 @@
 
 ✅ **Sistema Online**  
 ⚡ **Deploy Ativo**  
-🚀 **Versão Premium UI**  
+🚀 **Versão UI**  
 
 ---
 
