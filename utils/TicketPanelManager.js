@@ -19,58 +19,133 @@ class TicketPanelManager {
      */
     createTicketPanelEmbed(ticket, guild, owner, assignedStaff = null) {
         const embed = new EmbedBuilder()
-            .setTitle('🎫 IGNIS - Sistema de Tickets')
-            .setColor(0x5865F2) // Discord Blurple - cor marcante mas legível
-            .setThumbnail(owner?.displayAvatarURL?.({ dynamic: true, size: 256 }) || owner?.avatarURL?.({ dynamic: true, size: 256 }) || null);
+            .setTitle('� IGNIS - Sistema de Tickets 🔥')
+            .setColor(0xFF6B35) // Cor laranja-fogo mais vibrante e relacionada ao IGNIS
+            .setThumbnail(this.getAnimatedThumbnail(ticket.category))
+            .setImage(this.getAnimatedBanner(ticket.category, assignedStaff));
 
         // Descrição principal com resumo
         let description = [
-            '### 📋 **INFORMAÇÕES DO TICKET**',
+            '### 🎯 **INFORMAÇÕES DO TICKET**',
             '',
-            `🏷️ **Categoria:** \`${this.getCategoryDisplayName(ticket.category)}\``,
+            `${this.getCategoryEmoji(ticket.category)} **Categoria:** \`${this.getCategoryDisplayName(ticket.category)}\``,
             `👤 **Criado por:** ${owner}`,
             `📅 **Criado:** <t:${Math.floor(new Date(ticket.createdAt).getTime() / 1000)}:R>`,
             `🆔 **ID:** \`${ticket.ticketId}\``,
             ''
         ];
 
-        // Status do ticket
+        // Status do ticket com emoji animado
         if (assignedStaff) {
-            description.push(`👥 **Responsável:** <@${ticket.claimedBy}>`);
+            description.push(`✨ **Responsável:** <@${ticket.claimedBy}> 🚀`);
         } else {
-            description.push('⏳ **Status:** Aguardando atribuição');
+            description.push('⏳ **Status:** Aguardando atribuição 🎮');
         }
 
         // Prioridade se definida
         if (ticket.priority) {
             const priorityEmoji = this.getPriorityEmoji(ticket.priority);
-            description.push(`${priorityEmoji} **Prioridade:** \`${ticket.priority.toUpperCase()}\``);
+            description.push(`${priorityEmoji} **Prioridade:** \`${ticket.priority.toUpperCase()}\` 🔥`);
         }
 
         description.push('');
 
-        // Próximos passos
+        // Próximos passos com mais personalidade
         description.push(
-            '### 🎯 **PRÓXIMOS PASSOS**',
+            '### 🚀 **PRÓXIMOS PASSOS**',
             '',
             assignedStaff 
-                ? '✅ **Ticket atribuído** - Nossa equipe está a trabalhar na sua solicitação'
-                : '📋 **Aguardando atribuição** - Um membro da equipe assumirá em breve',
+                ? '🎉 **Ticket atribuído** - Nossa equipe de gamers está a trabalhar na sua solicitação! 🎮'
+                : '🎯 **Aguardando atribuição** - Um membro da nossa squad assumirá em breve! ⚡',
             '',
-            '> 💡 **Tempo médio de resposta: 15-30 minutos**'
+            '> � **Tempo médio de resposta: 15-30 minutos** | **IGNIS POWER!** 💪'
         );
 
         embed.setDescription(description.join('\n'));
 
-        // Footer com informações úteis
+        // Footer com mais personalidade
         embed.setFooter({ 
-            text: `${guild.name} • Use os botões abaixo para interagir`,
+            text: `${guild.name} • 🎮 IGNIS Gaming Support • Use os botões para interagir! 🔥`,
             iconURL: guild.iconURL({ dynamic: true })
         });
 
         embed.setTimestamp();
 
         return embed;
+    }
+
+    /**
+     * Obtém thumbnail animado baseado na categoria
+     */
+    getAnimatedThumbnail(category) {
+        const thumbnails = {
+            'technical': 'https://media.tenor.com/6lXOItlnvSkAAAAi/binary.gif', // Código animado
+            'support': 'https://media.tenor.com/L0u5YjvR2vYAAAAi/gaming-headset.gif', // Gaming headset
+            'bug': 'https://media.tenor.com/X2CuVOwMxCMAAAAi/bug-error.gif', // Bug animado
+            'general': 'https://media.tenor.com/BJ8hAbmA9OoAAAAi/gaming.gif', // Gaming geral
+            'vip': 'https://media.tenor.com/fgAKOy8F7oEAAAAi/crown-vip.gif', // Coroa VIP
+            'premium': 'https://media.tenor.com/golden-star.gif', // Estrela dourada
+            'report': 'https://media.tenor.com/warning-alert.gif', // Alerta
+            'suggestion': 'https://media.tenor.com/lightbulb-idea.gif', // Lâmpada ideia
+            'account': 'https://media.tenor.com/user-profile.gif', // Perfil usuário
+            'billing': 'https://media.tenor.com/coins-money.gif', // Moedas
+            'feedback': 'https://media.tenor.com/thumbs-up.gif', // Polegar para cima
+            'partnership': 'https://media.tenor.com/handshake.gif', // Aperto de mão
+            'appeal': 'https://media.tenor.com/justice-scale.gif', // Balança justiça
+            'staff': 'https://media.tenor.com/crown-staff.gif', // Coroa staff
+            'urgent': 'https://media.tenor.com/siren-alert.gif', // Sirene urgente
+            'private': 'https://media.tenor.com/lock-secure.gif' // Cadeado
+        };
+        
+        return thumbnails[category] || 'https://media.tenor.com/BJ8hAbmA9OoAAAAi/gaming.gif';
+    }
+
+    /**
+     * Obtém banner animado baseado na categoria e status
+     */
+    getAnimatedBanner(category, assignedStaff = null) {
+        if (assignedStaff) {
+            // Banners para tickets em atendimento
+            return 'https://media.tenor.com/work-in-progress.gif';
+        }
+        
+        // Banners para tickets aguardando
+        const banners = {
+            'technical': 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=600&h=150&fit=crop&crop=center', // Tech setup
+            'support': 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&h=150&fit=crop&crop=center', // Gaming setup
+            'bug': 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&h=150&fit=crop&crop=center', // Code/debug
+            'general': 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&h=150&fit=crop&crop=center', // Gaming
+            'vip': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=150&fit=crop&crop=center', // Luxo/VIP
+            'premium': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&h=150&fit=crop&crop=center', // Premium
+            'urgent': 'https://images.unsplash.com/photo-1561736778-92e52a7769ef?w=600&h=150&fit=crop&crop=center' // Urgente/alerta
+        };
+        
+        return banners[category] || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&h=150&fit=crop&crop=center';
+    }
+
+    /**
+     * Obtém emoji animado para categoria
+     */
+    getCategoryEmoji(category) {
+        const emojis = {
+            'technical': '⚙️',
+            'account': '👤',
+            'report': '🚫',
+            'suggestion': '💡',
+            'support': '🎮',
+            'billing': '💰',
+            'feedback': '📝',
+            'partnership': '🤝',
+            'bug': '🐛',
+            'appeal': '⚖️',
+            'general': '❓',
+            'staff': '👑',
+            'vip': '👑',
+            'premium': '💎',
+            'urgent': '🚨',
+            'private': '🔒'
+        };
+        return emojis[category] || '🎫';
     }
 
     /**
@@ -298,24 +373,24 @@ class TicketPanelManager {
     // Funções auxiliares
     getCategoryDisplayName(category) {
         const names = {
-            'technical': 'Suporte Técnico',
-            'account': 'Problemas de Conta', 
-            'report': 'Denúncia',
-            'suggestion': 'Sugestão',
-            'support': 'Suporte Geral',
-            'billing': 'Financeiro',
-            'feedback': 'Feedback',
-            'partnership': 'Parcerias',
-            'bug': 'Report de Bug',
-            'appeal': 'Recurso',
-            'general': 'Ajuda Geral',
-            'staff': 'Candidatura Staff',
-            'vip': 'Suporte VIP',
-            'premium': 'Premium Support',
-            'urgent': 'Urgente',
-            'private': 'Privado'
+            'technical': '🔧 Suporte Técnico',
+            'account': '👤 Problemas de Conta', 
+            'report': '🚫 Denúncia',
+            'suggestion': '💡 Sugestão',
+            'support': '🎮 Suporte Gaming',
+            'billing': '💰 Financeiro',
+            'feedback': '📝 Feedback',
+            'partnership': '🤝 Parcerias',
+            'bug': '🐛 Report de Bug',
+            'appeal': '⚖️ Recurso',
+            'general': '❓ Ajuda Geral',
+            'staff': '👑 Candidatura Staff',
+            'vip': '⭐ Suporte VIP',
+            'premium': '💎 Premium Support',
+            'urgent': '🚨 Urgente',
+            'private': '🔒 Privado'
         };
-        return names[category] || 'Ticket Geral';
+        return names[category] || '🎫 Ticket Geral';
     }
 
     getPriorityEmoji(priority) {

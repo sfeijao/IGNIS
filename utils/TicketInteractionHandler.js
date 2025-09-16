@@ -584,12 +584,12 @@ class TicketInteractionHandler {
                     '4️⃣ Confirmação de satisfação',
                     '```',
                     '',
-                    '> 💡 **Nossa equipe responde em média 15 minutos**'
+                    '> � **Nossa squad gaming responde em média 15 minutos** 🎮'
                 ].join('\\n'))
                 .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
-                .setImage('https://via.placeholder.com/600x100/5865F2/FFFFFF?text=IGNIS+SUPPORT+SYSTEM')
+                .setImage('https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&h=100&fit=crop&crop=center') // Gaming setup animado
                 .setFooter({ 
-                    text: `${interaction.guild.name} • IGNIS Ticket System • Ticket #${Date.now().toString().slice(-6)}`,
+                    text: `${interaction.guild.name} • 🎮 IGNIS Gaming Support • Ticket #${Date.now().toString().slice(-6)} 🔥`,
                     iconURL: interaction.guild.iconURL({ dynamic: true })
                 })
                 .setTimestamp();
