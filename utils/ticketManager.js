@@ -200,23 +200,13 @@ class TicketManager {
             )
             .setTimestamp();
 
-        const buttons = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('ticket_close')
-                .setLabel('Fechar Ticket')
-                .setStyle(ButtonStyle.Danger)
-                .setEmoji('🔒'),
-            new ButtonBuilder()
-                .setCustomId('ticket_claim')
-                .setLabel('Atender Ticket')
-                .setStyle(ButtonStyle.Success)
-                .setEmoji('✋')
-        );
+        // BOTÕES DO PAINEL ANTIGO REMOVIDOS - NOVO SISTEMA SERÁ IMPLEMENTADO
+        // const buttons = new ActionRowBuilder().addComponents(...)
 
         await channel.send({
             content: `<@${user.id}> seu ticket foi criado!`,
-            embeds: [embed],
-            components: [buttons]
+            embeds: [embed]
+            // components: [buttons] - Removido temporariamente
         });
 
         return channel;

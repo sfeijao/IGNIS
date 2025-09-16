@@ -6,8 +6,9 @@ class TicketEmbedManager {
         this.client = client;
     }
 
+    // MÉTODO TEMPORARIAMENTE DESABILITADO - NOVO PAINEL SERÁ IMPLEMENTADO
     // Embed principal do ticket (com thumbnail do utilizador)
-    createTicketEmbed(ticket, guild, owner, claimedByUser = null) {
+    createTicketEmbed_OLD(ticket, guild, owner, claimedByUser = null) {
         const embed = new EmbedBuilder()
             .setTitle('🧾 Ticket Criado')
             .setDescription(
@@ -132,8 +133,9 @@ class TicketEmbedManager {
         return embed;
     }
 
+    // MÉTODO TEMPORARIAMENTE DESABILITADO - NOVO PAINEL SERÁ IMPLEMENTADO  
     // Embed para ticket fechado
-    createClosedTicketEmbed(ticket, guild, owner, closedByUser, reason = null) {
+    createClosedTicketEmbed_OLD(ticket, guild, owner, closedByUser, reason = null) {
         const embed = new EmbedBuilder()
             .setTitle('🔒 Ticket Fechado')
             .setDescription('Este ticket foi fechado. Obrigado por usar o nosso sistema de suporte!')
@@ -191,8 +193,9 @@ class TicketEmbedManager {
         return embed;
     }
 
+    // MÉTODO TEMPORARIAMENTE DESABILITADO - NOVO PAINEL SERÁ IMPLEMENTADO
     // Embed para notas internas (apenas staff)
-    createNotesEmbed(ticket, guild) {
+    createNotesEmbed_OLD(ticket, guild) {
         const embed = new EmbedBuilder()
             .setTitle('📝 Notas Internas do Ticket')
             .setDescription(`Ticket #${ticket.ticketId}`)
@@ -342,6 +345,38 @@ class TicketEmbedManager {
         } else {
             return `há ${minutes}m`;
         }
+    }
+
+    // MÉTODOS ATUALIZADOS PARA NOVO PAINEL
+    createTicketEmbed(ticket, guild, owner, claimedByUser = null) {
+        const TicketPanelManager = require('./TicketPanelManager');
+        const panelManager = new TicketPanelManager(this.client);
+        return panelManager.createTicketPanelEmbed(ticket, guild, owner, claimedByUser);
+    }
+
+    createClosedTicketEmbed(ticket, guild, owner, closedByUser, reason = null) {
+        const { EmbedBuilder } = require('discord.js');
+        return new EmbedBuilder()
+            .setTitle('🔒 Ticket Fechado')
+            .setDescription([
+                'Este ticket foi fechado com sucesso.',
+                '',
+                `**Fechado por:** ${closedByUser}`,
+                reason ? `**Motivo:** ${reason}` : '',
+                '',
+                '> Obrigado por usar o sistema IGNIS!'
+            ].filter(Boolean).join('\n'))
+            .setColor(0xF44336)
+            .setTimestamp();
+    }
+
+    createNotesEmbed(ticket, guild) {
+        const { EmbedBuilder } = require('discord.js');
+        return new EmbedBuilder()
+            .setTitle('📝 Notas Internas')
+            .setDescription(`Notas do ticket #${ticket.ticketId}`)
+            .setColor(0xFF9800)
+            .setTimestamp();
     }
 }
 

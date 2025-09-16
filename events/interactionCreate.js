@@ -844,6 +844,16 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
                     }
                     return;
                 }
+
+                // === NOVO SISTEMA DE MODALS DE TICKETS ===
+                const TicketModalHandler = require('../utils/TicketModalHandler');
+                const modalHandler = new TicketModalHandler(client);
+                
+                const handled = await modalHandler.handleModalSubmit(interaction);
+                if (handled) {
+                    return;
+                }
+
                 // Add member modal
                 if (interaction.customId === 'modal_add_member') {
                     try {
@@ -1177,86 +1187,33 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
                         });
 
                         // Embed do ticket
-                        const ticketEmbed = new EmbedBuilder()
-                            .setColor(getPriorityColor(priority))
-                            .setTitle(`🎫 **${getCategoryDisplayName(categoryType).toUpperCase()} TICKET**`)
-                            .setDescription([
-                                '### 📋 **INFORMAÇÕES DO TICKET**',
-                                '',
-                                `🏷️ **Categoria:** \`${getCategoryDisplayName(categoryType)}\``,
-                                `👤 **Criado por:** ${interaction.user}`,
-                                `⚡ **Prioridade:** \`${priority.toUpperCase()}\``,
-                                `📅 **Data:** <t:${Math.floor(Date.now() / 1000)}:R>`,
-                                `🆔 **ID:** \`${ticketChannel.id}\``,
-                                '',
-                                '### 💬 **ASSUNTO**',
-                                `\`\`\`${subject}\`\`\``,
-                                '',
-                                '### 📝 **DESCRIÇÃO DETALHADA**',
-                                `\`\`\`${description}\`\`\``,
-                                '',
-                                '### 🎯 **PRÓXIMOS PASSOS**',
-                                '```',
-                                '1️⃣ Staff assumirá o ticket',
-                                '2️⃣ Análise do problema reportado',  
-                                '3️⃣ Resolução personalizada',
-                                '4️⃣ Confirmação de satisfação',
-                                '```',
-                                '',
-                                '> 💡 **Nossa equipe responde em média 15 minutos**'
-                            ].join('\\n'))
-                            .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
-                            .setImage('https://via.placeholder.com/600x100/5865F2/FFFFFF?text=IGNIS+SUPPORT+SYSTEM')
-                            .setFooter({ 
-                                text: `${interaction.guild.name} • IGNIS Ticket System • Ticket #${Date.now().toString().slice(-6)}`,
-                                iconURL: interaction.guild.iconURL({ dynamic: true })
-                            })
-                            .setTimestamp();
+                        // Importar o novo sistema de painel
+                        const TicketPanelManager = require('../utils/TicketPanelManager');
+                        const panelManager = new TicketPanelManager(client);
 
-                        // Botões de controle avançados
-                        const controlButtons = new ActionRowBuilder()
-                            .addComponents(
-                                new ButtonBuilder()
-                                    .setCustomId('ticket_claim')
-                                    .setLabel('ASSUMIR TICKET')
-                                    .setEmoji('👑')
-                                    .setStyle(ButtonStyle.Success),
-                                new ButtonBuilder()
-                                    .setCustomId('ticket_close')
-                                    .setLabel('FECHAR TICKET')
-                                    .setEmoji('🔒')
-                                    .setStyle(ButtonStyle.Danger),
-                                new ButtonBuilder()
-                                    .setCustomId('ticket_priority_change')
-                                    .setLabel('PRIORIDADE')
-                                    .setEmoji('⚡')
-                                    .setStyle(ButtonStyle.Secondary)
-                            );
+                        // Criar dados do ticket para o painel
+                        const ticketData = {
+                            ticketId: ticketChannel.id,
+                            ownerId: interaction.user.id,
+                            category: categoryType,
+                            priority: priority,
+                            createdAt: new Date().toISOString(),
+                            status: 'open',
+                            description: description,
+                            subject: subject
+                        };
 
-                        // Segunda linha de botões - Ações extras
-                        const extraButtons = new ActionRowBuilder()
-                            .addComponents(
-                                new ButtonBuilder()
-                                    .setCustomId('ticket_add_member')
-                                    .setLabel('ADICIONAR MEMBRO')
-                                    .setEmoji('➕')
-                                    .setStyle(ButtonStyle.Primary),
-                                new ButtonBuilder()
-                                    .setCustomId('ticket_transcript')
-                                    .setLabel('TRANSCRIÇÃO')
-                                    .setEmoji('📄')
-                                    .setStyle(ButtonStyle.Secondary),
-                                new ButtonBuilder()
-                                    .setCustomId('ticket_escalate')
-                                    .setLabel('ESCALAR')
-                                    .setEmoji('📈')
-                                    .setStyle(ButtonStyle.Secondary)
-                            );
+                        // Criar e enviar o novo painel
+                        const panelData = await panelManager.createCompletePanel(
+                            ticketData, 
+                            interaction.guild, 
+                            interaction.user, 
+                            null // Nenhum staff atribuído inicialmente
+                        );
 
                         await ticketChannel.send({
-                            content: `${interaction.user} **Ticket criado com sucesso!** 🎉\\n\\n🛎️ **Nossa equipe foi notificada e responderá em breve.**`,
-                            embeds: [ticketEmbed],
-                            components: [controlButtons, extraButtons]
+                            content: `${interaction.user} **Ticket criado com sucesso!** 🎉\n\n🛎️ **Nossa equipe foi notificada e responderá em breve.**`,
+                            ...panelData
                         });
 
                         await interaction.editReply({
@@ -1279,71 +1236,5 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
     }
 };
 
-// Funções auxiliares para o sistema avançado
-function getCategoryDisplayName(category) {
-    const names = {
-        'technical': 'Suporte Técnico',
-        'account': 'Problemas de Conta', 
-        'report': 'Denúncia',
-        'suggestion': 'Sugestão',
-        'support': 'Suporte Geral',
-        'billing': 'Financeiro',
-        'feedback': 'Feedback',
-        'partnership': 'Parcerias',
-        'bug': 'Report de Bug',
-        'appeal': 'Recurso',
-        'general': 'Ajuda Geral',
-        'staff': 'Candidatura Staff',
-        'vip': 'Suporte VIP',
-        'premium': 'Premium Support',
-        'urgent': 'Urgente',
-        'private': 'Privado'
-    };
-    return names[category] || 'Ticket Geral';
-}
-
-function getCategoryEmoji(category) {
-    const emojis = {
-        'technical': '🔧',
-        'account': '👤',
-        'report': '🚫', 
-        'suggestion': '💡',
-        'support': '💻',
-        'billing': '💰',
-        'feedback': '📝',
-        'partnership': '🤝',
-        'bug': '🐛',
-        'appeal': '⚖️',
-        'general': '❓',
-        'staff': '👑',
-        'vip': '👑',
-        'premium': '💎',
-        'urgent': '🚨',
-        'private': '🔒'
-    };
-    return emojis[category] || '🎫';
-}
-
-function getPlaceholderText(category) {
-    const placeholders = {
-        'technical': 'Descreva o problema técnico que está enfrentando...',
-        'account': 'Explique qual problema está tendo com sua conta...',
-        'report': 'Descreva detalhadamente o que deseja reportar...',
-        'suggestion': 'Compartilhe sua ideia ou sugestão de melhoria...',
-        'support': 'Explique como podemos ajudá-lo...',
-        'billing': 'Descreva sua questão financeira ou de pagamento...',
-        'feedback': 'Compartilhe seu feedback sobre nossos serviços...',
-        'partnership': 'Descreva sua proposta de parceria...'
-    };
-    return placeholders[category] || 'Descreva detalhadamente sua solicitação...';
-}
-
-function getPriorityColor(priority) {
-    const colors = {
-        'baixa': '#00D4AA',
-        'média': '#FEE75C', 
-        'alta': '#FF6B6B',
-        'urgente': '#FF0000'
-    };
-    return colors[priority.toLowerCase()] || colors['média'];
-}
+// Nota: Funções auxiliares do painel antigo removidas
+// O novo sistema de painel será implementado com as especificações fornecidas

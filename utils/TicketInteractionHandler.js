@@ -42,7 +42,8 @@ class TicketInteractionHandler {
     }
 
     // Handler principal para todas as interações de tickets
-    async handleTicketInteraction(interaction) {
+    // TEMPORARIAMENTE DESABILITADO - NOVO SISTEMA SERÁ IMPLEMENTADO
+    async handleTicketInteraction_OLD(interaction) {
         if (!interaction.customId || !interaction.customId.startsWith('ticket:')) {
             return false;
         }
@@ -708,6 +709,31 @@ class TicketInteractionHandler {
         } catch (error) {
             logger.error('Erro ao atualizar permissões:', error);
         }
+    }
+
+    // HANDLER INTEGRADO COM NOVO SISTEMA DE PAINEL
+    async handleTicketInteraction(interaction) {
+        // Tentar primeiro o novo sistema de painel
+        const TicketPanelHandler = require('./TicketPanelHandler');
+        const panelHandler = new TicketPanelHandler(this.client);
+        
+        const handled = await panelHandler.handlePanelInteraction(interaction);
+        if (handled) {
+            return true;
+        }
+
+        // Se não foi o novo painel, verificar se é sistema antigo
+        if (!interaction.customId || !interaction.customId.startsWith('ticket:')) {
+            return false;
+        }
+
+        // Sistema antigo temporariamente redirecionado para novo
+        await interaction.reply({
+            content: '🔄 Sistema atualizado! Use os botões do painel principal para interagir.',
+            flags: MessageFlags.Ephemeral
+        });
+        
+        return true;
     }
 }
 
