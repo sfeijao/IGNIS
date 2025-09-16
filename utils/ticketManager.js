@@ -237,7 +237,7 @@ class TicketManager {
                 const ticket = userTickets[0];
                 await interaction.editReply({
                     content: `❌ Você já tem um ticket aberto: <#${ticket.channel_id}>`,
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
                 return null;
             }
@@ -292,7 +292,7 @@ class TicketManager {
 
             await interaction.editReply({
                 content: `✅ Seu ticket foi criado: ${channel}`,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
 
             return ticket;
@@ -308,7 +308,7 @@ class TicketManager {
             if (!ticket) {
                 await interaction.editReply({
                     content: '❌ Este não é um canal de ticket válido.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
                 return;
             }
@@ -316,7 +316,7 @@ class TicketManager {
             if (ticket.assigned_to) {
                 await interaction.editReply({
                     content: `❌ Este ticket já está sendo atendido por <@${ticket.assigned_to}>`,
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
                 return;
             }
@@ -349,7 +349,7 @@ class TicketManager {
 
             await interaction.editReply({
                 content: `✅ Você assumiu o atendimento deste ticket.`,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
 
             await interaction.channel.send({
@@ -370,7 +370,7 @@ class TicketManager {
             if (!ticket) {
                 await interaction.editReply({
                     content: '❌ Este não é um canal de ticket válido.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
                 return;
             }

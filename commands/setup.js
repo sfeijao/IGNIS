@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require('discord.js');
 const storage = require('../utils/storage');
 
 module.exports = {
@@ -19,7 +19,7 @@ module.exports = {
         const subcommand = interaction.options.getSubcommand();
 
         if (subcommand === 'init') {
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             // Initialize guild configuration with defaults
             const config = await storage.getGuildConfig(interaction.guild.id);
@@ -47,7 +47,7 @@ module.exports = {
             await interaction.editReply({ embeds: [embed] });
         } 
         else if (subcommand === 'status') {
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             const config = await storage.getGuildConfig(interaction.guild.id);
 

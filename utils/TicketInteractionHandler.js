@@ -3,7 +3,8 @@ const {
     TextInputBuilder, 
     TextInputStyle, 
     ActionRowBuilder,
-    PermissionFlagsBits 
+    PermissionFlagsBits,
+    MessageFlags 
 } = require('discord.js');
 const TicketDatabase = require('./TicketDatabase');
 const TicketEmbedManager = require('./TicketEmbedManager');
@@ -60,7 +61,7 @@ class TicketInteractionHandler {
             if (!ticket) {
                 return await interaction.reply({
                     content: '❌ Ticket não encontrado ou já foi removido.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
         }
@@ -113,7 +114,7 @@ class TicketInteractionHandler {
                 default:
                     return await interaction.reply({
                         content: '❌ Ação não reconhecida.',
-                        ephemeral: true
+                        flags: MessageFlags.Ephemeral
                     });
             }
         } catch (error) {
@@ -122,7 +123,7 @@ class TicketInteractionHandler {
             if (!interaction.replied && !interaction.deferred) {
                 return await interaction.reply({
                     content: '❌ Ocorreu um erro ao processar a ação. Tenta novamente.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
         }
@@ -135,7 +136,7 @@ class TicketInteractionHandler {
         if (!isStaff) {
             return await interaction.reply({
                 content: '❌ Apenas staff pode atender tickets.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -143,7 +144,7 @@ class TicketInteractionHandler {
             const claimedByUser = await this.client.users.fetch(ticket.claimedBy);
             return await interaction.reply({
                 content: `❌ Este ticket já está a ser atendido por ${claimedByUser.tag}.`,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -155,8 +156,7 @@ class TicketInteractionHandler {
 
         // Mensagem no canal
         await interaction.followUp({
-            content: `✅ ${getUserDisplayName(interaction.user, interaction.guild)} assumiu este ticket.`,
-            ephemeral: false
+            content: `✅ ${getUserDisplayName(interaction.user, interaction.guild)} assumiu este ticket.`
         });
 
         // Atualizar permissões do canal (opcional)
@@ -170,7 +170,7 @@ class TicketInteractionHandler {
         if (!isStaff && !isOwner) {
             return await interaction.reply({
                 content: '❌ Apenas staff ou o dono do ticket podem fechá-lo.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -201,11 +201,11 @@ class TicketInteractionHandler {
         if (!ticket) {
             return await interaction.reply({
                 content: '❌ Ticket não encontrado.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         try {
             // Gerar transcript
@@ -276,7 +276,7 @@ class TicketInteractionHandler {
         if (!isStaff) {
             return await interaction.reply({
                 content: '❌ Apenas staff pode adicionar notas internas.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -303,7 +303,7 @@ class TicketInteractionHandler {
         if (!isStaff) {
             return await interaction.reply({
                 content: '❌ Apenas staff pode usar respostas rápidas.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -313,7 +313,7 @@ class TicketInteractionHandler {
         if (!cannedResponse) {
             return await interaction.reply({
                 content: '❌ Resposta rápida não encontrada.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -529,7 +529,7 @@ class TicketInteractionHandler {
     // Handler para criar ticket
     async handleCreateTicket(interaction, category) {
         try {
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             // Mapear categorias
             const categoryMap = {
@@ -667,7 +667,7 @@ class TicketInteractionHandler {
             if (!interaction.replied && !interaction.deferred) {
                 await interaction.reply({
                     content: '❌ Erro ao criar ticket. Contacte um administrador.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             } else {
                 await interaction.editReply({

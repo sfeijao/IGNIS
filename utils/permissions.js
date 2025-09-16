@@ -1,4 +1,5 @@
 // utils/permissions.js - Sistema de verificação de permissões seguro
+const { MessageFlags } = require('discord.js');
 const config = require('./config');
 
 /**
@@ -71,7 +72,7 @@ async function requireStaff(interaction) {
     if (!isStaff(interaction.member)) {
         await interaction.reply({
             content: '❌ Precisas de permissão de **Staff** para usar este comando.',
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         });
         throw new Error('NoPermission');
     }
@@ -87,7 +88,7 @@ async function requireAdmin(interaction) {
     if (!isAdmin(interaction.member)) {
         await interaction.reply({
             content: '❌ Precisas de permissão de **Administrador** para usar este comando.',
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         });
         throw new Error('NoPermission');
     }

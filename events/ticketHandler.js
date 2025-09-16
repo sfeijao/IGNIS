@@ -1,4 +1,5 @@
 // Sistema de Tickets Completo - Handler Principal
+const { MessageFlags } = require('discord.js');
 const TicketInteractionHandler = require('../utils/TicketInteractionHandler');
 
 module.exports = {
@@ -19,7 +20,7 @@ module.exports = {
             if (!interaction.replied && !interaction.deferred) {
                 await interaction.reply({
                     content: '❌ Erro interno. Contacta um administrador.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
         }

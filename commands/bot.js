@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -14,22 +14,22 @@ module.exports = {
             if (sub === 'setnick') {
                 const nickname = interaction.options.getString('nickname');
                 if (!interaction.guild.members.me.permissions.has(PermissionFlagsBits.ManageNicknames)) {
-                    return interaction.reply({ content: 'Falta permissão Manage Nicknames no servidor.', ephemeral: true });
+                    return interaction.reply({ content: 'Falta permissão Manage Nicknames no servidor.', flags: MessageFlags.Ephemeral });
                 }
                 await interaction.guild.members.me.setNickname(nickname);
-                return interaction.reply({ content: `Nickname alterado para: ${nickname}`, ephemeral: true });
+                return interaction.reply({ content: `Nickname alterado para: ${nickname}`, flags: MessageFlags.Ephemeral });
             }
             if (sub === 'setusername') {
                 const username = interaction.options.getString('username');
                 try {
                     await interaction.client.user.setUsername(username);
-                    return interaction.reply({ content: `Username do bot alterado para: ${username}`, ephemeral: true });
+                    return interaction.reply({ content: `Username do bot alterado para: ${username}`, flags: MessageFlags.Ephemeral });
                 } catch (err) {
-                    return interaction.reply({ content: `Erro ao alterar username: ${err && err.message ? err.message : err}`, ephemeral: true });
+                    return interaction.reply({ content: `Erro ao alterar username: ${err && err.message ? err.message : err}`, flags: MessageFlags.Ephemeral });
                 }
             }
         } catch (err) {
-            return interaction.reply({ content: `Erro: ${err && err.message ? err.message : err}`, ephemeral: true });
+            return interaction.reply({ content: `Erro: ${err && err.message ? err.message : err}`, flags: MessageFlags.Ephemeral });
         }
     }
 };

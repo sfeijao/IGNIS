@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -37,7 +37,7 @@ module.exports = {
         } catch (error) {
                 const logger = require('../utils/logger');
                 logger.error('❌ Erro no comando ajuda:', { error: error.message || error });
-            await interaction.reply({ content: '❌ Erro interno!', ephemeral: true });
+            await interaction.reply({ content: '❌ Erro interno!', flags: MessageFlags.Ephemeral });
         }
     },
 };

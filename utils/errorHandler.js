@@ -1,5 +1,5 @@
 // utils/errorHandler.js - Sistema de tratamento de erros centralizado
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, MessageFlags } = require('discord.js');
 const { EMBED_COLORS, EMOJIS, ERROR_MESSAGES } = require('../constants/ui');
 
 class ErrorHandler {
@@ -43,9 +43,9 @@ class ErrorHandler {
 
         try {
             if (interaction.deferred || interaction.replied) {
-                await interaction.followUp({ embeds: [errorEmbed], ephemeral: true });
+                await interaction.followUp({ embeds: [errorEmbed], flags: MessageFlags.Ephemeral });
             } else {
-                await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+                await interaction.reply({ embeds: [errorEmbed], flags: MessageFlags.Ephemeral });
             }
         } catch (replyError) {
             logger.error('Erro ao responder com mensagem de erro:', { error: replyError && replyError.message ? replyError.message : replyError });

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const os = require('os');
 
 module.exports = {
@@ -14,7 +14,7 @@ module.exports = {
 
     async execute(interaction) {
         try {
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             // Verificar se é administrador
             if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
@@ -196,7 +196,7 @@ Uptime Sistema: ${Math.floor(os.uptime() / 3600)}h
             if (recommendations.length > 0) {
                 await interaction.followUp({
                     content: '⚠️ **Alertas de Performance:**\n' + recommendations.join('\n'),
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
 

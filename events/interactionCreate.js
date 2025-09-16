@@ -227,7 +227,7 @@ module.exports = {
                             if (!interaction.replied && !interaction.deferred) {
                                 await interaction.reply({
                                     content: `${EMOJIS.ERROR} Ocorreu um erro ao criar o ticket. Por favor, tente novamente.`,
-                                    ephemeral: true
+                                    flags: MessageFlags.Ephemeral
                                 });
                             } else {
                                 await interaction.editReply({
@@ -970,7 +970,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
                         if (existingTicket) {
                             return await interaction.reply({
                                 content: `⚠️ **Ticket Existente**\\nVocê já possui um ticket aberto: ${existingTicket}\\nFeche o ticket atual antes de abrir um novo.`,
-                                ephemeral: true
+                                flags: MessageFlags.Ephemeral
                             });
                         }
 
@@ -1014,7 +1014,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
                         logger.error('Erro no menu de categoria:', error);
                         await interaction.reply({
                             content: '❌ Erro ao processar seleção. Tente novamente.',
-                            ephemeral: true
+                            flags: MessageFlags.Ephemeral
                         });
                     }
                     return;
@@ -1064,14 +1064,14 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
 
                         await interaction.reply({
                             content: `🚨 **Ticket de emergência criado:** ${ticketChannel}\\nNossa equipe foi notificada imediatamente.`,
-                            ephemeral: true
+                            flags: MessageFlags.Ephemeral
                         });
 
                     } catch (error) {
                         logger.error('Erro ao criar ticket emergência:', error);
                         await interaction.reply({
                             content: '❌ Erro ao criar ticket de emergência. Contacte um administrador.',
-                            ephemeral: true
+                            flags: MessageFlags.Ephemeral
                         });
                     }
                     return;
@@ -1094,7 +1094,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
                         ].join('\\n'))
                         .setTimestamp();
 
-                    await interaction.reply({ embeds: [statusEmbed], ephemeral: true });
+                    await interaction.reply({ embeds: [statusEmbed], flags: MessageFlags.Ephemeral });
                     return;
                 }
 
@@ -1114,7 +1114,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
                         )
                         .setTimestamp();
 
-                    await interaction.reply({ embeds: [ticketsEmbed], ephemeral: true });
+                    await interaction.reply({ embeds: [ticketsEmbed], flags: MessageFlags.Ephemeral });
                     return;
                 }
 
@@ -1141,7 +1141,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
                         ].join('\\n'))
                         .setTimestamp();
 
-                    await interaction.reply({ embeds: [faqEmbed], ephemeral: true });
+                    await interaction.reply({ embeds: [faqEmbed], flags: MessageFlags.Ephemeral });
                     return;
                 }
 
@@ -1153,7 +1153,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
                         const description = interaction.fields.getTextInputValue('ticket_description');
                         const priority = interaction.fields.getTextInputValue('ticket_priority') || 'média';
 
-                        await interaction.deferReply({ ephemeral: true });
+                        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
                         // Criar ticket avançado
                         const category = await getOrCreateTicketCategory(interaction.guild);
