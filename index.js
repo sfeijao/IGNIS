@@ -66,8 +66,7 @@ for (const file of commandFiles) {
 
 const eventsPath = path.join(__dirname, 'events');
 const eventFiles = fs.readdirSync(eventsPath)
-    .filter(file => file.endsWith('.js'))
-    .filter(file => file !== 'ticketHandler.js'); // Remove ticketHandler.js (replaced by ticketInteractions.js)
+    .filter(file => file.endsWith('.js'));
 
 for (const file of eventFiles) {
     const filePath = path.join(eventsPath, file);
