@@ -84,7 +84,6 @@ module.exports = {
 
             // Instruções
             let instructions = '**Próximos Passos:**\n';
-            instructions += '• Execute `/diagnostico-tickets` para ver detalhes\n';
             instructions += '• Use `/configurar-painel-tickets` para criar o painel\n';
             instructions += '• O sistema está pronto para usar! 🎫';
 

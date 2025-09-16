@@ -106,6 +106,9 @@ class TicketInteractionHandler {
                 case 'attach':
                     return await this.handleAttachEvidence(interaction, ticket, isOwner);
                 
+                case 'create':
+                    return await this.handleCreateTicket(interaction, ticketId);
+                
                 default:
                     return await interaction.reply({
                         content: '❌ Ação não reconhecida.',
@@ -520,6 +523,178 @@ class TicketInteractionHandler {
         } catch (error) {
             logger.error('Erro ao fechar canal:', error);
         }
+    }
+
+    // Handler para criar ticket
+    async handleCreateTicket(interaction, category) {
+        try {
+            await interaction.deferReply({ ephemeral: true });
+
+            // Mapear categorias
+            const categoryMap = {
+                'technical': { name: 'Suporte Técnico', emoji: '🔧', color: '#3498db' },
+                'incident': { name: 'Reportar Problema', emoji: '⚠️', color: '#e74c3c' },
+                'moderation': { name: 'Moderação', emoji: '🛡️', color: '#9b59b6' }
+            };
+
+            const categoryInfo = categoryMap[category] || categoryMap['technical'];
+
+            // Criar canal do ticket
+            const ticketId = `ticket-${Date.now()}`;
+            const channelName = `${categoryInfo.emoji}-${category}-${interaction.user.username}`.toLowerCase();
+
+            const ticketChannel = await interaction.guild.channels.create({
+                name: channelName,
+                type: 0, // GUILD_TEXT
+                parent: await this.getOrCreateTicketCategory(interaction.guild),
+                topic: `Ticket: ${categoryInfo.name} | Usuário: ${interaction.user.tag}`,
+                permissionOverwrites: [
+                    {
+                        id: interaction.guild.id,
+                        deny: [PermissionFlagsBits.ViewChannel]
+                    },
+                    {
+                        id: interaction.user.id,
+                        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
+                    }
+                ]
+            });
+
+            // Criar embed avançado do ticket
+            const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+            
+            const ticketEmbed = new EmbedBuilder()
+                .setColor(categoryInfo.color)
+                .setTitle(`${categoryInfo.emoji} **${categoryInfo.name.toUpperCase()} TICKET**`)
+                .setDescription([
+                    '### 📋 **INFORMAÇÕES DO TICKET**',
+                    '',
+                    `🏷️ **Categoria:** \`${categoryInfo.name}\``,
+                    `👤 **Criado por:** ${interaction.user}`,
+                    `📅 **Data:** <t:${Math.floor(Date.now() / 1000)}:R>`,
+                    `🆔 **ID:** \`${ticketChannel.id}\``,
+                    '',
+                    '### 🎯 **PRÓXIMOS PASSOS**',
+                    '```',
+                    '1️⃣ Staff assumirá o ticket',
+                    '2️⃣ Análise do problema reportado',  
+                    '3️⃣ Resolução personalizada',
+                    '4️⃣ Confirmação de satisfação',
+                    '```',
+                    '',
+                    '> 💡 **Nossa equipe responde em média 15 minutos**'
+                ].join('\\n'))
+                .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
+                .setImage('https://via.placeholder.com/600x100/5865F2/FFFFFF?text=IGNIS+SUPPORT+SYSTEM')
+                .setFooter({ 
+                    text: `${interaction.guild.name} • IGNIS Ticket System • Ticket #${Date.now().toString().slice(-6)}`,
+                    iconURL: interaction.guild.iconURL({ dynamic: true })
+                })
+                .setTimestamp();
+
+            // Botões de controle avançados
+            const controlButtons = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`ticket:claim:${ticketId}`)
+                        .setLabel('ASSUMIR TICKET')
+                        .setEmoji('👑')
+                        .setStyle(ButtonStyle.Success),
+                    new ButtonBuilder()
+                        .setCustomId(`ticket:close:${ticketId}`)
+                        .setLabel('FECHAR TICKET')
+                        .setEmoji('🔒')
+                        .setStyle(ButtonStyle.Danger),
+                    new ButtonBuilder()
+                        .setCustomId(`ticket:addnote:${ticketId}`)
+                        .setLabel('ADICIONAR NOTA')
+                        .setEmoji('📝')
+                        .setStyle(ButtonStyle.Secondary)
+                );
+
+            // Segunda linha de botões - Ações extras
+            const extraButtons = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`ticket:transcript:${ticketId}`)
+                        .setLabel('TRANSCRIÇÃO')
+                        .setEmoji('📄')
+                        .setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder()
+                        .setCustomId(`ticket:escalate:${ticketId}`)
+                        .setLabel('ESCALAR')
+                        .setEmoji('📈')
+                        .setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder()
+                        .setCustomId(`ticket:transfer:${ticketId}`)
+                        .setLabel('TRANSFERIR')
+                        .setEmoji('🔄')
+                        .setStyle(ButtonStyle.Primary)
+                );
+
+            // Salvar ticket na base de dados
+            const ticketData = {
+                id: ticketId,
+                channelId: ticketChannel.id,
+                ownerId: interaction.user.id,
+                category: category,
+                status: 'open',
+                createdAt: Date.now(),
+                claimedBy: null,
+                guildId: interaction.guild.id
+            };
+
+            this.database.createTicket(ticketData);
+
+            // Enviar embed no canal do ticket
+            await ticketChannel.send({
+                content: `${interaction.user} **Ticket criado com sucesso!** 🎉\\n\\n🛎️ **Nossa equipe foi notificada e responderá em breve.**`,
+                embeds: [ticketEmbed],
+                components: [controlButtons, extraButtons]
+            });
+
+            // Responder ao utilizador
+            await interaction.editReply({
+                content: `✅ **Ticket criado com sucesso!**\\n🎫 **Canal:** ${ticketChannel}\\n📂 **Categoria:** ${categoryInfo.name}`
+            });
+
+            return true;
+
+        } catch (error) {
+            logger.error('Erro ao criar ticket:', error);
+            
+            if (!interaction.replied && !interaction.deferred) {
+                await interaction.reply({
+                    content: '❌ Erro ao criar ticket. Contacte um administrador.',
+                    ephemeral: true
+                });
+            } else {
+                await interaction.editReply({
+                    content: '❌ Erro ao criar ticket. Contacte um administrador.'
+                });
+            }
+            return false;
+        }
+    }
+
+    // Método auxiliar para obter ou criar categoria de tickets
+    async getOrCreateTicketCategory(guild) {
+        let ticketCategory = guild.channels.cache.find(c => c.name === '📁 TICKETS' && c.type === 4);
+        
+        if (!ticketCategory) {
+            try {
+                ticketCategory = await guild.channels.create({
+                    name: '📁 TICKETS',
+                    type: 4, // GUILD_CATEGORY
+                    reason: 'Categoria criada automaticamente para sistema de tickets'
+                });
+            } catch (error) {
+                logger.error('Erro ao criar categoria de tickets:', error);
+                throw new Error('FAILED_TO_CREATE_TICKET_CATEGORY');
+            }
+        }
+        
+        return ticketCategory;
     }
 
     // Atualizar permissões do canal
