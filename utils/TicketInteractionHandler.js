@@ -9,6 +9,7 @@ const TicketDatabase = require('./TicketDatabase');
 const TicketEmbedManager = require('./TicketEmbedManager');
 const TicketComponentManager = require('./TicketComponentManager');
 const RobustWebhookManager = require('./RobustWebhookManager');
+const TicketPermissionManager = require('./TicketPermissionManager');
 const { getUserDisplayName } = require('./userHelper');
 const logger = require('./logger');
 
@@ -107,7 +108,7 @@ class TicketInteractionHandler {
                     return await this.handleAttachEvidence(interaction, ticket, isOwner);
                 
                 case 'create':
-                    return await this.handleCreateTicket(interaction, ticketId);
+                    return await this.handleCreateTicket(interaction, parts[2]);
                 
                 default:
                     return await interaction.reply({
