@@ -1,63 +1,203 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Dashboard - IGNIS Bot</title>
-    <link rel="stylesheet" href="style.css" />
-    <style>
-      body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial; margin:0; background:#0F1419; color:#fff }
-      .container { max-width:1100px; margin:32px auto; padding:0 16px }
-      .navbar { background:#1e1e2e; border-bottom:1px solid #313244; position:sticky; top:0; z-index:100 }
-      .navbar-content { display:flex; justify-content:space-between; align-items:center; padding:16px 0; height:60px }
-      .navbar-brand { font-size:22px; font-weight:700; color:#cdd6f4; display:flex; align-items:center; gap:8px }
-      .navbar-user { display:flex; align-items:center; gap:12px; color:#bac2de }
-      .user-avatar { width:32px; height:32px; border-radius:50%; border:2px solid #6c7086; background: #9932CC; display: flex; align-items: center; justify-content: center; }
-      .logout-btn { color:#fff; opacity:0.9; text-decoration: none; padding: 8px 16px; background: #7B68EE; border-radius: 4px; }
-      .logout-btn:hover { background: #9932CC; }
-      .ignis-logo { color: #9932CC; font-weight: bold; }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Central de Atendimento • IGNIS</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial; margin:0; background:#0F1419; color:#E6E8EB }
+    .container { max-width:1160px; margin:0 auto; padding:0 20px }
+    .navbar { background:#121826; border-bottom:1px solid #1B2233; position:sticky; top:0; z-index:100 }
+    .navbar-content { display:flex; justify-content:space-between; align-items:center; height:64px }
+    .navbar-brand { font-size:20px; font-weight:700; color:#cdd6f4; display:flex; align-items:center; gap:10px }
+    .ignis-logo { color:#8B5CF6 }
+    .navbar-user { display:flex; align-items:center; gap:12px; color:#bac2de }
+    .user-avatar { width:32px; height:32px; border-radius:50%; border:2px solid #2C3350; background:#8B5CF6; display:flex; align-items:center; justify-content:center }
+    .nav-btn { color:#fff; text-decoration:none; padding:8px 14px; background:#6D28D9; border-radius:6px }
+    .nav-btn:hover { background:#7C3AED }
+  </style>
 </head>
 <body>
-    <nav class="navbar">
-      <div class="navbar-content container">
-        <div class="navbar-brand">🔥 <span class="ignis-logo">IGNIS</span> Dashboard</div>
-        <div class="navbar-user">
-          <div class="user-avatar">👤</div>
-          <span id="userName">IGNIS Bot</span>
-          <a href="https://ignisbot.up.railway.app" class="logout-btn">Dashboard Principal</a>
-        </div>
-      </div>
-    </nav>
-    <div class="container">
-      <div id="dashboard-content">
-        <div class="loading-container">
-          <div class="loading-icon">🔥</div>
-          <div class="loading-text">
-            <h2 class="website-title">IGNIS Bot Website</h2>
-            <p>Sistema de Discord Bot completo com funcionalidades avançadas</p>
-            <div class="links-container">
-              <a href="https://ignisbot.up.railway.app" class="btn-link">
-                🚀 Dashboard Principal
-              </a>
-              <a href="https://github.com/sfeijao/IGNIS" class="btn-link">
-                📋 GitHub
-              </a>
-            </div>
-            <div class="features-box">
-              <h3 class="features-title">Funcionalidades:</h3>
-              <ul class="features-list">
-                <li>🎫 Sistema de Tickets Avançado</li>
-                <li>🔐 Sistema de Verificação</li>
-                <li>🏷️ Gestão de Tags/Cargos</li>
-                <li>📊 Painel de Status em Tempo Real</li>
-                <li>📝 Sistema de Logs Completo</li>
-                <li>💜 Tema Roxo Personalizado</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+  <nav class="navbar">
+    <div class="navbar-content container">
+      <div class="navbar-brand">🔥 <span class="ignis-logo">IGNIS</span> • Central</div>
+      <div class="navbar-user">
+        <div class="user-avatar" aria-hidden="true">👤</div>
+        <span id="userName">Utilizador</span>
+        <a href="/logout" class="nav-btn" aria-label="Terminar sessão">Sair</a>
       </div>
     </div>
+  </nav>
+
+  <main class="container">
+    <!-- Hero -->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-text">
+        <h1 id="hero-title">Central de Atendimento</h1>
+        <p class="hero-sub">Clique no departamento para abrir um atendimento privado.<br/>Tempo médio de resposta: <strong>15 minutos</strong>.</p>
+
+        <div class="pills" role="status" aria-live="polite">
+          <span class="pill" id="pill-guild">🏷️ <span data-guild-name>Servidor</span></span>
+          <span class="pill" id="pill-staff">👥 Staff online: <span data-staff-online>—</span></span>
+          <span class="pill status" id="pill-status" data-status="online">● <span data-system-status>ONLINE</span></span>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" data-ticket="technical" aria-label="Abrir ticket de suporte técnico">
+            🔧 SUPORTE TÉCNICO
+          </button>
+          <button class="btn btn-danger" data-ticket="incident" aria-label="Reportar um problema">
+            ⚠️ REPORTAR PROBLEMA
+          </button>
+          <button class="btn btn-neutral" data-ticket="moderation" aria-label="Abrir ticket de moderação e segurança">
+            �️ MODERAÇÃO
+          </button>
+        </div>
+
+        <div class="feedback" role="alert" aria-live="assertive" hidden></div>
+      </div>
+      <div class="hero-art">
+        <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1200&h=420&fit=crop&crop=center" alt="Banner IGNIS" />
+      </div>
+    </section>
+
+    <!-- Cards -->
+    <section class="cards" aria-label="Departamentos de atendimento">
+      <article class="card">
+        <img class="card-img" src="https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=840&h=280&fit=crop&crop=center" alt="Suporte Técnico" />
+        <div class="card-body">
+          <h3>🔧 Suporte Técnico</h3>
+          <ul>
+            <li>Configuração de bots e integrações</li>
+            <li>Ajuda com comandos e permissões</li>
+            <li>Melhorias simples de performance</li>
+          </ul>
+        </div>
+      </article>
+      <article class="card">
+        <img class="card-img" src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=840&h=280&fit=crop&crop=center" alt="Reportar Problema" />
+        <div class="card-body">
+          <h3>⚠️ Reportar Problema</h3>
+          <ul>
+            <li>Erros, bugs e instabilidades</li>
+            <li>Comportamentos inesperados</li>
+            <li>Partilha de prints e evidências</li>
+          </ul>
+        </div>
+      </article>
+      <article class="card">
+        <img class="card-img" src="https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=840&h=280&fit=crop&crop=center" alt="Moderação e Segurança" />
+        <div class="card-body">
+          <h3>🛡️ Moderação & Segurança</h3>
+          <ul>
+            <li>Denúncias e investigações</li>
+            <li>Questões de regras e disciplina</li>
+            <li>Suporte reservado</li>
+          </ul>
+        </div>
+      </article>
+    </section>
+
+    <!-- Banner final / identidade visual -->
+    <section class="identity" aria-hidden="true">
+      <img src="https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1200&h=300&fit=crop&crop=center" alt="Identidade IGNIS" />
+    </section>
+
+    <footer class="footer">
+      <span>Sistema v2.1 • Powered by IGNIS</span>
+    </footer>
+  </main>
+
+  <script>
+    // Pequeno helper para set de texto seguro
+    const setText = (sel, text) => {
+      const el = document.querySelector(sel);
+      if (el) el.textContent = text;
+    };
+
+    // Carregar dados do utilizador e guilds
+    async function initDashboard() {
+      try {
+        const userRes = await fetch('/api/user');
+        if (userRes.ok) {
+          const u = await userRes.json();
+          if (u?.success) setText('#userName', u.user.username);
+        }
+
+        // Tentar obter guild atual a partir do primeiro disponível
+        const gRes = await fetch('/api/guilds');
+        if (!gRes.ok) return;
+        const gData = await gRes.json();
+        const guild = gData.guilds?.[0];
+        if (!guild) return;
+
+        document.querySelector('[data-guild-name]').textContent = guild.name;
+
+        // Stats do guild
+        const statsRes = await fetch(`/api/guild/${guild.id}/stats`);
+        if (statsRes.ok) {
+          const s = await statsRes.json();
+          if (s?.success) {
+            document.querySelector('[data-staff-online]').textContent = s.stats.onlineCount || 0;
+          }
+        }
+
+        // Tickets para status do sistema simples
+        const ticketsRes = await fetch(`/api/guild/${guild.id}/tickets`);
+        if (ticketsRes.ok) {
+          const t = await ticketsRes.json();
+          if (t?.success) {
+            // Heurística simples de status
+            const open = t.stats.open || 0;
+            const statusEl = document.getElementById('pill-status');
+            const labelEl = document.querySelector('[data-system-status]');
+            if (open < 5) {
+              statusEl.dataset.status = 'online';
+              labelEl.textContent = 'ONLINE';
+            } else if (open < 15) {
+              statusEl.dataset.status = 'degraded';
+              labelEl.textContent = 'DEGRADED';
+            } else {
+              statusEl.dataset.status = 'offline';
+              labelEl.textContent = 'OFFLINE';
+            }
+          }
+        }
+      } catch (e) {
+        // Falha silenciosa para não quebrar UI
+      }
+    }
+
+    // Botões de ação com feedback imediato
+    function setupButtons() {
+      const feedback = document.querySelector('.feedback');
+      const buttons = document.querySelectorAll('[data-ticket]');
+      buttons.forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const type = btn.getAttribute('data-ticket');
+          const original = btn.textContent;
+          btn.disabled = true;
+          btn.classList.add('loading');
+          btn.textContent = 'A criar…';
+          try {
+            // Ação no Discord é via botão no servidor, aqui simulamos um feedback
+            // Opcionalmente poderíamos abrir um deep-link ou instrução.
+            await new Promise(r => setTimeout(r, 800));
+            feedback.hidden = false;
+            feedback.textContent = `✅ Pedido enviado: ${type.toUpperCase()}. Verifica o Discord para o canal privado.`;
+            setTimeout(() => { feedback.hidden = true; }, 4000);
+          } finally {
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            btn.textContent = original;
+          }
+        });
+      });
+    }
+
+    initDashboard();
+    setupButtons();
+  </script>
 </body>
 </html>

@@ -13,11 +13,10 @@ require('dotenv').config();
 const config = require('./utils/config');
 const logger = require('./utils/logger');
 const storage = require('./utils/storage');
-const TicketManager = require('./utils/ticketManager');
 const WebhookManager = require('./utils/webhooks/webhookManager');
 
-// Iniciar dashboard se CLIENT_SECRET estiver disponível
-if (config.DISCORD.CLIENT_SECRET) {
+// Iniciar dashboard se CLIENT_SECRET estiver disponível e não for placeholder
+if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only_mode') {
     logger.info('✅ CLIENT_SECRET disponível - iniciando dashboard');
     require('./dashboard/server');
 } else {
@@ -46,7 +45,6 @@ client.commands = new Collection();
 
 // Setup storage and ticket manager
 client.storage = storage;
-client.ticketManager = new TicketManager(client);
 client.webhooks = new WebhookManager();
 
 const commandsPath = path.join(__dirname, 'commands');

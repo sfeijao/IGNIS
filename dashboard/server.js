@@ -258,21 +258,16 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Guild not found' });
         }
 
-        // Usar o TicketDatabase diretamente
-        const TicketDatabase = require('../utils/TicketDatabase');
-        const ticketDB = new TicketDatabase();
-        await ticketDB.init();
-        
-        // Filtrar tickets por servidor
-        const allTickets = Array.from(ticketDB.tickets.values());
-        const guildTickets = allTickets.filter(ticket => ticket.guildId === guildId);
+    // Usar storage JSON simples
+    const storage = require('../utils/storage');
+    const guildTickets = await storage.getTickets(guildId);
         
         // Enriquecer dados dos tickets com informações do Discord
         const enrichedTickets = await Promise.all(guildTickets.map(async (ticket) => {
             try {
-                const channel = guild.channels.cache.get(ticket.channelId);
-                const owner = await client.users.fetch(ticket.ownerId).catch(() => null);
-                const claimedBy = ticket.claimedBy ? await client.users.fetch(ticket.claimedBy).catch(() => null) : null;
+                const channel = guild.channels.cache.get(ticket.channel_id);
+                const owner = await client.users.fetch(ticket.user_id).catch(() => null);
+                const claimedBy = ticket.assigned_to ? await client.users.fetch(ticket.assigned_to).catch(() => null) : null;
                 
                 return {
                     ...ticket,
@@ -282,7 +277,7 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
                     ownerAvatar: owner?.displayAvatarURL({ size: 32 }) || null,
                     claimedByTag: claimedBy ? `${claimedBy.username}#${claimedBy.discriminator}` : null,
                     claimedByAvatar: claimedBy?.displayAvatarURL({ size: 32 }) || null,
-                    timeAgo: formatTimeAgo(new Date(ticket.createdAt))
+                    timeAgo: formatTimeAgo(new Date(ticket.created_at))
                 };
             } catch (error) {
                 logger.error(`Erro ao enriquecer ticket ${ticket.ticketId}:`, error);
@@ -294,7 +289,7 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
                     ownerAvatar: null,
                     claimedByTag: null,
                     claimedByAvatar: null,
-                    timeAgo: formatTimeAgo(new Date(ticket.createdAt))
+                    timeAgo: formatTimeAgo(new Date(ticket.created_at))
                 };
             }
         }));
@@ -310,7 +305,7 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
         
         res.json({ 
             success: true, 
-            tickets: enrichedTickets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+            tickets: enrichedTickets.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
             stats 
         });
         
@@ -339,18 +334,16 @@ app.get('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Guild not found' });
         }
 
-        const TicketDatabase = require('../utils/TicketDatabase');
-        const ticketDB = new TicketDatabase();
-        await ticketDB.init();
-        
-        const ticket = ticketDB.getTicket(ticketId);
-        if (!ticket || ticket.guildId !== guildId) {
+        const storage = require('../utils/storage');
+        const tickets = await storage.getTickets(guildId);
+        const ticket = tickets.find(t => `${t.id}` === `${ticketId}`);
+        if (!ticket) {
             return res.status(404).json({ success: false, error: 'Ticket not found' });
         }
 
         // Buscar mensagens do canal do ticket
         let messages = [];
-        const channel = guild.channels.cache.get(ticket.channelId);
+    const channel = guild.channels.cache.get(ticket.channel_id);
         if (channel) {
             try {
                 const fetchedMessages = await channel.messages.fetch({ limit: 100 });
@@ -376,8 +369,8 @@ app.get('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
         }
 
         // Enriquecer dados do ticket
-        const owner = await client.users.fetch(ticket.ownerId).catch(() => null);
-        const claimedBy = ticket.claimedBy ? await client.users.fetch(ticket.claimedBy).catch(() => null) : null;
+    const owner = await client.users.fetch(ticket.user_id).catch(() => null);
+    const claimedBy = ticket.assigned_to ? await client.users.fetch(ticket.assigned_to).catch(() => null) : null;
 
         const enrichedTicket = {
             ...ticket,
@@ -387,7 +380,7 @@ app.get('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
             ownerAvatar: owner?.displayAvatarURL({ size: 64 }) || null,
             claimedByTag: claimedBy ? `${claimedBy.username}#${claimedBy.discriminator}` : null,
             claimedByAvatar: claimedBy?.displayAvatarURL({ size: 64 }) || null,
-            timeAgo: formatTimeAgo(new Date(ticket.createdAt)),
+            timeAgo: formatTimeAgo(new Date(ticket.created_at)),
             messages
         };
 
@@ -425,12 +418,10 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
             return res.status(403).json({ success: false, error: 'You are not a member of this server' });
         }
 
-        const TicketDatabase = require('../utils/TicketDatabase');
-        const ticketDB = new TicketDatabase();
-        await ticketDB.init();
-        
-        const ticket = ticketDB.getTicket(ticketId);
-        if (!ticket || ticket.guildId !== guildId) {
+        const storage = require('../utils/storage');
+        const tickets = await storage.getTickets(guildId);
+        const ticket = tickets.find(t => `${t.id}` === `${ticketId}`);
+        if (!ticket) {
             return res.status(404).json({ success: false, error: 'Ticket not found' });
         }
 
@@ -440,10 +431,10 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
         switch (action) {
             case 'claim':
                 if (ticket.status === 'open') {
-                    await ticketDB.updateTicket(ticketId, {
+                    await storage.updateTicket(ticketId, {
                         status: 'claimed',
-                        claimedBy: req.user.id,
-                        claimedAt: new Date().toISOString()
+                        claimed_by: req.user.id,
+                        claimed_at: new Date().toISOString()
                     });
                     success = true;
                     message = 'Ticket claimed successfully';
@@ -454,11 +445,11 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
 
             case 'close':
                 if (['open', 'claimed'].includes(ticket.status)) {
-                    await ticketDB.updateTicket(ticketId, {
+                    await storage.updateTicket(ticketId, {
                         status: 'closed',
-                        closedBy: req.user.id,
-                        closedAt: new Date().toISOString(),
-                        closeReason: data?.reason || 'Closed via dashboard'
+                        closed_by: req.user.id,
+                        closed_at: new Date().toISOString(),
+                        close_reason: data?.reason || 'Closed via dashboard'
                     });
                     success = true;
                     message = 'Ticket closed successfully';
@@ -469,10 +460,10 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
 
             case 'reopen':
                 if (ticket.status === 'closed') {
-                    await ticketDB.updateTicket(ticketId, {
+                    await storage.updateTicket(ticketId, {
                         status: 'open',
-                        reopenedBy: req.user.id,
-                        reopenedAt: new Date().toISOString()
+                        reopened_by: req.user.id,
+                        reopened_at: new Date().toISOString()
                     });
                     success = true;
                     message = 'Ticket reopened successfully';
@@ -482,14 +473,9 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
                 break;
 
             case 'addNote':
-                const notes = ticket.notes || [];
-                notes.push({
-                    id: Date.now().toString(),
-                    content: data.content,
-                    author: req.user.id,
-                    timestamp: new Date().toISOString()
-                });
-                await ticketDB.updateTicket(ticketId, { notes });
+                const notes = Array.isArray(ticket.notes) ? ticket.notes.slice() : [];
+                notes.push({ id: Date.now().toString(), content: data.content, author: req.user.id, timestamp: new Date().toISOString() });
+                await storage.updateTicket(ticketId, { notes });
                 success = true;
                 message = 'Note added successfully';
                 break;

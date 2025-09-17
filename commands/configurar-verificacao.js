@@ -1,4 +1,5 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require('discord.js');
+const { BUTTON_IDS } = require('../constants/ui');
 const storage = require('../utils/storage');
 
 module.exports = {
@@ -7,11 +8,11 @@ module.exports = {
         .setDescription('Configura o sistema de verificação de membros'),
     
     async execute(interaction) {
-        // Verificar permissões (incluindo owner)
+    // Verificar permissões (incluindo owner)
         const config = await storage.getGuildConfig(interaction.guild.id);
         const isOwner = interaction.user.id === '381762006329589760';
         const hasAdminRole = config.roles?.admin ? interaction.member.roles.cache.has(config.roles.admin) : false;
-        const hasAdminPerm = interaction.member.permissions.has('Administrator');
+    const hasAdminPerm = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
         
         if (!isOwner && !hasAdminRole && !hasAdminPerm) {
             return interaction.reply({ 
@@ -48,7 +49,7 @@ module.exports = {
             .setTimestamp();
 
         const button = new ButtonBuilder()
-            .setCustomId('verify_button')
+            .setCustomId(BUTTON_IDS.VERIFY_USER)
             .setLabel('🔒 Verificar Conta')
             .setStyle(ButtonStyle.Success);
 

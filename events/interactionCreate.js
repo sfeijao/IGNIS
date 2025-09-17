@@ -121,8 +121,9 @@ module.exports = {
             if (interaction.isButton()) {
                 const customId = interaction.customId;
                 
-                // Se for botão de ticket, ignorar aqui (será processado pelo ticketInteractions.js)
-                if (customId?.startsWith('ticket_')) {
+                // Delegar o novo sistema de tickets (prefixo 'ticket:') para o handler dedicado
+                if (customId?.startsWith('ticket:')) {
+                    // Delegado para events/ticketHandler.js
                     return;
                 }
                 
@@ -134,13 +135,13 @@ module.exports = {
                     try {
                         logger.interaction('button', customId, interaction, true);
                         
-                        // Prefer role ID from guild config, fallback to role name
+                        // Prefer role ID from storage config, fallback to role name
                         let verifyRole = null;
                         try {
-                            const db = new Database();
-                            await db.initialize();
-                            const cfg = await db.getGuildConfig(interaction.guild.id, 'verify_role_id');
-                            if (cfg?.value) verifyRole = interaction.guild.roles.cache.get(cfg.value) || null;
+                            const storage = require('../utils/storage');
+                            const cfg = await storage.getGuildConfig(interaction.guild.id);
+                            const roleId = cfg?.roles?.verify || cfg?.verify_role_id || null;
+                            if (roleId) verifyRole = interaction.guild.roles.cache.get(roleId) || null;
                         } catch (e) {
                             // ignore and fallback
                         }
@@ -188,6 +189,8 @@ module.exports = {
 
                 // Botões do Painel de Tickets (tipos específicos)
                 if (customId.startsWith('ticket_create_')) {
+                    // Fluxo legado desativado – usar botões 'ticket:create:*' do novo sistema
+                    return;
                     try {
                         const ticketType = customId.replace('ticket_create_', '');
                         const cacheKey = `${interaction.user.id}-${interaction.guild.id}-${ticketType}`;
@@ -332,16 +335,45 @@ module.exports = {
                             .setTimestamp();
 
                         logger.debug(`Enviando embed de fechamento`);
-                        await interaction.channel.send({ embeds: [closedEmbed] });
-                        // Persistir status no DB e enviar webhook de arquivo
+                        // Construir transcript simples (últimas 200 mensagens)
+                        let transcriptText = '';
                         try {
-                            const db = new Database();
-                            await db.initialize();
+                            const fetched = await interaction.channel.messages.fetch({ limit: 200 }).catch(() => null);
+                            const messages = fetched ? Array.from(fetched.values()).sort((a,b)=>a.createdTimestamp-b.createdTimestamp) : [];
+                            transcriptText = `TRANSCRICAO TICKET ${interaction.channel.name} (ID canal ${interaction.channel.id})\nServidor: ${interaction.guild?.name} (${interaction.guildId})\nFechado por: ${interaction.user.tag} em ${new Date().toISOString()}\n\n`;
+                            for (const msg of messages) {
+                                const ts = new Date(msg.createdTimestamp).toISOString();
+                                const author = msg.author?.tag || msg.author?.id || 'Desconhecido';
+                                const content = msg.content?.replace(/\n/g,' ') || '';
+                                transcriptText += `${ts} - ${author}: ${content}\n`;
+                            }
+                        } catch(_) {}
+                        await interaction.channel.send({ embeds: [closedEmbed] });
+                        // Persistir status e enviar logs simplificados (compatibilidade)
+                        try {
+                            const storage = require('../utils/storage');
                             // Buscar ticket pelo channel_id
-                            const ticketRecord = await db.getTicketByChannelId(interaction.channel.id);
+                            const ticketRecord = await storage.getTicketByChannel(interaction.channel.id);
                             if (ticketRecord) {
-                                await db.updateTicketStatus(ticketRecord.id, 'closed', interaction.user.id, `Fechado via interação por ${interaction.user.tag}`);
-                                await db.updateTicket(ticketRecord.id, { archived: 1 });
+                                await storage.updateTicket(ticketRecord.id, { status: 'closed', closed_by: interaction.user.id, closed_at: new Date().toISOString(), archived: 1 });
+                                // Opcional: enviar transcript para canal de logs se configurado
+                                try {
+                                    const cfg = await storage.getGuildConfig(interaction.guild.id);
+                                    const logChannelId = cfg?.channels?.logs || null;
+                                    if (logChannelId) {
+                                        const logCh = interaction.guild.channels.cache.get(logChannelId) || await client.channels.fetch(logChannelId).catch(()=>null);
+                                        if (logCh && logCh.send) {
+                                            await logCh.send({ content: `📄 Transcript do ticket #${ticketRecord.id} (${interaction.channel.name}) fechado por ${interaction.user.tag}` });
+                                            if (transcriptText) {
+                                                const { AttachmentBuilder } = require('discord.js');
+                                                const attach = new AttachmentBuilder(Buffer.from(transcriptText,'utf8'), { name: `transcript-ticket-${ticketRecord.id}.txt` });
+                                                await logCh.send({ files: [attach] }).catch(()=>null);
+                                            }
+                                        }
+                                    }
+                                } catch (logSendErr) {
+                                    logger.warn('Falha ao enviar transcript para canal de logs', { error: logSendErr?.message || logSendErr });
+                                }
 
                                 // 🔥 ENVIAR LOG SIMPLIFICADO PARA WEBHOOK
                                 try {
@@ -350,17 +382,13 @@ module.exports = {
                                         // Coletar mensagens para transcript
                                         let transcriptText = '';
                                         try {
-                                            const messages = await db.db ? await new Promise((res, rej) => {
-                                                db.db.all('SELECT tm.user_id, u.username, tm.message, tm.created_at FROM ticket_messages tm LEFT JOIN users u ON tm.user_id = u.discord_id WHERE tm.ticket_id = ? ORDER BY tm.id ASC', [ticketRecord.id], (err, rows) => {
-                                                    if (err) return rej(err);
-                                                    res(rows || []);
-                                                });
-                                            }) : [];
+                                            const fetched = await interaction.channel.messages.fetch({ limit: 100 }).catch(() => null);
+                                            const messages = fetched ? Array.from(fetched.values()).sort((a,b)=>a.createdTimestamp-b.createdTimestamp) : [];
                                             
                                             // Gerar transcript textual
                                             transcriptText = `TRANSCRIÇÃO DO TICKET #${ticketRecord.id}
 ========================================
-Data de criação: ${new Date(ticketRecord.created_at).toLocaleString('pt-BR')}
+Data de criação: ${new Date(ticketRecord.created_at || Date.now()).toLocaleString('pt-PT')}
 Usuário: ${ticketRecord.user_id}
 Canal: #${interaction.channel.name}
 Servidor: ${interaction.guild.name}
@@ -370,8 +398,8 @@ Servidor: ${interaction.guild.name}
                                             
                                             if (messages && messages.length > 0) {
                                                 messages.forEach(msg => {
-                                                    const timestamp = new Date(msg.created_at).toLocaleTimeString('pt-BR');
-                                                    transcriptText += `[${timestamp}] ${msg.username || 'Usuário'}: ${msg.message}\n`;
+                                                    const timestamp = new Date(msg.createdTimestamp).toLocaleTimeString('pt-PT');
+                                                    transcriptText += `[${timestamp}] ${msg.author?.tag || 'Usuário'}: ${msg.content}\n`;
                                                 });
                                             } else {
                                                 transcriptText += '(Nenhuma mensagem registrada)\n';
@@ -379,7 +407,7 @@ Servidor: ${interaction.guild.name}
                                             
                                             transcriptText += `\n========================================
 Ticket fechado por: ${interaction.user.tag}
-Data de fechamento: ${new Date().toLocaleString('pt-BR')}
+Data de fechamento: ${new Date().toLocaleString('pt-PT')}
 ========================================`;
                                         } catch (transcriptError) {
                                             logger.warn('Erro ao gerar transcript:', transcriptError);
@@ -408,157 +436,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
                                     logger.error('Erro ao enviar log simplificado:', logError);
                                 }
 
-                                    // Enviar webhooks de arquivo (suporta múltiplos) se configurados e ainda não enviados
-                                    try {
-                                        const guildId = interaction.guild ? interaction.guild.id : ticketRecord.guild_id;
-                                        const webhooks = guildId ? await db.getGuildWebhooks(guildId) : [];
-
-                                        logger.info('Resolved archive webhooks for ticket close', { guildId, webhooksCount: Array.isArray(webhooks) ? webhooks.length : 0, ticketId: ticketRecord?.id });
-
-                                        if (webhooks && webhooks.length > 0 && !ticketRecord?.bug_webhook_sent) {
-                                            // collect ticket messages to include in webhook (if present in DB)
-                                            let messages = [];
-                                            try {
-                                                messages = await db.db ? await new Promise((res, rej) => {
-                                                    db.db.all('SELECT tm.user_id, u.username, tm.message, tm.created_at FROM ticket_messages tm LEFT JOIN users u ON tm.user_id = u.discord_id WHERE tm.ticket_id = ? ORDER BY tm.id ASC', [ticketRecord.id], (err, rows) => {
-                                                        if (err) return rej(err);
-                                                        res(rows || []);
-                                                    });
-                                                }) : [];
-                                            } catch (msgErr) {
-                                                logger.warn('Failed to fetch ticket messages for webhook excerpt', { error: msgErr && msgErr.message ? msgErr.message : msgErr, ticketId: ticketRecord.id });
-                                                messages = [];
-                                            }
-
-                                            // Build transcript URL for dashboard viewer
-                                            const serverHost = (process.env.WEBSITE_HOST || process.env.HOST || null);
-                                            const serverPort = (process.env.WEBSITE_PORT || process.env.PORT || null);
-                                            let transcriptUrl = null;
-                                            try {
-                                                // Prefer to construct from request host if available via config or environment
-                                                // Fallback to using dashboard origin if known
-                                                const base = process.env.WEBSITE_BASE_URL || (serverHost ? `http${process.env.WEBSITE_SSL === 'true' ? 's' : ''}://${serverHost}${serverPort ? `:${serverPort}` : ''}` : null);
-                                                if (base) transcriptUrl = `${base.replace(/\/$/, '')}/transcript/${ticketRecord.id}`;
-                                            } catch (uErr) {
-                                                transcriptUrl = null;
-                                            }
-
-                                            let anySent = false;
-                                            for (const wh of webhooks) {
-                                                try {
-                                                    logger.info('Attempting to send archive webhook', { webhookId: wh.id, webhookUrl: wh.url, ticketId: ticketRecord.id });
-                                                    const payloadTicket = Object.assign({}, ticketRecord, { messages, transcriptUrl });
-                                                    const sent = await sendArchivedTicketWebhook(wh.url, payloadTicket, `Fechado por ${interaction.user.tag}`);
-                                                    if (sent) {
-                                                        anySent = true;
-                                                        logger.info('Archive webhook sent', { webhookId: wh.id, ticketId: ticketRecord.id });
-                                                        try { await db.createLog(ticketRecord.guild_id, 'webhook_sent', { ticketId: ticketRecord.id, webhookId: wh.id, webhookUrl: wh.url }); } catch(_){}
-                                                    } else {
-                                                        logger.warn('Webhook sender returned falsy for webhook id', { webhookId: wh.id, ticketId: ticketRecord.id });
-                                                        try { await db.createLog(ticketRecord.guild_id, 'webhook_failed', { ticketId: ticketRecord.id, webhookId: wh.id, webhookUrl: wh.url }); } catch(_){}
-                                                    }
-                                                } catch (e) {
-                                                    logger.warn('Falha ao enviar webhook específico', { webhookId: wh.id, error: e && e.message ? e.message : e });
-                                                }
-                                            }
-
-                                            if (anySent) {
-                                                await db.markTicketWebhookSent(ticketRecord.id);
-                                                logger.info('Marked ticket as webhook-sent because at least one webhook succeeded', { ticketId: ticketRecord.id });
-                                            } else {
-                                                // If none succeeded, fallback to log channel
-                                                try {
-                                                    const logCfg = guildId ? await db.getGuildConfig(guildId, 'log_channel_id') : null;
-                                                    const logChannelId = logCfg?.value || null;
-                            if (logChannelId) {
-                                                        const logChannel = interaction.guild?.channels.cache.get(logChannelId) || await client.channels.fetch(logChannelId).catch(() => null);
-                                                                if (logChannel && logChannel.send) {
-                                                                    // Skip posting to channels named like 'ticket-log' to avoid duplicate noisy posts
-                                                                    const forbiddenNames = ['ticket-log','tickets-log','ticket-logs','tickets_log','logs-tickets'];
-                                                                    const chName = (logChannel.name || '').toLowerCase();
-                                                                    const isForbidden = forbiddenNames.includes(chName) || forbiddenNames.some(n => chName.includes(n));
-                                                                    if (isForbidden) {
-                                                                        logger.info('Skipping fallback post to log channel due to channel name blacklist', { guildId, logChannelId, channelName: logChannel.name, ticketId: ticketRecord.id });
-                                                                    } else {
-                                                                        await logChannel.send(`📦 Arquivo de ticket (fallback): Ticket ${ticketRecord.id} do servidor ${interaction.guild?.name || guildId} - canal: <#${ticketRecord.channel_id}>`);
-                                                                        logger.info('Fallback: posted archive info to log channel', { guildId, logChannelId, ticketId: ticketRecord.id });
-                                                                        try { await db.createLog(guildId, 'webhook_fallback_logchannel', { ticketId: ticketRecord.id, logChannelId }); } catch(_){ }
-                                                                    }
-                                                        } else {
-                                                            logger.warn('Fallback log channel not found or not sendable', { guildId, logChannelId });
-                                                        }
-                                                    } else {
-                                                        logger.debug('No log_channel_id configured for fallback', { guildId });
-                                                        try {
-                                                            // As a last resort, check global config.ticketSystem.logServerId (local config backup)
-                                                            const localCfg = require('../..//config.json') || require('../../config.json.backup');
-                                                            const fallbackServerId = localCfg?.ticketSystem?.logServerId || localCfg?.logServerId || null;
-                                                            if (fallbackServerId) {
-                                                                logger.info('Attempting global-config fallback to logServerId', { fallbackServerId, guildId, ticketId: ticketRecord.id });
-                                                                // Try to find a text channel in that server to post a minimal fallback message
-                                                                const fallbackGuild = client.guilds.cache.get(fallbackServerId) || await client.guilds.fetch(fallbackServerId).catch(() => null);
-                                                                if (fallbackGuild) {
-                                                                    // prefer system channel, then first text channel the bot can send in
-                                                                    let targetChannel = fallbackGuild.systemChannel || null;
-                                                                    if (!targetChannel) {
-                                                                        const channels = await fallbackGuild.channels.fetch().catch(() => null);
-                                                                        if (channels) {
-                                                                            for (const ch of channels.values()) {
-                                                                                if (ch && ch.type === 0 && ch.permissionsFor && ch.permissionsFor(client.user).has('SendMessages')) { // 0 = GuildText in v14 representation
-                                                                                    targetChannel = ch;
-                                                                                    break;
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                    if (targetChannel && targetChannel.send) {
-                                                                        await targetChannel.send(`📦 Arquivo de ticket (global fallback): Ticket ${ticketRecord.id} do servidor ${interaction.guild?.name || guildId} - canal: <#${ticketRecord.channel_id}>`)
-                                                                        .catch(() => null);
-                                                                        try { await db.createLog(guildId, 'webhook_fallback_global', { ticketId: ticketRecord.id, fallbackServerId }); } catch(_){ }
-                                                                        logger.info('Global fallback posted to configured logServerId', { fallbackServerId, ticketId: ticketRecord.id });
-                                                                    } else {
-                                                                        logger.warn('Global fallback server found but no suitable channel to post', { fallbackServerId, ticketId: ticketRecord.id });
-                                                                    }
-                                                                } else {
-                                                                    logger.warn('Global fallback server not found or bot not a member', { fallbackServerId, ticketId: ticketRecord.id });
-                                                                }
-                                                            }
-                                                        } catch (globalFbErr) {
-                                                            logger.warn('Error during global fallback attempt', { error: globalFbErr && globalFbErr.message ? globalFbErr.message : globalFbErr, ticketId: ticketRecord.id });
-                                                        }
-                                                    }
-                                                } catch (fbErr) {
-                                                    logger.warn('Error during fallback posting to log channel', { error: fbErr && fbErr.message ? fbErr.message : fbErr, ticketId: ticketRecord.id });
-                                                }
-                                                // Private endpoint logging disabled (website integration removed)
-                                                // const privateEndpoint = process.env.PRIVATE_LOG_ENDPOINT || null;
-                                                // if (privateEndpoint) { ... }
-                                            }
-                                        } else {
-                                            logger.debug('No archive webhooks configured or already sent for this ticket', { guildId, ticketId: ticketRecord?.id });
-                                        }
-                                    } catch (webErr) {
-                                        logger.warn('Erro ao enviar webhooks de arquivo durante fechamento por interação', { error: webErr && webErr.message ? webErr.message : webErr, ticketId: ticketRecord?.id });
-                                        // Try fallback to guild log channel if configured
-                                        try {
-                                            const guildId = interaction.guild ? interaction.guild.id : ticketRecord.guild_id;
-                                            const logCfg = guildId ? await db.getGuildConfig(guildId, 'log_channel_id') : null;
-                                            const logChannelId = logCfg?.value || null;
-                                            if (logChannelId) {
-                                                const logChannel = interaction.guild?.channels.cache.get(logChannelId) || await client.channels.fetch(logChannelId).catch(() => null);
-                                                if (logChannel && logChannel.send) {
-                                                    await logChannel.send(`📦 Arquivo de ticket (fallback due to error): Ticket ${ticketRecord.id} do servidor ${interaction.guild?.name || guildId} - canal: <#${ticketRecord.channel_id}>`);
-                                                    logger.info('Fallback after error: posted archive info to log channel', { guildId, logChannelId, ticketId: ticketRecord.id });
-                                                } else {
-                                                    logger.warn('Fallback log channel not found or not sendable (after error)', { guildId, logChannelId });
-                                                }
-                                            } else {
-                                                logger.debug('No log_channel_id configured for fallback (after error)', { guildId });
-                                            }
-                                        } catch (fbErr) {
-                                            logger.error('Error during fallback posting to log channel (after webhook error)', { error: fbErr && fbErr.message ? fbErr.message : fbErr, ticketId: ticketRecord?.id });
-                                        }
-                                    }
+                                    // Integração antiga com DB/webhooks removida no novo sistema baseado em storage.
                             }
                         } catch (dbErr) {
                             logger.warn('Erro ao atualizar ticket no DB durante fechamento por interação', { error: dbErr && dbErr.message ? dbErr.message : dbErr });
@@ -801,6 +679,12 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
 
             // Modals
             if (interaction.isModalSubmit()) {
+                const customId = interaction.customId;
+                // Desativar fluxos legados de tickets baseados em modais
+                const legacyModals = new Set(['modal_add_member','modal_remove_member','modal_move_ticket','modal_rename_channel','modal_internal_note']);
+                if (customId.startsWith('ticket_modal_') || legacyModals.has(customId)) {
+                    return;
+                }
                 if (interaction.customId.startsWith('tag_modal_')) {
                     try {
                         const tagName = interaction.customId.replace('tag_modal_', '');
@@ -845,14 +729,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
                     return;
                 }
 
-                // === NOVO SISTEMA DE MODALS DE TICKETS ===
-                const TicketModalHandler = require('../utils/TicketModalHandler');
-                const modalHandler = new TicketModalHandler(client);
-                
-                const handled = await modalHandler.handleModalSubmit(interaction);
-                if (handled) {
-                    return;
-                }
+                // Sistema legado de modals desativado — não carregar handlers antigos
 
                 // Add member modal
                 if (interaction.customId === 'modal_add_member') {
@@ -940,21 +817,9 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
                         const note = interaction.fields.getTextInputValue('internal_note_text').trim();
                         if (!note) return interaction.reply({ content: `${EMOJIS.ERROR} Observação vazia.`, flags: MessageFlags.Ephemeral });
 
-                        // Persistir no DB como log interno (ticket_note)
-                        try {
-                            const db = new Database();
-                            await db.initialize();
-                            const ticket = await db.getTicketByChannelId(interaction.channel.id);
-                            if (ticket) {
-                                await db.createLog(ticket.guild_id, 'ticket_internal_note', { ticketId: ticket.id, note: note.substring(0, 1000), author: interaction.user.id });
-                                await interaction.reply({ content: `${EMOJIS.SUCCESS} Observação interna adicionada.`, flags: MessageFlags.Ephemeral });
-                            } else {
-                                await interaction.reply({ content: `${EMOJIS.ERROR} Ticket não encontrado no DB.`, flags: MessageFlags.Ephemeral });
-                            }
-                        } catch (dbErr) {
-                            logger.warn('Erro ao gravar observação interna', { error: dbErr && dbErr.message ? dbErr.message : dbErr });
-                            await interaction.reply({ content: `${EMOJIS.ERROR} Erro ao gravar observação.`, flags: MessageFlags.Ephemeral });
-                        }
+                        // Sem DB: apenas postar a observação como mensagem marcada
+                        await interaction.channel.send({ content: `📝 Nota interna de ${interaction.user}: ${note}` });
+                        await interaction.reply({ content: `${EMOJIS.SUCCESS} Observação interna adicionada (visível no canal).`, flags: MessageFlags.Ephemeral });
                     } catch (err) {
                         await errorHandler.handleInteractionError(interaction, err);
                     }
@@ -967,6 +832,8 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
                 
                 // Handler para menu de seleção de categoria
                 if (customId === 'ticket_category_select') {
+                    // Fluxo de seleção de categoria legado desativado no novo sistema
+                    return;
                     try {
                         const selectedCategory = interaction.values[0];
                         const categoryType = selectedCategory.replace('ticket_', '');
@@ -1157,6 +1024,8 @@ Data de fechamento: ${new Date().toLocaleString('pt-BR')}
 
                 // Handler para modais do sistema avançado
                 if (customId.startsWith('ticket_modal_')) {
+                    // Fluxo de modais legado desativado no novo sistema
+                    return;
                     try {
                         const categoryType = customId.replace('ticket_modal_', '');
                         const subject = interaction.fields.getTextInputValue('ticket_subject');

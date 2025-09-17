@@ -13,10 +13,25 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('status')
-                .setDescription('Show current guild configuration')),
+                .setDescription('Show current guild configuration'))
+        .addSubcommandGroup(group =>
+            group
+                .setName('role')
+                .setDescription('Configure roles for verification and staff')
+                .addSubcommand(sub =>
+                    sub
+                        .setName('verify')
+                        .setDescription('Set the verification role')
+                        .addRoleOption(opt => opt.setName('role').setDescription('Verification role').setRequired(true)))
+                .addSubcommand(sub =>
+                    sub
+                        .setName('staff')
+                        .setDescription('Set the staff role for tickets')
+                        .addRoleOption(opt => opt.setName('role').setDescription('Staff role').setRequired(true)))) ,
 
     async execute(interaction) {
-        const subcommand = interaction.options.getSubcommand();
+    const subcommand = interaction.options.getSubcommand(false);
+    const subcommandGroup = interaction.options.getSubcommandGroup(false);
 
         if (subcommand === 'init') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -30,7 +45,7 @@ module.exports = {
             if (!config.channels) config.channels = {};
             if (!config.ticketSystem) config.ticketSystem = {};
             
-            await storage.setGuildConfig(interaction.guild.id, config);
+            await storage.updateGuildConfig(interaction.guild.id, config);
 
             const embed = new EmbedBuilder()
                 .setColor(0x4CAF50)
@@ -65,6 +80,32 @@ module.exports = {
                 )
                 .setTimestamp()
                 .setFooter({ text: 'IGNIS Bot Configuration' });
+
+            await interaction.editReply({ embeds: [embed] });
+        }
+        else if (subcommandGroup === 'role') {
+            const which = subcommand; // 'verify' | 'staff'
+            const role = interaction.options.getRole('role', true);
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+            const config = await storage.getGuildConfig(interaction.guild.id);
+            if (!config.roles) config.roles = {};
+            if (which === 'verify') {
+                config.roles.verify = role.id;
+            } else if (which === 'staff') {
+                config.roles.staff = role.id;
+            }
+            await storage.updateGuildConfig(interaction.guild.id, config);
+
+            const embed = new EmbedBuilder()
+                .setColor(0x10B981)
+                .setTitle('✅ Role configurada')
+                .setDescription('A configuração foi atualizada com sucesso:')
+                .addFields(
+                    { name: 'Tipo', value: which === 'verify' ? 'Verificação' : 'Staff de Tickets', inline: true },
+                    { name: 'Role', value: `<@&${role.id}>`, inline: true }
+                )
+                .setTimestamp();
 
             await interaction.editReply({ embeds: [embed] });
         }

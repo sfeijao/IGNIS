@@ -57,8 +57,6 @@ class SimpleStorage {
         } catch (error) {
             console.error('Error writing to file:', error);
             throw new Error(`Failed to write to file: ${error.message}`);
-            console.error('Write error:', error);
-            return false;
         }
     }
     
@@ -72,9 +70,10 @@ class SimpleStorage {
             guild_id: ticketData.guild_id,
             channel_id: ticketData.channel_id,
             user_id: ticketData.user_id,
-            category: ticketData.category || 'geral',
-            subject: ticketData.subject,
-            description: ticketData.description,
+            // harmonizar com uso em ticketManager: aceitar type/description
+            category: ticketData.category || ticketData.type || 'geral',
+            subject: ticketData.subject || null,
+            description: ticketData.description || null,
             priority: ticketData.priority || 'normal',
             status: 'open',
             created_at: new Date().toISOString(),

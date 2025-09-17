@@ -67,7 +67,7 @@ module.exports = {
                         inline: true
                     },
                     {
-                        name: '� Staff Online',
+                        name: '👥 Staff Online',
                         value: `**${interaction.guild.members.cache.filter(m => !m.user.bot && m.presence?.status !== 'offline').size}** disponíveis`,
                         inline: true
                     },

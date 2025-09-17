@@ -1,58 +1,55 @@
-/* Website Styles */
-.loading-container {
-    text-align: center;
-    padding: 40px;
-    color: #6c7086;
+/* Central de Atendimento – IGNIS */
+:root{
+  --bg:#0F1419; --panel:#121826; --panel-2:#151C2B; --muted:#9AA4B2; --muted-2:#BAC2DE;
+  --border:#1B2233; --shadow:rgba(0,0,0,.3);
+  --primary:#7C3AED; --primary-700:#6D28D9; --primary-500:#8B5CF6;
+  --danger:#EF4444; --neutral:#3B82F6;
+  --pill:#0F1B2E; --online:#16A34A; --degraded:#F59E0B; --offline:#EF4444;
 }
 
-.loading-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-}
+.hero{display:grid;grid-template-columns:1.15fr .85fr;gap:28px;align-items:center;padding:28px 0}
+.hero-text h1{font-size:36px;line-height:1.15;margin:0 0 8px}
+.hero-sub{color:var(--muted);margin:0 0 18px}
+.hero-art img{width:100%;height:100%;max-height:340px;object-fit:cover;border-radius:14px;box-shadow:0 8px 24px var(--shadow)}
 
-.loading-text {
-    font-size: 18px;
-}
+.pills{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 18px}
+.pill{font-size:14px;color:var(--muted-2);background:var(--pill);border:1px solid var(--border);padding:8px 12px;border-radius:999px}
+.pill.status[data-status="online"]{color:#D1FAE5;background:rgba(22,163,74,.08);border-color:rgba(22,163,74,.25)}
+.pill.status[data-status="degraded"]{color:#FEF3C7;background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.25)}
+.pill.status[data-status="offline"]{color:#FEE2E2;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25)}
 
-.website-title {
-    color: #9932CC;
-    margin-bottom: 16px;
-}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 8px}
+.btn{min-width:44px;min-height:44px;padding:12px 16px;border-radius:10px;border:1px solid var(--border);cursor:pointer;font-weight:700;letter-spacing:.3px}
+.btn:focus{outline:2px solid var(--primary-500);outline-offset:2px}
+.btn-primary{background:var(--primary-700);color:#fff}
+.btn-primary:hover{background:var(--primary)}
+.btn-danger{background:rgba(239,68,68,.12);color:#fff;border-color:rgba(239,68,68,.35)}
+.btn-danger:hover{background:rgba(239,68,68,.25)}
+.btn-neutral{background:rgba(59,130,246,.12);color:#fff;border-color:rgba(59,130,246,.35)}
+.btn-neutral:hover{background:rgba(59,130,246,.25)}
+.btn.loading{opacity:.8}
 
-.links-container {
-    margin-top: 24px;
-}
+.feedback{margin-top:10px;color:#D1FAE5;background:rgba(22,163,74,.08);border:1px solid rgba(22,163,74,.25);padding:10px 12px;border-radius:10px}
 
-.btn-link {
-    color: #7B68EE;
-    text-decoration: none;
-    padding: 12px 24px;
-    background: rgba(123, 104, 238, 0.2);
-    border: 1px solid #7B68EE;
-    border-radius: 8px;
-    margin: 8px;
-    display: inline-block;
-    transition: background 0.3s ease;
-}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:22px 0}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 8px 24px var(--shadow);transition:transform .2s ease, box-shadow .2s ease}
+.card:hover{transform:translateY(-3px);box-shadow:0 12px 30px var(--shadow)}
+.card-img{width:100%;height:140px;object-fit:cover}
+.card-body{padding:14px}
+.card-body h3{margin:0 0 8px}
+.card-body ul{margin:0;padding-left:18px;color:var(--muted)}
 
-.btn-link:hover {
-    background: rgba(123, 104, 238, 0.4);
-}
+.identity img{width:100%;height:220px;object-fit:cover;border-radius:12px;opacity:.95;border:1px solid var(--border)}
 
-.features-box {
-    margin-top: 32px;
-    padding: 20px;
-    background: rgba(153, 50, 204, 0.1);
-    border-radius: 8px;
-    border-left: 4px solid #9932CC;
-}
+.footer{display:flex;justify-content:center;align-items:center;height:64px;color:var(--muted);border-top:1px solid var(--border);margin:18px 0 28px}
 
-.features-title {
-    color: #9932CC;
-    margin-top: 0;
+@media (max-width:1000px){
+  .hero{grid-template-columns:1fr;gap:16px}
 }
-
-.features-list {
-    text-align: left;
-    color: #cdd6f4;
+@media (max-width:800px){
+  .cards{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:560px){
+  .cards{grid-template-columns:1fr}
+  .hero-text h1{font-size:28px}
 }
