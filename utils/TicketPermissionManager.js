@@ -156,7 +156,24 @@ class TicketPermissionManager {
                     await this.saveConfig(this.defaultConfig);
                     this.config = { ...this.defaultConfig };
                 } else {
-                    this.config = { ...this.defaultConfig, ...JSON.parse(data) };
+                    try {
+                        // Tentar fazer parse do JSON
+                        const parsedConfig = JSON.parse(data);
+                        this.config = { ...this.defaultConfig, ...parsedConfig };
+                        logger.info('Configuração de permissões carregada com sucesso');
+                    } catch (jsonError) {
+                        logger.error('Erro ao fazer parse do JSON do arquivo de configuração:', jsonError);
+                        logger.warn('Arquivo de configuração corrompido, recriando com configuração padrão');
+                        
+                        // Backup do arquivo corrompido
+                        const backupPath = this.configPath + '.corrupted.' + Date.now();
+                        await fs.writeFile(backupPath, data);
+                        logger.info(`Backup do arquivo corrompido salvo em: ${backupPath}`);
+                        
+                        // Recriar com configuração padrão
+                        await this.saveConfig(this.defaultConfig);
+                        this.config = { ...this.defaultConfig };
+                    }
                 }
             }
             
