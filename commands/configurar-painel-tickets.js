@@ -1,11 +1,12 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, MessageFlags } = require('discord.js');
+const { EMBED_COLORS, EMOJIS } = require('../constants/ui');
 const TicketPermissionManager = require('../utils/TicketPermissionManager');
 const visualAssets = require('../assets/visual-assets');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('configurar-painel-tickets')
-        .setDescription('🎯 Configura o painel de tickets avançado com interface profissional')
+        .setDescription('🎯 Publica um painel de tickets moderno e integrado ao novo sistema')
         .addChannelOption(option =>
             option.setName('canal')
                 .setDescription('Canal onde será enviado o painel (padrão: canal atual)')
@@ -16,154 +17,74 @@ module.exports = {
             // Verificar permissões
             if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
                 return await interaction.reply({
-                    content: '⛔ **Acesso Negado** | Você precisa de permissões de administrador para usar este comando.',
-                    flags: 64 // MessageFlags.Ephemeral
+                    content: `${EMOJIS.ERROR} Precisas de permissão de Administrador para usar este comando.`,
+                    flags: MessageFlags.Ephemeral
                 });
             }
 
             const targetChannel = interaction.options.getChannel('canal') || interaction.channel;
-            await interaction.deferReply({ flags: 64 }); // MessageFlags.Ephemeral
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             // Auto-configurar cargos de staff
             const permissionManager = new TicketPermissionManager();
             const autoConfigResult = await permissionManager.autoConfigureStaffRoles(interaction.guild);
 
-            // Criar embed do painel - Design brasileiro profissional
-            const embed = new EmbedBuilder()
-                .setColor('#5865F2') // Discord Blurple moderno
-                .setTitle('🛠️ **CENTRO DE SUPORTE IGNIS**')
-                .setImage(visualAssets.realImages.supportBanner) // Banner real
-                .setThumbnail(visualAssets.realImages.supportIcon) // Ícone real
+            // Novo design enxuto e consistente com o resto do bot
+            const header = new EmbedBuilder()
+                .setColor(EMBED_COLORS.PRIMARY)
+                .setTitle(`${EMOJIS.TICKET} Centro de Suporte`)
                 .setDescription([
-                    '## 🏠 **DEPARTAMENTOS ESPECIALIZADOS**',
+                    'Escolhe o departamento abaixo para abrir um ticket privado com a equipa.',
                     '',
-                    '```yaml',
-                    '🔧 SUPORTE TÉCNICO:',
-                    '   • Configurações e integrações',
-                    '   • Resolução de bugs críticos',
-                    '   • Otimização de performance',
-                    '',
-                    '⚠️ REPORTAR PROBLEMAS:',
-                    '   • Incidentes e falhas graves',
-                    '   • Análise de logs e debugging',
-                    '   • Suporte de emergência 24/7',
-                    '',
-                    '🛡️ MODERAÇÃO & SEGURANÇA:',
-                    '   • Denúncias e investigações',
-                    '   • Violações e sanções',
-                    '   • Questões disciplinares',
-                    '```',
-                    '',
-                    '## ⚡ **PROCESSO AUTOMATIZADO**',
-                    '• **Resposta instantânea** - Notificação imediata da equipe',
-                    '• **Canal privado** - Criação automática e segura',
-                    '• **Suporte 24/7** - Atendimento profissional contínuo',
-                    '• **SLA garantido** - Tempo médio de resposta: **≤ 15 min**'
+                    '• Resposta rápida • Canal privado • Histórico guardado'
                 ].join('\n'))
+                .setThumbnail(visualAssets.realImages.supportIcon)
+                .setImage(visualAssets.realImages.supportBanner)
                 .addFields(
-                    {
-                        name: '🏢 Servidor',
-                        value: `**${interaction.guild.name}**`,
-                        inline: true
-                    },
-                    {
-                        name: '👥 Staff Online',
-                        value: `**${interaction.guild.members.cache.filter(m => !m.user.bot && m.presence?.status !== 'offline').size}** disponíveis`,
-                        inline: true
-                    },
-                    {
-                        name: '⚡ Sistema Status',
-                        value: '**OPERACIONAL**',
-                        inline: true
-                    }
+                    { name: 'Servidor', value: `**${interaction.guild.name}**`, inline: true },
+                    { name: 'Staff Online', value: `${interaction.guild.members.cache.filter(m => !m.user.bot && m.presence?.status !== 'offline').size}`, inline: true },
+                    { name: 'Status', value: 'OPERACIONAL', inline: true },
                 )
-                .setFooter({ 
-                    text: `${interaction.guild.name} • Sistema v3.0 • Powered by IGNIS TECH`,
-                    iconURL: interaction.guild.iconURL({ dynamic: true })
-                })
-                .setTimestamp();
+                .setFooter({ text: 'IGNIS • Sistema de Tickets unificado', iconURL: interaction.client.user.displayAvatarURL() });
 
             // Criar botões com design premium moderno
-            const row1 = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('ticket:create:technical')
-                        .setLabel('🔧 SUPORTE TÉCNICO')
-                        .setStyle(ButtonStyle.Primary),
-                    new ButtonBuilder()
-                        .setCustomId('ticket:create:incident')
-                        .setLabel('⚠️ REPORTAR PROBLEMA')
-                        .setStyle(ButtonStyle.Danger),
-                    new ButtonBuilder()
-                        .setCustomId('ticket:create:moderation')
-                        .setLabel('🛡️ MODERAÇÃO & SEGURANÇA')
-                        .setStyle(ButtonStyle.Secondary)
-                );
+            const row1 = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('ticket:create:technical')
+                    .setLabel('Suporte Técnico')
+                    .setEmoji('🔧')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('ticket:create:incident')
+                    .setLabel('Reportar Problema')
+                    .setEmoji('⚠️')
+                    .setStyle(ButtonStyle.Danger),
+                new ButtonBuilder()
+                    .setCustomId('ticket:create:moderation')
+                    .setLabel('Moderação & Segurança')
+                    .setEmoji('🛡️')
+                    .setStyle(ButtonStyle.Secondary)
+            );
 
             // Enviar painel no canal especificado
-            const message = await targetChannel.send({
-                embeds: [embed],
-                components: [row1]
-            });
+            const message = await targetChannel.send({ embeds: [header], components: [row1] });
 
             // Embed de confirmação profissional
             const confirmEmbed = new EmbedBuilder()
-                .setColor('#00D26A') // Verde sucesso
-                .setTitle('✅ **PAINEL CONFIGURADO COM SUCESSO!**')
-                .setThumbnail(visualAssets.realImages.successIcon) // Ícone real
-                .setImage(visualAssets.realImages.successBanner) // Banner real
+                .setColor(EMBED_COLORS.SUCCESS)
+                .setTitle(`${EMOJIS.SUCCESS} Painel enviado`)
                 .setDescription([
-                    '### 🎯 **SISTEMA INSTALADO**',
+                    `Canal: ${targetChannel}`,
+                    `Mensagem: \`${message.id}\``,
                     '',
-                    `**📍 Canal:** ${targetChannel}`,
-                    `**🆔 ID da Mensagem:** \`${message.id}\``,
-                    '',
-                    '### 🔄 **CONFIGURAÇÃO AUTOMÁTICA**',
-                    '',
-                    autoConfigResult.success ? 
-                        `✅ **Cargos de Staff Detectados:** \`${autoConfigResult.rolesFound}\`` :
-                        `⚠️ **Aviso:** ${autoConfigResult.message}`,
-                    '',
-                    '### ⚡ **RECURSOS ATIVADOS**',
-                    '',
-                    '• **🤖 Detecção Automática** de staff',
-                    '• **🔒 Canais Privados** seguros',
-                    '• **📊 Estatísticas** em tempo real',
-                    '• **⚡ Resposta Rápida** garantida',
-                    '',
-                    '### � **PRÓXIMOS PASSOS**',
-                    '',
-                    '1. 🧪 Teste criando um ticket',
-                    '2. ⚙️ Configure categorias personalizadas',
-                    '3. 📝 Monitore com `/logs-sistema`',
-                    '4. 🔍 Verifique com `/diagnostico`'
+                    autoConfigResult.success
+                        ? `${EMOJIS.SUCCESS} Staff auto-configurado: \`${autoConfigResult.rolesFound}\``
+                        : `${EMOJIS.WARNING} ${autoConfigResult.message || 'Verifica as permissões/cargos de staff'}`
                 ].join('\n'))
-                .addFields(
-                    {
-                        name: '🎨 Nível de Design',
-                        value: '`Profissional Brasileiro`',
-                        inline: true
-                    },
-                    {
-                        name: '🚀 Versão',
-                        value: '`v2.0 Avançado`',
-                        inline: true
-                    },
-                    {
-                        name: '⏱️ Tempo de Instalação',
-                        value: '`< 3 segundos`',
-                        inline: true
-                    }
-                )
-                .setFooter({ 
-                    text: 'Sistema configurado e testado • Pronto para uso',
-                    iconURL: interaction.client.user.displayAvatarURL()
-                })
+                .setFooter({ text: 'Usa os botões para criar tickets', iconURL: interaction.client.user.displayAvatarURL() })
                 .setTimestamp();
 
-            await interaction.editReply({
-                embeds: [confirmEmbed]
-            });
+            await interaction.editReply({ embeds: [confirmEmbed] });
 
         } catch (error) {
             console.error('Erro ao configurar painel de tickets:', error);
@@ -189,7 +110,7 @@ module.exports = {
             if (interaction.deferred) {
                 await interaction.editReply({ embeds: [errorEmbed] });
             } else {
-                await interaction.reply({ embeds: [errorEmbed], flags: 64 }); // MessageFlags.Ephemeral
+                await interaction.reply({ embeds: [errorEmbed], flags: MessageFlags.Ephemeral });
             }
         }
     },
