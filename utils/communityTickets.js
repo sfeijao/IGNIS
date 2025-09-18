@@ -20,7 +20,9 @@ function departmentInfo(type) {
   const map = {
     technical: { name: 'Suporte Técnico', emoji: '🔧', color: 0x7C3AED },
     incident: { name: 'Reportar Problema', emoji: '⚠️', color: 0xEF4444 },
-    moderation: { name: 'Moderação & Segurança', emoji: '🛡️', color: 0x3B82F6 }
+    moderation: { name: 'Moderação & Segurança', emoji: '🛡️', color: 0x3B82F6 },
+    general: { name: 'Dúvidas Gerais', emoji: '💬', color: 0x64748B },
+    account: { name: 'Suporte de Conta', emoji: '🧾', color: 0x22C55E }
   };
   return map[type] || map.technical;
 }

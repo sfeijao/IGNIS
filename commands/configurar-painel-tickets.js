@@ -10,7 +10,16 @@ module.exports = {
         .addChannelOption(option =>
             option.setName('canal')
                 .setDescription('Canal onde será enviado o painel (padrão: canal atual)')
-                .setRequired(false)),
+                .setRequired(false))
+        .addStringOption(option =>
+            option.setName('tema')
+                .setDescription('Tema do painel')
+                .addChoices(
+                    { name: 'Escuro', value: 'dark' },
+                    { name: 'Claro', value: 'light' }
+                )
+                .setRequired(false)
+        ),
 
     async execute(interaction) {
         try {
@@ -23,6 +32,7 @@ module.exports = {
             }
 
             const targetChannel = interaction.options.getChannel('canal') || interaction.channel;
+            const theme = interaction.options.getString('tema') || 'dark';
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             // Auto-configurar cargos de staff
@@ -30,8 +40,9 @@ module.exports = {
             const autoConfigResult = await permissionManager.autoConfigureStaffRoles(interaction.guild);
 
             // Novo design enxuto e consistente com o resto do bot
+            const color = theme === 'light' ? EMBED_COLORS.INFO : EMBED_COLORS.PRIMARY;
             const header = new EmbedBuilder()
-                .setColor(EMBED_COLORS.PRIMARY)
+                .setColor(color)
                 .setTitle(`${EMOJIS.TICKET} Centro de Suporte`)
                 .setDescription([
                     'Escolhe o departamento abaixo para abrir um ticket privado com a equipa.',
@@ -66,8 +77,22 @@ module.exports = {
                     .setStyle(ButtonStyle.Secondary)
             );
 
+            // Segunda linha opcional com categorias comunitárias
+            const row2 = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('ticket:create:general')
+                    .setLabel('Dúvidas Gerais')
+                    .setEmoji('💬')
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId('ticket:create:account')
+                    .setLabel('Suporte de Conta')
+                    .setEmoji('🧾')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+
             // Enviar painel no canal especificado
-            const message = await targetChannel.send({ embeds: [header], components: [row1] });
+            const message = await targetChannel.send({ embeds: [header], components: [row1, row2] });
 
             // Embed de confirmação profissional
             const confirmEmbed = new EmbedBuilder()
