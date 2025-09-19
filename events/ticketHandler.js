@@ -5,21 +5,22 @@ const communityTickets = require('../utils/communityTickets');
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction, client) {
-        // Só processar botões de tickets com prefixo 'ticket:'
-        if (!interaction.isButton() || !interaction.customId || !interaction.customId.startsWith('ticket:')) {
-            return;
-        }
-
+        // Botões e Modals com prefixo 'ticket:'
         try {
-            return await communityTickets.handleButton(interaction);
+            if (interaction.isButton()) {
+                if (!interaction.customId || !interaction.customId.startsWith('ticket:')) return;
+                await communityTickets.handleButton(interaction);
+                return;
+            }
+            if (interaction.isModalSubmit()) {
+                if (!interaction.customId || !interaction.customId.startsWith('ticket:')) return;
+                await communityTickets.handleModal(interaction);
+                return;
+            }
         } catch (error) {
             console.error('Erro no handler de tickets:', error);
-            
             if (!interaction.replied && !interaction.deferred) {
-                await interaction.reply({
-                    content: '❌ Erro interno. Contacta um administrador.',
-                    flags: MessageFlags.Ephemeral
-                });
+                await interaction.reply({ content: '❌ Erro interno. Contacta um administrador.', flags: MessageFlags.Ephemeral });
             }
         }
     }
