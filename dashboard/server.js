@@ -384,6 +384,26 @@ app.get('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
             messages
         };
 
+        // If request asks for transcript download, return a simple text transcript
+        if ((req.query.download || '').toString().toLowerCase() === 'transcript') {
+            const lines = [];
+            lines.push(`Ticket #${enrichedTicket.id} - ${enrichedTicket.category || 'Geral'}`);
+            lines.push(`Canal: ${enrichedTicket.channelName} (${enrichedTicket.channel_id})`);
+            lines.push(`Aberto por: ${enrichedTicket.ownerTag} (${enrichedTicket.user_id})`);
+            lines.push(`Criado em: ${new Date(enrichedTicket.created_at).toLocaleString('pt-PT')}`);
+            lines.push(`Status: ${enrichedTicket.status}`);
+            lines.push('');
+            lines.push('Mensagens:');
+            for (const m of messages) {
+                const when = new Date(m.timestamp).toLocaleString('pt-PT');
+                lines.push(`[${when}] ${m.author?.username || 'Desconhecido'}#${m.author?.discriminator || '0000'}: ${m.content || ''}`);
+            }
+            const content = lines.join('\n');
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename=ticket-${enrichedTicket.id}-transcript.txt`);
+            return res.send(content);
+        }
+
         res.json({ success: true, ticket: enrichedTicket });
         
     } catch (error) {
@@ -548,7 +568,7 @@ function formatTimeAgo(date) {
 }
 
 // Start server only if not in bot-only mode
-if (config.DISCORD.CLIENT_SECRET) {
+if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only') {
     app.listen(PORT, () => {
         const callbackURL = getCallbackURL();
         logger.info(`🌐 Dashboard servidor iniciado em http://localhost:${PORT}`);

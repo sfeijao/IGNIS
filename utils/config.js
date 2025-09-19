@@ -94,8 +94,8 @@ if (!config.DISCORD.CLIENT_SECRET) {
     console.warn('[CONFIG WARNING] Defina DISCORD_CLIENT_SECRET ou CLIENT_SECRET para funcionalidade completa');
     // Para Railway, permitir operação sem CLIENT_SECRET inicialmente
     if (isProd) {
-        console.warn('[CONFIG WARNING] Modo bot-only ativado - dashboard desabilitado');
-        config.DISCORD.CLIENT_SECRET = 'bot_only_mode';
+    console.warn('[CONFIG WARNING] Modo bot-only ativado - dashboard desabilitado');
+    config.DISCORD.CLIENT_SECRET = 'bot_only';
     }
 } else {
     console.log('[CONFIG DEBUG] CLIENT_SECRET encontrado - dashboard habilitado');

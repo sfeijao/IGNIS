@@ -16,7 +16,7 @@ const storage = require('./utils/storage');
 const WebhookManager = require('./utils/webhooks/webhookManager');
 
 // Iniciar dashboard se CLIENT_SECRET estiver disponível e não for placeholder
-if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only_mode') {
+if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only') {
     logger.info('✅ CLIENT_SECRET disponível - iniciando dashboard');
     require('./dashboard/server');
 } else {
