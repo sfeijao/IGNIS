@@ -35,6 +35,41 @@ function priorityLabel(p) {
   return 'NORMAL';
 }
 
+// Tenta encontrar um cargo de staff automaticamente se não existir em config
+async function findStaffRole(guild) {
+  try {
+    const cfg = await storage.getGuildConfig(guild.id);
+    const configuredId = cfg?.roles?.staff;
+    if (configuredId && guild.roles.cache.has(configuredId)) return guild.roles.cache.get(configuredId);
+  } catch {}
+  // Heurística: escolher o cargo mais alto que tenha perms de gestão/moderação
+  const candidates = guild.roles.cache
+    .filter(r => r.editable || true) // apenas para iterar todos
+    .filter(r => r.permissions.has(PermissionFlagsBits.Administrator)
+              || r.permissions.has(PermissionFlagsBits.ManageGuild)
+              || r.permissions.has(PermissionFlagsBits.ManageMessages)
+              || r.permissions.has(PermissionFlagsBits.KickMembers)
+              || r.permissions.has(PermissionFlagsBits.BanMembers))
+    .sort((a, b) => b.position - a.position);
+  return candidates.first() || null;
+}
+
+// Tenta encontrar um canal de logs automaticamente se não existir em config
+async function findLogsChannel(guild) {
+  try {
+    const cfg = await storage.getGuildConfig(guild.id);
+    const configuredId = cfg?.channels?.logs;
+    if (configuredId) {
+      return guild.channels.cache.get(configuredId) || await guild.client.channels.fetch(configuredId).catch(() => null);
+    }
+  } catch {}
+  // Heurística por nome
+  const names = ['logs', 'log', 'mod-logs', 'modlogs', 'staff-logs', 'transcripts', 'ignis-logs'];
+  const ch = guild.channels.cache.find(c => c.type === ChannelType.GuildText && names.some(n => c.name.toLowerCase().includes(n)));
+  if (ch) return ch;
+  return null;
+}
+
 async function updatePanelHeader(channel, ticket) {
   if (!ticket?.panel_message_id) return;
   try {
@@ -91,12 +126,11 @@ async function createTicket(interaction, type) {
     { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
   ];
 
-  // Permitir staff se configurado
+  // Permitir staff: usar config se existir, senão tentar detetar automaticamente
   try {
-    const cfg = await storage.getGuildConfig(interaction.guild.id);
-    const staffRoleId = cfg?.roles?.staff;
-    if (staffRoleId && interaction.guild.roles.cache.has(staffRoleId)) {
-      overwrites.push({ id: staffRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
+    const staffRole = await findStaffRole(interaction.guild);
+    if (staffRole) {
+      overwrites.push({ id: staffRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
     }
   } catch {}
 
@@ -139,7 +173,7 @@ async function createTicket(interaction, type) {
 
   const controls = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('ticket:close:request').setLabel('Fechar Ticket').setEmoji('🔒').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('ticket:admin:open').setLabel('Controlo Staff').setEmoji('�️').setStyle(ButtonStyle.Primary)
+    new ButtonBuilder().setCustomId('ticket:admin:open').setLabel('Controlo Staff').setEmoji('🛠').setStyle(ButtonStyle.Primary)
   );
 
   const panelMsg = await channel.send({ content: `${interaction.user}`, embeds: [intro], components: [controls] });
@@ -184,16 +218,12 @@ async function confirmClose(interaction) {
       const atts = m.attachments && m.attachments.size > 0 ? ` [anexos: ${Array.from(m.attachments.values()).map(a=>a.name).join(', ')}]` : '';
       transcript += `${ts} - ${author}: ${content}${atts}\n`;
     }
-    const cfg = await storage.getGuildConfig(interaction.guild.id);
-    const logChannelId = cfg?.channels?.logs || null;
-    if (logChannelId) {
+    const logCh = await findLogsChannel(interaction.guild);
+    if (logCh && logCh.send) {
       const { AttachmentBuilder } = require('discord.js');
-      const logCh = interaction.guild.channels.cache.get(logChannelId) || await interaction.client.channels.fetch(logChannelId).catch(()=>null);
-      if (logCh && logCh.send) {
         await logCh.send({ content: `📄 Transcript do ticket em ${interaction.guild.name}: #${interaction.channel.name}` });
         const file = new AttachmentBuilder(Buffer.from(transcript,'utf8'), { name: `transcript-${interaction.channel.id}.txt` });
         await logCh.send({ files: [file] }).catch(()=>null);
-      }
     }
   } catch {}
   try { await interaction.editReply({ content: '✅ Ticket será arquivado. Obrigado!', components: [] }); } catch {}
@@ -321,17 +351,13 @@ async function handleButton(interaction) {
           const atts = m.attachments && m.attachments.size > 0 ? ` [anexos: ${Array.from(m.attachments.values()).map(a=>a.name).join(', ')}]` : '';
           transcript += `${ts} - ${author}: ${content}${atts}\n`;
         }
-        const cfg = await storage.getGuildConfig(interaction.guild.id);
-        const logChannelId = cfg?.channels?.logs || null;
+        const logCh = await findLogsChannel(interaction.guild);
         const { AttachmentBuilder } = require('discord.js');
         const file = new AttachmentBuilder(Buffer.from(transcript,'utf8'), { name: `transcript-${interaction.channel.id}.txt` });
         let sent = false;
-        if (logChannelId) {
-          const logCh = interaction.guild.channels.cache.get(logChannelId) || await interaction.client.channels.fetch(logChannelId).catch(()=>null);
-          if (logCh && logCh.send) {
+        if (logCh && logCh.send) {
             await logCh.send({ content: `📄 Transcript solicitado por ${interaction.user} em ${interaction.channel}`, files: [file] });
             sent = true;
-          }
         }
         if (!sent) {
           // fallback: enviar no próprio canal
