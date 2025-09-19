@@ -280,7 +280,7 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
                     timeAgo: formatTimeAgo(new Date(ticket.created_at))
                 };
             } catch (error) {
-                logger.error(`Erro ao enriquecer ticket ${ticket.ticketId}:`, error);
+                logger.error(`Erro ao enriquecer ticket ${ticket.id}:`, error);
                 return {
                     ...ticket,
                     channelExists: false,
@@ -434,6 +434,7 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
                     await storage.updateTicket(ticketId, {
                         status: 'claimed',
                         claimed_by: req.user.id,
+                        assigned_to: req.user.id,
                         claimed_at: new Date().toISOString()
                     });
                     success = true;

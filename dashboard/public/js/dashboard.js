@@ -492,9 +492,9 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         const statusIcon = this.getTicketStatusIcon(ticket.status);
         
         return `
-            <div class="ticket-card advanced ${statusClass}" onclick="dashboard.openAdvancedTicketModal('${ticket.ticketId}')">
+            <div class="ticket-card advanced ${statusClass}" onclick="dashboard.openAdvancedTicketModal('${ticket.id}')">
                 <div class="ticket-header">
-                    <div class="ticket-id">#${ticket.ticketId}</div>
+                    <div class="ticket-id">#${ticket.id}</div>
                     <div class="ticket-status">
                         <i class="fas ${statusIcon}"></i>
                         ${this.formatTicketStatus(ticket.status)}
@@ -571,7 +571,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         
         if (ticket.status === 'open') {
             actions.push(`
-                <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); dashboard.claimAdvancedTicket('${ticket.ticketId}')">
+                <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); dashboard.claimAdvancedTicket('${ticket.id}')">
                     <i class="fas fa-hand-paper"></i>
                     Reclamar
                 </button>
@@ -580,7 +580,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         
         if (['open', 'claimed'].includes(ticket.status)) {
             actions.push(`
-                <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); dashboard.closeAdvancedTicket('${ticket.ticketId}')">
+                <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); dashboard.closeAdvancedTicket('${ticket.id}')">
                     <i class="fas fa-times"></i>
                     Fechar
                 </button>
@@ -589,7 +589,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         
         if (ticket.status === 'closed') {
             actions.push(`
-                <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); dashboard.reopenAdvancedTicket('${ticket.ticketId}')">
+                <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); dashboard.reopenAdvancedTicket('${ticket.id}')">
                     <i class="fas fa-redo"></i>
                     Reabrir
                 </button>
@@ -623,7 +623,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 <div class="modal-header">
                     <h2>
                         <i class="fas fa-ticket-alt"></i>
-                        Ticket #${ticket.ticketId}
+                        Ticket #${ticket.id}
                     </h2>
                     <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">
                         <i class="fas fa-times"></i>
@@ -656,7 +656,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                                     </div>
                                     <div class="info-item">
                                         <label>Criado em</label>
-                                        <span>${new Date(ticket.createdAt).toLocaleString('pt-PT')}</span>
+                                        <span>${new Date(ticket.created_at).toLocaleString('pt-PT')}</span>
                                     </div>
                                     ${ticket.claimedByTag ? `
                                         <div class="info-item">
@@ -690,7 +690,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                                 <h3>Adicionar Nota</h3>
                                 <div class="note-form">
                                     <textarea id="ticketNote" placeholder="Adicionar uma nota interna..."></textarea>
-                                    <button class="btn btn-primary" onclick="dashboard.addAdvancedTicketNote('${ticket.ticketId}')">
+                                    <button class="btn btn-primary" onclick="dashboard.addAdvancedTicketNote('${ticket.id}')">
                                         <i class="fas fa-plus"></i>
                                         Adicionar Nota
                                     </button>
@@ -710,7 +710,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         
         if (ticket.status === 'open') {
             actions.push(`
-                <button class="btn btn-primary" onclick="dashboard.claimAdvancedTicket('${ticket.ticketId}', true)">
+                <button class="btn btn-primary" onclick="dashboard.claimAdvancedTicket('${ticket.id}', true)">
                     <i class="fas fa-hand-paper"></i>
                     Reclamar Ticket
                 </button>
@@ -719,7 +719,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         
         if (['open', 'claimed'].includes(ticket.status)) {
             actions.push(`
-                <button class="btn btn-danger" onclick="dashboard.closeAdvancedTicket('${ticket.ticketId}', true)">
+                <button class="btn btn-danger" onclick="dashboard.closeAdvancedTicket('${ticket.id}', true)">
                     <i class="fas fa-times"></i>
                     Fechar Ticket
                 </button>
@@ -728,7 +728,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         
         if (ticket.status === 'closed') {
             actions.push(`
-                <button class="btn btn-success" onclick="dashboard.reopenAdvancedTicket('${ticket.ticketId}', true)">
+                <button class="btn btn-success" onclick="dashboard.reopenAdvancedTicket('${ticket.id}', true)">
                     <i class="fas fa-redo"></i>
                     Reabrir Ticket
                 </button>
