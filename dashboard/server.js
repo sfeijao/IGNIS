@@ -444,6 +444,19 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
                 }
                 break;
 
+            case 'release':
+                if (ticket.status === 'claimed' && (ticket.assigned_to === req.user.id || ticket.claimed_by === req.user.id)) {
+                    await storage.updateTicket(ticketId, {
+                        status: 'open',
+                        assigned_to: null
+                    });
+                    success = true;
+                    message = 'Ticket released';
+                } else {
+                    message = 'Ticket cannot be released';
+                }
+                break;
+
             case 'close':
                 if (['open', 'claimed'].includes(ticket.status)) {
                     await storage.updateTicket(ticketId, {
@@ -472,6 +485,33 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
                     message = 'Ticket cannot be reopened';
                 }
                 break;
+
+            case 'assign':
+                if (data?.userId) {
+                    await storage.updateTicket(ticketId, { assigned_to: data.userId, status: 'claimed' });
+                    success = true;
+                    message = 'Ticket assigned';
+                } else {
+                    message = 'Missing userId';
+                }
+                break;
+
+            case 'reply': {
+                const content = data?.content?.trim();
+                if (!content) {
+                    message = 'Missing content';
+                    break;
+                }
+                const channel = guild.channels.cache.get(ticket.channel_id);
+                if (!channel) {
+                    message = 'Channel not found';
+                    break;
+                }
+                await channel.send({ content });
+                success = true;
+                message = 'Reply sent';
+                break;
+            }
 
             case 'addNote':
                 const notes = Array.isArray(ticket.notes) ? ticket.notes.slice() : [];

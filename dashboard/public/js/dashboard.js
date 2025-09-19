@@ -531,6 +531,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 
                 <div class="ticket-actions">
                     ${this.getAdvancedTicketActions(ticket)}
+                    <a class="btn btn-sm btn-glass" href="/ticket.html?guildId=${this.currentGuild}&ticketId=${ticket.id}" onclick="event.stopPropagation();">Ver</a>
                 </div>
             </div>
         `;

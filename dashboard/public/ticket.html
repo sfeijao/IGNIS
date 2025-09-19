@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IGNIS Ticket</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script defer src="/js/ticket.js"></script>
+  <style>
+    .page { max-width: 1200px; margin: 0 auto; padding: var(--space-xl); }
+    .ticket-header { display:flex; align-items:center; justify-content: space-between; margin-bottom: var(--space-lg); }
+    .ticket-badges { display:flex; gap: var(--space-sm); align-items:center; }
+    .badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .badge-open { background:#065f46; color:#ecfdf5; }
+    .badge-waiting { background:#78350f; color:#fffbeb; }
+    .badge-closed { background:#374151; color:#e5e7eb; }
+    .badge-urgent { background:#7f1d1d; color:#fee2e2; }
+    .layout { display:grid; grid-template-columns: 280px 1fr 320px; gap: var(--space-lg); }
+    .card { background: var(--glass-bg, rgba(255,255,255,0.03)); border:1px solid var(--glass-border, rgba(255,255,255,0.08)); border-radius: 12px; padding: var(--space-lg); }
+    .messages { height: 52vh; overflow: auto; display:flex; flex-direction: column; gap: var(--space-md); }
+    .bubble { padding:12px 14px; border-radius: 12px; max-width: 78%; }
+    .bubble.me { align-self:flex-end; background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); }
+    .bubble.other { align-self:flex-start; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); }
+    .bubble .meta { font-size: 12px; opacity: .7; margin-bottom: 6px; display:flex; gap:8px; align-items:center; }
+    .composer { display:flex; gap: var(--space-sm); align-items:flex-end; }
+    .composer textarea { flex:1; min-height: 64px; resize: vertical; }
+    .btn-row { display:flex; gap: var(--space-sm); flex-wrap: wrap; }
+    .section-title { font-weight: 600; margin-bottom: var(--space-sm); }
+    .kv { font-size: 14px; opacity:.9; display:grid; grid-template-columns: 110px 1fr; gap: 6px 12px; }
+    .divider { height:1px; background: var(--glass-border, rgba(255,255,255,0.08)); margin: var(--space-md) 0; }
+    @media (max-width: 1024px) { .layout { grid-template-columns: 1fr; } .messages { height: 46vh; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="ticket-header">
+      <div>
+        <h2 id="t-title">Ticket</h2>
+        <div class="ticket-badges">
+          <span id="t-id" class="badge">#</span>
+          <span id="t-status" class="badge badge-open">Open</span>
+          <span id="t-priority" class="badge">Normal</span>
+          <span id="t-sla" class="badge">SLA</span>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button id="btn-claim" class="btn btn-primary">Reclamar</button>
+        <button id="btn-release" class="btn btn-glass">Liberar</button>
+        <button id="btn-close" class="btn btn-danger">Fechar</button>
+        <button id="btn-reopen" class="btn btn-success">Reabrir</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="card" id="left">
+        <div class="section">
+          <div class="section-title">Autor</div>
+          <div class="kv">
+            <div>Utilizador</div><div id="author-tag">-</div>
+            <div>ID</div><div id="author-id">-</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="section">
+          <div class="section-title">Origem</div>
+          <div class="kv">
+            <div>Servidor</div><div id="guild-id">-</div>
+            <div>Canal</div><div id="channel-name">-</div>
+          </div>
+          <div style="margin-top:8px;">
+            <a id="channel-link" class="btn btn-glass" target="_blank" rel="noopener">Abrir canal</a>
+          </div>
+        </div>
+      </aside>
+
+      <section class="card" id="center">
+        <div class="section-title">Conversa</div>
+        <div id="messages" class="messages"></div>
+        <div class="divider"></div>
+        <div class="composer">
+          <textarea id="reply" placeholder="Escrever resposta..."></textarea>
+          <div class="btn-row">
+            <button id="btn-send" class="btn btn-primary">Enviar</button>
+            <button id="btn-note" class="btn btn-glass">Nota interna</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card" id="right">
+        <div class="section-title">Utilitários</div>
+        <div class="btn-row" style="margin-bottom:8px;">
+          <button id="btn-export-json" class="btn btn-glass">Export JSON</button>
+          <button id="btn-transcript" class="btn btn-glass">Transcript</button>
+        </div>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>
