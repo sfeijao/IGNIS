@@ -93,6 +93,15 @@ module.exports = {
 
             // Enviar painel no canal especificado
             const message = await targetChannel.send({ embeds: [header], components: [row1, row2] });
+            // Guardar painel no Mongo (se disponível)
+            try {
+                const { PanelModel } = require('../utils/db/models');
+                await PanelModel.findOneAndUpdate(
+                    { guild_id: interaction.guild.id, channel_id: targetChannel.id, type: 'tickets' },
+                    { $set: { message_id: message.id, theme } },
+                    { upsert: true }
+                );
+            } catch {}
 
             // Embed de confirmação profissional
             const confirmEmbed = new EmbedBuilder()

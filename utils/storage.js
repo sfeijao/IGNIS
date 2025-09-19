@@ -1,5 +1,23 @@
 const fs = require('fs').promises;
 const path = require('path');
+let useMongo = false;
+let TicketModel, GuildConfigModel;
+try {
+    const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
+    if (MONGO_URI) {
+        const { connect } = require('./db/mongoose');
+        ({ TicketModel, GuildConfigModel } = require('./db/models'));
+        connect(MONGO_URI).then(() => {
+            console.log('✅ Conectado ao MongoDB (storage)');
+            useMongo = true;
+        }).catch(err => {
+            console.error('❌ Falha ao conectar MongoDB, usando JSON fallback:', err.message);
+            useMongo = false;
+        });
+    }
+} catch (e) {
+    console.warn('MongoDB não disponível, usando JSON storage. Motivo:', e.message);
+}
 
 class SimpleStorage {
     constructor() {
@@ -62,59 +80,79 @@ class SimpleStorage {
     
     // Ticket methods
     async createTicket(ticketData) {
-        const tickets = await this.readFile(this.ticketsFile) || [];
-        const id = Date.now(); // Simple ID generation
-        
-        const ticket = {
-            id,
-            guild_id: ticketData.guild_id,
-            channel_id: ticketData.channel_id,
-            user_id: ticketData.user_id,
-            // harmonizar com uso em ticketManager: aceitar type/description
-            category: ticketData.category || ticketData.type || 'geral',
-            subject: ticketData.subject || null,
-            description: ticketData.description || null,
-            priority: ticketData.priority || 'normal',
-            status: 'open',
-            created_at: new Date().toISOString(),
-            assigned_to: null,
-            closed_at: null
-        };
-        
-        tickets.push(ticket);
-        await this.writeFile(this.ticketsFile, tickets);
-        
-        return ticket;
+        if (useMongo && TicketModel) {
+            const id = Date.now();
+            const doc = await TicketModel.create({
+                id,
+                guild_id: ticketData.guild_id,
+                channel_id: ticketData.channel_id,
+                user_id: ticketData.user_id,
+                category: ticketData.category || ticketData.type || 'geral',
+                subject: ticketData.subject || null,
+                description: ticketData.description || null,
+                priority: ticketData.priority || 'normal',
+                status: 'open',
+                created_at: new Date()
+            });
+            return doc.toObject();
+        } else {
+            const tickets = await this.readFile(this.ticketsFile) || [];
+            const id = Date.now(); // Simple ID generation
+            const ticket = {
+                id,
+                guild_id: ticketData.guild_id,
+                channel_id: ticketData.channel_id,
+                user_id: ticketData.user_id,
+                category: ticketData.category || ticketData.type || 'geral',
+                subject: ticketData.subject || null,
+                description: ticketData.description || null,
+                priority: ticketData.priority || 'normal',
+                status: 'open',
+                created_at: new Date().toISOString(),
+                assigned_to: null,
+                closed_at: null
+            };
+            tickets.push(ticket);
+            await this.writeFile(this.ticketsFile, tickets);
+            return ticket;
+        }
     }
     
     async getTickets(guildId) {
+        if (useMongo && TicketModel) {
+            const docs = await TicketModel.find({ guild_id: guildId }).lean();
+            return docs;
+        }
         const tickets = await this.readFile(this.ticketsFile) || [];
         return tickets.filter(ticket => ticket.guild_id === guildId);
     }
     
     async getUserActiveTickets(userId, guildId) {
+        if (useMongo && TicketModel) {
+            return await TicketModel.find({ guild_id: guildId, user_id: userId, status: 'open' }).lean();
+        }
         const tickets = await this.readFile(this.ticketsFile) || [];
-        return tickets.filter(ticket => 
-            ticket.guild_id === guildId && 
-            ticket.user_id === userId && 
-            ticket.status === 'open'
-        );
+        return tickets.filter(ticket => ticket.guild_id === guildId && ticket.user_id === userId && ticket.status === 'open');
     }
     
     async getTicketByChannel(channelId) {
+        if (useMongo && TicketModel) {
+            return await TicketModel.findOne({ channel_id: channelId }).lean();
+        }
         const tickets = await this.readFile(this.ticketsFile) || [];
         return tickets.find(ticket => ticket.channel_id === channelId);
     }
     
     async updateTicket(ticketId, updates) {
+        if (useMongo && TicketModel) {
+            const updated = await TicketModel.findOneAndUpdate({ id: ticketId }, { $set: updates }, { new: true }).lean();
+            return updated;
+        }
         const tickets = await this.readFile(this.ticketsFile) || [];
         const ticketIndex = tickets.findIndex(ticket => ticket.id === ticketId);
-        
         if (ticketIndex === -1) return null;
-        
         tickets[ticketIndex] = { ...tickets[ticketIndex], ...updates };
         await this.writeFile(this.ticketsFile, tickets);
-        
         return tickets[ticketIndex];
     }
     
@@ -127,12 +165,25 @@ class SimpleStorage {
     
     // Config methods
     async getGuildConfig(guildId, key) {
+        if (useMongo && GuildConfigModel) {
+            const doc = await GuildConfigModel.findOne({ guild_id: guildId }).lean();
+            const data = doc?.data || {};
+            return key ? data[key] : data;
+        }
         const config = await this.readFile(this.configFile) || {};
         const guildConfig = config[guildId] || {};
         return key ? guildConfig[key] : guildConfig;
     }
     
     async setGuildConfig(guildId, key, value) {
+        if (useMongo && GuildConfigModel) {
+            const doc = await GuildConfigModel.findOneAndUpdate(
+                { guild_id: guildId },
+                { $set: { [`data.${key}`]: value } },
+                { upsert: true, new: true }
+            );
+            return !!doc;
+        }
         const config = await this.readFile(this.configFile) || {};
         if (!config[guildId]) config[guildId] = {};
         config[guildId][key] = value;
@@ -141,15 +192,20 @@ class SimpleStorage {
     }
 
     async updateGuildConfig(guildId, updates) {
+        if (useMongo && GuildConfigModel) {
+            const doc = await GuildConfigModel.findOne({ guild_id: guildId });
+            const current = doc?.data || {};
+            const merged = { ...current, ...updates };
+            const saved = await GuildConfigModel.findOneAndUpdate(
+                { guild_id: guildId },
+                { $set: { data: merged } },
+                { upsert: true, new: true }
+            ).lean();
+            return saved.data;
+        }
         const config = await this.readFile(this.configFile) || {};
         if (!config[guildId]) config[guildId] = {};
-        
-        // Atualizar as configurações
-        config[guildId] = {
-            ...config[guildId],
-            ...updates
-        };
-        
+        config[guildId] = { ...config[guildId], ...updates };
         await this.writeFile(this.configFile, config);
         return config[guildId];
     }

@@ -14,6 +14,22 @@ const config = require('./utils/config');
 const logger = require('./utils/logger');
 const storage = require('./utils/storage');
 const WebhookManager = require('./utils/webhooks/webhookManager');
+// Mongo (opcional)
+let mongoReady = false;
+try {
+    const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
+    if (MONGO_URI) {
+        const { connect } = require('./utils/db/mongoose');
+        connect(MONGO_URI).then(() => {
+            logger.info('✅ MongoDB conectado');
+            mongoReady = true;
+        }).catch(err => {
+            logger.warn('⚠️  MongoDB indisponível, seguindo com fallback JSON:', err.message);
+        });
+    }
+} catch (e) {
+    logger.warn('⚠️  Erro ao inicializar MongoDB:', e.message);
+}
 
 // Iniciar dashboard se CLIENT_SECRET estiver disponível e não for placeholder
 if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only') {
@@ -148,6 +164,48 @@ client.once('ready', () => {
     
     // Tornar cliente disponível globalmente para o dashboard
     global.discordClient = client;
+    // Restaurar painéis de tickets do Mongo (se disponível)
+    (async () => {
+        try {
+            if (!mongoReady) return;
+            const { PanelModel } = require('./utils/db/models');
+            const panels = await PanelModel.find({ type: 'tickets' }).lean();
+            for (const p of panels) {
+                try {
+                    const guild = client.guilds.cache.get(p.guild_id) || await client.guilds.fetch(p.guild_id);
+                    const channel = guild.channels.cache.get(p.channel_id) || await client.channels.fetch(p.channel_id);
+                    // Se a mensagem existir, não fazer nada; se não, recriar painel simples
+                    let existing = null;
+                    if (channel && channel.messages?.fetch) {
+                        existing = await channel.messages.fetch(p.message_id).catch(() => null);
+                    }
+                    if (!existing && channel?.send) {
+                        const cmd = require('./commands/configurar-painel-tickets');
+                        // Recriar um painel minimal (fallback); para consistência completa, poderíamos guardar o payload renderizado
+                        const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+                        const embed = new EmbedBuilder().setTitle('🎫 Centro de Suporte').setDescription('Escolhe um departamento para abrir um ticket.').setColor(0x7C3AED);
+                        const row1 = new ActionRowBuilder().addComponents(
+                            new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
+                            new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
+                            new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary)
+                        );
+                        const row2 = new ActionRowBuilder().addComponents(
+                            new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
+                            new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('🧾').setStyle(ButtonStyle.Secondary)
+                        );
+                        const msg = await channel.send({ embeds: [embed], components: [row1, row2] });
+                        // Atualizar/guardar painel
+                        const { PanelModel } = require('./utils/db/models');
+                        await PanelModel.findOneAndUpdate({ guild_id: p.guild_id, channel_id: p.channel_id, type: 'tickets' }, { $set: { message_id: msg.id, theme: p.theme || 'dark' } }, { upsert: true });
+                    }
+                } catch (e) {
+                    logger.warn('Falha a restaurar painel:', e.message);
+                }
+            }
+        } catch (e) {
+            logger.warn('Falha ao restaurar paineis:', e.message);
+        }
+    })();
 });
 
 // Graceful shutdown
