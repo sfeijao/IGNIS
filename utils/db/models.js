@@ -27,11 +27,21 @@ const PanelSchema = new mongoose.Schema({
   channel_id: { type: String, index: true },
   message_id: { type: String, index: true },
   type: { type: String, default: 'tickets' },
-  theme: { type: String, default: 'dark' }
+  theme: { type: String, default: 'dark' },
+  payload: { type: Object, default: null }
 }, { timestamps: true });
 
 const TicketModel = mongoose.models.Ticket || mongoose.model('Ticket', TicketSchema);
 const GuildConfigModel = mongoose.models.GuildConfig || mongoose.model('GuildConfig', GuildConfigSchema);
 const PanelModel = mongoose.models.Panel || mongoose.model('Panel', PanelSchema);
 
-module.exports = { TicketModel, GuildConfigModel, PanelModel };
+// Tags por utilizador (por guild)
+const TagSchema = new mongoose.Schema({
+  guild_id: { type: String, index: true },
+  user_id: { type: String, index: true },
+  tags: { type: [String], default: [] }
+}, { timestamps: true });
+
+const TagModel = mongoose.models.Tag || mongoose.model('Tag', TagSchema);
+
+module.exports = { TicketModel, GuildConfigModel, PanelModel, TagModel };

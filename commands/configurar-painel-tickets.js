@@ -92,13 +92,14 @@ module.exports = {
             );
 
             // Enviar painel no canal especificado
-            const message = await targetChannel.send({ embeds: [header], components: [row1, row2] });
+            const payload = { embeds: [header.toJSON()], components: [row1.toJSON(), row2.toJSON()] };
+            const message = await targetChannel.send(payload);
             // Guardar painel no Mongo (se disponível)
             try {
                 const { PanelModel } = require('../utils/db/models');
                 await PanelModel.findOneAndUpdate(
                     { guild_id: interaction.guild.id, channel_id: targetChannel.id, type: 'tickets' },
-                    { $set: { message_id: message.id, theme } },
+                    { $set: { message_id: message.id, theme, payload } },
                     { upsert: true }
                 );
             } catch {}

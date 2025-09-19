@@ -1,12 +1,12 @@
 const fs = require('fs').promises;
 const path = require('path');
 let useMongo = false;
-let TicketModel, GuildConfigModel;
+let TicketModel, GuildConfigModel, TagModel;
 try {
     const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
     if (MONGO_URI) {
         const { connect } = require('./db/mongoose');
-        ({ TicketModel, GuildConfigModel } = require('./db/models'));
+    ({ TicketModel, GuildConfigModel, TagModel } = require('./db/models'));
         connect(MONGO_URI).then(() => {
             console.log('✅ Conectado ao MongoDB (storage)');
             useMongo = true;
@@ -212,16 +212,27 @@ class SimpleStorage {
     
     // Tags methods
     async getUserTags(guildId, userId) {
+        if (useMongo && TagModel) {
+            const doc = await TagModel.findOne({ guild_id: guildId, user_id: userId }).lean();
+            return doc?.tags || [];
+        }
         const tags = await this.readFile(this.tagsFile) || {};
         const guildTags = tags[guildId] || {};
         return guildTags[userId] || [];
     }
     
     async addUserTag(guildId, userId, tag) {
+        if (useMongo && TagModel) {
+            await TagModel.findOneAndUpdate(
+                { guild_id: guildId, user_id: userId },
+                { $addToSet: { tags: tag } },
+                { upsert: true }
+            );
+            return true;
+        }
         const tags = await this.readFile(this.tagsFile) || {};
         if (!tags[guildId]) tags[guildId] = {};
         if (!tags[guildId][userId]) tags[guildId][userId] = [];
-        
         if (!tags[guildId][userId].includes(tag)) {
             tags[guildId][userId].push(tag);
             await this.writeFile(this.tagsFile, tags);
@@ -230,9 +241,16 @@ class SimpleStorage {
     }
     
     async removeUserTag(guildId, userId, tag) {
+        if (useMongo && TagModel) {
+            await TagModel.findOneAndUpdate(
+                { guild_id: guildId, user_id: userId },
+                { $pull: { tags: tag } },
+                { upsert: true }
+            );
+            return true;
+        }
         const tags = await this.readFile(this.tagsFile) || {};
         if (!tags[guildId] || !tags[guildId][userId]) return false;
-        
         tags[guildId][userId] = tags[guildId][userId].filter(t => t !== tag);
         await this.writeFile(this.tagsFile, tags);
         return true;

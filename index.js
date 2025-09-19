@@ -180,23 +180,35 @@ client.once('ready', () => {
                         existing = await channel.messages.fetch(p.message_id).catch(() => null);
                     }
                     if (!existing && channel?.send) {
-                        const cmd = require('./commands/configurar-painel-tickets');
-                        // Recriar um painel minimal (fallback); para consistência completa, poderíamos guardar o payload renderizado
-                        const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
-                        const embed = new EmbedBuilder().setTitle('🎫 Centro de Suporte').setDescription('Escolhe um departamento para abrir um ticket.').setColor(0x7C3AED);
-                        const row1 = new ActionRowBuilder().addComponents(
-                            new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
-                            new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
-                            new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary)
-                        );
-                        const row2 = new ActionRowBuilder().addComponents(
-                            new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
-                            new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('🧾').setStyle(ButtonStyle.Secondary)
-                        );
-                        const msg = await channel.send({ embeds: [embed], components: [row1, row2] });
+                        let msg;
+                        if (p.payload) {
+                            try {
+                                msg = await channel.send(p.payload);
+                            } catch (e) {
+                                // fallback se payload estiver inválido
+                            }
+                        }
+                        if (!msg) {
+                            const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+                            const embed = new EmbedBuilder().setTitle('🎫 Centro de Suporte').setDescription('Escolhe um departamento para abrir um ticket.').setColor(0x7C3AED);
+                            const row1 = new ActionRowBuilder().addComponents(
+                                new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
+                                new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
+                                new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary)
+                            );
+                            const row2 = new ActionRowBuilder().addComponents(
+                                new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
+                                new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('🧾').setStyle(ButtonStyle.Secondary)
+                            );
+                            msg = await channel.send({ embeds: [embed], components: [row1, row2] });
+                        }
                         // Atualizar/guardar painel
                         const { PanelModel } = require('./utils/db/models');
-                        await PanelModel.findOneAndUpdate({ guild_id: p.guild_id, channel_id: p.channel_id, type: 'tickets' }, { $set: { message_id: msg.id, theme: p.theme || 'dark' } }, { upsert: true });
+                        await PanelModel.findOneAndUpdate(
+                            { guild_id: p.guild_id, channel_id: p.channel_id, type: 'tickets' },
+                            { $set: { message_id: msg.id, theme: p.theme || 'dark', payload: p.payload || null } },
+                            { upsert: true }
+                        );
                     }
                 } catch (e) {
                     logger.warn('Falha a restaurar painel:', e.message);
