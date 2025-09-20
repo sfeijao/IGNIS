@@ -41,6 +41,13 @@ function validateMongoUri(uri) {
 async function connect(uri) {
   if (isConnected) return mongoose.connection;
   if (!uri) throw new Error('MONGO_URI não definido');
+  // Normalize whitespace/newlines that often sneak in from copy-paste
+  if (typeof uri === 'string') {
+    uri = uri.trim();
+    // Collapse accidental internal whitespace sequences
+    // Only remove spaces if they are surrounding the URI or obvious line breaks
+    uri = uri.replace(/[\r\n]+/g, '');
+  }
 
   const validation = validateMongoUri(uri);
   if (!validation.ok) {
