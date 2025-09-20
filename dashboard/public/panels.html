@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IGNIS Bot - Painéis</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <i class="fas fa-robot"></i>
+                IGNIS Painéis
+            </div>
+            <div class="navbar-user">
+                <img id="userAvatar" src="/default-avatar.svg" alt="Avatar" class="user-avatar">
+                <span id="userName">Carregando...</span>
+                <a href="/dashboard" class="btn btn-glass">
+                    <i class="fas fa-home"></i>
+                    Dashboard
+                </a>
+                <a href="/logout" class="btn btn-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <section class="dashboard-section fade-in">
+                <div class="section-header">
+                    <h1 class="section-title">
+                        <i class="fas fa-ticket-alt"></i>
+                        Gestão de Painéis de Tickets
+                    </h1>
+                </div>
+                <p class="text-secondary mb-4">Reenvie, recrie, elimine e altere o tema dos painéis do servidor.</p>
+
+                <div class="glass-card card-pad mb-16">
+                    <div class="grid grid-3 gap-12">
+                        <div>
+                            <label for="panelChannel">Canal</label>
+                            <select id="panelChannel" class="input" title="Selecionar canal"></select>
+                        </div>
+                        <div>
+                            <label for="panelTheme">Tema</label>
+                            <select id="panelTheme" class="input" title="Selecionar tema">
+                                <option value="dark">Escuro</option>
+                                <option value="light">Claro</option>
+                            </select>
+                        </div>
+                        <div class="align-end">
+                            <button id="btnCreatePanel" class="btn btn-primary"><i class="fas fa-plus"></i> Criar Painel</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="panelsContainer" class="server-grid">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        Carregando painéis...
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="/js/panels.js"></script>
+    <style>
+        .card-pad{padding:16px}
+        .mb-16{margin-bottom:16px}
+        .gap-12{gap:12px}
+        .align-end{display:flex;align-items:flex-end}
+    </style>
+    <script>
+        // Preencher avatar/nome com mesmo comportamento do dashboard
+        (async () => {
+            try {
+                const res = await fetch('/api/user');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success) {
+                        const u = data.user;
+                        const nameEl = document.getElementById('userName');
+                        const avatarEl = document.getElementById('userAvatar');
+                        if (nameEl) nameEl.textContent = u.username;
+                        if (avatarEl && u.avatar) avatarEl.src = u.avatar;
+                    }
+                }
+            } catch {}
+        })();
+    </script>
+</body>
+</html>

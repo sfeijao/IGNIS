@@ -129,6 +129,11 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                                 ${guild.botPresent ? 'Bot Online' : 'Bot Offline'}
                             </span>
                         </div>
+                        <div class="mt-8">
+                            <button class="btn btn-primary btn-sm" data-create-panel>
+                                <i class="fas fa-plus"></i> Criar Painel
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -162,6 +167,16 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 const guildId = card.dataset.guildId;
                 this.selectGuild(guildId, card);
             });
+            // Create Panel shortcut (stop click bubbling)
+            const btn = card.querySelector('[data-create-panel]');
+            if (btn) {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const guildId = card.dataset.guildId;
+                    this.currentGuild = guildId;
+                    window.location.href = `/panels.html?guildId=${encodeURIComponent(guildId)}#create`;
+                });
+            }
         });
     }
     
@@ -995,6 +1010,17 @@ function viewAllTickets() {
     dashboard.loadAdvancedTickets();
 }
 
+function viewPanels() {
+    try {
+        const guildId = (typeof dashboard !== 'undefined') ? dashboard.currentGuild : null;
+        if (!guildId) return alert('Selecione um servidor primeiro.');
+        window.location.href = `/panels.html?guildId=${encodeURIComponent(guildId)}`;
+    } catch (e) {
+        console.error(e);
+        alert('Erro ao abrir gestão de painéis');
+    }
+}
+
 // Additional CSS for notifications and ticket cards
 const additionalStyles = `
     .notification {
@@ -1187,6 +1213,30 @@ window.ticketStats = () => {
         return;
     }
     dashboard.showTicketStatistics();
+};
+
+window.openWebhooks = () => {
+    if (!dashboard.currentGuild) {
+        dashboard.showError('Selecione um servidor primeiro');
+        return;
+    }
+    window.location.href = `/webhooks.html?guildId=${encodeURIComponent(dashboard.currentGuild)}`;
+};
+
+window.openConfigs = () => {
+    if (!dashboard.currentGuild) {
+        dashboard.showError('Selecione um servidor primeiro');
+        return;
+    }
+    window.location.href = `/configs.html?guildId=${encodeURIComponent(dashboard.currentGuild)}`;
+};
+
+window.createPanelShortcut = () => {
+    if (!dashboard.currentGuild) {
+        dashboard.showError('Selecione um servidor primeiro');
+        return;
+    }
+    window.location.href = `/panels.html?guildId=${encodeURIComponent(dashboard.currentGuild)}#create`;
 };
 
 // Export for global access

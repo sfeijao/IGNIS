@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IGNIS - Webhooks</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="navbar-brand"><i class="fas fa-robot"></i> IGNIS Webhooks</div>
+      <div class="navbar-user">
+        <img id="userAvatar" src="/default-avatar.svg" alt="Avatar" class="user-avatar">
+        <span id="userName">Carregando...</span>
+        <a href="/dashboard" class="btn btn-glass"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="/logout" class="btn btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+      </div>
+    </div>
+  </nav>
+  <main class="main-content">
+    <div class="container">
+      <section class="dashboard-section fade-in">
+        <div class="section-header">
+          <h1 class="section-title"><i class="fas fa-plug"></i> Gestão de Webhooks</h1>
+        </div>
+        <p class="text-secondary mb-4">Configure os webhooks (ex.: logs) para este servidor.</p>
+  <div class="glass-card card-pad mb-16">
+          <div class="grid grid-2">
+            <div>
+              <label>Tipo</label>
+              <select id="whType" class="input" title="Tipo de webhook"><option value="logs">logs</option><option value="updates">updates</option><option value="tickets">tickets</option></select>
+            </div>
+            <div>
+              <label>Nome</label>
+              <input id="whName" class="input" placeholder="Ex.: Logs" />
+            </div>
+          </div>
+          <div class="grid grid-2 mt-8">
+            <div>
+              <label>URL do Webhook</label>
+              <input id="whUrl" class="input" placeholder="https://discord.com/api/webhooks/..." />
+            </div>
+            <div>
+              <label>Canal (opcional)</label>
+              <select id="whChannel" class="input" title="Selecionar canal"></select>
+            </div>
+          </div>
+          <div class="actions-row mt-12">
+            <button id="btnSaveWebhook" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>
+            <button id="btnAutoSetup" class="btn btn-glass"><i class="fas fa-magic"></i> Auto-Setup</button>
+          </div>
+        </div>
+        <div id="webhooksList" class="server-grid"></div>
+      </section>
+    </div>
+  </main>
+  <script src="/js/webhooks.js"></script>
+  <style>
+    .card-pad{padding:16px}
+    .mb-16{margin-bottom:16px}
+    .mt-8{margin-top:8px}
+    .mt-12{margin-top:12px}
+    .actions-row{display:flex;gap:8px}
+  </style>
+  <script>
+    (async () => {
+      try { const r = await fetch('/api/user'); if (r.ok) { const d = await r.json(); if (d.success) { userName.textContent = d.user.username; if (d.user.avatar) userAvatar.src = d.user.avatar; } } } catch {}
+    })();
+  </script>
+</body>
+</html>

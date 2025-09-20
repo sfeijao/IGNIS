@@ -35,6 +35,18 @@ const TicketModel = mongoose.models.Ticket || mongoose.model('Ticket', TicketSch
 const GuildConfigModel = mongoose.models.GuildConfig || mongoose.model('GuildConfig', GuildConfigSchema);
 const PanelModel = mongoose.models.Panel || mongoose.model('Panel', PanelSchema);
 
+// Webhooks por guild (tipos: logs, updates, tickets)
+const WebhookSchema = new mongoose.Schema({
+  guild_id: { type: String, index: true },
+  type: { type: String, default: 'logs', index: true },
+  name: { type: String },
+  url: { type: String },
+  channel_id: { type: String },
+  channel_name: { type: String },
+  enabled: { type: Boolean, default: true }
+}, { timestamps: true });
+const WebhookModel = mongoose.models.Webhook || mongoose.model('Webhook', WebhookSchema);
+
 // Tags por utilizador (por guild)
 const TagSchema = new mongoose.Schema({
   guild_id: { type: String, index: true },
@@ -44,4 +56,4 @@ const TagSchema = new mongoose.Schema({
 
 const TagModel = mongoose.models.Tag || mongoose.model('Tag', TagSchema);
 
-module.exports = { TicketModel, GuildConfigModel, PanelModel, TagModel };
+module.exports = { TicketModel, GuildConfigModel, PanelModel, TagModel, WebhookModel };
