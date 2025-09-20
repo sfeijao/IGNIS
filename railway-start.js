@@ -15,6 +15,23 @@ logger.info(`⏰ Timestamp: ${new Date().toISOString()}`);
 logger.info('🌍 NODE_ENV', { NODE_ENV: process.env.NODE_ENV });
 logger.info('🚂 RAILWAY_ENVIRONMENT', { RAILWAY_ENVIRONMENT_NAME: process.env.RAILWAY_ENVIRONMENT_NAME });
 logger.info('🏷️  RAILWAY_PROJECT', { RAILWAY_PROJECT_NAME: process.env.RAILWAY_PROJECT_NAME });
+// Debug seguro da MONGO_URI
+try {
+    const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
+    const protoIndex = uri ? uri.indexOf('://') : -1;
+    const atIndex = uri ? uri.indexOf('@') : -1;
+    let masked = 'N/A';
+    if (uri) {
+        if (protoIndex !== -1 && atIndex !== -1 && atIndex > protoIndex) {
+            const scheme = uri.substring(0, protoIndex + 3);
+            const afterAt = uri.substring(atIndex + 1);
+            masked = `${scheme}***@${afterAt}`;
+        } else {
+            masked = `${uri.split('://')[0] || 'mongodb'}://***`;
+        }
+    }
+    logger.info('🧩 Mongo env (Railway)', { hasMongoEnv: !!uri, uri: masked });
+} catch {}
 
 async function railwayStart() {
     try {

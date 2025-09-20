@@ -18,6 +18,25 @@ const WebhookManager = require('./utils/webhooks/webhookManager');
 let mongoReady = false;
 try {
     const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
+    // Debug seguro: mostrar se a variável existe e a URI mascarada
+    (function(){
+        try {
+            const uri = MONGO_URI;
+            const protoIndex = uri ? uri.indexOf('://') : -1;
+            const atIndex = uri ? uri.indexOf('@') : -1;
+            let masked = 'N/A';
+            if (uri) {
+                if (protoIndex !== -1 && atIndex !== -1 && atIndex > protoIndex) {
+                    const scheme = uri.substring(0, protoIndex + 3);
+                    const afterAt = uri.substring(atIndex + 1);
+                    masked = `${scheme}***@${afterAt}`;
+                } else {
+                    masked = `${uri.split('://')[0] || 'mongodb'}://***`;
+                }
+            }
+            logger.info('🧩 Mongo env', { hasMongoEnv: !!uri, uri: masked });
+        } catch {}
+    })();
     if (MONGO_URI) {
         const { connect } = require('./utils/db/mongoose');
         connect(MONGO_URI).then(() => {
