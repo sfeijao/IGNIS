@@ -189,7 +189,7 @@ async function createTicket(interaction, type) {
   const controlsRow3 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('ticket:rename:open').setLabel('Renomear canal').setEmoji('✏️').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('ticket:lock-toggle').setLabel('Bloquear').setEmoji('🔐').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('ticket:unlock:author').setLabel('Desbloquear autor').setEmoji('�').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('ticket:unlock:author').setLabel('Desbloquear autor').setEmoji('👤').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('ticket:unlock:everyone').setLabel('Desbloquear todos').setEmoji('🔓').setStyle(ButtonStyle.Secondary)
   );
 
