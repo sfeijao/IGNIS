@@ -20,7 +20,11 @@
   async function api(path, opts) {
     const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', ...opts });
     const json = await res.json().catch(() => ({}));
-    if (!res.ok || !json.success) throw new Error(json.error || `HTTP ${res.status}`);
+    if (!res.ok || !json.success) {
+      const err = new Error(json.error || `HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
     return json;
   }
 
@@ -75,7 +79,12 @@
       const data = await api(`/api/guild/${guildId}/webhooks`);
       render(data.webhooks || []);
     } catch (err) {
-      listEl.innerHTML = `<div class="notification notification-error">${err.message || 'Erro ao carregar webhooks'}</div>`;
+      if (err && err.status === 503) {
+        notify('Base de dados indisponível (MongoDB). Algumas funcionalidades estão temporariamente desativadas.', 'error');
+        render([]);
+      } else {
+        listEl.innerHTML = `<div class="notification notification-error">${(err && err.message) || 'Erro ao carregar webhooks'}</div>`;
+      }
     }
   }
 
@@ -85,7 +94,10 @@
       await api(`/api/guild/${guildId}/webhooks`, { method: 'POST', body: JSON.stringify(body) });
       notify('Guardado', 'success');
       await load();
-    } catch (err) { notify(err.message, 'error'); }
+    } catch (err) {
+      if (err && err.status === 503) notify('Base de dados indisponível. Tente mais tarde.', 'error');
+      else notify(err.message || 'Erro ao guardar webhook', 'error');
+    }
   });
 
   if (btnAuto) btnAuto.addEventListener('click', async () => {
@@ -93,7 +105,10 @@
       await api(`/api/guild/${guildId}/webhooks/auto-setup`, { method: 'POST' });
       notify('Auto-setup solicitado', 'success');
       await load();
-    } catch (err) { notify(err.message, 'error'); }
+    } catch (err) {
+      if (err && err.status === 503) notify('Base de dados indisponível. Auto-setup continuará sem persistência.', 'error');
+      else notify(err.message || 'Erro no auto-setup', 'error');
+    }
   });
 
   loadChannels();

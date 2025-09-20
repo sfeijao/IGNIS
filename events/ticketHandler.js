@@ -12,6 +12,11 @@ module.exports = {
                 await communityTickets.handleButton(interaction);
                 return;
             }
+            if (interaction.isStringSelectMenu && interaction.isStringSelectMenu()) {
+                if (!interaction.customId || !interaction.customId.startsWith('ticket:')) return;
+                await communityTickets.handleSelect(interaction);
+                return;
+            }
             if (interaction.isModalSubmit()) {
                 if (!interaction.customId || !interaction.customId.startsWith('ticket:')) return;
                 await communityTickets.handleModal(interaction);

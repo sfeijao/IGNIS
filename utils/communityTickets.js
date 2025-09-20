@@ -1,4 +1,4 @@
-const { ChannelType, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { ChannelType, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder } = require('discord.js');
 const storage = require('./storage');
 
 async function ensureCategory(guild) {
@@ -171,12 +171,29 @@ async function createTicket(interaction, type) {
     )
     .setTimestamp();
 
-  const controls = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('ticket:close:request').setLabel('Fechar Ticket').setEmoji('🔒').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('ticket:admin:open').setLabel('Controlo Staff').setEmoji('🛠').setStyle(ButtonStyle.Primary)
+  const controlsRow1 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('ticket:close:request').setLabel('Fechar').setEmoji('🔒').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('ticket:claim').setLabel('Claim').setEmoji('✋').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('ticket:release').setLabel('Libertar').setEmoji('👐').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('ticket:resolve').setLabel('Resolvido').setEmoji('✅').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('ticket:reopen').setLabel('Reabrir').setEmoji('♻️').setStyle(ButtonStyle.Secondary)
+  );
+  const controlsRow2 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('ticket:priority:open').setLabel('Prioridade').setEmoji('⚡').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('ticket:note:open').setLabel('Nota').setEmoji('📝').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('ticket:member:add').setLabel('Adicionar').setEmoji('➕').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('ticket:member:remove').setLabel('Remover').setEmoji('➖').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('ticket:transcript').setLabel('Transcript').setEmoji('📄').setStyle(ButtonStyle.Secondary)
+  );
+  // Linha 3: novos botões (renomear, bloquear/desbloquear)
+  const controlsRow3 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('ticket:rename:open').setLabel('Renomear canal').setEmoji('✏️').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('ticket:lock-toggle').setLabel('Bloquear').setEmoji('🔐').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('ticket:unlock:author').setLabel('Desbloquear autor').setEmoji('�').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('ticket:unlock:everyone').setLabel('Desbloquear todos').setEmoji('🔓').setStyle(ButtonStyle.Secondary)
   );
 
-  const panelMsg = await channel.send({ content: `${interaction.user}`, embeds: [intro], components: [controls] });
+  const panelMsg = await channel.send({ content: `${interaction.user}`, embeds: [intro], components: [controlsRow1, controlsRow2, controlsRow3] });
   // Guardar referência para futuras edições do cabeçalho
   try { await storage.updateTicket(ticket.id, { panel_message_id: panelMsg.id }); } catch {}
 
@@ -241,6 +258,10 @@ function toPriority(nextOf) {
 
 async function isStaff(interaction) {
   try {
+    // Guild owner sempre tem acesso
+    if (interaction.guild.ownerId && interaction.user.id === interaction.guild.ownerId) return true;
+    // Administradores também têm acesso
+    if (interaction.member.permissions?.has(PermissionFlagsBits.Administrator)) return true;
     const cfg = await storage.getGuildConfig(interaction.guild.id);
     const staffRoleId = cfg?.roles?.staff;
     return !!(staffRoleId && interaction.member.roles.cache.has(staffRoleId));
@@ -260,23 +281,10 @@ async function handleButton(interaction) {
   if (id === 'ticket:close:cancel') return interaction.update({ content: '❎ Cancelado.', components: [], ephemeral: true });
 
   // Painel staff efémero
-  if (id === 'ticket:admin:open') {
-    const staff = await isStaff(interaction);
-    if (!staff) {
-      return interaction.reply({ content: '🚫 Apenas a equipa pode abrir este painel.', flags: MessageFlags.Ephemeral });
-    }
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('ticket:claim').setLabel('Reclamar').setEmoji('✋').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('ticket:release').setLabel('Liberar').setEmoji('👐').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('ticket:priority:cycle').setLabel('Prioridade').setEmoji('⚡').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('ticket:note:open').setLabel('Nota Interna').setEmoji('📝').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('ticket:transcript').setLabel('Transcript').setEmoji('📄').setStyle(ButtonStyle.Secondary)
-    );
-    return interaction.reply({ content: 'Controlo de Staff:', components: [row], flags: MessageFlags.Ephemeral });
-  }
+  // (Removido) painel efémero Ctrl-Staff: botões agora estão sempre visíveis nas linhas principais
 
   // Ações administrativas (staff)
-  if (id === 'ticket:claim' || id === 'ticket:release' || id.startsWith('ticket:priority') || id === 'ticket:note:open' || id === 'ticket:transcript') {
+  if (id === 'ticket:claim' || id === 'ticket:release' || id === 'ticket:resolve' || id === 'ticket:reopen' || id.startsWith('ticket:priority') || id === 'ticket:note:open' || id === 'ticket:transcript' || id === 'ticket:member:add' || id === 'ticket:member:remove' || id === 'ticket:rename:open' || id === 'ticket:lock-toggle' || id === 'ticket:unlock:author' || id === 'ticket:unlock:everyone') {
     const staff = await isStaff(interaction);
     if (!staff) {
       return interaction.reply({ content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
@@ -311,15 +319,47 @@ async function handleButton(interaction) {
       return interaction.reply({ content: '✅ Libertado.', flags: MessageFlags.Ephemeral });
     }
 
-    if (id.startsWith('ticket:priority')) {
-      const next = toPriority(t.priority || 'normal');
-      const updated = await storage.updateTicket(t.id, { priority: next });
-      const label = next.toUpperCase();
-      const color = next === 'urgent' ? 0xEF4444 : next === 'high' ? 0xF59E0B : next === 'normal' ? 0x3B82F6 : 0x6B7280;
-      const embed = new EmbedBuilder().setColor(color).setDescription(`⚡ Prioridade alterada para ${label} por ${interaction.user}.`);
-      await interaction.channel.send({ embeds: [embed] });
-      await updatePanelHeader(interaction.channel, updated || { ...t, priority: next });
-      return interaction.reply({ content: `✅ Prioridade: ${label}`, flags: MessageFlags.Ephemeral });
+    if (id === 'ticket:priority:open' || id === 'ticket:priority:cycle') {
+      // Mostrar seletor de prioridade (compat: se vier de :cycle, abrimos o seletor também)
+      const current = (t.priority || 'normal').toLowerCase();
+      const menu = new StringSelectMenuBuilder()
+        .setCustomId('ticket:priority:select')
+        .setPlaceholder('Seleciona a prioridade')
+        .addOptions(
+          { label: 'Baixa', value: 'low', description: 'Menos urgente', default: current === 'low' },
+          { label: 'Normal', value: 'normal', description: 'Prioridade padrão', default: current === 'normal' },
+          { label: 'Alta', value: 'high', description: 'Requer atenção', default: current === 'high' },
+          { label: 'URGENTE', value: 'urgent', description: 'Criticidade máxima', default: current === 'urgent' }
+        );
+      const row = new ActionRowBuilder().addComponents(menu);
+      return interaction.reply({ content: '⚡ Escolhe a nova prioridade para este ticket:', components: [row], flags: MessageFlags.Ephemeral });
+    }
+
+    if (id === 'ticket:resolve') {
+      if (t.status === 'closed') return interaction.reply({ content: '⚠️ Já está fechado.', flags: MessageFlags.Ephemeral });
+      const updated = await storage.updateTicket(t.id, { status: 'closed', closed_at: new Date().toISOString(), close_reason: 'Resolvido' });
+      await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`✅ Marcado como resolvido por ${interaction.user}.`)] });
+      await updatePanelHeader(interaction.channel, updated || { ...t, status: 'closed' });
+      return interaction.reply({ content: '✅ Resolvido.', flags: MessageFlags.Ephemeral });
+    }
+
+    if (id === 'ticket:reopen') {
+      if (t.status !== 'closed') return interaction.reply({ content: '⚠️ Só podes reabrir tickets fechados.', flags: MessageFlags.Ephemeral });
+      const updated = await storage.updateTicket(t.id, { status: 'open', reopened_at: new Date().toISOString() });
+      await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x3B82F6).setDescription(`♻️ Ticket reaberto por ${interaction.user}.`)] });
+      await updatePanelHeader(interaction.channel, updated || { ...t, status: 'open' });
+      return interaction.reply({ content: '✅ Reaberto.', flags: MessageFlags.Ephemeral });
+    }
+
+    if (id === 'ticket:member:add' || id === 'ticket:member:remove') {
+      // Abrir modal para inserir ID ou @menção
+      const modal = new ModalBuilder().setCustomId('ticket:member:submit').setTitle(id.endsWith('add') ? 'Adicionar membro' : 'Remover membro');
+      const input = new TextInputBuilder().setCustomId('ticket:member:target').setLabel('ID ou @ menção').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(50);
+      const rowm = new (require('discord.js').ActionRowBuilder)().addComponents(input);
+      modal.addComponents(rowm);
+      // Guardar contexto em cache volátil via message reference (sem state server): encode in modal id
+      modal.setCustomId(`ticket:member:submit:${id.endsWith('add') ? 'add':'remove'}`);
+      return interaction.showModal(modal);
     }
 
     if (id === 'ticket:note:open') {
@@ -376,35 +416,172 @@ async function handleButton(interaction) {
         return interaction.reply({ content: '❌ Falha ao gerar transcript.', flags: MessageFlags.Ephemeral }).catch(()=>null);
       }
     }
+
+    if (id === 'ticket:rename:open') {
+      // Abrir modal para novo nome
+      const modal = new ModalBuilder()
+        .setCustomId('ticket:rename:submit')
+        .setTitle('Renomear canal');
+      const input = new TextInputBuilder()
+        .setCustomId('ticket:rename:newname')
+        .setLabel('Novo nome do canal')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true)
+        .setMaxLength(90);
+      const row = new (require('discord.js').ActionRowBuilder)().addComponents(input);
+      modal.addComponents(row);
+      return interaction.showModal(modal);
+    }
+
+    if (id === 'ticket:lock-toggle') {
+      try {
+        // Toggle SendMessages para @everyone e autor do ticket (manter staff com envio)
+        const everyoneId = interaction.guild.id;
+        const overwrites = interaction.channel.permissionOverwrites;
+        const current = overwrites?.cache?.get(everyoneId);
+        const isLocked = current?.deny?.has?.(PermissionFlagsBits.SendMessages);
+
+        // Bloquear: negar envio para everyone e autor; Desbloquear: permitir enviar para autor
+        if (!isLocked) {
+          await interaction.channel.permissionOverwrites.edit(everyoneId, { SendMessages: false });
+          if (t.user_id) await interaction.channel.permissionOverwrites.edit(t.user_id, { SendMessages: false });
+          await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0xF59E0B).setDescription(`🔐 Canal bloqueado por ${interaction.user}.`)] });
+          return interaction.reply({ content: '✅ Bloqueado.', flags: MessageFlags.Ephemeral });
+        } else {
+          await interaction.channel.permissionOverwrites.edit(everyoneId, { SendMessages: null });
+          if (t.user_id) await interaction.channel.permissionOverwrites.edit(t.user_id, { SendMessages: true });
+          await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`🔓 Canal desbloqueado por ${interaction.user}.`)] });
+          return interaction.reply({ content: '✅ Desbloqueado.', flags: MessageFlags.Ephemeral });
+        }
+      } catch {
+        return interaction.reply({ content: '❌ Falha ao alternar bloqueio.', flags: MessageFlags.Ephemeral });
+      }
+    }
+
+    if (id === 'ticket:unlock:author' || id === 'ticket:unlock:everyone') {
+      try {
+        const everyoneId = interaction.guild.id;
+        // Garantir que bloqueio geral é levantado conforme escolha
+        if (id === 'ticket:unlock:author') {
+          await interaction.channel.permissionOverwrites.edit(everyoneId, { SendMessages: false });
+          if (t.user_id) await interaction.channel.permissionOverwrites.edit(t.user_id, { SendMessages: true, ViewChannel: true });
+          await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`🔓 Canal desbloqueado para o autor por ${interaction.user}.`)] });
+          return interaction.reply({ content: '✅ Desbloqueado para autor.', flags: MessageFlags.Ephemeral });
+        } else {
+          await interaction.channel.permissionOverwrites.edit(everyoneId, { SendMessages: null });
+          if (t.user_id) await interaction.channel.permissionOverwrites.edit(t.user_id, { SendMessages: true, ViewChannel: true });
+          await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`🔓 Canal desbloqueado para todos por ${interaction.user}.`)] });
+          return interaction.reply({ content: '✅ Desbloqueado para todos.', flags: MessageFlags.Ephemeral });
+        }
+      } catch {
+        return interaction.reply({ content: '❌ Falha ao desbloquear.', flags: MessageFlags.Ephemeral });
+      }
+    }
   }
 }
 
 async function handleModal(interaction) {
   const id = interaction.customId;
-  if (id !== 'ticket:note:submit') return;
-  const staff = await isStaff(interaction);
-  if (!staff) {
-    return interaction.reply({ content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
-  }
-  const t = await storage.getTicketByChannel(interaction.channel.id);
-  if (!t) return interaction.reply({ content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
-  const content = interaction.fields.getTextInputValue('ticket:note:content');
-  const notes = Array.isArray(t.notes) ? t.notes.slice() : [];
-  notes.push({ id: Date.now().toString(), content, author: interaction.user.id, timestamp: new Date().toISOString() });
-  await storage.updateTicket(t.id, { notes });
-  // Tentar enviar para canal de logs (só staff vê), senão apenas confirmar
-  try {
-    const cfg = await storage.getGuildConfig(interaction.guild.id);
-    const logChannelId = cfg?.channels?.logs || null;
-    if (logChannelId) {
-      const logCh = interaction.guild.channels.cache.get(logChannelId) || await interaction.client.channels.fetch(logChannelId).catch(()=>null);
-      if (logCh && logCh.send) {
-        const embed = new EmbedBuilder().setColor(0x64748B).setTitle('📝 Nota interna').setDescription(content).setFooter({ text: `Por ${interaction.user.tag}` }).setTimestamp();
-        await logCh.send({ embeds: [embed] });
-      }
+  if (id === 'ticket:note:submit') {
+    const staff = await isStaff(interaction);
+    if (!staff) {
+      return interaction.reply({ content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
     }
-  } catch {}
-  return interaction.reply({ content: '✅ Nota guardada.', flags: MessageFlags.Ephemeral });
+    const t = await storage.getTicketByChannel(interaction.channel.id);
+    if (!t) return interaction.reply({ content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
+    const content = interaction.fields.getTextInputValue('ticket:note:content');
+    const notes = Array.isArray(t.notes) ? t.notes.slice() : [];
+    notes.push({ id: Date.now().toString(), content, author: interaction.user.id, timestamp: new Date().toISOString() });
+    await storage.updateTicket(t.id, { notes });
+    // Tentar enviar para canal de logs (só staff vê), senão apenas confirmar
+    try {
+      const cfg = await storage.getGuildConfig(interaction.guild.id);
+      const logChannelId = cfg?.channels?.logs || null;
+      if (logChannelId) {
+        const logCh = interaction.guild.channels.cache.get(logChannelId) || await interaction.client.channels.fetch(logChannelId).catch(()=>null);
+        if (logCh && logCh.send) {
+          const embed = new EmbedBuilder().setColor(0x64748B).setTitle('📝 Nota interna').setDescription(content).setFooter({ text: `Por ${interaction.user.tag}` }).setTimestamp();
+          await logCh.send({ embeds: [embed] });
+        }
+      }
+    } catch {}
+    return interaction.reply({ content: '✅ Nota guardada.', flags: MessageFlags.Ephemeral });
+  }
+
+  if (id.startsWith('ticket:member:submit')) {
+    const staff = await isStaff(interaction);
+    if (!staff) {
+      return interaction.reply({ content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
+    }
+    const mode = id.split(':').pop(); // 'add' | 'remove'
+    const t = await storage.getTicketByChannel(interaction.channel.id);
+    if (!t) return interaction.reply({ content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
+    const raw = interaction.fields.getTextInputValue('ticket:member:target').trim();
+    const mId = (raw.match(/\d{17,20}/) || [])[0];
+    if (!mId) return interaction.reply({ content: 'Fornece um ID ou menção válida.', flags: MessageFlags.Ephemeral });
+    const member = await interaction.guild.members.fetch(mId).catch(() => null);
+    if (!member) return interaction.reply({ content: 'Membro não encontrado.', flags: MessageFlags.Ephemeral });
+    try {
+      if (mode === 'add') {
+        await interaction.channel.permissionOverwrites.edit(member.id, {
+          ViewChannel: true,
+          SendMessages: true,
+          ReadMessageHistory: true
+        });
+        await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x60A5FA).setDescription(`➕ ${member} adicionado ao ticket por ${interaction.user}.`)] });
+        return interaction.reply({ content: '✅ Membro adicionado.', flags: MessageFlags.Ephemeral });
+      } else {
+        await interaction.channel.permissionOverwrites.edit(member.id, {
+          ViewChannel: false,
+          SendMessages: false
+        });
+        await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0xF87171).setDescription(`➖ ${member} removido do ticket por ${interaction.user}.`)] });
+        return interaction.reply({ content: '✅ Membro removido.', flags: MessageFlags.Ephemeral });
+      }
+    } catch (e) {
+      return interaction.reply({ content: '❌ Falha ao atualizar permissões.', flags: MessageFlags.Ephemeral });
+    }
+  }
+
+  if (id === 'ticket:rename:submit') {
+    const staff = await isStaff(interaction);
+    if (!staff) {
+      return interaction.reply({ content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
+    }
+    const t = await storage.getTicketByChannel(interaction.channel.id);
+    if (!t) return interaction.reply({ content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
+    const newName = interaction.fields.getTextInputValue('ticket:rename:newname').trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '').slice(1, 90);
+    if (!newName) return interaction.reply({ content: 'Fornece um nome válido.', flags: MessageFlags.Ephemeral });
+    try {
+      await interaction.channel.setName(newName, `Renomeado por ${interaction.user.tag}`);
+      await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x60A5FA).setDescription(`✏️ Canal renomeado para #${newName} por ${interaction.user}.`)] });
+      return interaction.reply({ content: '✅ Canal renomeado.', flags: MessageFlags.Ephemeral });
+    } catch {
+      return interaction.reply({ content: '❌ Falha ao renomear canal.', flags: MessageFlags.Ephemeral });
+    }
+  }
 }
 
-module.exports = { handleButton, handleModal };
+async function handleSelect(interaction) {
+  const id = interaction.customId;
+  if (id === 'ticket:priority:select') {
+    const staff = await isStaff(interaction);
+    if (!staff) {
+      return interaction.reply({ content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
+    }
+    const t = await storage.getTicketByChannel(interaction.channel.id);
+    if (!t) return interaction.reply({ content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
+    const value = interaction.values?.[0];
+    const allowed = ['low','normal','high','urgent'];
+    const chosen = allowed.includes((value||'').toLowerCase()) ? value.toLowerCase() : 'normal';
+    const updated = await storage.updateTicket(t.id, { priority: chosen });
+    const label = chosen.toUpperCase();
+    const color = chosen === 'urgent' ? 0xEF4444 : chosen === 'high' ? 0xF59E0B : chosen === 'normal' ? 0x3B82F6 : 0x6B7280;
+    const embed = new EmbedBuilder().setColor(color).setDescription(`⚡ Prioridade alterada para ${label} por ${interaction.user}.`);
+    await interaction.channel.send({ embeds: [embed] });
+    await updatePanelHeader(interaction.channel, updated || { ...t, priority: chosen });
+    return interaction.update({ content: `✅ Prioridade definida: ${label}`, components: [] });
+  }
+}
+
+module.exports = { handleButton, handleModal, handleSelect };

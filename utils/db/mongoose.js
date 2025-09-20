@@ -14,4 +14,15 @@ async function connect(uri) {
   return mongoose.connection;
 }
 
-module.exports = { mongoose, connect };
+// Sincronizar flag com eventos de ligação
+try {
+  mongoose.connection.on('connected', () => { isConnected = true; });
+  mongoose.connection.on('disconnected', () => { isConnected = false; });
+  mongoose.connection.on('error', () => { /* noop */ });
+} catch {}
+
+function isReady() {
+  return isConnected && mongoose.connection.readyState === 1;
+}
+
+module.exports = { mongoose, connect, isReady };

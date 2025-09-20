@@ -19,8 +19,16 @@
                 IGNIS Dashboard
             </div>
             <div class="navbar-user">
+                                <span id="healthBadge" class="badge health-badge" title="Estado do sistema">
+                  <span id="health-mongo" class="dot dot-gray" title="DB"></span>
+                  <span id="health-discord" class="dot dot-gray" title="Discord"></span>
+                </span>
                 <img id="userAvatar" src="/default-avatar.svg" alt="Avatar" class="user-avatar">
                 <span id="userName">Carregando...</span>
+                <a href="/dashboard" class="btn btn-glass" id="btnBackServers">
+                    <i class="fas fa-arrow-left"></i>
+                    Voltar à seleção de servidores
+                </a>
                 <a href="/logout" class="btn btn-logout">
                     <i class="fas fa-sign-out-alt"></i>
                     Logout
@@ -239,6 +247,38 @@
     </main>
 
     <!-- Scripts -->
-    <script src="/js/dashboard.js"></script>
+        <script src="/js/dashboard.js"></script>
+        <script>
+                    (async () => {
+                        const setTip = (text) => { const hb = document.getElementById('healthBadge'); if (hb) hb.title = text; };
+                        const dot = (el, state) => {
+                    if (!el) return;
+                    el.classList.remove('dot-green','dot-red','dot-gray');
+                    el.classList.add(state === 'ok' ? 'dot-green' : state === 'bad' ? 'dot-red' : 'dot-gray');
+                };
+                try {
+                    const r = await fetch('/api/health', { credentials: 'same-origin' });
+                    if (!r.ok) throw new Error('fail');
+                    const h = await r.json();
+                    dot(document.getElementById('health-mongo'), h.mongo === 'connected' ? 'ok' : (h.mongo === 'disabled' ? 'gray' : 'bad'));
+                    dot(document.getElementById('health-discord'), h.discord ? 'ok' : 'bad');
+                            const mongoTxt = h.mongo === 'connected' ? 'DB: ligado' : h.mongo === 'disabled' ? 'DB: desativado' : 'DB: desligado';
+                            const discTxt = h.discord ? 'Discord: online' : 'Discord: offline';
+                            setTip(`${mongoTxt} • ${discTxt}`);
+                } catch {
+                    dot(document.getElementById('health-mongo'), 'bad');
+                    dot(document.getElementById('health-discord'), 'bad');
+                            setTip('DB: desconhecido • Discord: desconhecido');
+                }
+            })();
+        </script>
+        <style>
+                    .badge{padding:4px 8px;border-radius:999px;background:rgba(255,255,255,0.06);font-size:12px}
+                    .health-badge{margin-right:8px;display:inline-flex;align-items:center;gap:6px}
+            .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+            .dot-green{background:#22c55e}
+            .dot-red{background:#ef4444}
+            .dot-gray{background:#6b7280}
+        </style>
 </body>
 </html>

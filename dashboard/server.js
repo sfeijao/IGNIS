@@ -137,6 +137,33 @@ app.get('/logout', (req, res) => {
     });
 });
 
+// Health endpoint for dashboard and services
+app.get('/api/health', (req, res) => {
+    try {
+        const client = global.discordClient;
+        let discord = false;
+        try { discord = !!(client && typeof client.isReady === 'function' ? client.isReady() : client?.readyAt); } catch {}
+        let mongoState = 'disabled';
+        try {
+            const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
+            if (hasMongoEnv) {
+                const { isReady } = require('../utils/db/mongoose');
+                mongoState = isReady() ? 'connected' : 'disconnected';
+            }
+        } catch { mongoState = 'unknown'; }
+        return res.json({
+            success: true,
+            dashboard: true,
+            discord,
+            mongo: mongoState,
+            time: new Date().toISOString()
+        });
+    } catch (e) {
+        logger.error('Error in health endpoint:', e);
+        return res.status(500).json({ success: false, error: 'health_failed' });
+    }
+});
+
 // API Routes
 app.get('/api/user', (req, res) => {
     if (!req.isAuthenticated()) {
@@ -366,10 +393,199 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
             return { ...p, channelName, channelExists, messageExists };
         }));
 
-        res.json({ success: true, panels: enriched });
+        // Deteção leve de painéis criados dentro do Discord (sem registo no Mongo)
+        // Estratégia: escanear todos os canais de texto, com limites de canais e mensagens por canal
+        const detected = [];
+        const textChannels = guild.channels.cache.filter(c => c.type === 0);
+        const channelCap = 40; // número máximo de canais a escanear nesta chamada
+        const msgsPerChannel = 20; // mensagens por canal (raso, mais profundo via "scan now")
+        let scannedChannels = 0;
+        for (const channel of textChannels.values()) {
+            if (scannedChannels >= channelCap) break;
+            scannedChannels++;
+            try {
+                const batch = await channel.messages.fetch({ limit: Math.min(100, msgsPerChannel) }).catch(() => null);
+                if (!batch) continue;
+                for (const msg of batch.values()) {
+                    const hasCreate = Array.isArray(msg.components) && msg.components.some(row => Array.isArray(row.components) && row.components.some(btn => typeof btn.customId === 'string' && btn.customId.startsWith('ticket:create:')));
+                    const looksLikePanel = hasCreate || (msg.embeds?.[0]?.title && /centro de suporte|tickets?/i.test(msg.embeds[0].title || ''));
+                    if (!looksLikePanel) continue;
+                    const already = enriched.find(p => p.message_id === msg.id || p.channel_id === channel.id);
+                    if (already) {
+                        already.messageExists = true;
+                        continue;
+                    }
+                    detected.push({
+                        _id: `detected:${guildId}:${channel.id}:${msg.id}`,
+                        guild_id: guildId,
+                        channel_id: channel.id,
+                        message_id: msg.id,
+                        type: 'tickets',
+                        theme: 'dark',
+                        channelName: channel.name,
+                        channelExists: true,
+                        messageExists: true,
+                        detected: true
+                    });
+                    if (detected.length >= 50) break; // limitar deteções
+                }
+            } catch {}
+            if (detected.length >= 50) break;
+        }
+
+        // Tentar persistir deteções no Mongo e refletir imediatamente como "guardado" na resposta
+        let enrichedCombined = [...enriched];
+        let remainingDetected = [...detected];
+        try {
+            const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
+            const { isReady } = require('../utils/db/mongoose');
+            if (hasMongoEnv && isReady() && detected.length) {
+                const { PanelModel } = require('../utils/db/models');
+                const savedKeys = new Set();
+                const newlySaved = [];
+                for (const d of detected) {
+                    const doc = await PanelModel.findOneAndUpdate(
+                        { guild_id: d.guild_id, channel_id: d.channel_id, type: 'tickets' },
+                        { $setOnInsert: { message_id: d.message_id, theme: d.theme }, $set: { message_id: d.message_id } },
+                        { upsert: true, new: true }
+                    ).lean();
+                    if (doc) {
+                        const key = `${doc.channel_id}`;
+                        savedKeys.add(key);
+                        newlySaved.push(doc);
+                    }
+                }
+                // Adicionar recém-guardados à lista enriquecida (se não duplicados)
+                for (const p of newlySaved) {
+                    const exists = enrichedCombined.find(e => `${e.channel_id}` === `${p.channel_id}`);
+                    if (!exists) {
+                        // Enriquecer minimamente com info do canal
+                        enrichedCombined.push({
+                            ...p,
+                            channelName: guild.channels.cache.get(p.channel_id)?.name || p.channel_id,
+                            channelExists: !!guild.channels.cache.get(p.channel_id),
+                            messageExists: !!p.message_id,
+                        });
+                    }
+                }
+                // Remover detetados que foram guardados para evitar duplicados e alterar badge
+                remainingDetected = detected.filter(d => !savedKeys.has(`${d.channel_id}`));
+            }
+        } catch {}
+
+        const finalList = [...enrichedCombined, ...remainingDetected];
+        res.json({ success: true, panels: finalList });
     } catch (error) {
         logger.error('Error fetching panels:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch panels' });
+    }
+});
+
+// Painéis - "Scan now": varredura mais profunda com paginação e limites configuráveis
+app.post('/api/guild/:guildId/panels/scan', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    try {
+        const guildId = req.params.guildId;
+        const { channelsLimit = 100, messagesPerChannel = 100, persist = true } = req.body || {};
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+
+        // Requer administrador para varreduras profundas
+        const check = await ensureGuildAdmin(client, guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        const textChannels = guild.channels.cache.filter(c => c.type === 0);
+        const detected = [];
+
+        async function fetchMessagesPaged(channel, cap) {
+            const all = [];
+            let before = undefined;
+            while (all.length < cap) {
+                const limit = Math.min(100, cap - all.length);
+                const batch = await channel.messages.fetch(before ? { limit, before } : { limit }).catch(() => null);
+                if (!batch || batch.size === 0) break;
+                const arr = Array.from(batch.values());
+                all.push(...arr);
+                before = arr[arr.length - 1].id;
+                if (batch.size < limit) break;
+            }
+            return all;
+        }
+
+        let scanned = 0;
+        for (const channel of textChannels.values()) {
+            if (scanned >= channelsLimit) break;
+            scanned++;
+            try {
+                const msgs = await fetchMessagesPaged(channel, Math.max(1, Math.min(1000, messagesPerChannel)));
+                for (const msg of msgs) {
+                    const hasCreate = Array.isArray(msg.components) && msg.components.some(row => Array.isArray(row.components) && row.components.some(btn => typeof btn.customId === 'string' && btn.customId.startsWith('ticket:create:')));
+                    const looksLikePanel = hasCreate || (msg.embeds?.[0]?.title && /centro de suporte|tickets?/i.test(msg.embeds[0].title || ''));
+                    if (!looksLikePanel) continue;
+                    detected.push({
+                        _id: `detected:${guildId}:${channel.id}:${msg.id}`,
+                        guild_id: guildId,
+                        channel_id: channel.id,
+                        message_id: msg.id,
+                        type: 'tickets',
+                        theme: 'dark',
+                        channelName: channel.name,
+                        channelExists: true,
+                        messageExists: true,
+                        detected: true
+                    });
+                    if (detected.length >= 200) break; // limite global
+                }
+            } catch {}
+            if (detected.length >= 200) break;
+        }
+
+        // Persistir deteções (opcional) se Mongo pronto
+        let persisted = 0;
+        if (persist) {
+            try {
+                const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
+                const { isReady } = require('../utils/db/mongoose');
+                if (hasMongoEnv && isReady() && detected.length) {
+                    const { PanelModel } = require('../utils/db/models');
+                    for (const d of detected) {
+                        const r = await PanelModel.findOneAndUpdate(
+                            { guild_id: d.guild_id, channel_id: d.channel_id, type: 'tickets' },
+                            { $setOnInsert: { message_id: d.message_id, theme: d.theme }, $set: { message_id: d.message_id } },
+                            { upsert: true, new: true }
+                        );
+                        if (r) persisted++;
+                    }
+                }
+            } catch {}
+        }
+
+        return res.json({ success: true, detected: detected.length, persisted });
+    } catch (error) {
+        logger.error('Error scanning panels:', error);
+        res.status(500).json({ success: false, error: 'Failed to scan panels' });
+    }
+});
+
+// Endpoint simples para verificar se o utilizador é admin no guild (para gating de UI)
+app.get('/api/guild/:guildId/is-admin', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(req.params.guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+        const isAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
+        return res.json({ success: true, isAdmin });
+    } catch (e) {
+        logger.error('Error checking admin:', e);
+        return res.status(500).json({ success: false, error: 'Failed to check admin' });
     }
 });
 
@@ -398,6 +614,26 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
             }
         } catch {
             return res.status(500).json({ success: false, error: 'Panels storage not available' });
+        }
+        
+        // Suportar guardar painéis detetados (IDs sintéticos começados por 'detected:')
+        if (action === 'save' && panelId.startsWith('detected:')) {
+            try {
+                const parts = panelId.split(':');
+                // detected:guildId:channelId:messageId
+                const chId = parts[2];
+                const msgId = parts[3];
+                if (!chId || !msgId) return res.status(400).json({ success: false, error: 'Invalid detected panel id' });
+                const doc = await PanelModel.findOneAndUpdate(
+                    { guild_id: guildId, channel_id: chId, type: 'tickets' },
+                    { $setOnInsert: { message_id: msgId, theme: (data?.theme || 'dark') }, $set: { message_id: msgId } },
+                    { upsert: true, new: true }
+                ).lean();
+                return res.json({ success: true, message: 'Panel saved', panel: doc });
+            } catch (e) {
+                logger.error('Error saving detected panel:', e);
+                return res.status(500).json({ success: false, error: 'Failed to save detected panel' });
+            }
         }
 
         const panel = await PanelModel.findById(panelId).lean();
@@ -431,6 +667,10 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 updated = await PanelModel.findByIdAndUpdate(panelId, { $set: { message_id: message.id } }, { new: true }).lean();
                 return res.json({ success: true, message: 'Panel recreated', panel: updated });
             }
+            case 'save': {
+                // Se já é um painel guardado, nada a fazer
+                return res.json({ success: true, message: 'Panel already saved', panel });
+            }
             case 'delete': {
                 // Remover registo e tentar apagar mensagem
                 if (panel.message_id && channel.messages?.fetch) {
@@ -442,8 +682,8 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
             }
             case 'theme': {
                 const newTheme = (data?.theme === 'light') ? 'light' : 'dark';
-                await PanelModel.findByIdAndUpdate(panelId, { $set: { theme: newTheme } });
-                return res.json({ success: true, message: 'Theme updated', theme: newTheme });
+                const updatedTheme = await PanelModel.findByIdAndUpdate(panelId, { $set: { theme: newTheme } }, { new: true }).lean();
+                return res.json({ success: true, message: 'Theme updated', theme: newTheme, panel: updatedTheme });
             }
             default:
                 return res.status(400).json({ success: false, error: 'Invalid action' });
@@ -545,7 +785,13 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        if (!(process.env.MONGO_URI || process.env.MONGODB_URI)) return res.json({ success: true, webhooks: [] });
+        const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
+        if (!hasMongoEnv) return res.json({ success: true, webhooks: [] });
+        const { isReady } = require('../utils/db/mongoose');
+        if (!isReady()) {
+            // Evitar timeout de buffering quando a DB não está pronta
+            return res.json({ success: true, webhooks: [] });
+        }
         const { WebhookModel } = require('../utils/db/models');
         const list = await WebhookModel.find({ guild_id: req.params.guildId }).lean();
         res.json({ success: true, webhooks: list });
@@ -562,8 +808,11 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        if (!(process.env.MONGO_URI || process.env.MONGODB_URI)) return res.status(500).json({ success: false, error: 'Mongo not available' });
-        const { WebhookModel } = require('../utils/db/models');
+    const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
+    if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not available' });
+    const { isReady } = require('../utils/db/mongoose');
+    if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
+    const { WebhookModel } = require('../utils/db/models');
         const { type = 'logs', name = 'Logs', url, channel_id, channel_name } = req.body || {};
         if (!url || !url.startsWith('https://discord.com/api/webhooks/')) return res.status(400).json({ success: false, error: 'Invalid webhook URL' });
         const saved = await WebhookModel.findOneAndUpdate(
@@ -585,8 +834,11 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        if (!(process.env.MONGO_URI || process.env.MONGODB_URI)) return res.status(500).json({ success: false, error: 'Mongo not available' });
-        const { WebhookModel } = require('../utils/db/models');
+    const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
+    if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not available' });
+    const { isReady } = require('../utils/db/mongoose');
+    if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
+    const { WebhookModel } = require('../utils/db/models');
         const result = await WebhookModel.deleteOne({ _id: req.params.id, guild_id: req.params.guildId });
         res.json({ success: true, deleted: result.deletedCount });
     } catch (e) {
@@ -609,7 +861,9 @@ app.post('/api/guild/:guildId/webhooks/auto-setup', async (req, res) => {
         if (!ok) return res.status(500).json({ success: false, error: 'Failed to setup webhook' });
         // Persist to Mongo if available (best effort)
         try {
-            if (process.env.MONGO_URI || process.env.MONGODB_URI) {
+            const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
+            const { isReady } = require('../utils/db/mongoose');
+            if (hasMongoEnv && isReady()) {
                 const { WebhookModel } = require('../utils/db/models');
                 const info = wm.webhooks.get(req.params.guildId);
                 const url = info?.webhook?.url;

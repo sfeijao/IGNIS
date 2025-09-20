@@ -18,6 +18,10 @@
                 IGNIS Painéis
             </div>
             <div class="navbar-user">
+                <span id="healthBadge" class="badge health-badge" title="Estado do sistema">
+                    <span id="health-mongo" class="dot dot-gray" title="DB"></span>
+                    <span id="health-discord" class="dot dot-gray" title="Discord"></span>
+                </span>
                 <img id="userAvatar" src="/default-avatar.svg" alt="Avatar" class="user-avatar">
                 <span id="userName">Carregando...</span>
                 <a href="/dashboard" class="btn btn-glass">
@@ -44,6 +48,15 @@
                 <p class="text-secondary mb-4">Reenvie, recrie, elimine e altere o tema dos painéis do servidor.</p>
 
                 <div class="glass-card card-pad mb-16">
+                    <div class="legend-row">
+                        <span class="badge badge-ok"><i class="fas fa-check"></i> guardado</span>
+                        <span class="text-secondary">= painel registado na base de dados</span>
+                        <span class="badge badge-warn"><i class="fas fa-search"></i> detectado</span>
+                        <span class="text-secondary">= painel encontrado no Discord (pode ser guardado após scan/recriação)</span>
+                    </div>
+                </div>
+
+                <div class="glass-card card-pad mb-16">
                     <div class="grid grid-3 gap-12">
                         <div>
                             <label for="panelChannel">Canal</label>
@@ -58,8 +71,26 @@
                         </div>
                         <div class="align-end">
                             <button id="btnCreatePanel" class="btn btn-primary"><i class="fas fa-plus"></i> Criar Painel</button>
+                            <button id="btnScanPanels" class="btn btn-glass ml-8"><i class="fas fa-magnifying-glass"></i> Procurar Painéis</button>
                         </div>
                     </div>
+                </div>
+
+                <div id="scanAdvanced" class="glass-card card-pad mb-16 hidden">
+                    <div class="grid grid-3 gap-12">
+                        <div>
+                            <label for="scanChannels">Canais (limite)</label>
+                            <input id="scanChannels" type="number" class="input" min="1" max="200" value="100" />
+                        </div>
+                        <div>
+                            <label for="scanMessages">Mensagens por canal</label>
+                            <input id="scanMessages" type="number" class="input" min="1" max="1000" value="200" />
+                        </div>
+                        <div class="align-end">
+                            <button id="btnScanNow" class="btn btn-primary"><i class="fas fa-search"></i> Scan avançado</button>
+                        </div>
+                    </div>
+                    <p class="text-secondary mt-8">Apenas administradores podem executar varreduras profundas. Os resultados são guardados quando possível.</p>
                 </div>
 
                 <div id="panelsContainer" class="server-grid">
@@ -78,6 +109,20 @@
         .mb-16{margin-bottom:16px}
         .gap-12{gap:12px}
         .align-end{display:flex;align-items:flex-end}
+    .badge{padding:4px 8px;border-radius:999px;background:rgba(255,255,255,0.06);font-size:12px}
+        .health-badge{margin-right:8px;display:inline-flex;align-items:center;gap:6px}
+        .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+        .dot-green{background:#22c55e}
+        .dot-red{background:#ef4444}
+        .dot-gray{background:#6b7280}
+    .ml-8{margin-left:8px}
+    .mt-8{margin-top:8px}
+    .hidden{display:none}
+    .badge.badge-warn{background:rgba(234,179,8,0.12); color:#fde047; border:1px solid rgba(234,179,8,0.25); margin-left:8px}
+    .badge.badge-ok{background:rgba(34,197,94,0.12); color:#86efac; border:1px solid rgba(34,197,94,0.25); margin-left:8px}
+    .legend-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .btn.btn-success{background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); color:#86efac}
+    .highlight-saved{box-shadow:0 0 0 2px rgba(34,197,94,0.3) inset; transition: box-shadow 0.3s ease}
     </style>
     <script>
         // Preencher avatar/nome com mesmo comportamento do dashboard
@@ -95,6 +140,25 @@
                     }
                 }
             } catch {}
+        })();
+        // Saúde do sistema (badge)
+        (async () => {
+            const setTip = (text) => { const hb = document.getElementById('healthBadge'); if (hb) hb.title = text; };
+            const dot = (el, state) => { if (!el) return; el.classList.remove('dot-green','dot-red','dot-gray'); el.classList.add(state === 'ok' ? 'dot-green' : state === 'bad' ? 'dot-red' : 'dot-gray'); };
+            try {
+                const r = await fetch('/api/health', { credentials: 'same-origin' });
+                if (!r.ok) throw new Error('fail');
+                const h = await r.json();
+                dot(document.getElementById('health-mongo'), h.mongo === 'connected' ? 'ok' : (h.mongo === 'disabled' ? 'gray' : 'bad'));
+                dot(document.getElementById('health-discord'), h.discord ? 'ok' : 'bad');
+                const mongoTxt = h.mongo === 'connected' ? 'DB: ligado' : h.mongo === 'disabled' ? 'DB: desativado' : 'DB: desligado';
+                const discTxt = h.discord ? 'Discord: online' : 'Discord: offline';
+                setTip(`${mongoTxt} • ${discTxt}`);
+            } catch {
+                dot(document.getElementById('health-mongo'), 'bad');
+                dot(document.getElementById('health-discord'), 'bad');
+                setTip('DB: desconhecido • Discord: desconhecido');
+            }
         })();
     </script>
 </body>
