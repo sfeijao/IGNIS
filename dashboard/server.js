@@ -607,12 +607,17 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
 
         let PanelModel;
         try {
-            if (process.env.MONGO_URI || process.env.MONGODB_URI) {
-                PanelModel = require('../utils/db/models').PanelModel;
-            } else {
-                return res.status(500).json({ success: false, error: 'Panels storage not available' });
+            const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
+            const { isReady } = require('../utils/db/mongoose');
+            if (!hasMongoEnv) {
+                return res.status(503).json({ success: false, error: 'Mongo not configured' });
             }
-        } catch {
+            if (!isReady()) {
+                return res.status(503).json({ success: false, error: 'Mongo not connected' });
+            }
+            PanelModel = require('../utils/db/models').PanelModel;
+        } catch (e) {
+            logger.error('Panels storage load error:', e);
             return res.status(500).json({ success: false, error: 'Panels storage not available' });
         }
         
