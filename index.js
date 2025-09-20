@@ -24,11 +24,17 @@ try {
             logger.info('✅ MongoDB conectado');
             mongoReady = true;
         }).catch(err => {
-            logger.warn('⚠️  MongoDB indisponível, seguindo com fallback JSON:', err.message);
+            const msg = err && err.message ? err.message : String(err);
+            if (err && err.code === 'MONGO_URI_MALFORMED') {
+                logger.warn('❌ MongoDB URI inválida. A executar em modo fallback JSON. Dica: se a password tiver caracteres especiais, codifique com encodeURIComponent.');
+                logger.debug(msg);
+            } else {
+                logger.warn('⚠️  MongoDB indisponível, seguindo com fallback JSON:', msg);
+            }
         });
     }
 } catch (e) {
-    logger.warn('⚠️  Erro ao inicializar MongoDB:', e.message);
+    logger.warn('⚠️  Erro ao inicializar MongoDB:', e && e.message ? e.message : e);
 }
 
 // Iniciar dashboard se CLIENT_SECRET estiver disponível e não for placeholder

@@ -6,12 +6,18 @@ try {
     const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
     if (MONGO_URI) {
         const { connect } = require('./db/mongoose');
-    ({ TicketModel, GuildConfigModel, TagModel } = require('./db/models'));
+        ({ TicketModel, GuildConfigModel, TagModel } = require('./db/models'));
         connect(MONGO_URI).then(() => {
             console.log('✅ Conectado ao MongoDB (storage)');
             useMongo = true;
         }).catch(err => {
-            console.error('❌ Falha ao conectar MongoDB, usando JSON fallback:', err.message);
+            const msg = err && err.message ? err.message : String(err);
+            if (err && err.code === 'MONGO_URI_MALFORMED') {
+                console.error('❌ MongoDB URI inválida. A usar fallback JSON. Dica: se a password tiver caracteres especiais (por ex. @ : / ? # [ ]), codifique-a com encodeURIComponent.');
+                console.debug(msg);
+            } else {
+                console.error('❌ Falha ao conectar MongoDB, usando JSON fallback:', msg);
+            }
             useMongo = false;
         });
     }
