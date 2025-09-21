@@ -197,6 +197,24 @@ async function createTicket(interaction, type) {
   // Guardar referência para futuras edições do cabeçalho
   try { await storage.updateTicket(ticket.id, { panel_message_id: panelMsg.id }); } catch {}
 
+  // Enviar log via webhook (preferência), com fallback para canal de logs
+  try {
+    const wm = interaction.client?.webhooks;
+    if (wm && typeof wm.sendTicketLog === 'function') {
+      await wm.sendTicketLog(interaction.guild.id, 'create', {
+        author: interaction.user,
+        ticketId: ticket.id?.toString(),
+        category: departmentInfo(type)?.name || type,
+        guild: interaction.guild
+      });
+    } else {
+      const logCh = await findLogsChannel(interaction.guild);
+      if (logCh && logCh.send) {
+        await logCh.send({ embeds: [new EmbedBuilder().setColor(0x7C3AED).setTitle('📩 Ticket Aberto').setDescription(`${interaction.user} abriu um ticket: ${channel}`)] });
+      }
+    }
+  } catch {}
+
   return interaction.reply({ content: `✅ Ticket criado: ${channel}`, flags: MessageFlags.Ephemeral });
 }
 
@@ -235,12 +253,29 @@ async function confirmClose(interaction) {
       const atts = m.attachments && m.attachments.size > 0 ? ` [anexos: ${Array.from(m.attachments.values()).map(a=>a.name).join(', ')}]` : '';
       transcript += `${ts} - ${author}: ${content}${atts}\n`;
     }
-    const logCh = await findLogsChannel(interaction.guild);
-    if (logCh && logCh.send) {
-      const { AttachmentBuilder } = require('discord.js');
-        await logCh.send({ content: `📄 Transcript do ticket em ${interaction.guild.name}: #${interaction.channel.name}` });
-        const file = new AttachmentBuilder(Buffer.from(transcript,'utf8'), { name: `transcript-${interaction.channel.id}.txt` });
-        await logCh.send({ files: [file] }).catch(()=>null);
+    const { AttachmentBuilder } = require('discord.js');
+    const file = new AttachmentBuilder(Buffer.from(transcript,'utf8'), { name: `transcript-${interaction.channel.id}.txt` });
+    let sent = false;
+    // Preferir webhook configurado
+    try {
+      const wm = interaction.client?.webhooks;
+      if (wm && typeof wm.sendTicketLog === 'function') {
+        await wm.sendTicketLog(interaction.guild.id, 'close', {
+          closedBy: interaction.user,
+          ticketId: (await storage.getTicketByChannel(interaction.channel.id))?.id?.toString(),
+          duration: '—',
+          guild: interaction.guild,
+          files: [file]
+        });
+        sent = true;
+      }
+    } catch {}
+    if (!sent) {
+      const logCh = await findLogsChannel(interaction.guild);
+      if (logCh && logCh.send) {
+        await logCh.send({ content: `📄 Transcript do ticket em ${interaction.guild.name}: #${interaction.channel.name}`, files: [file] });
+        sent = true;
+      }
     }
   } catch {}
   try { await interaction.editReply({ content: '✅ Ticket será arquivado. Obrigado!', components: [] }); } catch {}
@@ -391,13 +426,28 @@ async function handleButton(interaction) {
           const atts = m.attachments && m.attachments.size > 0 ? ` [anexos: ${Array.from(m.attachments.values()).map(a=>a.name).join(', ')}]` : '';
           transcript += `${ts} - ${author}: ${content}${atts}\n`;
         }
-        const logCh = await findLogsChannel(interaction.guild);
         const { AttachmentBuilder } = require('discord.js');
         const file = new AttachmentBuilder(Buffer.from(transcript,'utf8'), { name: `transcript-${interaction.channel.id}.txt` });
         let sent = false;
-        if (logCh && logCh.send) {
-            await logCh.send({ content: `📄 Transcript solicitado por ${interaction.user} em ${interaction.channel}`, files: [file] });
+        // Preferir webhook configurado
+        try {
+          const wm = interaction.client?.webhooks;
+          if (wm && typeof wm.sendTicketLog === 'function') {
+            await wm.sendTicketLog(interaction.guild.id, 'update', {
+              updatedBy: interaction.user,
+              ticketId: (await storage.getTicketByChannel(interaction.channel.id))?.id?.toString(),
+              guild: interaction.guild,
+              files: [file]
+            });
             sent = true;
+          }
+        } catch {}
+        if (!sent) {
+          const logCh = await findLogsChannel(interaction.guild);
+          if (logCh && logCh.send) {
+              await logCh.send({ content: `📄 Transcript solicitado por ${interaction.user} em ${interaction.channel}`, files: [file] });
+              sent = true;
+          }
         }
         if (!sent) {
           // fallback: enviar no próprio canal

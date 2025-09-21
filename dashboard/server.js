@@ -905,6 +905,13 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
         if (preferSqlite) {
             const storage = require('../utils/storage-sqlite');
             const saved = await storage.upsertWebhook({ guild_id: req.params.guildId, type, name, url, channel_id, channel_name, enabled: true });
+            // Atualizar gestor em memória para refletir imediatamente no runtime
+            try {
+                const client = global.discordClient;
+                if (client?.webhooks?.addWebhook) {
+                    await client.webhooks.addWebhook(req.params.guildId, name || 'Logs', url);
+                }
+            } catch {}
             return res.json({ success: true, webhook: saved });
         } else {
             const { WebhookModel } = require('../utils/db/models');
@@ -913,6 +920,13 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
                 { $set: { name, url, channel_id, channel_name, enabled: true } },
                 { upsert: true, new: true }
             ).lean();
+            // Atualizar gestor em memória para refletir imediatamente no runtime
+            try {
+                const client = global.discordClient;
+                if (client?.webhooks?.addWebhook) {
+                    await client.webhooks.addWebhook(req.params.guildId, name || 'Logs', url);
+                }
+            } catch {}
             return res.json({ success: true, webhook: saved });
         }
     } catch (e) {
@@ -931,6 +945,13 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
     if (preferSqlite) {
         const storage = require('../utils/storage-sqlite');
         await storage.deleteWebhookById(req.params.id, req.params.guildId);
+        // Remover do gestor em memória
+        try {
+            const client = global.discordClient;
+            if (client?.webhooks?.removeWebhook) {
+                await client.webhooks.removeWebhook(req.params.guildId);
+            }
+        } catch {}
         return res.json({ success: true, deleted: 1 });
     } else {
         if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not available' });
@@ -938,6 +959,13 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
         const { WebhookModel } = require('../utils/db/models');
         const result = await WebhookModel.deleteOne({ _id: req.params.id, guild_id: req.params.guildId });
+        // Remover do gestor em memória
+        try {
+            const client = global.discordClient;
+            if (client?.webhooks?.removeWebhook) {
+                await client.webhooks.removeWebhook(req.params.guildId);
+            }
+        } catch {}
         return res.json({ success: true, deleted: result.deletedCount });
     }
     } catch (e) {
