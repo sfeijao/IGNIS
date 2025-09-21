@@ -12,6 +12,16 @@ const { PermissionFlagsBits } = require('discord.js');
 const app = express();
 const PORT = process.env.PORT || 4000;
 const isSqlite = (process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite';
+const OAUTH_VERBOSE = (process.env.OAUTH_VERBOSE_LOGS || '').toLowerCase() === 'true';
+// Suppress common noisy warnings in production
+if ((process.env.NODE_ENV || 'production') === 'production') {
+    process.removeAllListeners('warning');
+    process.on('warning', (w) => {
+        // Keep a single-line summary for visibility in logs
+        if (/punycode/i.test(String(w && w.name))) return; // ignore punycode deprecation
+        try { console.warn('Warning:', w.name || 'Warning', '-', w.message || String(w)); } catch {}
+    });
+}
 // Prefer SQLite if explicitly selected or when Mongo isn't configured
 const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
 const preferSqlite = isSqlite || !hasMongoEnv;
@@ -63,18 +73,20 @@ passport.use(new DiscordStrategy({
 }));
 
 passport.serializeUser((user, done) => {
-    logger.info(`Serializing user: ${user.username} (${user.id})`);
+    if (OAUTH_VERBOSE) logger.info(`Serializing user: ${user.username} (${user.id})`);
+    else logger.debug && logger.debug(`Serializing user: ${user.username} (${user.id})`);
     done(null, user);
 });
 
 passport.deserializeUser((user, done) => {
-    logger.info(`Deserializing user: ${user.username} (${user.id})`);
+    if (OAUTH_VERBOSE) logger.info(`Deserializing user: ${user.username} (${user.id})`);
+    else logger.debug && logger.debug(`Deserializing user: ${user.username} (${user.id})`);
     done(null, user);
 });
 
 // Routes
 app.get('/', (req, res) => {
-    logger.info(`Route / - isAuthenticated: ${req.isAuthenticated()}, sessionID: ${req.sessionID}`);
+    if (OAUTH_VERBOSE) logger.info(`Route / - isAuthenticated: ${req.isAuthenticated()}, sessionID: ${req.sessionID}`);
     if (req.isAuthenticated()) {
         res.redirect('/dashboard');
     } else {
@@ -83,7 +95,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/login', (req, res) => {
-    logger.info(`Route /login - isAuthenticated: ${req.isAuthenticated()}, sessionID: ${req.sessionID}`);
+    if (OAUTH_VERBOSE) logger.info(`Route /login - isAuthenticated: ${req.isAuthenticated()}, sessionID: ${req.sessionID}`);
     if (req.isAuthenticated()) {
         res.redirect('/dashboard');
     } else {
@@ -92,7 +104,7 @@ app.get('/login', (req, res) => {
 });
 
 app.get('/dashboard', (req, res) => {
-    logger.info(`Route /dashboard - isAuthenticated: ${req.isAuthenticated()}, user: ${req.user ? req.user.username : 'none'}, sessionID: ${req.sessionID}`);
+    if (OAUTH_VERBOSE) logger.info(`Route /dashboard - isAuthenticated: ${req.isAuthenticated()}, user: ${req.user ? req.user.username : 'none'}, sessionID: ${req.sessionID}`);
     if (!req.isAuthenticated()) {
         return res.redirect('/login');
     }
@@ -128,8 +140,8 @@ app.get('/debug/session', (req, res) => {
 app.get('/auth/discord/callback',
     passport.authenticate('discord', { failureRedirect: '/login' }),
     (req, res) => {
-        logger.info(`OAuth callback success - user: ${req.user ? req.user.username : 'none'}, sessionID: ${req.sessionID}`);
-        logger.info(`Session data:`, req.session);
+        logger.info(`OAuth callback success - user: ${req.user ? req.user.username : 'none'}`);
+        if (OAUTH_VERBOSE) logger.info(`Session data:`, req.session);
         res.redirect('/dashboard');
     }
 );
