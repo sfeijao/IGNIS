@@ -1,3 +1,9 @@
+// Permitir escolher o backend de storage facilmente via variável de ambiente
+if ((process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite') {
+    module.exports = require('./storage-sqlite');
+    return;
+}
+
 const fs = require('fs').promises;
 const path = require('path');
 // Usar a ligação global do mongoose, sem criar uma ligação própria aqui
