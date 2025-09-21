@@ -41,7 +41,7 @@
           <div class="server-details">
             <h3>${w.type || 'logs'} — ${w.name || ''}</h3>
             <div class="server-stats"><span><i class="fas fa-hashtag"></i> ${w.channel_name || w.channel_id || '—'}</span><span class="server-status ${w.enabled ? 'online':'offline'}"><i class="fas fa-circle"></i> ${w.enabled ? 'Ativo':'Inativo'}</span></div>
-            <div class="control-grid" style="margin-top:10px; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px;">
+            <div class="control-grid" style="margin-top:10px;">
               <a href="${w.url}" target="_blank" rel="noopener" class="btn btn-glass btn-sm"><i class="fas fa-external-link-alt"></i> Abrir</a>
               <button class="btn btn-glass btn-sm" data-del="${w._id}"><i class="fas fa-trash"></i> Remover</button>
               <button class="btn btn-glass btn-sm" data-copy="${w.url}"><i class="fas fa-copy"></i> Copiar URL</button>

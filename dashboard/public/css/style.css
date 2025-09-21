@@ -205,7 +205,7 @@ body {
     cursor: pointer;
     transition: all var(--transition-normal);
     position: relative;
-    overflow: hidden;
+    overflow: hidden; /* keep shimmer effect inside */
 }
 
 .btn::before {
@@ -235,16 +235,24 @@ body {
 }
 
 .btn-glass {
-    background: var(--glass-bg);
+    background: rgba(255, 255, 255, 0.12); /* slightly more opaque for readability */
     -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
+    border: 1px solid rgba(255, 255, 255, 0.25);
     color: var(--text-primary);
 }
 
 .btn-glass:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.2);
     border-color: var(--primary);
+}
+
+/* Small button variant for compact grids */
+.btn-sm {
+    padding: var(--space-xs) var(--space-md);
+    font-size: 0.85rem;
+    min-width: 140px; /* avoid truncation */
+    white-space: nowrap;
 }
 
 .btn-logout {
@@ -268,6 +276,36 @@ body {
 .main-content {
     padding: var(--space-2xl) 0;
     min-height: calc(100vh - 200px);
+}
+
+/* Forms */
+label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.08);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+    font-size: 0.95rem;
+}
+
+.input::placeholder {
+    color: var(--text-muted);
+}
+
+.input:focus {
+    border-color: var(--primary);
+    background: rgba(255,255,255,0.12);
+    box-shadow: 0 0 0 3px rgba(139,92,246,0.25);
 }
 
 /* Grid Layouts */
@@ -366,6 +404,17 @@ body {
     gap: var(--space-md);
     color: var(--text-secondary);
     font-size: 0.9rem;
+}
+
+/* Controls grid inside cards (webhooks/panels) */
+.control-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 8px;
+}
+
+@media (max-width: 600px) {
+    .control-grid { grid-template-columns: 1fr; }
 }
 
 /* Stats Cards */
