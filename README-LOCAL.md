@@ -48,5 +48,42 @@ Troubleshooting
 - If port 4000 is in use, stop the existing node process or change `PORT` env.
 - Database file: `website/database/ignis_dashboard.db` — backup before schema changes.
 
+SQLite backend (tickets/configs/panels)
+
+- To use the new SQLite backend locally:
+
+```powershell
+$env:STORAGE_BACKEND = 'sqlite'; $env:DATA_DIR = "$PWD/data"; npm run start:local
+```
+
+- Health check:
+
+```powershell
+irm http://localhost:3000/api/health | ConvertTo-Json -Depth 5
+```
+
+- You should see `storage.backend` = `sqlite`.
+
+Backups & migration (local)
+
+- Create a backup (JSON + raw .db copy):
+
+```powershell
+npm run backup
+```
+
+- Migrate SQLite → Mongo (requires `MONGO_URI`):
+
+```powershell
+$env:MONGO_URI = 'mongodb+srv://user:pass@host/db'; npm run migrate:sqlite-to-mongo
+```
+
+- Migrate Mongo → SQLite:
+
+```powershell
+$env:MONGO_URI = 'mongodb+srv://user:pass@host/db'; npm run migrate:mongo-to-sqlite
+```
+
 Contact
-- Repo: https://github.com/sfeijao/IGNIS_BOT
+
+- Repo: <https://github.com/sfeijao/IGNIS_BOT>
