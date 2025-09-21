@@ -45,11 +45,18 @@ try {
             mongoReady = true;
         }).catch(err => {
             const msg = err && err.message ? err.message : String(err);
+            const code = err && (err.code || err.name);
             if (err && err.code === 'MONGO_URI_MALFORMED') {
                 logger.warn('❌ MongoDB URI inválida. A executar em modo fallback JSON. Dica: se a password tiver caracteres especiais, codifique com encodeURIComponent.');
                 logger.debug(msg);
+            } else if (err && err.code === 'MONGO_AUTH_FAILED') {
+                logger.warn('❌ Autenticação MongoDB falhou. A executar em modo fallback JSON. Verifique credenciais/permissões.');
+                logger.debug({ code, msg });
+            } else if (err && err.code === 'MONGO_NET_FAILED') {
+                logger.warn('⚠️  MongoDB não acessível (rede/DNS). A executar em modo fallback JSON.');
+                logger.debug({ code, msg });
             } else {
-                logger.warn('⚠️  MongoDB indisponível, seguindo com fallback JSON:', msg);
+                logger.warn('⚠️  MongoDB indisponível, seguindo com fallback JSON:', { code, msg });
             }
         });
     }

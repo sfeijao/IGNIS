@@ -74,6 +74,20 @@ async function connect(uri) {
       err.code = 'MONGO_URI_MALFORMED';
       throw err;
     }
+    // Authentication failures
+    if (/Authentication failed|bad auth|auth failed/i.test(message)) {
+      const masked = maskMongoUri(uri);
+      const err = new Error(`Falha de autenticação no MongoDB: ${message}. Verifique o utilizador, password (caracteres especiais devem ser codificados) e permissões no cluster. (uri: ${masked})`);
+      err.code = 'MONGO_AUTH_FAILED';
+      throw err;
+    }
+    // Network/selection failures
+    if (/ECONNREFUSED|ENOTFOUND|ETIMEDOUT|Server selection timed out|getaddrinfo|Name does not resolve|connection closed/i.test(message)) {
+      const masked = maskMongoUri(uri);
+      const err = new Error(`Falha de ligação ao MongoDB: ${message}. Verifique Network Access no Atlas (IP allowlist), DNS, e acesso de saída do ambiente. (uri: ${masked})`);
+      err.code = 'MONGO_NET_FAILED';
+      throw err;
+    }
     throw e;
   }
 }
