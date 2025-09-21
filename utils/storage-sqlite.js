@@ -56,6 +56,29 @@ db.serialize(() => {
     timestamp TEXT,
     data TEXT
   )`);
+
+  // Panels (tickets)
+  db.run(`CREATE TABLE IF NOT EXISTS panels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    message_id TEXT,
+    type TEXT,
+    theme TEXT,
+    payload TEXT
+  )`);
+
+  // Webhooks config
+  db.run(`CREATE TABLE IF NOT EXISTS webhooks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    type TEXT,
+    name TEXT,
+    url TEXT,
+    channel_id TEXT,
+    channel_name TEXT,
+    enabled INTEGER
+  )`);
 });
 
 function run(sql, params = []) {
@@ -248,6 +271,104 @@ class SqliteStorage {
       timestamp: r.timestamp,
       data: parseJSON(r.data, null)
     }));
+  }
+
+  // Panels API
+  async getPanels(guildId) {
+    const rows = await all(`SELECT * FROM panels WHERE guild_id = ? AND (type IS NULL OR type = 'tickets')`, [guildId]);
+    return rows.map(p => ({
+      _id: String(p.id),
+      guild_id: p.guild_id,
+      channel_id: p.channel_id,
+      message_id: p.message_id,
+      type: p.type || 'tickets',
+      theme: p.theme || 'dark',
+      payload: parseJSON(p.payload, null)
+    }));
+  }
+
+  async upsertPanel({ guild_id, channel_id, message_id, theme = 'dark', payload = null, type = 'tickets' }) {
+    // Try update existing by guild/channel/type
+    const existing = await get(`SELECT * FROM panels WHERE guild_id = ? AND channel_id = ? AND (type IS NULL OR type = ?)`, [guild_id, channel_id, type]);
+    if (existing) {
+      await run(`UPDATE panels SET message_id = ?, theme = ?, payload = ? WHERE id = ?`, [message_id || existing.message_id, theme, payload ? JSON.stringify(payload) : existing.payload, existing.id]);
+      return { _id: String(existing.id), guild_id, channel_id, message_id: message_id || existing.message_id, theme, payload, type };
+    }
+    const r = await run(`INSERT INTO panels (guild_id, channel_id, message_id, type, theme, payload) VALUES (?, ?, ?, ?, ?, ?)`, [guild_id, channel_id, message_id || null, type, theme, payload ? JSON.stringify(payload) : null]);
+    return { _id: String(r.lastID), guild_id, channel_id, message_id: message_id || null, theme, payload, type };
+  }
+
+  async findPanelById(id) {
+    const row = await get(`SELECT * FROM panels WHERE id = ?`, [id]);
+    if (!row) return null;
+    return {
+      _id: String(row.id),
+      guild_id: row.guild_id,
+      channel_id: row.channel_id,
+      message_id: row.message_id,
+      type: row.type || 'tickets',
+      theme: row.theme || 'dark',
+      payload: parseJSON(row.payload, null)
+    };
+  }
+
+  async updatePanel(id, updates) {
+    const cur = await get(`SELECT * FROM panels WHERE id = ?`, [id]);
+    if (!cur) return null;
+    const next = { ...cur, ...updates };
+    await run(`UPDATE panels SET guild_id = ?, channel_id = ?, message_id = ?, type = ?, theme = ?, payload = ? WHERE id = ?`, [
+      next.guild_id,
+      next.channel_id,
+      next.message_id || null,
+      next.type || 'tickets',
+      next.theme || 'dark',
+      next.payload ? JSON.stringify(next.payload) : null,
+      id
+    ]);
+    return {
+      _id: String(id),
+      guild_id: next.guild_id,
+      channel_id: next.channel_id,
+      message_id: next.message_id || null,
+      type: next.type || 'tickets',
+      theme: next.theme || 'dark',
+      payload: next.payload || null
+    };
+  }
+
+  async deletePanel(id) {
+    await run(`DELETE FROM panels WHERE id = ?`, [id]);
+    return true;
+  }
+
+  // Webhooks API
+  async listWebhooks(guildId) {
+    const rows = await all(`SELECT * FROM webhooks WHERE guild_id = ?`, [guildId]);
+    return rows.map(w => ({
+      _id: String(w.id),
+      guild_id: w.guild_id,
+      type: w.type || 'logs',
+      name: w.name || null,
+      url: w.url,
+      channel_id: w.channel_id || null,
+      channel_name: w.channel_name || null,
+      enabled: !!w.enabled
+    }));
+  }
+
+  async upsertWebhook({ guild_id, type = 'logs', name, url, channel_id, channel_name, enabled = true }) {
+    const current = await get(`SELECT * FROM webhooks WHERE guild_id = ? AND type = ?`, [guild_id, type]);
+    if (current) {
+      await run(`UPDATE webhooks SET name = ?, url = ?, channel_id = ?, channel_name = ?, enabled = ? WHERE id = ?`, [name || current.name, url, channel_id || null, channel_name || null, enabled ? 1 : 0, current.id]);
+      return { _id: String(current.id), guild_id, type, name: name || current.name, url, channel_id, channel_name, enabled };
+    }
+    const r = await run(`INSERT INTO webhooks (guild_id, type, name, url, channel_id, channel_name, enabled) VALUES (?, ?, ?, ?, ?, ?, ?)`, [guild_id, type, name || null, url, channel_id || null, channel_name || null, enabled ? 1 : 0]);
+    return { _id: String(r.lastID), guild_id, type, name, url, channel_id, channel_name, enabled };
+  }
+
+  async deleteWebhookById(id, guildId) {
+    await run(`DELETE FROM webhooks WHERE id = ? AND guild_id = ?`, [id, guildId]);
+    return true;
   }
 }
 

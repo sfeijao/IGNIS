@@ -197,12 +197,26 @@ client.once('ready', () => {
     
     // Tornar cliente disponível globalmente para o dashboard
     global.discordClient = client;
-    // Restaurar painéis de tickets do Mongo (se disponível)
+    // Restaurar painéis de tickets do storage (Mongo/SQLite)
     (async () => {
         try {
-            if (!mongoReady) return;
-            const { PanelModel } = require('./utils/db/models');
-            const panels = await PanelModel.find({ type: 'tickets' }).lean();
+            const isSqlite = (process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite';
+            let panels = [];
+            if (isSqlite) {
+                const storage = require('./utils/storage');
+                // Não temos guild_id aqui, então restauramos por fetch por guilds mais tarde; como fallback, não fazer scan global pesado.
+                // Estratégia: iterar guilds e tentar recriar por canal conhecido
+                for (const guild of client.guilds.cache.values()) {
+                    try {
+                        const list = await storage.getPanels(guild.id);
+                        panels.push(...list);
+                    } catch {}
+                }
+            } else {
+                if (!mongoReady) return;
+                const { PanelModel } = require('./utils/db/models');
+                panels = await PanelModel.find({ type: 'tickets' }).lean();
+            }
             for (const p of panels) {
                 try {
                     const guild = client.guilds.cache.get(p.guild_id) || await client.guilds.fetch(p.guild_id);
@@ -236,12 +250,17 @@ client.once('ready', () => {
                             msg = await channel.send({ embeds: [embed], components: [row1, row2] });
                         }
                         // Atualizar/guardar painel
-                        const { PanelModel } = require('./utils/db/models');
-                        await PanelModel.findOneAndUpdate(
-                            { guild_id: p.guild_id, channel_id: p.channel_id, type: 'tickets' },
-                            { $set: { message_id: msg.id, theme: p.theme || 'dark', payload: p.payload || null } },
-                            { upsert: true }
-                        );
+                        if (isSqlite) {
+                            const storage = require('./utils/storage');
+                            await storage.upsertPanel({ guild_id: p.guild_id, channel_id: p.channel_id, message_id: msg.id, theme: p.theme || 'dark', payload: p.payload || null, type: 'tickets' });
+                        } else {
+                            const { PanelModel } = require('./utils/db/models');
+                            await PanelModel.findOneAndUpdate(
+                                { guild_id: p.guild_id, channel_id: p.channel_id, type: 'tickets' },
+                                { $set: { message_id: msg.id, theme: p.theme || 'dark', payload: p.payload || null } },
+                                { upsert: true }
+                            );
+                        }
                     }
                 } catch (e) {
                     logger.warn('Falha a restaurar painel:', e.message);

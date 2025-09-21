@@ -11,6 +11,7 @@ const { PermissionFlagsBits } = require('discord.js');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const isSqlite = (process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite';
 
 // Helper function for OAuth callback URL
 const getCallbackURL = () => {
@@ -156,6 +157,7 @@ app.get('/api/health', (req, res) => {
             dashboard: true,
             discord,
             mongo: mongoState,
+            storage: isSqlite ? 'sqlite' : (process.env.MONGO_URI || process.env.MONGODB_URI ? 'mongo' : 'json'),
             time: new Date().toISOString()
         });
     } catch (e) {
@@ -361,10 +363,13 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
 
-        // Buscar paineis do Mongo se disponível
+        // Buscar paineis do storage
         let panels = [];
         try {
-            if (process.env.MONGO_URI || process.env.MONGODB_URI) {
+            if (isSqlite) {
+                const storage = require('../utils/storage');
+                panels = await storage.getPanels(guildId);
+            } else if (process.env.MONGO_URI || process.env.MONGODB_URI) {
                 const { PanelModel } = require('../utils/db/models');
                 panels = await PanelModel.find({ guild_id: guildId, type: 'tickets' }).lean();
             } else {
@@ -437,29 +442,21 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
         let enrichedCombined = [...enriched];
         let remainingDetected = [...detected];
         try {
-            const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
-            const { isReady } = require('../utils/db/mongoose');
-            if (hasMongoEnv && isReady() && detected.length) {
-                const { PanelModel } = require('../utils/db/models');
+            if (isSqlite && detected.length) {
+                const storage = require('../utils/storage');
                 const savedKeys = new Set();
                 const newlySaved = [];
                 for (const d of detected) {
-                    const doc = await PanelModel.findOneAndUpdate(
-                        { guild_id: d.guild_id, channel_id: d.channel_id, type: 'tickets' },
-                        { $setOnInsert: { message_id: d.message_id, theme: d.theme }, $set: { message_id: d.message_id } },
-                        { upsert: true, new: true }
-                    ).lean();
+                    const doc = await storage.upsertPanel({ guild_id: d.guild_id, channel_id: d.channel_id, message_id: d.message_id, theme: d.theme, type: 'tickets' });
                     if (doc) {
                         const key = `${doc.channel_id}`;
                         savedKeys.add(key);
                         newlySaved.push(doc);
                     }
                 }
-                // Adicionar recém-guardados à lista enriquecida (se não duplicados)
                 for (const p of newlySaved) {
                     const exists = enrichedCombined.find(e => `${e.channel_id}` === `${p.channel_id}`);
                     if (!exists) {
-                        // Enriquecer minimamente com info do canal
                         enrichedCombined.push({
                             ...p,
                             channelName: guild.channels.cache.get(p.channel_id)?.name || p.channel_id,
@@ -468,8 +465,39 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                         });
                     }
                 }
-                // Remover detetados que foram guardados para evitar duplicados e alterar badge
                 remainingDetected = detected.filter(d => !savedKeys.has(`${d.channel_id}`));
+            } else {
+                const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
+                const { isReady } = require('../utils/db/mongoose');
+                if (hasMongoEnv && isReady() && detected.length) {
+                    const { PanelModel } = require('../utils/db/models');
+                    const savedKeys = new Set();
+                    const newlySaved = [];
+                    for (const d of detected) {
+                        const doc = await PanelModel.findOneAndUpdate(
+                            { guild_id: d.guild_id, channel_id: d.channel_id, type: 'tickets' },
+                            { $setOnInsert: { message_id: d.message_id, theme: d.theme }, $set: { message_id: d.message_id } },
+                            { upsert: true, new: true }
+                        ).lean();
+                        if (doc) {
+                            const key = `${doc.channel_id}`;
+                            savedKeys.add(key);
+                            newlySaved.push(doc);
+                        }
+                    }
+                    for (const p of newlySaved) {
+                        const exists = enrichedCombined.find(e => `${e.channel_id}` === `${p.channel_id}`);
+                        if (!exists) {
+                            enrichedCombined.push({
+                                ...p,
+                                channelName: guild.channels.cache.get(p.channel_id)?.name || p.channel_id,
+                                channelExists: !!guild.channels.cache.get(p.channel_id),
+                                messageExists: !!p.message_id,
+                            });
+                        }
+                    }
+                    remainingDetected = detected.filter(d => !savedKeys.has(`${d.channel_id}`));
+                }
             }
         } catch {}
 
@@ -605,20 +633,26 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
 
+        let useMongoPanels = false;
         let PanelModel;
-        try {
-            const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
-            const { isReady } = require('../utils/db/mongoose');
-            if (!hasMongoEnv) {
-                return res.status(503).json({ success: false, error: 'Mongo not configured' });
+        if (isSqlite) {
+            // use storage
+        } else {
+            try {
+                const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
+                const { isReady } = require('../utils/db/mongoose');
+                if (!hasMongoEnv) {
+                    return res.status(503).json({ success: false, error: 'Mongo not configured' });
+                }
+                if (!isReady()) {
+                    return res.status(503).json({ success: false, error: 'Mongo not connected' });
+                }
+                PanelModel = require('../utils/db/models').PanelModel;
+                useMongoPanels = true;
+            } catch (e) {
+                logger.error('Panels storage load error:', e);
+                return res.status(500).json({ success: false, error: 'Panels storage not available' });
             }
-            if (!isReady()) {
-                return res.status(503).json({ success: false, error: 'Mongo not connected' });
-            }
-            PanelModel = require('../utils/db/models').PanelModel;
-        } catch (e) {
-            logger.error('Panels storage load error:', e);
-            return res.status(500).json({ success: false, error: 'Panels storage not available' });
         }
         
         // Suportar guardar painéis detetados (IDs sintéticos começados por 'detected:')
@@ -629,19 +663,30 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 const chId = parts[2];
                 const msgId = parts[3];
                 if (!chId || !msgId) return res.status(400).json({ success: false, error: 'Invalid detected panel id' });
-                const doc = await PanelModel.findOneAndUpdate(
-                    { guild_id: guildId, channel_id: chId, type: 'tickets' },
-                    { $setOnInsert: { message_id: msgId, theme: (data?.theme || 'dark') }, $set: { message_id: msgId } },
-                    { upsert: true, new: true }
-                ).lean();
-                return res.json({ success: true, message: 'Panel saved', panel: doc });
+                if (isSqlite) {
+                    const storage = require('../utils/storage');
+                    const doc = await storage.upsertPanel({ guild_id: guildId, channel_id: chId, message_id: msgId, theme: (data?.theme || 'dark') });
+                    return res.json({ success: true, message: 'Panel saved', panel: doc });
+                } else {
+                    const doc = await PanelModel.findOneAndUpdate(
+                        { guild_id: guildId, channel_id: chId, type: 'tickets' },
+                        { $setOnInsert: { message_id: msgId, theme: (data?.theme || 'dark') }, $set: { message_id: msgId } },
+                        { upsert: true, new: true }
+                    ).lean();
+                    return res.json({ success: true, message: 'Panel saved', panel: doc });
+                }
             } catch (e) {
                 logger.error('Error saving detected panel:', e);
                 return res.status(500).json({ success: false, error: 'Failed to save detected panel' });
             }
         }
 
-        const panel = await PanelModel.findById(panelId).lean();
+        const panel = useMongoPanels
+            ? await PanelModel.findById(panelId).lean()
+            : await (async () => {
+                const storage = require('../utils/storage');
+                return await storage.findPanelById(panelId);
+            })();
         if (!panel || `${panel.guild_id}` !== `${guildId}`) {
             return res.status(404).json({ success: false, error: 'Panel not found' });
         }
@@ -658,7 +703,12 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 // Reenviar usando payload guardado, sem apagar o anterior
                 const payload = panel.payload || { content: '🎫 Painel de tickets' };
                 message = await channel.send(payload);
-                updated = await PanelModel.findByIdAndUpdate(panelId, { $set: { message_id: message.id } }, { new: true }).lean();
+                if (useMongoPanels) {
+                    updated = await PanelModel.findByIdAndUpdate(panelId, { $set: { message_id: message.id } }, { new: true }).lean();
+                } else {
+                    const storage = require('../utils/storage');
+                    updated = await storage.updatePanel(panelId, { message_id: message.id });
+                }
                 return res.json({ success: true, message: 'Panel resent', panel: updated });
             }
             case 'recreate': {
@@ -669,7 +719,12 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 }
                 const payload = panel.payload || { content: '🎫 Painel de tickets' };
                 message = await channel.send(payload);
-                updated = await PanelModel.findByIdAndUpdate(panelId, { $set: { message_id: message.id } }, { new: true }).lean();
+                if (useMongoPanels) {
+                    updated = await PanelModel.findByIdAndUpdate(panelId, { $set: { message_id: message.id } }, { new: true }).lean();
+                } else {
+                    const storage = require('../utils/storage');
+                    updated = await storage.updatePanel(panelId, { message_id: message.id });
+                }
                 return res.json({ success: true, message: 'Panel recreated', panel: updated });
             }
             case 'save': {
@@ -682,12 +737,19 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                     const old = await channel.messages.fetch(panel.message_id).catch(() => null);
                     if (old) await old.delete().catch(() => {});
                 }
-                await PanelModel.findByIdAndDelete(panelId);
+                if (useMongoPanels) {
+                    await PanelModel.findByIdAndDelete(panelId);
+                } else {
+                    const storage = require('../utils/storage');
+                    await storage.deletePanel(panelId);
+                }
                 return res.json({ success: true, message: 'Panel deleted' });
             }
             case 'theme': {
                 const newTheme = (data?.theme === 'light') ? 'light' : 'dark';
-                const updatedTheme = await PanelModel.findByIdAndUpdate(panelId, { $set: { theme: newTheme } }, { new: true }).lean();
+                const updatedTheme = useMongoPanels
+                    ? await PanelModel.findByIdAndUpdate(panelId, { $set: { theme: newTheme } }, { new: true }).lean()
+                    : await (async () => { const storage = require('../utils/storage'); return await storage.updatePanel(panelId, { theme: newTheme }); })();
                 return res.json({ success: true, message: 'Theme updated', theme: newTheme, panel: updatedTheme });
             }
             default:
@@ -790,16 +852,22 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
-        if (!hasMongoEnv) return res.json({ success: true, webhooks: [] });
-        const { isReady } = require('../utils/db/mongoose');
-        if (!isReady()) {
-            // Evitar timeout de buffering quando a DB não está pronta
-            return res.json({ success: true, webhooks: [] });
+        if (isSqlite) {
+            const storage = require('../utils/storage');
+            const list = await storage.listWebhooks(req.params.guildId);
+            return res.json({ success: true, webhooks: list });
+        } else {
+            const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
+            if (!hasMongoEnv) return res.json({ success: true, webhooks: [] });
+            const { isReady } = require('../utils/db/mongoose');
+            if (!isReady()) {
+                // Evitar timeout de buffering quando a DB não está pronta
+                return res.json({ success: true, webhooks: [] });
+            }
+            const { WebhookModel } = require('../utils/db/models');
+            const list = await WebhookModel.find({ guild_id: req.params.guildId }).lean();
+            return res.json({ success: true, webhooks: list });
         }
-        const { WebhookModel } = require('../utils/db/models');
-        const list = await WebhookModel.find({ guild_id: req.params.guildId }).lean();
-        res.json({ success: true, webhooks: list });
     } catch (e) {
         logger.error('Error listing webhooks:', e);
         res.status(500).json({ success: false, error: 'Failed to list webhooks' });
@@ -813,19 +881,27 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-    const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
-    if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not available' });
-    const { isReady } = require('../utils/db/mongoose');
-    if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
-    const { WebhookModel } = require('../utils/db/models');
+    if (!isSqlite) {
+        const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
+        if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not available' });
+        const { isReady } = require('../utils/db/mongoose');
+        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
+    }
         const { type = 'logs', name = 'Logs', url, channel_id, channel_name } = req.body || {};
         if (!url || !url.startsWith('https://discord.com/api/webhooks/')) return res.status(400).json({ success: false, error: 'Invalid webhook URL' });
-        const saved = await WebhookModel.findOneAndUpdate(
-            { guild_id: req.params.guildId, type },
-            { $set: { name, url, channel_id, channel_name, enabled: true } },
-            { upsert: true, new: true }
-        ).lean();
-        res.json({ success: true, webhook: saved });
+        if (isSqlite) {
+            const storage = require('../utils/storage');
+            const saved = await storage.upsertWebhook({ guild_id: req.params.guildId, type, name, url, channel_id, channel_name, enabled: true });
+            return res.json({ success: true, webhook: saved });
+        } else {
+            const { WebhookModel } = require('../utils/db/models');
+            const saved = await WebhookModel.findOneAndUpdate(
+                { guild_id: req.params.guildId, type },
+                { $set: { name, url, channel_id, channel_name, enabled: true } },
+                { upsert: true, new: true }
+            ).lean();
+            return res.json({ success: true, webhook: saved });
+        }
     } catch (e) {
         logger.error('Error upserting webhook:', e);
         res.status(500).json({ success: false, error: 'Failed to upsert webhook' });
@@ -839,13 +915,19 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-    const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
-    if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not available' });
-    const { isReady } = require('../utils/db/mongoose');
-    if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
-    const { WebhookModel } = require('../utils/db/models');
+    if (isSqlite) {
+        const storage = require('../utils/storage');
+        await storage.deleteWebhookById(req.params.id, req.params.guildId);
+        return res.json({ success: true, deleted: 1 });
+    } else {
+        const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
+        if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not available' });
+        const { isReady } = require('../utils/db/mongoose');
+        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
+        const { WebhookModel } = require('../utils/db/models');
         const result = await WebhookModel.deleteOne({ _id: req.params.id, guild_id: req.params.guildId });
-        res.json({ success: true, deleted: result.deletedCount });
+        return res.json({ success: true, deleted: result.deletedCount });
+    }
     } catch (e) {
         logger.error('Error deleting webhook:', e);
         res.status(500).json({ success: false, error: 'Failed to delete webhook' });
@@ -864,30 +946,32 @@ app.post('/api/guild/:guildId/webhooks/auto-setup', async (req, res) => {
         const wm = client.webhooks;
         const ok = await wm.setupForGuild(guild);
         if (!ok) return res.status(500).json({ success: false, error: 'Failed to setup webhook' });
-        // Persist to Mongo if available (best effort)
+        // Persist to storage (best effort)
         try {
-            const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
-            const { isReady } = require('../utils/db/mongoose');
-            if (hasMongoEnv && isReady()) {
-                const { WebhookModel } = require('../utils/db/models');
-                const info = wm.webhooks.get(req.params.guildId);
-                const url = info?.webhook?.url;
-                const name = info?.name || guild.name;
-                // Try to find a likely channel used for webhook creation for better metadata
-                let channel_id = null, channel_name = null;
-                try {
-                    // Heuristic: prefer a #logs-like text channel where bot can manage webhooks
-                    const candidate = guild.channels.cache.find(c => c.type === 0 && /log|ticket|arquivo/i.test(c.name) && c.permissionsFor(guild.members.me)?.has(['ManageWebhooks','SendMessages']))
-                        || guild.systemChannel
-                        || guild.channels.cache.find(c => c.type === 0);
-                    if (candidate) { channel_id = candidate.id; channel_name = candidate.name || null; }
-                } catch {}
-                if (url) {
-                    await WebhookModel.findOneAndUpdate(
-                        { guild_id: req.params.guildId, type: 'logs' },
-                        { $set: { name, url, channel_id, channel_name, enabled: true } },
-                        { upsert: true }
-                    );
+            const info = wm.webhooks.get(req.params.guildId);
+            const url = info?.webhook?.url;
+            const name = info?.name || guild.name;
+            let channel_id = null, channel_name = null;
+            try {
+                const candidate = guild.channels.cache.find(c => c.type === 0 && /log|ticket|arquivo/i.test(c.name) && c.permissionsFor(guild.members.me)?.has(['ManageWebhooks','SendMessages']))
+                    || guild.systemChannel
+                    || guild.channels.cache.find(c => c.type === 0);
+                if (candidate) { channel_id = candidate.id; channel_name = candidate.name || null; }
+            } catch {}
+            if (url) {
+                if (isSqlite) {
+                    const storage = require('../utils/storage');
+                    await storage.upsertWebhook({ guild_id: req.params.guildId, type: 'logs', name, url, channel_id, channel_name, enabled: true });
+                } else if ((process.env.MONGO_URI || process.env.MONGODB_URI)) {
+                    const { isReady } = require('../utils/db/mongoose');
+                    if (isReady()) {
+                        const { WebhookModel } = require('../utils/db/models');
+                        await WebhookModel.findOneAndUpdate(
+                            { guild_id: req.params.guildId, type: 'logs' },
+                            { $set: { name, url, channel_id, channel_name, enabled: true } },
+                            { upsert: true }
+                        );
+                    }
                 }
             }
         } catch (e) {
