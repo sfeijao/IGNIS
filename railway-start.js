@@ -30,7 +30,8 @@ try {
             masked = `${uri.split('://')[0] || 'mongodb'}://***`;
         }
     }
-    logger.info('🧩 Mongo env (Railway)', { hasMongoEnv: !!uri, uri: masked });
+    const key = process.env.MONGO_URI ? 'MONGO_URI' : (process.env.MONGODB_URI ? 'MONGODB_URI' : 'none');
+    logger.info(`🧩 Mongo env (Railway): present=${!!uri} key=${key} uri=${masked}`);
 } catch {}
 
 async function railwayStart() {
