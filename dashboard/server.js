@@ -12,6 +12,9 @@ const { PermissionFlagsBits } = require('discord.js');
 const app = express();
 const PORT = process.env.PORT || 4000;
 const isSqlite = (process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite';
+// Prefer SQLite if explicitly selected or when Mongo isn't configured
+const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
+const preferSqlite = isSqlite || !hasMongoEnv;
 
 // Helper function for OAuth callback URL
 const getCallbackURL = () => {
@@ -852,12 +855,11 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        if (isSqlite) {
-            const storage = require('../utils/storage');
+        if (preferSqlite) {
+            const storage = require('../utils/storage-sqlite');
             const list = await storage.listWebhooks(req.params.guildId);
             return res.json({ success: true, webhooks: list });
         } else {
-            const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
             if (!hasMongoEnv) return res.json({ success: true, webhooks: [] });
             const { isReady } = require('../utils/db/mongoose');
             if (!isReady()) {
@@ -881,16 +883,15 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-    if (!isSqlite) {
-        const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
-        if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not available' });
-        const { isReady } = require('../utils/db/mongoose');
-        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
-    }
+        if (!preferSqlite) {
+            if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not available' });
+            const { isReady } = require('../utils/db/mongoose');
+            if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
+        }
         const { type = 'logs', name = 'Logs', url, channel_id, channel_name } = req.body || {};
         if (!url || !url.startsWith('https://discord.com/api/webhooks/')) return res.status(400).json({ success: false, error: 'Invalid webhook URL' });
-        if (isSqlite) {
-            const storage = require('../utils/storage');
+        if (preferSqlite) {
+            const storage = require('../utils/storage-sqlite');
             const saved = await storage.upsertWebhook({ guild_id: req.params.guildId, type, name, url, channel_id, channel_name, enabled: true });
             return res.json({ success: true, webhook: saved });
         } else {
@@ -915,12 +916,11 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-    if (isSqlite) {
-        const storage = require('../utils/storage');
+    if (preferSqlite) {
+        const storage = require('../utils/storage-sqlite');
         await storage.deleteWebhookById(req.params.id, req.params.guildId);
         return res.json({ success: true, deleted: 1 });
     } else {
-        const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
         if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not available' });
         const { isReady } = require('../utils/db/mongoose');
         if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
@@ -959,8 +959,8 @@ app.post('/api/guild/:guildId/webhooks/auto-setup', async (req, res) => {
                 if (candidate) { channel_id = candidate.id; channel_name = candidate.name || null; }
             } catch {}
             if (url) {
-                if (isSqlite) {
-                    const storage = require('../utils/storage');
+                if (preferSqlite) {
+                    const storage = require('../utils/storage-sqlite');
                     await storage.upsertWebhook({ guild_id: req.params.guildId, type: 'logs', name, url, channel_id, channel_name, enabled: true });
                 } else if ((process.env.MONGO_URI || process.env.MONGODB_URI)) {
                     const { isReady } = require('../utils/db/mongoose');
