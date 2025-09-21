@@ -1,28 +1,29 @@
 const fs = require('fs').promises;
 const path = require('path');
+// Usar a ligação global do mongoose, sem criar uma ligação própria aqui
 let useMongo = false;
 let TicketModel, GuildConfigModel, TagModel;
 try {
-    const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
-    if (MONGO_URI) {
-        const { connect } = require('./db/mongoose');
-        ({ TicketModel, GuildConfigModel, TagModel } = require('./db/models'));
-        connect(MONGO_URI).then(() => {
-            console.log('✅ Conectado ao MongoDB (storage)');
-            useMongo = true;
-        }).catch(err => {
-            const msg = err && err.message ? err.message : String(err);
-            if (err && err.code === 'MONGO_URI_MALFORMED') {
-                console.error('❌ MongoDB URI inválida. A usar fallback JSON. Dica: se a password tiver caracteres especiais (por ex. @ : / ? # [ ]), codifique-a com encodeURIComponent.');
-                console.debug(msg);
-            } else {
-                console.error('❌ Falha ao conectar MongoDB, usando JSON fallback:', msg);
-            }
-            useMongo = false;
-        });
+    const { mongoose, isReady } = require('./db/mongoose');
+    ({ TicketModel, GuildConfigModel, TagModel } = require('./db/models'));
+    // Estado inicial com base na ligação atual
+    useMongo = !!isReady();
+    if (useMongo) {
+        console.log('✅ Mongo pronto (storage)');
     }
+    // Acompanhar eventos de ligação para alternar entre Mongo e JSON
+    try {
+        mongoose.connection.on('connected', () => {
+            useMongo = true;
+            console.log('✅ Mongo conectado (storage)');
+        });
+        mongoose.connection.on('disconnected', () => {
+            useMongo = false;
+            console.warn('⚠️ Mongo desconectado, a usar JSON fallback (storage)');
+        });
+    } catch {}
 } catch (e) {
-    console.warn('MongoDB não disponível, usando JSON storage. Motivo:', e.message);
+    console.warn('MongoDB não disponível, a usar JSON storage. Motivo:', e && e.message ? e.message : e);
 }
 
 class SimpleStorage {
