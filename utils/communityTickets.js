@@ -689,7 +689,12 @@ async function handleModal(interaction) {
     }
     const t = await storage.getTicketByChannel(interaction.channel.id);
     if (!t) return interaction.reply({ content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
-    const newName = interaction.fields.getTextInputValue('ticket:rename:newname').trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '').slice(1, 90);
+    const newName = interaction.fields.getTextInputValue('ticket:rename:newname')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-_]/g, '')
+      .slice(0, 90);
     if (!newName) return interaction.reply({ content: 'Fornece um nome válido.', flags: MessageFlags.Ephemeral });
     try {
   await interaction.channel.setName(newName, `Renomeado por ${interaction.user.tag}`);
