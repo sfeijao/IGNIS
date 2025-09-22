@@ -1206,8 +1206,11 @@ app.get('/api/guild/:guildId/tickets/:ticketId/logs', async (req, res) => {
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
 
-        const storage = require('../utils/storage');
-        const logs = await storage.getTicketLogs(ticketId, 200);
+    const storage = require('../utils/storage');
+    let limit = parseInt(String(req.query.limit||'200'), 10);
+    if (!Number.isFinite(limit) || limit <= 0) limit = 200;
+    limit = Math.max(10, Math.min(1000, limit));
+    const logs = await storage.getTicketLogs(ticketId, limit);
         // Enriquecer com informações do ator
         const enriched = await Promise.all((logs || []).map(async (l) => {
             let actorTag = null, actorAvatar = null;

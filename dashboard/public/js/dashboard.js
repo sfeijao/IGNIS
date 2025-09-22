@@ -519,6 +519,13 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                         <button class="btn btn-glass" id="ctl-apply">Aplicar</button>
                     </div>
                 </div>
+                <div class="chips-row">
+                    <button class="chip" data-chip="status" data-value="open">Abertos</button>
+                    <button class="chip" data-chip="status" data-value="claimed">Reclamados</button>
+                    <button class="chip" data-chip="status" data-value="closed">Fechados</button>
+                    <button class="chip" data-chip="locked" data-value="yes"><i class="fas fa-lock"></i> Bloqueados</button>
+                    <button class="chip" data-chip="reset" data-value="all">Limpar</button>
+                </div>
             </div>
         `;
     }
@@ -574,6 +581,45 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             const sorted = this.applyTicketSort(filtered);
             const listEl = document.querySelector('#ticketsList .tickets-grid');
             if (listEl) listEl.innerHTML = sorted.map(t=>this.createAdvancedTicketCard(t)).join('');
+            this.updateActiveChips();
+        });
+        // Chips handlers
+        const chips = Array.from(document.querySelectorAll('.ticket-controls .chip'));
+        chips.forEach(ch => ch.addEventListener('click', (e)=>{
+            const type = ch.getAttribute('data-chip');
+            const val = ch.getAttribute('data-value');
+            if (type === 'reset') {
+                this._filter = { status:'all', locked:'all' };
+            } else if (type === 'status') {
+                this._filter = { ...this._filter, status: val };
+            } else if (type === 'locked') {
+                this._filter = { ...this._filter, locked: val };
+            }
+            localStorage.setItem('ignis_ticket_view', JSON.stringify({ filter: this._filter, sort: this._sort }));
+            // Reflect to selects
+            const selStatus = document.getElementById('ctl-status');
+            const selLocked = document.getElementById('ctl-locked');
+            if (selStatus) selStatus.value = this._filter.status || 'all';
+            if (selLocked) selLocked.value = this._filter.locked || 'all';
+            const filtered = this.applyTicketFilters(this._allTickets||[]);
+            const sorted = this.applyTicketSort(filtered);
+            const listEl = document.querySelector('#ticketsList .tickets-grid');
+            if (listEl) listEl.innerHTML = sorted.map(t=>this.createAdvancedTicketCard(t)).join('');
+            this.updateActiveChips();
+        }));
+        this.updateActiveChips();
+    }
+
+    updateActiveChips(){
+        const chips = Array.from(document.querySelectorAll('.ticket-controls .chip'));
+        chips.forEach(ch => {
+            const type = ch.getAttribute('data-chip');
+            const val = ch.getAttribute('data-value');
+            let active = false;
+            if (type === 'status') active = (this._filter?.status) === val;
+            if (type === 'locked') active = (this._filter?.locked) === val;
+            if (type === 'reset') active = (this._filter?.status) === 'all' && (this._filter?.locked) === 'all';
+            ch.classList.toggle('active', !!active);
         });
     }
     
@@ -828,7 +874,22 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                             </div>
 
                             <div class="logs-card">
-                                <h3>Histórico de Ações</h3>
+                                <div class="logs-header">
+                                    <h3>Histórico de Ações</h3>
+                                    <div class="logs-toolbar">
+                                        <label for="logs-limit">Limite</label>
+                                        <select id="logs-limit">
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                            <option value="200" selected>200</option>
+                                            <option value="500">500</option>
+                                        </select>
+                                        <button class="btn btn-glass btn-sm" id="logs-refresh"><i class="fas fa-sync"></i> Atualizar</button>
+                                        <div class="flex-spacer"></div>
+                                        <button class="btn btn-glass btn-sm" id="logs-export-json"><i class="fas fa-file-code"></i> Export JSON</button>
+                                        <button class="btn btn-glass btn-sm" id="logs-export-csv"><i class="fas fa-file-csv"></i> Export CSV</button>
+                                    </div>
+                                </div>
                                 <div class="logs-container">
                                     <div class="loading"><div class="loading-spinner"></div> A carregar histórico...</div>
                                 </div>
@@ -851,13 +912,21 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         `;
         
         document.body.appendChild(modal);
-        // Fetch logs asynchronously
-        this.loadTicketLogs(ticket.id).catch(console.error);
+        // Fetch logs asynchronously and wire toolbar
+        const sel = document.querySelector('.modal-overlay #logs-limit');
+        const refresh = document.querySelector('.modal-overlay #logs-refresh');
+        const btnJson = document.querySelector('.modal-overlay #logs-export-json');
+        const btnCsv = document.querySelector('.modal-overlay #logs-export-csv');
+        const getLimit = () => parseInt(sel?.value || '200', 10) || 200;
+        this.loadTicketLogs(ticket.id, getLimit()).catch(console.error);
+        refresh?.addEventListener('click', ()=> this.loadTicketLogs(ticket.id, getLimit()));
+        btnJson?.addEventListener('click', ()=> this.exportTicketLogsJSON(ticket.id));
+        btnCsv?.addEventListener('click', ()=> this.exportTicketLogsCSV(ticket.id));
     }
 
-    async loadTicketLogs(ticketId){
+    async loadTicketLogs(ticketId, limit=200){
         try {
-            const res = await fetch(`/api/guild/${this.currentGuild}/tickets/${ticketId}/logs`);
+            const res = await fetch(`/api/guild/${this.currentGuild}/tickets/${ticketId}/logs?limit=${encodeURIComponent(limit)}`);
             const data = await res.json();
             const box = document.querySelector('.modal-overlay .logs-container');
             if (!box) return;
@@ -865,6 +934,8 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 box.innerHTML = `<div class="error-message"><i class="fas fa-exclamation-circle"></i> Erro a carregar logs</div>`;
                 return;
             }
+            this._ticketLogsCache = this._ticketLogsCache || {};
+            this._ticketLogsCache[ticketId] = data.logs || [];
             box.innerHTML = this.renderTicketLogs(data.logs||[]);
         } catch (e) {
             const box = document.querySelector('.modal-overlay .logs-container');
@@ -899,6 +970,50 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 `).join('')}
             </div>
         `;
+    }
+
+    // Export helpers
+    async exportTicketLogsJSON(ticketId){
+        const logs = await this.ensureLogs(ticketId);
+        const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ticket-${ticketId}-logs.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    async exportTicketLogsCSV(ticketId){
+        const logs = await this.ensureLogs(ticketId);
+        const headers = ['timestamp','action','actor_id','actorTag','message'];
+        const rows = logs.map(l=>[
+            new Date(l.timestamp).toISOString(),
+            (l.action||'').replaceAll('"','""'),
+            (l.actor_id||'').replaceAll('"','""'),
+            (l.actorTag||'').replaceAll('"','""'),
+            (l.message||'').replaceAll('"','""')
+        ]);
+        const csv = [headers.join(','), ...rows.map(r=>r.map(v=>`"${v}`+`"`).join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ticket-${ticketId}-logs.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    async ensureLogs(ticketId){
+        this._ticketLogsCache = this._ticketLogsCache || {};
+        if (!this._ticketLogsCache[ticketId]) {
+            await this.loadTicketLogs(ticketId, 200);
+        }
+        return this._ticketLogsCache[ticketId] || [];
     }
     
     getModalAdvancedTicketActions(ticket) {
@@ -1373,6 +1488,10 @@ const additionalStyles = `
     .control select { background: rgba(255,255,255,0.06); color: var(--text-primary); border:1px solid var(--glass-border); border-radius: 8px; padding: 8px 10px; min-width: 160px; }
 
     .logs-card { margin-top: var(--space-lg); }
+    .logs-header { display:flex; align-items:center; justify-content: space-between; margin-bottom: var(--space-sm); }
+    .logs-toolbar { display:flex; gap: 8px; align-items: center; }
+    .logs-toolbar select { background: rgba(255,255,255,0.06); color: var(--text-primary); border:1px solid var(--glass-border); border-radius: 8px; padding: 6px 8px; }
+    .flex-spacer { flex: 1 1 auto; }
     .timeline { position: relative; margin-left: 10px; }
     .timeline:before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--glass-border); }
     .timeline-item { position: relative; padding-left: 24px; margin-bottom: 14px; }
@@ -1385,6 +1504,10 @@ const additionalStyles = `
     .loading { display:flex; align-items:center; gap:8px; color: var(--text-secondary); }
     .loading-spinner { width:14px; height:14px; border:2px solid var(--glass-border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    .chips-row { display:flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .chip { background: rgba(255,255,255,0.06); color: var(--text-primary); border:1px solid var(--glass-border); border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+    .chip.active { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.35); color: #BFDBFE; }
 `;
 
 // Inject additional styles
