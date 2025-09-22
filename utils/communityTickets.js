@@ -351,6 +351,10 @@ async function handleButton(interaction) {
     if (!staff) {
       return interaction.reply({ content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
     }
+    // Obter ticket pelo canal (necessário para todas as ações abaixo)
+    const t = await storage.getTicketByChannel(interaction.channel.id);
+    if (!t) return interaction.reply({ content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
+
     if (id === 'ticket:finalize:open') {
       if (t.status === 'closed') return interaction.reply({ content: '⚠️ Já está finalizado/fechado.', flags: MessageFlags.Ephemeral });
       const modal = new ModalBuilder()
@@ -366,10 +370,6 @@ async function handleButton(interaction) {
       modal.addComponents(row);
       return interaction.showModal(modal);
     }
-
-    // Obter ticket pelo canal
-    const t = await storage.getTicketByChannel(interaction.channel.id);
-    if (!t) return interaction.reply({ content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
 
     if (id === 'ticket:claim') {
       if (t.assigned_to) {
