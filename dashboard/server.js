@@ -1039,10 +1039,18 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
         if (!channel || !channel.send) return res.status(404).json({ success: false, error: 'Channel not found' });
         // Build payload like slash command
         const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+        const visualAssets = require('../assets/visual-assets');
         const embed = new EmbedBuilder()
             .setColor(theme === 'light' ? 0x60A5FA : 0x7C3AED)
             .setTitle('🎫 Centro de Suporte')
-            .setDescription('Escolhe o departamento abaixo para abrir um ticket privado com a equipa.\n\n• Resposta rápida • Canal privado • Histórico guardado');
+            .setDescription('Escolhe o departamento abaixo para abrir um ticket privado com a equipa.')
+            .setThumbnail(visualAssets.realImages.supportIcon)
+            .setImage(visualAssets.realImages.supportBanner)
+            .addFields(
+                { name: '• Resposta rápida', value: 'Tempo médio: minutos', inline: true },
+                { name: '• Canal privado', value: 'Visível só para ti e staff', inline: true },
+                { name: '• Histórico guardado', value: 'Transcript disponível', inline: true },
+            );
         const row1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),

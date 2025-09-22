@@ -153,15 +153,20 @@ async function createTicket(interaction, type) {
   });
 
   // Mensagem inicial no canal
+  const visualAssets = require('../assets/visual-assets');
   const intro = new EmbedBuilder()
     .setColor(info.color)
     .setTitle(`${info.emoji} ${info.name}`)
     .setDescription([
       `Olá ${interaction.user}, obrigado por abrir um ticket!`,
-      'Conta-nos resumidamente o que precisas; a equipa será notificada. ',
+      'Deixa uma descrição objetiva do teu pedido para acelerar a resposta.',
       '',
-      'Quando terminar, podes fechar o ticket com o botão abaixo.'
+      'Regras rápidas:',
+      '• Sem spam • Respeito pela equipa • Um tópico por ticket',
+      '',
+      'Usa os botões abaixo para gerir este ticket (prioridade, nota, transcript, fechar).'
     ].join('\n'))
+    .setThumbnail(visualAssets.realImages.supportIcon)
     .addFields(
       { name: 'Utilizador', value: `${interaction.user}`, inline: true },
       { name: 'Abertura', value: `<t:${Math.floor(Date.now()/1000)}:R>`, inline: true },
@@ -169,6 +174,7 @@ async function createTicket(interaction, type) {
       { name: 'Prioridade', value: priorityLabel(ticket.priority), inline: true },
       { name: 'Responsável', value: '—', inline: true }
     )
+    .setFooter({ text: 'IGNIS • Sistema de Tickets', iconURL: interaction.client.user.displayAvatarURL() })
     .setTimestamp();
 
   const controlsRow1 = new ActionRowBuilder().addComponents(

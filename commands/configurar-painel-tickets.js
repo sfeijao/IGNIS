@@ -44,17 +44,13 @@ module.exports = {
             const header = new EmbedBuilder()
                 .setColor(color)
                 .setTitle(`${EMOJIS.TICKET} Centro de Suporte`)
-                .setDescription([
-                    'Escolhe o departamento abaixo para abrir um ticket privado com a equipa.',
-                    '',
-                    '• Resposta rápida • Canal privado • Histórico guardado'
-                ].join('\n'))
+                .setDescription('Escolhe o departamento abaixo para abrir um ticket privado com a equipa.')
                 .setThumbnail(visualAssets.realImages.supportIcon)
                 .setImage(visualAssets.realImages.supportBanner)
                 .addFields(
-                    { name: 'Servidor', value: `**${interaction.guild.name}**`, inline: true },
-                    { name: 'Staff Online', value: `${interaction.guild.members.cache.filter(m => !m.user.bot && m.presence?.status !== 'offline').size}`, inline: true },
-                    { name: 'Status', value: 'OPERACIONAL', inline: true },
+                    { name: '• Resposta rápida', value: 'Tempo médio: minutos', inline: true },
+                    { name: '• Canal privado', value: 'Visível só para ti e staff', inline: true },
+                    { name: '• Histórico guardado', value: 'Transcript disponível', inline: true },
                 )
                 .setFooter({ text: 'IGNIS • Sistema de Tickets unificado', iconURL: interaction.client.user.displayAvatarURL() });
 
