@@ -404,8 +404,13 @@ class SqliteStorage {
     return { ticket_id, guild_id, actor_id, action, message, data, timestamp };
   }
 
-  async getTicketLogs(ticketId, limit = 100) {
-    const rows = await all(`SELECT * FROM ticket_logs WHERE ticket_id = ? ORDER BY datetime(timestamp) DESC LIMIT ?`, [ticketId?.toString(), Math.max(1, Math.min(1000, limit))]);
+  async getTicketLogs(ticketId, limit = 100, offset = 0) {
+    const safeLimit = Math.max(1, Math.min(1000, Number(limit) || 100));
+    const safeOffset = Math.max(0, Number(offset) || 0);
+    const rows = await all(
+      `SELECT * FROM ticket_logs WHERE ticket_id = ? ORDER BY datetime(timestamp) DESC LIMIT ? OFFSET ?`,
+      [ticketId?.toString(), safeLimit, safeOffset]
+    );
     return rows.map(r => ({
       id: r.id,
       ticket_id: r.ticket_id,

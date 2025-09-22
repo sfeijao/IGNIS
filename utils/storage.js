@@ -312,16 +312,23 @@ class SimpleStorage {
         return entry;
     }
 
-    async getTicketLogs(ticketId, limit = 100) {
+    async getTicketLogs(ticketId, limit = 100, offset = 0) {
+        const safeLimit = Math.max(1, Math.min(1000, Number(limit) || 100));
+        const safeOffset = Math.max(0, Number(offset) || 0);
         if (useMongo && TicketLogModel) {
-            const list = await TicketLogModel.find({ ticket_id: String(ticketId) }).sort({ timestamp: -1 }).limit(Math.max(1, Math.min(1000, limit))).lean();
+            const list = await TicketLogModel
+                .find({ ticket_id: String(ticketId) })
+                .sort({ timestamp: -1 })
+                .skip(safeOffset)
+                .limit(safeLimit)
+                .lean();
             return list;
         }
         const logs = await this.readFile(this.logsFile) || [];
-        return logs
+        const filtered = logs
             .filter(l => (l.type === 'ticket_log') && `${l.ticket_id}` === `${ticketId}`)
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-            .slice(0, Math.max(1, Math.min(1000, limit)));
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        return filtered.slice(safeOffset, safeOffset + safeLimit);
     }
 }
 

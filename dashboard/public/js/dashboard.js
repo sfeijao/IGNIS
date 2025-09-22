@@ -442,7 +442,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         this._allTickets = tickets || [];
         // Read persisted view state
         const persisted = JSON.parse(localStorage.getItem('ignis_ticket_view') || '{}');
-        this._filter = persisted.filter || { status: 'all', locked: 'all' };
+    this._filter = persisted.filter || { status: 'all', locked: 'all' };
         this._sort = persisted.sort || { by: 'created_at', dir: 'desc' };
         const filtered = this.applyTicketFilters(this._allTickets);
         const sorted = this.applyTicketSort(filtered);
@@ -533,8 +533,11 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
     applyTicketFilters(list){
         let out = Array.isArray(list) ? list.slice() : [];
         const f = this._filter || {};
+        // Support multi-select status: status can be 'all' | string | string[]
         if (f.status && f.status !== 'all') {
-            out = out.filter(t => (t.status||'').toLowerCase() === f.status);
+            const statuses = Array.isArray(f.status) ? f.status : [f.status];
+            const set = new Set(statuses.map(s => String(s).toLowerCase()));
+            out = out.filter(t => set.has(String(t.status||'').toLowerCase()));
         }
         if (f.locked && f.locked !== 'all') {
             const wanted = f.locked === 'yes';
@@ -591,15 +594,22 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             if (type === 'reset') {
                 this._filter = { status:'all', locked:'all' };
             } else if (type === 'status') {
-                this._filter = { ...this._filter, status: val };
+                // Toggle in a multi-select array
+                let cur = this._filter?.status || 'all';
+                let arr = Array.isArray(cur) ? cur.slice() : (cur==='all'?[]:[cur]);
+                if (arr.includes(val)) arr = arr.filter(v=>v!==val); else arr.push(val);
+                this._filter = { ...this._filter, status: arr.length?arr:'all' };
             } else if (type === 'locked') {
-                this._filter = { ...this._filter, locked: val };
+                // Toggle locked yes/no tri-state
+                const cur = this._filter?.locked || 'all';
+                const next = cur === 'yes' ? 'all' : 'yes';
+                this._filter = { ...this._filter, locked: next };
             }
             localStorage.setItem('ignis_ticket_view', JSON.stringify({ filter: this._filter, sort: this._sort }));
             // Reflect to selects
             const selStatus = document.getElementById('ctl-status');
             const selLocked = document.getElementById('ctl-locked');
-            if (selStatus) selStatus.value = this._filter.status || 'all';
+            if (selStatus) selStatus.value = Array.isArray(this._filter.status)?'all':(this._filter.status || 'all');
             if (selLocked) selLocked.value = this._filter.locked || 'all';
             const filtered = this.applyTicketFilters(this._allTickets||[]);
             const sorted = this.applyTicketSort(filtered);
@@ -616,7 +626,10 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             const type = ch.getAttribute('data-chip');
             const val = ch.getAttribute('data-value');
             let active = false;
-            if (type === 'status') active = (this._filter?.status) === val;
+            if (type === 'status') {
+                const cur = this._filter?.status;
+                active = Array.isArray(cur) ? cur.includes(val) : cur === val;
+            }
             if (type === 'locked') active = (this._filter?.locked) === val;
             if (type === 'reset') active = (this._filter?.status) === 'all' && (this._filter?.locked) === 'all';
             ch.classList.toggle('active', !!active);
@@ -886,6 +899,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                                         </select>
                                         <button class="btn btn-glass btn-sm" id="logs-refresh"><i class="fas fa-sync"></i> Atualizar</button>
                                         <div class="flex-spacer"></div>
+                                        <button class="btn btn-glass btn-sm" id="logs-show-more"><i class="fas fa-plus"></i> Mostrar mais</button>
                                         <button class="btn btn-glass btn-sm" id="logs-export-json"><i class="fas fa-file-code"></i> Export JSON</button>
                                         <button class="btn btn-glass btn-sm" id="logs-export-csv"><i class="fas fa-file-csv"></i> Export CSV</button>
                                     </div>
@@ -915,18 +929,29 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         // Fetch logs asynchronously and wire toolbar
         const sel = document.querySelector('.modal-overlay #logs-limit');
         const refresh = document.querySelector('.modal-overlay #logs-refresh');
+        const showMore = document.querySelector('.modal-overlay #logs-show-more');
         const btnJson = document.querySelector('.modal-overlay #logs-export-json');
         const btnCsv = document.querySelector('.modal-overlay #logs-export-csv');
         const getLimit = () => parseInt(sel?.value || '200', 10) || 200;
-        this.loadTicketLogs(ticket.id, getLimit()).catch(console.error);
-        refresh?.addEventListener('click', ()=> this.loadTicketLogs(ticket.id, getLimit()));
+        this._logsPageState = this._logsPageState || {}; // { [ticketId]: { offset, limit, hasMore } }
+        this._logsPageState[ticket.id] = { offset: 0, limit: getLimit(), hasMore: true };
+        this.loadTicketLogs(ticket.id, getLimit(), 0, true).catch(console.error);
+        refresh?.addEventListener('click', ()=> {
+            this._logsPageState[ticket.id] = { offset: 0, limit: getLimit(), hasMore: true };
+            this.loadTicketLogs(ticket.id, getLimit(), 0, true)
+        });
+        showMore?.addEventListener('click', ()=>{
+            const st = this._logsPageState[ticket.id] || { offset: 0, limit: getLimit() };
+            const nextOffset = (st.offset||0) + (st.limit||getLimit());
+            this.loadTicketLogs(ticket.id, st.limit||getLimit(), nextOffset, false);
+        });
         btnJson?.addEventListener('click', ()=> this.exportTicketLogsJSON(ticket.id));
         btnCsv?.addEventListener('click', ()=> this.exportTicketLogsCSV(ticket.id));
     }
 
-    async loadTicketLogs(ticketId, limit=200){
+    async loadTicketLogs(ticketId, limit=200, offset=0, replace=true){
         try {
-            const res = await fetch(`/api/guild/${this.currentGuild}/tickets/${ticketId}/logs?limit=${encodeURIComponent(limit)}`);
+            const res = await fetch(`/api/guild/${this.currentGuild}/tickets/${ticketId}/logs?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}`);
             const data = await res.json();
             const box = document.querySelector('.modal-overlay .logs-container');
             if (!box) return;
@@ -935,8 +960,13 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 return;
             }
             this._ticketLogsCache = this._ticketLogsCache || {};
-            this._ticketLogsCache[ticketId] = data.logs || [];
-            box.innerHTML = this.renderTicketLogs(data.logs||[]);
+            const prev = replace ? [] : (this._ticketLogsCache[ticketId] || []);
+            const combined = [...prev, ...(data.logs || [])];
+            this._ticketLogsCache[ticketId] = combined;
+            box.innerHTML = this.renderTicketLogs(combined);
+            // update pager state
+            const st = this._logsPageState?.[ticketId] || { offset: 0, limit };
+            this._logsPageState[ticketId] = { ...st, offset, limit, hasMore: (data.logs||[]).length >= (st.limit||limit) };
         } catch (e) {
             const box = document.querySelector('.modal-overlay .logs-container');
             if (box) box.innerHTML = `<div class="error-message"><i class="fas fa-exclamation-circle"></i> Erro a carregar logs</div>`;
@@ -974,38 +1004,22 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
 
     // Export helpers
     async exportTicketLogsJSON(ticketId){
-        const logs = await this.ensureLogs(ticketId);
-        const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
+        // Prefer server-side export for large sets
         const a = document.createElement('a');
-        a.href = url;
+        a.href = `/api/guild/${this.currentGuild}/tickets/${ticketId}/logs/export?format=json&all=true&limit=1000`;
         a.download = `ticket-${ticketId}-logs.json`;
         document.body.appendChild(a);
         a.click();
         a.remove();
-        URL.revokeObjectURL(url);
     }
 
     async exportTicketLogsCSV(ticketId){
-        const logs = await this.ensureLogs(ticketId);
-        const headers = ['timestamp','action','actor_id','actorTag','message'];
-        const rows = logs.map(l=>[
-            new Date(l.timestamp).toISOString(),
-            (l.action||'').replaceAll('"','""'),
-            (l.actor_id||'').replaceAll('"','""'),
-            (l.actorTag||'').replaceAll('"','""'),
-            (l.message||'').replaceAll('"','""')
-        ]);
-        const csv = [headers.join(','), ...rows.map(r=>r.map(v=>`"${v}`+`"`).join(','))].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
+        a.href = `/api/guild/${this.currentGuild}/tickets/${ticketId}/logs/export?format=csv&all=true&limit=1000`;
         a.download = `ticket-${ticketId}-logs.csv`;
         document.body.appendChild(a);
         a.click();
         a.remove();
-        URL.revokeObjectURL(url);
     }
 
     async ensureLogs(ticketId){

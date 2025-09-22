@@ -1210,7 +1210,9 @@ app.get('/api/guild/:guildId/tickets/:ticketId/logs', async (req, res) => {
     let limit = parseInt(String(req.query.limit||'200'), 10);
     if (!Number.isFinite(limit) || limit <= 0) limit = 200;
     limit = Math.max(10, Math.min(1000, limit));
-    const logs = await storage.getTicketLogs(ticketId, limit);
+    let offset = parseInt(String(req.query.offset||'0'), 10);
+    if (!Number.isFinite(offset) || offset < 0) offset = 0;
+    const logs = await storage.getTicketLogs(ticketId, limit, offset);
         // Enriquecer com informações do ator
         const enriched = await Promise.all((logs || []).map(async (l) => {
             let actorTag = null, actorAvatar = null;
@@ -1229,6 +1231,59 @@ app.get('/api/guild/:guildId/tickets/:ticketId/logs', async (req, res) => {
     } catch (e) {
         logger.error('Error fetching ticket logs:', e);
         return res.status(500).json({ success: false, error: 'Failed to fetch ticket logs' });
+    }
+});
+
+// Export logs (CSV/JSON) with pagination support
+app.get('/api/guild/:guildId/tickets/:ticketId/logs/export', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    try {
+        const { guildId, ticketId } = req.params;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+
+        const storage = require('../utils/storage');
+        const format = (req.query.format || 'json').toString().toLowerCase();
+        const all = String(req.query.all || 'false').toLowerCase() === 'true';
+        let limit = parseInt(String(req.query.limit|| (all ? '1000' : '500')), 10);
+        if (!Number.isFinite(limit) || limit <= 0) limit = all ? 1000 : 500;
+        limit = Math.max(10, Math.min(5000, limit));
+        let offset = parseInt(String(req.query.offset||'0'), 10);
+        if (!Number.isFinite(offset) || offset < 0) offset = 0;
+
+        // For JSON/SQLite backends we don't want to load too much into memory; cap to 5000
+        const logs = await storage.getTicketLogs(ticketId, limit, offset);
+
+        if (format === 'csv') {
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename=ticket-${ticketId}-logs.csv`);
+            const headers = ['timestamp','action','actor_id','message'];
+            const escape = (s='') => '"' + String(s).replace(/"/g,'""') + '"';
+            const lines = [headers.join(',')];
+            for (const l of logs) {
+                lines.push([
+                    escape(new Date(l.timestamp).toISOString()),
+                    escape(l.action||''),
+                    escape(l.actor_id||''),
+                    escape(l.message||'')
+                ].join(','));
+            }
+            return res.send(lines.join('\n'));
+        }
+
+        // default JSON
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=ticket-${ticketId}-logs.json`);
+        return res.send(JSON.stringify({ success: true, logs }, null, 2));
+    } catch (e) {
+        logger.error('Error exporting ticket logs:', e);
+        return res.status(500).json({ success: false, error: 'Failed to export ticket logs' });
     }
 });
 
