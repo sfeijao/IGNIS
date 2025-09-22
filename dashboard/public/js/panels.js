@@ -49,6 +49,15 @@
     const html = panels.map(p => {
       const created = new Date(p.createdAt || p.created_at || p._id?.toString().substring(0,8)).toLocaleString('pt-PT');
       const detectedBadge = p.detected ? '<span class="badge badge-warn">detectado</span>' : '<span class="badge badge-ok">guardado</span>';
+      // Controls: if detected, only allow Save; other actions require a persisted panel
+      const controls = p.detected
+        ? '<button class="btn btn-success btn-sm" data-action="save" title="Registar este painel na base de dados"><i class="fas fa-save"></i> Guardar</button>'
+        : [
+            '<button class="btn btn-glass btn-sm" data-action="resend"><i class="fas fa-paper-plane"></i> Reenviar</button>',
+            '<button class="btn btn-primary btn-sm" data-action="recreate"><i class="fas fa-rotate"></i> Recriar</button>',
+            `<button class=\"btn btn-glass btn-sm\" data-action=\"theme\" data-theme=\"${p.theme==='dark'?'light':'dark'}\"><i class=\"fas fa-adjust\"></i> Tema: ${p.theme==='dark'?'Claro':'Escuro'}</button>`,
+            '<button class="btn btn-logout btn-sm" data-action="delete"><i class="fas fa-trash"></i> Eliminar</button>'
+          ].join('');
       return `
         <div class="server-card glass-card ${p.__justSaved ? 'highlight-saved' : ''}" data-panel-id="${p._id}" data-channel-name="${(p.channelName || p.channel_id).toString().replace(/"/g,'&quot;')}">
           <div class="server-info">
@@ -62,11 +71,7 @@
                 </span>
               </div>
               <div class="control-grid" style="margin-top:10px; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px;">
-                <button class="btn btn-glass btn-sm" data-action="resend"><i class="fas fa-paper-plane"></i> Reenviar</button>
-                <button class="btn btn-primary btn-sm" data-action="recreate"><i class="fas fa-rotate"></i> Recriar</button>
-                <button class="btn btn-glass btn-sm" data-action="theme" data-theme="${p.theme==='dark'?'light':'dark'}"><i class="fas fa-adjust"></i> Tema: ${p.theme==='dark'?'Claro':'Escuro'}</button>
-                <button class="btn btn-logout btn-sm" data-action="delete"><i class="fas fa-trash"></i> Eliminar</button>
-                ${p.detected ? '<button class="btn btn-success btn-sm" data-action="save" title="Registar este painel na base de dados"><i class="fas fa-save"></i> Guardar</button>' : ''}
+                ${controls}
               </div>
             </div>
           </div>

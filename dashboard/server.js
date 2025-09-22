@@ -378,11 +378,11 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
 
-        // Buscar paineis do storage
+        // Buscar painéis do storage ativo
         let panels = [];
         try {
-            if (isSqlite) {
-                const storage = require('../utils/storage');
+            if (preferSqlite) {
+                const storage = require('../utils/storage-sqlite');
                 panels = await storage.getPanels(guildId);
             } else if (process.env.MONGO_URI || process.env.MONGODB_URI) {
                 const { PanelModel } = require('../utils/db/models');
@@ -453,12 +453,12 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
             if (detected.length >= 50) break;
         }
 
-        // Tentar persistir deteções no Mongo e refletir imediatamente como "guardado" na resposta
+        // Tentar persistir deteções no backend ativo e refletir imediatamente como "guardado" na resposta
         let enrichedCombined = [...enriched];
         let remainingDetected = [...detected];
         try {
-            if (isSqlite && detected.length) {
-                const storage = require('../utils/storage');
+            if (preferSqlite && detected.length) {
+                const storage = require('../utils/storage-sqlite');
                 const savedKeys = new Set();
                 const newlySaved = [];
                 for (const d of detected) {
@@ -587,21 +587,35 @@ app.post('/api/guild/:guildId/panels/scan', async (req, res) => {
             if (detected.length >= 200) break;
         }
 
-        // Persistir deteções (opcional) se Mongo pronto
+        // Persistir deteções (opcional) no backend ativo
         let persisted = 0;
-        if (persist) {
+        if (persist && detected.length) {
             try {
-                const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
-                const { isReady } = require('../utils/db/mongoose');
-                if (hasMongoEnv && isReady() && detected.length) {
-                    const { PanelModel } = require('../utils/db/models');
+                if (preferSqlite) {
+                    const storage = require('../utils/storage-sqlite');
                     for (const d of detected) {
-                        const r = await PanelModel.findOneAndUpdate(
-                            { guild_id: d.guild_id, channel_id: d.channel_id, type: 'tickets' },
-                            { $setOnInsert: { message_id: d.message_id, theme: d.theme }, $set: { message_id: d.message_id } },
-                            { upsert: true, new: true }
-                        );
-                        if (r) persisted++;
+                        const r = await storage.upsertPanel({
+                            guild_id: d.guild_id,
+                            channel_id: d.channel_id,
+                            message_id: d.message_id,
+                            theme: d.theme,
+                            type: 'tickets'
+                        });
+                        if (r && r._id) persisted++;
+                    }
+                } else {
+                    const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
+                    const { isReady } = require('../utils/db/mongoose');
+                    if (hasMongoEnv && isReady()) {
+                        const { PanelModel } = require('../utils/db/models');
+                        for (const d of detected) {
+                            const r = await PanelModel.findOneAndUpdate(
+                                { guild_id: d.guild_id, channel_id: d.channel_id, type: 'tickets' },
+                                { $setOnInsert: { message_id: d.message_id, theme: d.theme }, $set: { message_id: d.message_id } },
+                                { upsert: true, new: true }
+                            );
+                            if (r) persisted++;
+                        }
                     }
                 }
             } catch {}
@@ -650,9 +664,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
 
         let useMongoPanels = false;
         let PanelModel;
-        if (isSqlite) {
-            // use storage
-        } else {
+        if (!preferSqlite) {
             try {
                 const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
                 const { isReady } = require('../utils/db/mongoose');
@@ -678,8 +690,8 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 const chId = parts[2];
                 const msgId = parts[3];
                 if (!chId || !msgId) return res.status(400).json({ success: false, error: 'Invalid detected panel id' });
-                if (isSqlite) {
-                    const storage = require('../utils/storage');
+                if (preferSqlite) {
+                    const storage = require('../utils/storage-sqlite');
                     const doc = await storage.upsertPanel({ guild_id: guildId, channel_id: chId, message_id: msgId, theme: (data?.theme || 'dark') });
                     return res.json({ success: true, message: 'Panel saved', panel: doc });
                 } else {
@@ -699,7 +711,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
         const panel = useMongoPanels
             ? await PanelModel.findById(panelId).lean()
             : await (async () => {
-                const storage = require('../utils/storage');
+                const storage = require('../utils/storage-sqlite');
                 return await storage.findPanelById(panelId);
             })();
         if (!panel || `${panel.guild_id}` !== `${guildId}`) {
@@ -1062,9 +1074,12 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
         );
         const payload = { embeds: [embed], components: [row1, row2] };
         const msg = await channel.send(payload);
-        // Persist PanelModel if mongo available
+        // Persist panel to active storage backend
         try {
-            if (process.env.MONGO_URI || process.env.MONGODB_URI) {
+            if (preferSqlite) {
+                const storage = require('../utils/storage-sqlite');
+                await storage.upsertPanel({ guild_id: req.params.guildId, channel_id, message_id: msg.id, theme, payload, type: 'tickets' });
+            } else if (process.env.MONGO_URI || process.env.MONGODB_URI) {
                 const { PanelModel } = require('../utils/db/models');
                 await PanelModel.findOneAndUpdate(
                     { guild_id: req.params.guildId, channel_id, type: 'tickets' },
