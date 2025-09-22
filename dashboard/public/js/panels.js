@@ -34,19 +34,20 @@
 
   function renderList(panels) {
     if (!container) return;
-    if (!panels || panels.length === 0) {
+    const visible = (panels || []).filter(p => (p.detected === true) || (p.channelExists && p.messageExists));
+    if (!visible || visible.length === 0) {
       container.innerHTML = `
         <div class="no-servers glass-card">
           <div class="no-servers-content">
             <div class="no-servers-icon"><i class="fas fa-ticket-alt"></i></div>
-            <h3>Nenhum painel encontrado</h3>
-            <p>Use o comando /configurar-painel-tickets no Discord para criar um.</p>
+            <h3>Nenhum painel ativo encontrado</h3>
+            <p>Crie um novo painel ou use "Procurar Painéis" para detetar painéis existentes no Discord.</p>
           </div>
         </div>`;
       return;
     }
 
-    const html = panels.map(p => {
+    const html = visible.map(p => {
       const created = new Date(p.createdAt || p.created_at || p._id?.toString().substring(0,8)).toLocaleString('pt-PT');
       const detectedBadge = p.detected ? '<span class="badge badge-warn">detectado</span>' : '<span class="badge badge-ok">guardado</span>';
       // Controls: if detected, only allow Save; other actions require a persisted panel
@@ -70,7 +71,7 @@
                   <i class="fas fa-circle"></i> Mensagem ${p.messageExists ? 'encontrada':'não encontrada'}
                 </span>
               </div>
-              <div class="control-grid" style="margin-top:10px; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px;">
+              <div class="control-grid">
                 ${controls}
               </div>
             </div>

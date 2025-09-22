@@ -250,9 +250,14 @@ body {
 /* Small button variant for compact grids */
 .btn-sm {
     padding: var(--space-xs) var(--space-md);
-    font-size: 0.85rem;
-    min-width: 140px; /* avoid truncation */
+    font-size: 0.95rem;
+    min-width: 130px; /* avoid truncation but fit more buttons */
     white-space: nowrap;
+}
+
+.btn-sm:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(139,92,246,0.35);
 }
 
 .btn-logout {
@@ -409,8 +414,8 @@ label {
 /* Controls grid inside cards (webhooks/panels) */
 .control-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
 }
 
 @media (max-width: 600px) {
