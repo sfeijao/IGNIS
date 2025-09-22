@@ -10,6 +10,7 @@
   function badgeClass(status){
     switch(status){
       case 'open': return 'badge-open';
+      case 'claimed': return 'badge-claimed';
       case 'waiting': return 'badge-waiting';
       case 'closed': return 'badge-closed';
       default: return '';
@@ -18,10 +19,14 @@
 
   function setBadges(t){
     el('t-id').textContent = `#${t.id}`;
-    el('t-status').textContent = (t.status||'open').toUpperCase();
+    el('t-status').textContent = (({
+      open:'ABERTO', claimed:'RECLAMADO', closed:'FECHADO', pending:'PENDENTE'
+    })[t.status] || (t.status||'open').toUpperCase());
     el('t-status').className = `badge ${badgeClass(t.status)}`;
     el('t-priority').textContent = (t.priority||'normal').toUpperCase();
     el('t-sla').textContent = timeAgo(new Date(t.created_at));
+    const lockPill = el('t-locked');
+    if (lockPill) lockPill.style.display = t.locked ? 'inline-flex' : 'none';
   }
 
   function timeAgo(date){

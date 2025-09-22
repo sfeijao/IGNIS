@@ -377,7 +377,9 @@ async function handleButton(interaction) {
       }
       const updated = await storage.updateTicket(t.id, { assigned_to: interaction.user.id, status: 'claimed' });
       const embed = new EmbedBuilder().setColor(0x10B981).setDescription(`✋ Ticket reclamado por ${interaction.user}.`);
-      await interaction.channel.send({ embeds: [embed] });
+  await interaction.channel.send({ embeds: [embed] });
+  try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'claim', message: 'Ticket reclamado', data: { channel_id: interaction.channel.id } }); } catch {}
+  try { const wm = interaction.client?.webhooks; if (wm?.sendTicketLog) await wm.sendTicketLog(interaction.guild.id, 'update', { updatedBy: interaction.user, ticketId: String(t.id), guild: interaction.guild, message: 'Ticket reclamado' }); } catch {}
       await updatePanelHeader(interaction.channel, updated || { ...t, assigned_to: interaction.user.id, status: 'claimed' });
       return interaction.reply({ content: '✅ Reclamado.', flags: MessageFlags.Ephemeral });
     }
@@ -391,7 +393,8 @@ async function handleButton(interaction) {
       }
       const updated = await storage.updateTicket(t.id, { assigned_to: null, status: t.status === 'claimed' ? 'open' : t.status });
       const embed = new EmbedBuilder().setColor(0xF59E0B).setDescription(`👐 Ticket libertado por ${interaction.user}.`);
-      await interaction.channel.send({ embeds: [embed] });
+  await interaction.channel.send({ embeds: [embed] });
+  try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'release', message: 'Ticket libertado', data: { channel_id: interaction.channel.id } }); } catch {}
       await updatePanelHeader(interaction.channel, updated || { ...t, assigned_to: null, status: t.status === 'claimed' ? 'open' : t.status });
       return interaction.reply({ content: '✅ Libertado.', flags: MessageFlags.Ephemeral });
     }
@@ -416,7 +419,9 @@ async function handleButton(interaction) {
     if (id === 'ticket:resolve') {
       if (t.status === 'closed') return interaction.reply({ content: '⚠️ Já está fechado.', flags: MessageFlags.Ephemeral });
       const updated = await storage.updateTicket(t.id, { status: 'closed', closed_at: new Date().toISOString(), close_reason: 'Resolvido' });
-      await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`✅ Marcado como resolvido por ${interaction.user}.`)] });
+  await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`✅ Marcado como resolvido por ${interaction.user}.`)] });
+  try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'finalize', message: 'Ticket finalizado (resolve)', data: { reason: 'Resolvido' } }); } catch {}
+  try { const wm = interaction.client?.webhooks; if (wm?.sendTicketLog) await wm.sendTicketLog(interaction.guild.id, 'close', { closedBy: interaction.user, ticketId: String(t.id), guild: interaction.guild, reason: 'Resolvido' }); } catch {}
       await updatePanelHeader(interaction.channel, updated || { ...t, status: 'closed' });
       return interaction.reply({ content: '✅ Resolvido.', flags: MessageFlags.Ephemeral });
     }
@@ -424,7 +429,8 @@ async function handleButton(interaction) {
     if (id === 'ticket:reopen') {
       if (t.status !== 'closed') return interaction.reply({ content: '⚠️ Só podes reabrir tickets fechados.', flags: MessageFlags.Ephemeral });
       const updated = await storage.updateTicket(t.id, { status: 'open', reopened_at: new Date().toISOString() });
-      await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x3B82F6).setDescription(`♻️ Ticket reaberto por ${interaction.user}.`)] });
+  await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x3B82F6).setDescription(`♻️ Ticket reaberto por ${interaction.user}.`)] });
+  try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'reopen', message: 'Ticket reaberto' }); } catch {}
       await updatePanelHeader(interaction.channel, updated || { ...t, status: 'open' });
       return interaction.reply({ content: '✅ Reaberto.', flags: MessageFlags.Ephemeral });
     }
@@ -540,6 +546,7 @@ async function handleButton(interaction) {
           if (t.user_id) await interaction.channel.permissionOverwrites.edit(t.user_id, { SendMessages: false });
           await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0xF59E0B).setDescription(`🔐 Canal bloqueado por ${interaction.user}.`)] });
           const updated = await storage.updateTicket(t.id, { locked: true });
+          try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'lock', message: 'Canal bloqueado' }); } catch {}
           await updatePanelHeader(interaction.channel, updated || { ...t, locked: true });
           return interaction.reply({ content: '✅ Bloqueado.', flags: MessageFlags.Ephemeral });
         } else {
@@ -547,6 +554,7 @@ async function handleButton(interaction) {
           if (t.user_id) await interaction.channel.permissionOverwrites.edit(t.user_id, { SendMessages: true });
           await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`🔓 Canal desbloqueado por ${interaction.user}.`)] });
           const updated = await storage.updateTicket(t.id, { locked: false });
+          try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'unlock', message: 'Canal desbloqueado' }); } catch {}
           await updatePanelHeader(interaction.channel, updated || { ...t, locked: false });
           return interaction.reply({ content: '✅ Desbloqueado.', flags: MessageFlags.Ephemeral });
         }
@@ -564,6 +572,7 @@ async function handleButton(interaction) {
           if (t.user_id) await interaction.channel.permissionOverwrites.edit(t.user_id, { SendMessages: true, ViewChannel: true });
           await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`🔓 Canal desbloqueado para o autor por ${interaction.user}.`)] });
           const updated = await storage.updateTicket(t.id, { locked: true });
+          try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'unlock:author', message: 'Desbloqueado para autor' }); } catch {}
           await updatePanelHeader(interaction.channel, updated || { ...t, locked: true });
           return interaction.reply({ content: '✅ Desbloqueado para autor.', flags: MessageFlags.Ephemeral });
         } else {
@@ -571,6 +580,7 @@ async function handleButton(interaction) {
           if (t.user_id) await interaction.channel.permissionOverwrites.edit(t.user_id, { SendMessages: true, ViewChannel: true });
           await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`🔓 Canal desbloqueado para todos por ${interaction.user}.`)] });
           const updated = await storage.updateTicket(t.id, { locked: false });
+          try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'unlock:all', message: 'Desbloqueado para todos' }); } catch {}
           await updatePanelHeader(interaction.channel, updated || { ...t, locked: false });
           return interaction.reply({ content: '✅ Desbloqueado para todos.', flags: MessageFlags.Ephemeral });
         }
@@ -593,7 +603,8 @@ async function handleModal(interaction) {
     const content = interaction.fields.getTextInputValue('ticket:note:content');
     const notes = Array.isArray(t.notes) ? t.notes.slice() : [];
     notes.push({ id: Date.now().toString(), content, author: interaction.user.id, timestamp: new Date().toISOString() });
-    await storage.updateTicket(t.id, { notes });
+  await storage.updateTicket(t.id, { notes });
+  try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'note', message: content }); } catch {}
     // Tentar enviar para canal de logs (só staff vê), senão apenas confirmar
     try {
       const cfg = await storage.getGuildConfig(interaction.guild.id);
@@ -618,7 +629,7 @@ async function handleModal(interaction) {
     if (!t) return interaction.reply({ content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
     if (t.status === 'closed') return interaction.reply({ content: '⚠️ Já está finalizado/fechado.', flags: MessageFlags.Ephemeral });
     const message = interaction.fields.getTextInputValue('ticket:finalize:message') || '';
-    const updated = await storage.updateTicket(t.id, { status: 'closed', closed_at: new Date().toISOString(), close_reason: 'Finalizado' });
+  const updated = await storage.updateTicket(t.id, { status: 'closed', closed_at: new Date().toISOString(), close_reason: 'Finalizado' });
     const visualAssets = require('../assets/visual-assets');
     const embed = new EmbedBuilder()
       .setColor(0x10B981)
@@ -627,7 +638,9 @@ async function handleModal(interaction) {
       .setImage(visualAssets.realImages.successBanner)
       .setDescription(`${interaction.user} finalizou o ticket.${message ? `\n\nMensagem final:\n> ${message}` : ''}`)
       .setTimestamp();
-    await interaction.channel.send({ embeds: [embed] });
+  await interaction.channel.send({ embeds: [embed] });
+  try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'finalize', message, data: { reason: 'Finalizado' } }); } catch {}
+  try { const wm = interaction.client?.webhooks; if (wm?.sendTicketLog) await wm.sendTicketLog(interaction.guild.id, 'close', { closedBy: interaction.user, ticketId: String(t.id), guild: interaction.guild, reason: message || 'Finalizado' }); } catch {}
     await updatePanelHeader(interaction.channel, updated || { ...t, status: 'closed' });
     return interaction.reply({ content: '✅ Finalizado.', flags: MessageFlags.Ephemeral });
   }
@@ -653,6 +666,7 @@ async function handleModal(interaction) {
           ReadMessageHistory: true
         });
         await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x60A5FA).setDescription(`➕ ${member} adicionado ao ticket por ${interaction.user}.`)] });
+        try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'member:add', message: `Adicionado ${member.id}` }); } catch {}
         return interaction.reply({ content: '✅ Membro adicionado.', flags: MessageFlags.Ephemeral });
       } else {
         await interaction.channel.permissionOverwrites.edit(member.id, {
@@ -660,6 +674,7 @@ async function handleModal(interaction) {
           SendMessages: false
         });
         await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0xF87171).setDescription(`➖ ${member} removido do ticket por ${interaction.user}.`)] });
+        try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'member:remove', message: `Removido ${member.id}` }); } catch {}
         return interaction.reply({ content: '✅ Membro removido.', flags: MessageFlags.Ephemeral });
       }
     } catch (e) {
@@ -677,8 +692,9 @@ async function handleModal(interaction) {
     const newName = interaction.fields.getTextInputValue('ticket:rename:newname').trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '').slice(1, 90);
     if (!newName) return interaction.reply({ content: 'Fornece um nome válido.', flags: MessageFlags.Ephemeral });
     try {
-      await interaction.channel.setName(newName, `Renomeado por ${interaction.user.tag}`);
+  await interaction.channel.setName(newName, `Renomeado por ${interaction.user.tag}`);
       await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x60A5FA).setDescription(`✏️ Canal renomeado para #${newName} por ${interaction.user}.`)] });
+  try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'rename', message: `Renomeado para ${newName}` }); } catch {}
       return interaction.reply({ content: '✅ Canal renomeado.', flags: MessageFlags.Ephemeral });
     } catch {
       return interaction.reply({ content: '❌ Falha ao renomear canal.', flags: MessageFlags.Ephemeral });

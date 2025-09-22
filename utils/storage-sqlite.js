@@ -83,6 +83,18 @@ db.serialize(() => {
     channel_name TEXT,
     enabled INTEGER
   )`);
+
+  // Ticket action logs (lightweight)
+  db.run(`CREATE TABLE IF NOT EXISTS ticket_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id TEXT,
+    guild_id TEXT,
+    actor_id TEXT,
+    action TEXT,
+    message TEXT,
+    data TEXT,
+    timestamp TEXT
+  )`);
 });
 
 function run(sql, params = []) {
@@ -375,6 +387,35 @@ class SqliteStorage {
   async deleteWebhookById(id, guildId) {
     await run(`DELETE FROM webhooks WHERE id = ? AND guild_id = ?`, [id, guildId]);
     return true;
+  }
+
+  // Ticket logs API
+  async addTicketLog({ ticket_id, guild_id, actor_id, action, message, data }) {
+    const timestamp = new Date().toISOString();
+    await run(`INSERT INTO ticket_logs (ticket_id, guild_id, actor_id, action, message, data, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)` , [
+      ticket_id?.toString() || null,
+      guild_id || null,
+      actor_id || null,
+      action || null,
+      message || null,
+      data ? JSON.stringify(data) : null,
+      timestamp
+    ]);
+    return { ticket_id, guild_id, actor_id, action, message, data, timestamp };
+  }
+
+  async getTicketLogs(ticketId, limit = 100) {
+    const rows = await all(`SELECT * FROM ticket_logs WHERE ticket_id = ? ORDER BY datetime(timestamp) DESC LIMIT ?`, [ticketId?.toString(), Math.max(1, Math.min(1000, limit))]);
+    return rows.map(r => ({
+      id: r.id,
+      ticket_id: r.ticket_id,
+      guild_id: r.guild_id,
+      actor_id: r.actor_id,
+      action: r.action,
+      message: r.message,
+      data: parseJSON(r.data, null),
+      timestamp: r.timestamp
+    }));
   }
 }
 

@@ -8,10 +8,10 @@ const fs = require('fs').promises;
 const path = require('path');
 // Usar a ligação global do mongoose, sem criar uma ligação própria aqui
 let useMongo = false;
-let TicketModel, GuildConfigModel, TagModel;
+let TicketModel, GuildConfigModel, TagModel, TicketLogModel;
 try {
     const { mongoose, isReady } = require('./db/mongoose');
-    ({ TicketModel, GuildConfigModel, TagModel } = require('./db/models'));
+    ({ TicketModel, GuildConfigModel, TagModel, TicketLogModel } = require('./db/models'));
     // Estado inicial com base na ligação atual
     useMongo = !!isReady();
     if (useMongo) {
@@ -295,6 +295,33 @@ class SimpleStorage {
             .filter(log => log.guild_id === guildId)
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
             .slice(0, limit);
+    }
+
+    // Ticket logs (lightweight action history)
+    async addTicketLog({ ticket_id, guild_id, actor_id, action, message, data }) {
+        if (useMongo && TicketLogModel) {
+            const doc = await TicketLogModel.create({ ticket_id: String(ticket_id), guild_id, actor_id, action, message, data, timestamp: new Date() });
+            return doc.toObject();
+        }
+        // JSON fallback: append to logs.json with a namespaced type
+        const entry = { id: Date.now(), ticket_id: String(ticket_id), guild_id, actor_id, action, message, data, timestamp: new Date().toISOString(), type: 'ticket_log' };
+        const logs = await this.readFile(this.logsFile) || [];
+        logs.push(entry);
+        if (logs.length > 2000) logs.splice(0, logs.length - 2000);
+        await this.writeFile(this.logsFile, logs);
+        return entry;
+    }
+
+    async getTicketLogs(ticketId, limit = 100) {
+        if (useMongo && TicketLogModel) {
+            const list = await TicketLogModel.find({ ticket_id: String(ticketId) }).sort({ timestamp: -1 }).limit(Math.max(1, Math.min(1000, limit))).lean();
+            return list;
+        }
+        const logs = await this.readFile(this.logsFile) || [];
+        return logs
+            .filter(l => (l.type === 'ticket_log') && `${l.ticket_id}` === `${ticketId}`)
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+            .slice(0, Math.max(1, Math.min(1000, limit)));
     }
 }
 

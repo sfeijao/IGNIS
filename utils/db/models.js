@@ -56,5 +56,17 @@ const TagSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const TagModel = mongoose.models.Tag || mongoose.model('Tag', TagSchema);
+// Ticket action logs (lightweight)
+const TicketLogSchema = new mongoose.Schema({
+  ticket_id: { type: String, index: true },
+  guild_id: { type: String, index: true },
+  actor_id: { type: String },
+  action: { type: String, index: true },
+  message: { type: String },
+  data: { type: Object, default: null },
+  timestamp: { type: Date, default: Date.now }
+}, { timestamps: true });
 
-module.exports = { TicketModel, GuildConfigModel, PanelModel, TagModel, WebhookModel };
+const TicketLogModel = mongoose.models.TicketLog || mongoose.model('TicketLog', TicketLogSchema);
+
+module.exports = { TicketModel, GuildConfigModel, PanelModel, TagModel, WebhookModel, TicketLogModel };

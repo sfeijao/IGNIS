@@ -16,7 +16,9 @@
     .badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
     .badge-open { background:#065f46; color:#ecfdf5; }
     .badge-waiting { background:#78350f; color:#fffbeb; }
-    .badge-closed { background:#374151; color:#e5e7eb; }
+  .badge-closed { background:#374151; color:#e5e7eb; }
+  .badge-claimed { background:#78350f; color:#fffbeb; }
+  .locked-pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background: rgba(239,68,68,.15); color:#fca5a5; border:1px solid rgba(239,68,68,.25); font-weight:600; }
     .badge-urgent { background:#7f1d1d; color:#fee2e2; }
     .layout { display:grid; grid-template-columns: 280px 1fr 320px; gap: var(--space-lg); }
     .card { background: var(--glass-bg, rgba(255,255,255,0.03)); border:1px solid var(--glass-border, rgba(255,255,255,0.08)); border-radius: 12px; padding: var(--space-lg); }
@@ -44,6 +46,7 @@
           <span id="t-status" class="badge badge-open">Open</span>
           <span id="t-priority" class="badge">Normal</span>
           <span id="t-sla" class="badge">SLA</span>
+          <span id="t-locked" class="locked-pill" style="display:none;"><i class="fas fa-lock"></i> Bloqueado</span>
         </div>
       </div>
       <div class="btn-row">

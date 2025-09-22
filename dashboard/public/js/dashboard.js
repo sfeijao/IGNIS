@@ -297,8 +297,10 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
     createTicketCard(ticket) {
         const statusColors = {
             open: '#10B981',
+            claimed: '#F59E0B',
             assigned: '#F59E0B',
-            closed: '#6B7280'
+            closed: '#6B7280',
+            pending: '#8B5CF6'
         };
         
         const priorityEmojis = {
@@ -317,9 +319,12 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                         <span class="ticket-id">#${ticket.id}</span>
                         <span class="ticket-priority">${priorityEmojis[ticket.priority] || '🟡'}</span>
                     </div>
-                    <span class="ticket-status" style="background-color: ${statusColors[ticket.status]}">
-                        ${ticket.status}
-                    </span>
+                    <div class="ticket-badges-row">
+                        <span class="ticket-status" style="background-color: ${statusColors[ticket.status] || '#6B7280'}">
+                            ${this.formatTicketStatus ? this.formatTicketStatus(ticket.status) : (ticket.status || 'desconhecido')}
+                        </span>
+                        ${ticket.locked ? `<span class="ticket-lock" title="Bloqueado"><i class="fas fa-lock"></i></span>` : ''}
+                    </div>
                 </div>
                 <div class="ticket-content">
                     <h5>${this.escapeHtml(ticket.subject)}</h5>
@@ -510,9 +515,12 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             <div class="ticket-card advanced ${statusClass}" onclick="dashboard.openAdvancedTicketModal('${ticket.id}')">
                 <div class="ticket-header">
                     <div class="ticket-id">#${ticket.id}</div>
-                    <div class="ticket-status">
-                        <i class="fas ${statusIcon}"></i>
-                        ${this.formatTicketStatus(ticket.status)}
+                    <div class="ticket-badges-row">
+                        <div class="ticket-status">
+                            <i class="fas ${statusIcon}"></i>
+                            ${this.formatTicketStatus(ticket.status)}
+                        </div>
+                        ${ticket.locked ? `<span class="ticket-locked"><i class="fas fa-lock"></i> Bloqueado</span>` : ''}
                     </div>
                 </div>
                 
@@ -658,6 +666,10 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                                             <i class="fas ${this.getTicketStatusIcon(ticket.status)}"></i>
                                             ${this.formatTicketStatus(ticket.status)}
                                         </span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Bloqueado</label>
+                                        <span>${ticket.locked ? 'Sim' : 'Não'}</span>
                                     </div>
                                     <div class="info-item">
                                         <label>Categoria</label>
@@ -1111,6 +1123,12 @@ const additionalStyles = `
         align-items: center;
         margin-bottom: var(--space-md);
     }
+
+    .ticket-badges-row {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
     
     .ticket-info {
         display: flex;
@@ -1130,6 +1148,17 @@ const additionalStyles = `
         font-weight: 600;
         color: white;
         text-transform: uppercase;
+    }
+
+    .ticket-lock, .ticket-locked {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(239, 68, 68, 0.15);
+        color: #FCA5A5;
+        border: 1px solid rgba(239, 68, 68, 0.25);
     }
     
     .ticket-content h5 {
