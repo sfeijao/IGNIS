@@ -1192,6 +1192,43 @@ app.get('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
     }
 });
 
+// Rota para histórico de ações (ticket_logs)
+app.get('/api/guild/:guildId/tickets/:ticketId/logs', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    try {
+        const { guildId, ticketId } = req.params;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+
+        const storage = require('../utils/storage');
+        const logs = await storage.getTicketLogs(ticketId, 200);
+        // Enriquecer com informações do ator
+        const enriched = await Promise.all((logs || []).map(async (l) => {
+            let actorTag = null, actorAvatar = null;
+            try {
+                if (l.actor_id) {
+                    const u = await client.users.fetch(l.actor_id).catch(() => null);
+                    if (u) {
+                        actorTag = `${u.username}#${u.discriminator}`;
+                        actorAvatar = u.displayAvatarURL({ size: 32 });
+                    }
+                }
+            } catch {}
+            return { ...l, actorTag, actorAvatar };
+        }));
+        return res.json({ success: true, logs: enriched });
+    } catch (e) {
+        logger.error('Error fetching ticket logs:', e);
+        return res.status(500).json({ success: false, error: 'Failed to fetch ticket logs' });
+    }
+});
+
 // Rota para ações em tickets (claim, close, etc.)
 app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
     if (!req.isAuthenticated()) {

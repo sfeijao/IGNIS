@@ -439,6 +439,13 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
     
     renderAdvancedTickets(tickets, stats) {
         const ticketsContainer = document.getElementById('ticketsList');
+        this._allTickets = tickets || [];
+        // Read persisted view state
+        const persisted = JSON.parse(localStorage.getItem('ignis_ticket_view') || '{}');
+        this._filter = persisted.filter || { status: 'all', locked: 'all' };
+        this._sort = persisted.sort || { by: 'created_at', dir: 'desc' };
+        const filtered = this.applyTicketFilters(this._allTickets);
+        const sorted = this.applyTicketSort(filtered);
         
         if (tickets.length === 0) {
             ticketsContainer.innerHTML = `
@@ -453,15 +460,121 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             return;
         }
         
-        const ticketCards = tickets.map(ticket => this.createAdvancedTicketCard(ticket)).join('');
+        const controls = this.createAdvancedTicketControls();
+        const ticketCards = sorted.map(ticket => this.createAdvancedTicketCard(ticket)).join('');
         const statsHtml = this.createAdvancedTicketStats(stats);
         
         ticketsContainer.innerHTML = `
             ${statsHtml}
+            ${controls}
             <div class="tickets-grid">
                 ${ticketCards}
             </div>
         `;
+        this.attachControlHandlers();
+    }
+
+    createAdvancedTicketControls() {
+        const status = (this._filter?.status) || 'all';
+        const locked = (this._filter?.locked) || 'all';
+        const sortBy = (this._sort?.by) || 'created_at';
+        const dir = (this._sort?.dir) || 'desc';
+        return `
+            <div class="ticket-controls">
+                <div class="controls-row">
+                    <div class="control">
+                        <label>Estado</label>
+                        <select id="ctl-status">
+                            <option value="all" ${status==='all'?'selected':''}>Todos</option>
+                            <option value="open" ${status==='open'?'selected':''}>Abertos</option>
+                            <option value="claimed" ${status==='claimed'?'selected':''}>Reclamados</option>
+                            <option value="closed" ${status==='closed'?'selected':''}>Fechados</option>
+                            <option value="pending" ${status==='pending'?'selected':''}>Pendentes</option>
+                        </select>
+                    </div>
+                    <div class="control">
+                        <label>Bloqueado</label>
+                        <select id="ctl-locked">
+                            <option value="all" ${locked==='all'?'selected':''}>Todos</option>
+                            <option value="yes" ${locked==='yes'?'selected':''}>Sim</option>
+                            <option value="no" ${locked==='no'?'selected':''}>Não</option>
+                        </select>
+                    </div>
+                    <div class="control">
+                        <label>Ordenar por</label>
+                        <select id="ctl-sort-by">
+                            <option value="created_at" ${sortBy==='created_at'?'selected':''}>Data criação</option>
+                            <option value="priority" ${sortBy==='priority'?'selected':''}>Prioridade</option>
+                            <option value="status" ${sortBy==='status'?'selected':''}>Estado</option>
+                        </select>
+                    </div>
+                    <div class="control">
+                        <label>Direção</label>
+                        <select id="ctl-sort-dir">
+                            <option value="desc" ${dir==='desc'?'selected':''}>Desc</option>
+                            <option value="asc" ${dir==='asc'?'selected':''}>Asc</option>
+                        </select>
+                    </div>
+                    <div class="control" style="align-self:flex-end;">
+                        <button class="btn btn-glass" id="ctl-apply">Aplicar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    applyTicketFilters(list){
+        let out = Array.isArray(list) ? list.slice() : [];
+        const f = this._filter || {};
+        if (f.status && f.status !== 'all') {
+            out = out.filter(t => (t.status||'').toLowerCase() === f.status);
+        }
+        if (f.locked && f.locked !== 'all') {
+            const wanted = f.locked === 'yes';
+            out = out.filter(t => !!t.locked === wanted);
+        }
+        return out;
+    }
+
+    applyTicketSort(list){
+        const by = (this._sort?.by) || 'created_at';
+        const dir = (this._sort?.dir) || 'desc';
+        const mul = dir === 'asc' ? 1 : -1;
+        const priorityRank = { urgent: 4, high: 3, normal: 2, low: 1 };
+        const statusRank = { open: 3, claimed: 2, pending: 1, closed: 0 };
+        const arr = list.slice();
+        arr.sort((a,b)=>{
+            if (by === 'priority') {
+                const pa = priorityRank[(a.priority||'normal')] || 0;
+                const pb = priorityRank[(b.priority||'normal')] || 0;
+                return (pa - pb) * mul;
+            } else if (by === 'status') {
+                const sa = statusRank[(a.status||'open')] || 0;
+                const sb = statusRank[(b.status||'open')] || 0;
+                return (sa - sb) * mul;
+            }
+            // created_at default
+            return ((new Date(a.created_at)) - (new Date(b.created_at))) * mul;
+        });
+        return arr;
+    }
+
+    attachControlHandlers(){
+        const btn = document.getElementById('ctl-apply');
+        if (!btn) return;
+        btn.addEventListener('click', ()=>{
+            const status = document.getElementById('ctl-status')?.value || 'all';
+            const locked = document.getElementById('ctl-locked')?.value || 'all';
+            const by = document.getElementById('ctl-sort-by')?.value || 'created_at';
+            const dir = document.getElementById('ctl-sort-dir')?.value || 'desc';
+            this._filter = { status, locked };
+            this._sort = { by, dir };
+            localStorage.setItem('ignis_ticket_view', JSON.stringify({ filter: this._filter, sort: this._sort }));
+            const filtered = this.applyTicketFilters(this._allTickets||[]);
+            const sorted = this.applyTicketSort(filtered);
+            const listEl = document.querySelector('#ticketsList .tickets-grid');
+            if (listEl) listEl.innerHTML = sorted.map(t=>this.createAdvancedTicketCard(t)).join('');
+        });
     }
     
     createAdvancedTicketStats(stats) {
@@ -713,6 +826,13 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                                     ${this.renderAdvancedTicketMessages(ticket.messages)}
                                 </div>
                             </div>
+
+                            <div class="logs-card">
+                                <h3>Histórico de Ações</h3>
+                                <div class="logs-container">
+                                    <div class="loading"><div class="loading-spinner"></div> A carregar histórico...</div>
+                                </div>
+                            </div>
                             
                             <div class="add-note-card">
                                 <h3>Adicionar Nota</h3>
@@ -731,6 +851,54 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         `;
         
         document.body.appendChild(modal);
+        // Fetch logs asynchronously
+        this.loadTicketLogs(ticket.id).catch(console.error);
+    }
+
+    async loadTicketLogs(ticketId){
+        try {
+            const res = await fetch(`/api/guild/${this.currentGuild}/tickets/${ticketId}/logs`);
+            const data = await res.json();
+            const box = document.querySelector('.modal-overlay .logs-container');
+            if (!box) return;
+            if (!data.success) {
+                box.innerHTML = `<div class="error-message"><i class="fas fa-exclamation-circle"></i> Erro a carregar logs</div>`;
+                return;
+            }
+            box.innerHTML = this.renderTicketLogs(data.logs||[]);
+        } catch (e) {
+            const box = document.querySelector('.modal-overlay .logs-container');
+            if (box) box.innerHTML = `<div class="error-message"><i class="fas fa-exclamation-circle"></i> Erro a carregar logs</div>`;
+        }
+    }
+
+    renderTicketLogs(logs){
+        if (!logs.length) return '<div class="no-messages">Sem ações registadas</div>';
+        const label = (a)=>({
+            'claim':'Reclamado', 'release':'Libertado', 'finalize':'Finalizado', 'resolve':'Resolvido',
+            'reopen':'Reaberto', 'lock':'Bloqueado', 'unlock':'Desbloqueado', 'priority':'Prioridade',
+            'note':'Nota', 'member:add':'Membro adicionado', 'member:remove':'Membro removido', 'rename':'Renomeado'
+        })[a] || a;
+        return `
+            <div class="timeline">
+                ${logs.map(l=>`
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <span class="tl-action">${label(l.action)}</span>
+                                <span class="tl-time">${new Date(l.timestamp).toLocaleString('pt-PT')}</span>
+                            </div>
+                            <div class="tl-meta">
+                                ${l.actorAvatar ? `<img src="${l.actorAvatar}" class="user-avatar-small"/>` : ''}
+                                <span>${l.actorTag || (l.actor_id || '')}</span>
+                            </div>
+                            ${l.message ? `<div class="tl-msg">${this.escapeHtml(l.message)}</div>` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
     }
     
     getModalAdvancedTicketActions(ticket) {
@@ -1198,6 +1366,25 @@ const additionalStyles = `
         padding: var(--space-xs) var(--space-sm);
         font-size: 0.8rem;
     }
+
+    .ticket-controls { margin: var(--space-md) 0 var(--space-lg) 0; }
+    .controls-row { display:flex; gap: var(--space-md); flex-wrap: wrap; align-items: flex-end; }
+    .control label { display:block; font-size:.85rem; color: var(--text-secondary); margin-bottom: 6px; }
+    .control select { background: rgba(255,255,255,0.06); color: var(--text-primary); border:1px solid var(--glass-border); border-radius: 8px; padding: 8px 10px; min-width: 160px; }
+
+    .logs-card { margin-top: var(--space-lg); }
+    .timeline { position: relative; margin-left: 10px; }
+    .timeline:before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--glass-border); }
+    .timeline-item { position: relative; padding-left: 24px; margin-bottom: 14px; }
+    .timeline-dot { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); left: 4px; top: 8px; }
+    .timeline-header { display:flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .tl-action { font-weight: 600; color: var(--text-primary); }
+    .tl-time { font-size: .85rem; color: var(--text-muted); }
+    .tl-meta { display:flex; align-items:center; gap: 8px; color: var(--text-secondary); margin-bottom: 4px; }
+    .tl-msg { color: var(--text-primary); opacity:.9; }
+    .loading { display:flex; align-items:center; gap:8px; color: var(--text-secondary); }
+    .loading-spinner { width:14px; height:14px; border:2px solid var(--glass-border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 `;
 
 // Inject additional styles
