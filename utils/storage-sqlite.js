@@ -33,6 +33,10 @@ db.serialize(() => {
     notes TEXT
   )`);
 
+  // Best-effort migrations for new columns
+  try { db.run(`ALTER TABLE tickets ADD COLUMN panel_message_id TEXT`); } catch {}
+  try { db.run(`ALTER TABLE tickets ADD COLUMN locked INTEGER DEFAULT 0`); } catch {}
+
   // Guild config (JSON blob)
   db.run(`CREATE TABLE IF NOT EXISTS guild_config (
     guild_id TEXT PRIMARY KEY,
@@ -174,7 +178,7 @@ class SqliteStorage {
 
     await run(
       `UPDATE tickets SET guild_id = ?, channel_id = ?, user_id = ?, category = ?, subject = ?, description = ?,
-        priority = ?, status = ?, created_at = ?, assigned_to = ?, claimed_by = ?, claimed_at = ?, closed_at = ?, close_reason = ?, reopened_by = ?, reopened_at = ?, notes = ?
+        priority = ?, status = ?, created_at = ?, assigned_to = ?, claimed_by = ?, claimed_at = ?, closed_at = ?, close_reason = ?, reopened_by = ?, reopened_at = ?, notes = ?, panel_message_id = ?, locked = ?
        WHERE id = ?`,
       [
         merged.guild_id,
@@ -194,10 +198,12 @@ class SqliteStorage {
         merged.reopened_by || null,
         merged.reopened_at || null,
         notesStr || null,
+        merged.panel_message_id || null,
+        merged.locked ? 1 : 0,
         ticketId
       ]
     );
-    return { ...merged, notes: parseJSON(notesStr, []) };
+    return { ...merged, notes: parseJSON(notesStr, []), locked: !!merged.locked };
   }
 
   async closeTicket(ticketId) {

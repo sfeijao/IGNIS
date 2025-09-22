@@ -70,6 +70,24 @@ async function findLogsChannel(guild) {
   return null;
 }
 
+function statusLabel(ticket) {
+  const st = (ticket?.status || 'open').toLowerCase();
+  const locked = ticket?.locked ? ' (bloqueado)' : '';
+  if (st === 'claimed') return `Reclamado${locked}`;
+  if (st === 'closed') return `Finalizado${locked}`;
+  return `Aberto${locked}`;
+}
+
+function colorBy(ticket) {
+  const st = (ticket?.status || 'open').toLowerCase();
+  if (st === 'closed') return 0x10B981; // verde sucesso
+  const p = (ticket?.priority || 'normal').toLowerCase();
+  if (p === 'urgent') return 0xEF4444;
+  if (p === 'high') return 0xF59E0B;
+  if (p === 'low') return 0x6B7280;
+  return 0x3B82F6;
+}
+
 async function updatePanelHeader(channel, ticket) {
   if (!ticket?.panel_message_id) return;
   try {
@@ -79,7 +97,9 @@ async function updatePanelHeader(channel, ticket) {
 
     // Preservar título/descrição/cores existentes; atualizar campos com info atual
     const openedAt = ticket.created_at ? Math.floor(new Date(ticket.created_at).getTime() / 1000) : Math.floor(Date.now() / 1000);
+    base.setColor(colorBy(ticket));
     base.setFields(
+      { name: 'Estado', value: statusLabel(ticket), inline: true },
       { name: 'Utilizador', value: `<@${ticket.user_id}>`, inline: true },
       { name: 'Abertura', value: `<t:${openedAt}:R>`, inline: true },
       { name: 'ID', value: `#${ticket.id}` , inline: true},
@@ -164,10 +184,12 @@ async function createTicket(interaction, type) {
       'Regras rápidas:',
       '• Sem spam • Respeito pela equipa • Um tópico por ticket',
       '',
-      'Usa os botões abaixo para gerir este ticket (prioridade, nota, transcript, fechar).'
+      'Usa os controlos abaixo para gerir este ticket.'
     ].join('\n'))
     .setThumbnail(visualAssets.realImages.supportIcon)
+    .setImage(visualAssets.realImages.supportBanner)
     .addFields(
+      { name: 'Estado', value: 'Aberto', inline: true },
       { name: 'Utilizador', value: `${interaction.user}`, inline: true },
       { name: 'Abertura', value: `<t:${Math.floor(Date.now()/1000)}:R>`, inline: true },
       { name: 'ID', value: `#${ticket.id}`, inline: true },
@@ -178,28 +200,27 @@ async function createTicket(interaction, type) {
     .setTimestamp();
 
   const controlsRow1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('ticket:close:request').setLabel('Fechar').setEmoji('🔒').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('ticket:finalize:open').setLabel('Finalizar').setEmoji('✅').setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId('ticket:claim').setLabel('Claim').setEmoji('✋').setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId('ticket:release').setLabel('Libertar').setEmoji('👐').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('ticket:resolve').setLabel('Resolvido').setEmoji('✅').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId('ticket:reopen').setLabel('Reabrir').setEmoji('♻️').setStyle(ButtonStyle.Secondary)
-  );
-  const controlsRow2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('ticket:priority:open').setLabel('Prioridade').setEmoji('⚡').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('ticket:note:open').setLabel('Nota').setEmoji('📝').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('ticket:member:add').setLabel('Adicionar').setEmoji('➕').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('ticket:member:remove').setLabel('Remover').setEmoji('➖').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('ticket:lock-toggle').setLabel('Bloquear').setEmoji('🔐').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('ticket:transcript').setLabel('Transcript').setEmoji('📄').setStyle(ButtonStyle.Secondary)
   );
-  // Linha 3: novos botões (renomear, bloquear/desbloquear)
-  const controlsRow3 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('ticket:rename:open').setLabel('Renomear canal').setEmoji('✏️').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('ticket:lock-toggle').setLabel('Bloquear').setEmoji('🔐').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('ticket:unlock:author').setLabel('Desbloquear autor').setEmoji('👤').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('ticket:unlock:everyone').setLabel('Desbloquear todos').setEmoji('🔓').setStyle(ButtonStyle.Secondary)
-  );
+  const moreMenu = new StringSelectMenuBuilder()
+    .setCustomId('ticket:more')
+    .setPlaceholder('Mais ações')
+    .addOptions(
+      { label: 'Definir prioridade', value: 'priority', emoji: '⚡', description: 'Baixa, Normal, Alta, URGENTE' },
+      { label: 'Adicionar nota', value: 'note', emoji: '📝', description: 'Nota interna' },
+      { label: 'Adicionar membro', value: 'member:add', emoji: '➕' },
+      { label: 'Remover membro', value: 'member:remove', emoji: '➖' },
+      { label: 'Renomear canal', value: 'rename', emoji: '✏️' },
+      { label: 'Reabrir', value: 'reopen', emoji: '♻️' },
+      { label: 'Fechar (apagar)', value: 'close', emoji: '🔒' }
+    );
+  const controlsRow2 = new ActionRowBuilder().addComponents(moreMenu);
 
-  const panelMsg = await channel.send({ content: `${interaction.user}`, embeds: [intro], components: [controlsRow1, controlsRow2, controlsRow3] });
+  const panelMsg = await channel.send({ content: `${interaction.user}`, embeds: [intro], components: [controlsRow1, controlsRow2] });
   // Guardar referência para futuras edições do cabeçalho
   try { await storage.updateTicket(ticket.id, { panel_message_id: panelMsg.id }); } catch {}
 
@@ -325,10 +346,25 @@ async function handleButton(interaction) {
   // (Removido) painel efémero Ctrl-Staff: botões agora estão sempre visíveis nas linhas principais
 
   // Ações administrativas (staff)
-  if (id === 'ticket:claim' || id === 'ticket:release' || id === 'ticket:resolve' || id === 'ticket:reopen' || id.startsWith('ticket:priority') || id === 'ticket:note:open' || id === 'ticket:transcript' || id === 'ticket:member:add' || id === 'ticket:member:remove' || id === 'ticket:rename:open' || id === 'ticket:lock-toggle' || id === 'ticket:unlock:author' || id === 'ticket:unlock:everyone') {
+  if (id === 'ticket:finalize:open' || id === 'ticket:claim' || id === 'ticket:release' || id === 'ticket:resolve' || id === 'ticket:reopen' || id.startsWith('ticket:priority') || id === 'ticket:note:open' || id === 'ticket:transcript' || id === 'ticket:member:add' || id === 'ticket:member:remove' || id === 'ticket:rename:open' || id === 'ticket:lock-toggle' || id === 'ticket:unlock:author' || id === 'ticket:unlock:everyone') {
     const staff = await isStaff(interaction);
     if (!staff) {
       return interaction.reply({ content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
+    }
+    if (id === 'ticket:finalize:open') {
+      if (t.status === 'closed') return interaction.reply({ content: '⚠️ Já está finalizado/fechado.', flags: MessageFlags.Ephemeral });
+      const modal = new ModalBuilder()
+        .setCustomId('ticket:finalize:submit')
+        .setTitle('Finalizar ticket');
+      const input = new TextInputBuilder()
+        .setCustomId('ticket:finalize:message')
+        .setLabel('Mensagem final (opcional)')
+        .setStyle(TextInputStyle.Paragraph)
+        .setRequired(false)
+        .setMaxLength(1000);
+      const row = new (require('discord.js').ActionRowBuilder)().addComponents(input);
+      modal.addComponents(row);
+      return interaction.showModal(modal);
     }
 
     // Obter ticket pelo canal
@@ -376,6 +412,7 @@ async function handleButton(interaction) {
       return interaction.reply({ content: '⚡ Escolhe a nova prioridade para este ticket:', components: [row], flags: MessageFlags.Ephemeral });
     }
 
+    // Back-compat: map 'resolve' to finalize without message
     if (id === 'ticket:resolve') {
       if (t.status === 'closed') return interaction.reply({ content: '⚠️ Já está fechado.', flags: MessageFlags.Ephemeral });
       const updated = await storage.updateTicket(t.id, { status: 'closed', closed_at: new Date().toISOString(), close_reason: 'Resolvido' });
@@ -502,11 +539,15 @@ async function handleButton(interaction) {
           await interaction.channel.permissionOverwrites.edit(everyoneId, { SendMessages: false });
           if (t.user_id) await interaction.channel.permissionOverwrites.edit(t.user_id, { SendMessages: false });
           await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0xF59E0B).setDescription(`🔐 Canal bloqueado por ${interaction.user}.`)] });
+          const updated = await storage.updateTicket(t.id, { locked: true });
+          await updatePanelHeader(interaction.channel, updated || { ...t, locked: true });
           return interaction.reply({ content: '✅ Bloqueado.', flags: MessageFlags.Ephemeral });
         } else {
           await interaction.channel.permissionOverwrites.edit(everyoneId, { SendMessages: null });
           if (t.user_id) await interaction.channel.permissionOverwrites.edit(t.user_id, { SendMessages: true });
           await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`🔓 Canal desbloqueado por ${interaction.user}.`)] });
+          const updated = await storage.updateTicket(t.id, { locked: false });
+          await updatePanelHeader(interaction.channel, updated || { ...t, locked: false });
           return interaction.reply({ content: '✅ Desbloqueado.', flags: MessageFlags.Ephemeral });
         }
       } catch {
@@ -522,11 +563,15 @@ async function handleButton(interaction) {
           await interaction.channel.permissionOverwrites.edit(everyoneId, { SendMessages: false });
           if (t.user_id) await interaction.channel.permissionOverwrites.edit(t.user_id, { SendMessages: true, ViewChannel: true });
           await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`🔓 Canal desbloqueado para o autor por ${interaction.user}.`)] });
+          const updated = await storage.updateTicket(t.id, { locked: true });
+          await updatePanelHeader(interaction.channel, updated || { ...t, locked: true });
           return interaction.reply({ content: '✅ Desbloqueado para autor.', flags: MessageFlags.Ephemeral });
         } else {
           await interaction.channel.permissionOverwrites.edit(everyoneId, { SendMessages: null });
           if (t.user_id) await interaction.channel.permissionOverwrites.edit(t.user_id, { SendMessages: true, ViewChannel: true });
           await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`🔓 Canal desbloqueado para todos por ${interaction.user}.`)] });
+          const updated = await storage.updateTicket(t.id, { locked: false });
+          await updatePanelHeader(interaction.channel, updated || { ...t, locked: false });
           return interaction.reply({ content: '✅ Desbloqueado para todos.', flags: MessageFlags.Ephemeral });
         }
       } catch {
@@ -562,6 +607,29 @@ async function handleModal(interaction) {
       }
     } catch {}
     return interaction.reply({ content: '✅ Nota guardada.', flags: MessageFlags.Ephemeral });
+  }
+
+  if (id === 'ticket:finalize:submit') {
+    const staff = await isStaff(interaction);
+    if (!staff) {
+      return interaction.reply({ content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
+    }
+    const t = await storage.getTicketByChannel(interaction.channel.id);
+    if (!t) return interaction.reply({ content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
+    if (t.status === 'closed') return interaction.reply({ content: '⚠️ Já está finalizado/fechado.', flags: MessageFlags.Ephemeral });
+    const message = interaction.fields.getTextInputValue('ticket:finalize:message') || '';
+    const updated = await storage.updateTicket(t.id, { status: 'closed', closed_at: new Date().toISOString(), close_reason: 'Finalizado' });
+    const visualAssets = require('../assets/visual-assets');
+    const embed = new EmbedBuilder()
+      .setColor(0x10B981)
+      .setTitle('✅ Ticket Finalizado')
+      .setThumbnail(visualAssets.realImages.successIcon)
+      .setImage(visualAssets.realImages.successBanner)
+      .setDescription(`${interaction.user} finalizou o ticket.${message ? `\n\nMensagem final:\n> ${message}` : ''}`)
+      .setTimestamp();
+    await interaction.channel.send({ embeds: [embed] });
+    await updatePanelHeader(interaction.channel, updated || { ...t, status: 'closed' });
+    return interaction.reply({ content: '✅ Finalizado.', flags: MessageFlags.Ephemeral });
   }
 
   if (id.startsWith('ticket:member:submit')) {
@@ -637,6 +705,80 @@ async function handleSelect(interaction) {
     await interaction.channel.send({ embeds: [embed] });
     await updatePanelHeader(interaction.channel, updated || { ...t, priority: chosen });
     return interaction.update({ content: `✅ Prioridade definida: ${label}`, components: [] });
+  }
+
+  if (id === 'ticket:more') {
+    const staff = await isStaff(interaction);
+    if (!staff) {
+      return interaction.reply({ content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
+    }
+    const t = await storage.getTicketByChannel(interaction.channel.id);
+    if (!t) return interaction.reply({ content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
+    const value = interaction.values?.[0];
+    switch (value) {
+      case 'priority': {
+        const current = (t.priority || 'normal').toLowerCase();
+        const menu = new StringSelectMenuBuilder()
+          .setCustomId('ticket:priority:select')
+          .setPlaceholder('Seleciona a prioridade')
+          .addOptions(
+            { label: 'Baixa', value: 'low', description: 'Menos urgente', default: current === 'low' },
+            { label: 'Normal', value: 'normal', description: 'Prioridade padrão', default: current === 'normal' },
+            { label: 'Alta', value: 'high', description: 'Requer atenção', default: current === 'high' },
+            { label: 'URGENTE', value: 'urgent', description: 'Criticidade máxima', default: current === 'urgent' }
+          );
+        const row = new ActionRowBuilder().addComponents(menu);
+        return interaction.reply({ content: '⚡ Escolhe a nova prioridade para este ticket:', components: [row], flags: MessageFlags.Ephemeral });
+      }
+      case 'note': {
+        const modal = new ModalBuilder()
+          .setCustomId('ticket:note:submit')
+          .setTitle('📝 Nota interna');
+        const input = new TextInputBuilder()
+          .setCustomId('ticket:note:content')
+          .setLabel('Conteúdo da nota')
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(true)
+          .setMaxLength(1000);
+        const row = new ActionRowBuilder().addComponents(input);
+        modal.addComponents(row);
+        return interaction.showModal(modal);
+      }
+      case 'member:add': {
+        const modal = new ModalBuilder().setCustomId('ticket:member:submit:add').setTitle('Adicionar membro');
+        const input = new TextInputBuilder().setCustomId('ticket:member:target').setLabel('ID ou @ menção').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(50);
+        const row = new ActionRowBuilder().addComponents(input);
+        modal.addComponents(row);
+        return interaction.showModal(modal);
+      }
+      case 'member:remove': {
+        const modal = new ModalBuilder().setCustomId('ticket:member:submit:remove').setTitle('Remover membro');
+        const input = new TextInputBuilder().setCustomId('ticket:member:target').setLabel('ID ou @ menção').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(50);
+        const row = new ActionRowBuilder().addComponents(input);
+        modal.addComponents(row);
+        return interaction.showModal(modal);
+      }
+      case 'rename': {
+        const modal = new ModalBuilder().setCustomId('ticket:rename:submit').setTitle('Renomear canal');
+        const input = new TextInputBuilder().setCustomId('ticket:rename:newname').setLabel('Novo nome do canal').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(90);
+        const row = new ActionRowBuilder().addComponents(input);
+        modal.addComponents(row);
+        return interaction.showModal(modal);
+      }
+      case 'reopen': {
+        if (t.status !== 'closed') return interaction.reply({ content: '⚠️ Só podes reabrir tickets fechados.', flags: MessageFlags.Ephemeral });
+        const updated = await storage.updateTicket(t.id, { status: 'open', reopened_at: new Date().toISOString() });
+        await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x3B82F6).setDescription(`♻️ Ticket reaberto por ${interaction.user}.`)] });
+        await updatePanelHeader(interaction.channel, updated || { ...t, status: 'open' });
+        return interaction.reply({ content: '✅ Reaberto.', flags: MessageFlags.Ephemeral });
+      }
+      case 'close': {
+        // Original fechar com confirmação (apagar canal)
+        return requestClose(interaction);
+      }
+      default:
+        return interaction.reply({ content: 'Ação inválida.', flags: MessageFlags.Ephemeral });
+    }
   }
 }
 

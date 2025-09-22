@@ -14,7 +14,8 @@ const TicketSchema = new mongoose.Schema({
   assigned_to: { type: String, default: null },
   closed_at: Date,
   notes: { type: Array, default: [] },
-  panel_message_id: String
+  panel_message_id: String,
+  locked: { type: Boolean, default: false }
 }, { timestamps: true });
 
 const GuildConfigSchema = new mongoose.Schema({
