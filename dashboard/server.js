@@ -961,8 +961,8 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         try {
             const client = global.discordClient;
             if (client?.webhooks?.removeWebhook) {
-                // Best-effort: remove logs type; dashboard could later pass type if needed
-                await client.webhooks.removeWebhook(req.params.guildId, 'logs');
+                const t = (req.query && req.query.type) ? String(req.query.type) : 'logs';
+                await client.webhooks.removeWebhook(req.params.guildId, t);
             }
         } catch {}
         return res.json({ success: true, deleted: 1 });
@@ -976,7 +976,8 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         try {
             const client = global.discordClient;
             if (client?.webhooks?.removeWebhook) {
-                await client.webhooks.removeWebhook(req.params.guildId, 'logs');
+                const t = (req.query && req.query.type) ? String(req.query.type) : 'logs';
+                await client.webhooks.removeWebhook(req.params.guildId, t);
             }
         } catch {}
         return res.json({ success: true, deleted: result.deletedCount });

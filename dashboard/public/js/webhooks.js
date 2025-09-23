@@ -43,7 +43,7 @@
             <div class="server-stats"><span><i class="fas fa-hashtag"></i> ${w.channel_name || w.channel_id || '—'}</span><span class="server-status ${w.enabled ? 'online':'offline'}"><i class="fas fa-circle"></i> ${w.enabled ? 'Ativo':'Inativo'}</span></div>
             <div class="control-grid" style="margin-top:10px;">
               <a href="${w.url}" target="_blank" rel="noopener" class="btn btn-glass btn-sm"><i class="fas fa-external-link-alt"></i> Abrir</a>
-              <button class="btn btn-glass btn-sm" data-del="${w._id}"><i class="fas fa-trash"></i> Remover</button>
+              <button class="btn btn-glass btn-sm" data-del="${w._id}" data-type="${w.type || 'logs'}"><i class="fas fa-trash"></i> Remover</button>
               <button class="btn btn-glass btn-sm" data-copy="${w.url}"><i class="fas fa-copy"></i> Copiar URL</button>
             </div>
           </div>
@@ -52,9 +52,10 @@
 
     listEl.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', async (e) => {
       const id = e.currentTarget.getAttribute('data-del');
+      const type = e.currentTarget.getAttribute('data-type') || 'logs';
       if (!confirm('Remover webhook?')) return;
       try {
-        await api(`/api/guild/${guildId}/webhooks/${id}`, { method: 'DELETE' });
+        await api(`/api/guild/${guildId}/webhooks/${id}?type=${encodeURIComponent(type)}`, { method: 'DELETE' });
         notify('Removido', 'success');
         await load();
       } catch (err) { notify(err.message, 'error'); }

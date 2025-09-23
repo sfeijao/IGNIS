@@ -234,10 +234,11 @@ class WebhookManager {
         }
     }
 
-    async sendTicketLog(guildId, type, data) {
-        // Default to 'logs' webhook for ticket events
+    async sendTicketLog(guildId, event, data) {
+        // Choose target webhook type by event: create/close -> 'tickets', update -> 'updates', fallback -> 'logs'
+        const preferredType = (event === 'update') ? 'updates' : (event === 'create' || event === 'close') ? 'tickets' : 'logs';
         const typeMap = this.webhooks.get(guildId);
-        const webhookInfo = typeMap?.get?.('logs');
+        const webhookInfo = typeMap?.get?.(preferredType) || typeMap?.get?.('logs');
         if (!webhookInfo || !webhookInfo.webhook?.url) {
             logger.debug(`Webhook não configurado para o servidor ${guildId}. Ticket log não enviado.`);
             return;
@@ -245,9 +246,9 @@ class WebhookManager {
 
         try {
             const embed = new EmbedBuilder()
-                .setColor(this.getColorForType(type));
+                .setColor(this.getColorForType(event));
 
-            switch (type) {
+            switch (event) {
                 case 'create':
                     embed
                         .setTitle('📩 Ticket Aberto')
