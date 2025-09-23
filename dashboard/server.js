@@ -879,7 +879,7 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        if (preferSqlite) {
+    if (preferSqlite) {
             const storage = require('../utils/storage-sqlite');
             const list = await storage.listWebhooks(req.params.guildId);
             return res.json({ success: true, webhooks: list });
@@ -921,7 +921,7 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
             try {
                 const client = global.discordClient;
                 if (client?.webhooks?.addWebhook) {
-                    await client.webhooks.addWebhook(req.params.guildId, name || 'Logs', url);
+                    await client.webhooks.addWebhook(req.params.guildId, type || 'logs', name || 'Logs', url);
                 }
             } catch {}
             return res.json({ success: true, webhook: saved });
@@ -936,7 +936,7 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
             try {
                 const client = global.discordClient;
                 if (client?.webhooks?.addWebhook) {
-                    await client.webhooks.addWebhook(req.params.guildId, name || 'Logs', url);
+                    await client.webhooks.addWebhook(req.params.guildId, type || 'logs', name || 'Logs', url);
                 }
             } catch {}
             return res.json({ success: true, webhook: saved });
@@ -961,7 +961,8 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         try {
             const client = global.discordClient;
             if (client?.webhooks?.removeWebhook) {
-                await client.webhooks.removeWebhook(req.params.guildId);
+                // Best-effort: remove logs type; dashboard could later pass type if needed
+                await client.webhooks.removeWebhook(req.params.guildId, 'logs');
             }
         } catch {}
         return res.json({ success: true, deleted: 1 });
@@ -975,7 +976,7 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         try {
             const client = global.discordClient;
             if (client?.webhooks?.removeWebhook) {
-                await client.webhooks.removeWebhook(req.params.guildId);
+                await client.webhooks.removeWebhook(req.params.guildId, 'logs');
             }
         } catch {}
         return res.json({ success: true, deleted: result.deletedCount });

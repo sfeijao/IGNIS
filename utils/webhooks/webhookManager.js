@@ -3,10 +3,17 @@ const fs = require('fs').promises;
 const path = require('path');
 const logger = require('../logger');
 
+// Helper env flags
+const preferSqlite = (process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite';
+const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
+
 class WebhookManager {
-    constructor() {
-        this.configPath = path.join(__dirname, '..', '..', 'config', 'webhooks.json');
-        this.webhooks = new Map();
+    constructor(client = null) {
+        // Optional discord client so we can hydrate using guilds list for SQLite
+        this.client = client;
+    this.configPath = path.join(__dirname, '..', '..', 'config', 'webhooks.json');
+    // Map<guildId, Map<type, { name, webhook }>>
+    this.webhooks = new Map();
         this.init();
     }
 
@@ -27,42 +34,158 @@ class WebhookManager {
                 await fs.writeFile(this.configPath, JSON.stringify(config, null, 2));
             }
 
-            // Initialize webhooks
+            // Initialize webhooks (support old single-entry and new multi-type format)
             for (const [guildId, info] of Object.entries(config.webhooks)) {
-                if (info.enabled && info.webhook_url) {
-                    this.webhooks.set(guildId, {
-                        name: info.name,
-                        webhook: new WebhookClient({ url: info.webhook_url })
-                    });
+                // Old format: { enabled, webhook_url, name }
+                if (info && typeof info === 'object' && 'webhook_url' in info) {
+                    if (info.enabled && info.webhook_url) {
+                        const typeMap = new Map();
+                        typeMap.set('logs', { name: info.name, webhook: new WebhookClient({ url: info.webhook_url }) });
+                        this.webhooks.set(guildId, typeMap);
+                    }
+                    continue;
                 }
+                // New format: { logs: {...}, updates: {...}, tickets: {...} }
+                const typeMap = new Map();
+                for (const [type, w] of Object.entries(info || {})) {
+                    if (w && w.enabled && w.webhook_url) {
+                        typeMap.set(type, { name: w.name, webhook: new WebhookClient({ url: w.webhook_url }) });
+                    }
+                }
+                if (typeMap.size > 0) {
+                    this.webhooks.set(guildId, typeMap);
+                }
+            }
+
+            // Best-effort hydration from DB if available
+            try {
+                await this.hydrateFromStorage();
+            } catch (e) {
+                logger.warn('Hydration from DB failed, using file fallback only:', e && e.message ? e.message : e);
             }
         } catch (error) {
             logger.error('Error initializing webhook manager:', error);
         }
     }
 
-    async saveConfig() {
-        const config = {
-            webhooks: {}
-        };
+    setClient(client) {
+        this.client = client;
+    }
 
-        for (const [guildId, info] of this.webhooks) {
-            if (info.webhook?.url) {
-                config.webhooks[guildId] = {
-                    name: info.name,
-                    webhook_url: info.webhook.url,
-                    enabled: true
-                };
+    async hydrateFromStorage() {
+        // Load and register webhooks from active storage backend so redeploys keep settings
+        // Strategy:
+        // - SQLite: iterate current guilds and list webhooks for each
+        // - Mongo: read all enabled records
+        try {
+            // Prefer SQLite when explicitly selected or when Mongo isn't configured
+            if (preferSqlite) {
+                const storageSqlite = require('../storage-sqlite');
+                let count = 0;
+                const guilds = (this.client && this.client.guilds && this.client.guilds.cache) ? Array.from(this.client.guilds.cache.values()) : [];
+                for (const guild of guilds) {
+                    try {
+                        const list = await storageSqlite.listWebhooks(guild.id);
+                        const typeMap = this.webhooks.get(guild.id) || new Map();
+                        for (const w of list) {
+                            if (w.enabled && w.url && (w.type || 'logs')) {
+                                typeMap.set((w.type || 'logs'), { name: w.name || guild.name, webhook: new WebhookClient({ url: w.url }) });
+                                count++;
+                            }
+                        }
+                        if (typeMap.size > 0) this.webhooks.set(guild.id, typeMap);
+                    } catch {}
+                }
+                if (count > 0) logger.info(`🔁 WebhookManager: hidratado ${count} webhook(s) do SQLite`);
+                return;
+            }
+
+            if (hasMongoEnv) {
+                const { isReady } = require('../db/mongoose');
+                if (!isReady()) {
+                    logger.debug && logger.debug('WebhookManager: Mongo não está pronto para hidratação');
+                    return;
+                }
+                const { WebhookModel } = require('../db/models');
+                const list = await WebhookModel.find({ enabled: true }).lean();
+                let count = 0;
+                for (const w of list) {
+                    if (w && w.guild_id && w.url) {
+                        const typeMap = this.webhooks.get(w.guild_id) || new Map();
+                        typeMap.set((w.type || 'logs'), { name: w.name || (this.client?.guilds?.cache.get(w.guild_id)?.name) || 'Logs', webhook: new WebhookClient({ url: w.url }) });
+                        this.webhooks.set(w.guild_id, typeMap);
+                        count++;
+                    }
+                }
+                if (count > 0) logger.info(`🔁 WebhookManager: hidratado ${count} webhook(s) do MongoDB`);
+            }
+        } catch (e) {
+            logger.warn('WebhookManager hydrateFromStorage error:', e && e.message ? e.message : e);
+        }
+    }
+
+    async saveConfig() {
+        const config = { webhooks: {} };
+        for (const [guildId, typeMap] of this.webhooks) {
+            const guildEntry = {};
+            for (const [type, info] of typeMap) {
+                if (info?.webhook?.url) {
+                    guildEntry[type] = {
+                        name: info.name,
+                        webhook_url: info.webhook.url,
+                        enabled: true
+                    };
+                }
+            }
+            if (Object.keys(guildEntry).length > 0) {
+                config.webhooks[guildId] = guildEntry;
             }
         }
-
         await fs.writeFile(this.configPath, JSON.stringify(config, null, 2));
+    }
+
+    async persistToDB(guildId, { type = 'logs', name, url, channel_id = null, channel_name = null, enabled = true } = {}) {
+        try {
+            if (preferSqlite) {
+                const storageSqlite = require('../storage-sqlite');
+                if (enabled) {
+                    await storageSqlite.upsertWebhook({ guild_id: guildId, type, name, url, channel_id, channel_name, enabled: true });
+                } else {
+                    // Try delete specific logs webhook if present
+                    const list = await storageSqlite.listWebhooks(guildId).catch(() => []);
+                    const toDelete = list.find(w => (w.type || 'logs') === type);
+                    if (toDelete && toDelete._id) {
+                        await storageSqlite.deleteWebhookById(toDelete._id, guildId);
+                    } else if (list.length) {
+                        // Fallback: disable if cannot delete
+                        await storageSqlite.upsertWebhook({ guild_id: guildId, type, name: name || list[0].name, url: list[0].url, channel_id: list[0].channel_id, channel_name: list[0].channel_name, enabled: false });
+                    }
+                }
+            } else if (hasMongoEnv) {
+                const { isReady } = require('../db/mongoose');
+                if (isReady()) {
+                    const { WebhookModel } = require('../db/models');
+                    if (enabled) {
+                        await WebhookModel.findOneAndUpdate(
+                            { guild_id: guildId, type },
+                            { $set: { name, url, channel_id, channel_name, enabled: true } },
+                            { upsert: true }
+                        );
+                    } else {
+                        await WebhookModel.deleteOne({ guild_id: guildId, type });
+                    }
+                }
+            }
+        } catch (e) {
+            logger.warn('persistToDB webhook error:', e && e.message ? e.message : e);
+        }
     }
 
     async verifyAndSetupWebhook(guild, channel) {
         try {
-            // Verifica se já existe um webhook válido
-            const existingInfo = this.webhooks.get(guild.id);
+            // Verifica se já existe um webhook válido (tipo 'logs')
+            const existingTypeMap = this.webhooks.get(guild.id);
+            const existingInfo = existingTypeMap?.get?.('logs');
             if (existingInfo?.webhook?.url) {
                 try {
                     // Tenta enviar uma mensagem de teste
@@ -93,13 +216,16 @@ class WebhookManager {
                 reason: 'Configuração automática do sistema de logs'
             });
 
-            // Registra o webhook
-            this.webhooks.set(guild.id, {
-                name: guild.name,
-                webhook: new WebhookClient({ url: webhook.url })
-            });
+            // Registra o webhook (tipo 'logs')
+            const typeMap = this.webhooks.get(guild.id) || new Map();
+            typeMap.set('logs', { name: guild.name, webhook: new WebhookClient({ url: webhook.url }) });
+            this.webhooks.set(guild.id, typeMap);
 
             await this.saveConfig();
+            // Persistir em DB para durabilidade entre deploys
+            try {
+                await this.persistToDB(guild.id, { type: 'logs', name: guild.name, url: webhook.url, channel_id: channel?.id || null, channel_name: channel?.name || null, enabled: true });
+            } catch {}
             logger.info(`Webhook configurado com sucesso para ${guild.name}`);
             return true;
         } catch (error) {
@@ -109,7 +235,9 @@ class WebhookManager {
     }
 
     async sendTicketLog(guildId, type, data) {
-        const webhookInfo = this.webhooks.get(guildId);
+        // Default to 'logs' webhook for ticket events
+        const typeMap = this.webhooks.get(guildId);
+        const webhookInfo = typeMap?.get?.('logs');
         if (!webhookInfo || !webhookInfo.webhook?.url) {
             logger.debug(`Webhook não configurado para o servidor ${guildId}. Ticket log não enviado.`);
             return;
@@ -191,19 +319,37 @@ class WebhookManager {
         }
     }
 
-    async addWebhook(guildId, name, webhookUrl) {
+    async addWebhook(guildId, typeOrName, nameOrUrl, urlMaybe) {
         try {
+            // Overloads supported:
+            // (guildId, type, name, url) or (guildId, name, url) -> defaults to type 'logs'
+            let type = 'logs';
+            let name;
+            let webhookUrl;
+            if (urlMaybe) {
+                type = String(typeOrName || 'logs');
+                name = nameOrUrl;
+                webhookUrl = urlMaybe;
+            } else {
+                name = typeOrName;
+                webhookUrl = nameOrUrl;
+            }
+
             // Validate webhook URL
-            if (!webhookUrl.startsWith('https://discord.com/api/webhooks/')) {
+            if (!webhookUrl || !webhookUrl.startsWith('https://discord.com/api/webhooks/')) {
                 throw new Error('Invalid webhook URL');
             }
 
             // Create webhook client
             const webhook = new WebhookClient({ url: webhookUrl });
-            this.webhooks.set(guildId, { name, webhook });
+            const typeMap = this.webhooks.get(guildId) || new Map();
+            typeMap.set(type, { name, webhook });
+            this.webhooks.set(guildId, typeMap);
 
             // Save configuration
             await this.saveConfig();
+            // Persist to DB
+            await this.persistToDB(guildId, { type, name, url: webhookUrl, enabled: true });
             return true;
         } catch (error) {
             logger.error('Error adding webhook:', error);
@@ -211,12 +357,23 @@ class WebhookManager {
         }
     }
 
-    async removeWebhook(guildId) {
+    async removeWebhook(guildId, type = null) {
         try {
-            const webhook = this.webhooks.get(guildId);
-            if (webhook) {
+            const typeMap = this.webhooks.get(guildId);
+            if (!typeMap) return true;
+            if (type) {
+                typeMap.delete(type);
+                if (typeMap.size === 0) this.webhooks.delete(guildId);
+                await this.saveConfig();
+                await this.persistToDB(guildId, { type, enabled: false });
+            } else {
+                // Remove all types for this guild
+                const types = Array.from(typeMap.keys());
                 this.webhooks.delete(guildId);
                 await this.saveConfig();
+                for (const t of types) {
+                    try { await this.persistToDB(guildId, { type: t, enabled: false }); } catch {}
+                }
             }
             return true;
         } catch (error) {
@@ -230,8 +387,9 @@ class WebhookManager {
         try {
             logger.info(`Configurando webhook para o servidor ${guild.name} (${guild.id})`);
             
-            // Verificar se já existe um webhook válido
-            const existingInfo = this.webhooks.get(guild.id);
+            // Verificar se já existe um webhook válido (logs)
+            const existingTypeMap = this.webhooks.get(guild.id);
+            const existingInfo = existingTypeMap?.get?.('logs');
             if (existingInfo?.webhook?.url) {
                 try {
                     // Tentar usar o webhook existente
@@ -300,13 +458,16 @@ class WebhookManager {
                 reason: 'Configuração automática do sistema de logs cross-server'
             });
 
-            // Registrar o webhook
-            this.webhooks.set(guild.id, {
-                name: guild.name,
-                webhook: new WebhookClient({ url: webhook.url })
-            });
+            // Registrar o webhook (logs)
+            const typeMap = this.webhooks.get(guild.id) || new Map();
+            typeMap.set('logs', { name: guild.name, webhook: new WebhookClient({ url: webhook.url }) });
+            this.webhooks.set(guild.id, typeMap);
 
             await this.saveConfig();
+            // Persistir em DB para durabilidade
+            try {
+                await this.persistToDB(guild.id, { type: 'logs', name: guild.name, url: webhook.url, channel_id: channel?.id || null, channel_name: channel?.name || null, enabled: true });
+            } catch {}
 
             // Enviar mensagem de confirmação
             await webhook.send({
@@ -329,6 +490,25 @@ class WebhookManager {
             logger.error(`❌ Erro ao configurar webhook para ${guild.name}:`, error);
             return false;
         }
+    }
+
+    // Helper getters
+    getWebhookInfo(guildId, type = 'logs') {
+        const typeMap = this.webhooks.get(guildId);
+        return typeMap?.get?.(type) || null;
+    }
+
+    getLoadedTypes(guildId) {
+        const typeMap = this.webhooks.get(guildId);
+        return typeMap ? Array.from(typeMap.keys()) : [];
+    }
+
+    getAllLoaded() {
+        const out = {};
+        for (const [gid, typeMap] of this.webhooks) {
+            out[gid] = Array.from(typeMap.keys());
+        }
+        return out;
     }
 }
 

@@ -305,11 +305,12 @@ async function confirmClose(interaction) {
       }
     }
   } catch {}
-  try { await interaction.editReply({ content: '✅ Ticket será arquivado. Obrigado!', components: [] }); } catch {}
+  try { await interaction.editReply({ content: '✅ Ticket será apagado automaticamente em 10 segundos. Obrigado!', components: [] }); } catch {}
+  try { await interaction.channel.send({ content: '🗑️ Este canal será apagado automaticamente em 10 segundos.' }); } catch {}
 
   setTimeout(() => {
-    interaction.channel.delete('Ticket fechado');
-  }, 5 * 60 * 1000);
+    interaction.channel.delete('Ticket fechado (auto delete 10s)');
+  }, 10 * 1000);
 }
 
 function toPriority(nextOf) {
@@ -418,12 +419,64 @@ async function handleButton(interaction) {
     // Back-compat: map 'resolve' to finalize without message
     if (id === 'ticket:resolve') {
       if (t.status === 'closed') return interaction.reply({ content: '⚠️ Já está fechado.', flags: MessageFlags.Ephemeral });
+      // Evitar timeout enquanto geramos transcript/avisos
+      try { if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ ephemeral: true }); } catch {}
       const updated = await storage.updateTicket(t.id, { status: 'closed', closed_at: new Date().toISOString(), close_reason: 'Resolvido' });
-  await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`✅ Marcado como resolvido por ${interaction.user}.`)] });
-  try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'finalize', message: 'Ticket finalizado (resolve)', data: { reason: 'Resolvido' } }); } catch {}
-  try { const wm = interaction.client?.webhooks; if (wm?.sendTicketLog) await wm.sendTicketLog(interaction.guild.id, 'close', { closedBy: interaction.user, ticketId: String(t.id), guild: interaction.guild, reason: 'Resolvido' }); } catch {}
+      await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`✅ Marcado como resolvido por ${interaction.user}.`)] });
+      try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'finalize', message: 'Ticket finalizado (resolve)', data: { reason: 'Resolvido' } }); } catch {}
+      try { const wm = interaction.client?.webhooks; if (wm?.sendTicketLog) await wm.sendTicketLog(interaction.guild.id, 'close', { closedBy: interaction.user, ticketId: String(t.id), guild: interaction.guild, reason: 'Resolvido' }); } catch {}
       await updatePanelHeader(interaction.channel, updated || { ...t, status: 'closed' });
-      return interaction.reply({ content: '✅ Resolvido.', flags: MessageFlags.Ephemeral });
+      // Remover imediatamente acesso de não-staff (autor e membros adicionados)
+      try {
+        const everyoneId = interaction.guild.id;
+        await interaction.channel.permissionOverwrites.edit(everyoneId, { SendMessages: false });
+        if (t.user_id) await interaction.channel.permissionOverwrites.edit(t.user_id, { SendMessages: false, ViewChannel: false });
+      } catch {}
+      // Avisar que o canal será apagado em ~3 minutos e gerar transcript
+      try { await interaction.channel.send({ content: '🗑️ Este canal será arquivado e apagado automaticamente em cerca de 3 minutos.' }); } catch {}
+      try {
+        const messages = await fetchAllMessages(interaction.channel, 2000);
+        let transcript = `TRANSCRICAO TICKET ${interaction.channel.name} (canal ${interaction.channel.id})\nServidor: ${interaction.guild?.name} (${interaction.guildId})\nResolvido por: ${interaction.user.tag} em ${new Date().toISOString()}\n\n`;
+        for (const m of messages) {
+          const ts = new Date(m.createdTimestamp).toISOString();
+          const author = m.author?.tag || m.author?.id || 'Desconhecido';
+          const content = (m.content || '').replace(/\n/g, ' ');
+          const atts = m.attachments && m.attachments.size > 0 ? ` [anexos: ${Array.from(m.attachments.values()).map(a=>a.name).join(', ')}]` : '';
+          transcript += `${ts} - ${author}: ${content}${atts}\n`;
+        }
+        const { AttachmentBuilder } = require('discord.js');
+        const file = new AttachmentBuilder(Buffer.from(transcript,'utf8'), { name: `transcript-${interaction.channel.id}.txt` });
+        let sent = false;
+        try {
+          const wm = interaction.client?.webhooks;
+          if (wm && typeof wm.sendTicketLog === 'function') {
+            await wm.sendTicketLog(interaction.guild.id, 'close', {
+              closedBy: interaction.user,
+              ticketId: String(t.id),
+              guild: interaction.guild,
+              files: [file]
+            });
+            sent = true;
+          }
+        } catch {}
+        if (!sent) {
+          const logCh = await findLogsChannel(interaction.guild);
+          if (logCh && logCh.send) {
+            await logCh.send({ content: `📄 Transcript do ticket em ${interaction.guild.name}: #${interaction.channel.name}`, files: [file] });
+            sent = true;
+          }
+        }
+      } catch {}
+      setTimeout(async () => {
+        try {
+          await interaction.channel.delete('Ticket resolvido (auto delete ~3min)');
+          try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'delete', message: 'Canal apagado automaticamente após resolver' }); } catch {}
+        } catch {}
+      }, 3 * 60 * 1000);
+      if (interaction.deferred) {
+        return interaction.editReply({ content: '✅ Resolvido. O canal será apagado automaticamente em ~3 minutos.' });
+      }
+      return interaction.reply({ content: '✅ Resolvido. O canal será apagado automaticamente em ~3 minutos.', flags: MessageFlags.Ephemeral });
     }
 
     if (id === 'ticket:reopen') {
@@ -628,6 +681,8 @@ async function handleModal(interaction) {
     const t = await storage.getTicketByChannel(interaction.channel.id);
     if (!t) return interaction.reply({ content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
     if (t.status === 'closed') return interaction.reply({ content: '⚠️ Já está finalizado/fechado.', flags: MessageFlags.Ephemeral });
+    // Evitar timeout enquanto processamos
+    try { if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ ephemeral: true }); } catch {}
     const message = interaction.fields.getTextInputValue('ticket:finalize:message') || '';
   const updated = await storage.updateTicket(t.id, { status: 'closed', closed_at: new Date().toISOString(), close_reason: 'Finalizado' });
     const visualAssets = require('../assets/visual-assets');
@@ -642,7 +697,59 @@ async function handleModal(interaction) {
   try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'finalize', message, data: { reason: 'Finalizado' } }); } catch {}
   try { const wm = interaction.client?.webhooks; if (wm?.sendTicketLog) await wm.sendTicketLog(interaction.guild.id, 'close', { closedBy: interaction.user, ticketId: String(t.id), guild: interaction.guild, reason: message || 'Finalizado' }); } catch {}
     await updatePanelHeader(interaction.channel, updated || { ...t, status: 'closed' });
-    return interaction.reply({ content: '✅ Finalizado.', flags: MessageFlags.Ephemeral });
+    // Remover imediatamente acesso de não-staff (autor e membros adicionados)
+    try {
+      const everyoneId = interaction.guild.id;
+      await interaction.channel.permissionOverwrites.edit(everyoneId, { SendMessages: false });
+      if (t.user_id) await interaction.channel.permissionOverwrites.edit(t.user_id, { SendMessages: false, ViewChannel: false });
+    } catch {}
+    // Anunciar eliminação do canal em ~3 minutos
+    try { await interaction.channel.send({ content: '🗑️ Este canal será arquivado e apagado automaticamente em cerca de 3 minutos.' }); } catch {}
+    // Gerar transcript e enviar para logs antes de apagar
+    try {
+      const messages = await fetchAllMessages(interaction.channel, 2000);
+      let transcript = `TRANSCRICAO TICKET ${interaction.channel.name} (canal ${interaction.channel.id})\nServidor: ${interaction.guild?.name} (${interaction.guildId})\nFinalizado por: ${interaction.user.tag} em ${new Date().toISOString()}\n\n`;
+      for (const m of messages) {
+        const ts = new Date(m.createdTimestamp).toISOString();
+        const author = m.author?.tag || m.author?.id || 'Desconhecido';
+        const content = (m.content || '').replace(/\n/g, ' ');
+        const atts = m.attachments && m.attachments.size > 0 ? ` [anexos: ${Array.from(m.attachments.values()).map(a=>a.name).join(', ')}]` : '';
+        transcript += `${ts} - ${author}: ${content}${atts}\n`;
+      }
+      const { AttachmentBuilder } = require('discord.js');
+      const file = new AttachmentBuilder(Buffer.from(transcript,'utf8'), { name: `transcript-${interaction.channel.id}.txt` });
+      let sent = false;
+      try {
+        const wm = interaction.client?.webhooks;
+        if (wm && typeof wm.sendTicketLog === 'function') {
+          await wm.sendTicketLog(interaction.guild.id, 'close', {
+            closedBy: interaction.user,
+            ticketId: String(t.id),
+            guild: interaction.guild,
+            files: [file]
+          });
+          sent = true;
+        }
+      } catch {}
+      if (!sent) {
+        const logCh = await findLogsChannel(interaction.guild);
+        if (logCh && logCh.send) {
+          await logCh.send({ content: `📄 Transcript do ticket em ${interaction.guild.name}: #${interaction.channel.name}`, files: [file] });
+          sent = true;
+        }
+      }
+    } catch {}
+    // Agendar eliminação do canal em ~3 minutos
+    setTimeout(async () => {
+      try {
+        await interaction.channel.delete('Ticket finalizado (auto delete ~3min)');
+        try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'delete', message: 'Canal apagado automaticamente após finalizar' }); } catch {}
+      } catch {}
+    }, 3 * 60 * 1000);
+    if (interaction.deferred) {
+      return interaction.editReply({ content: '✅ Finalizado. O canal será apagado automaticamente em ~3 minutos.' });
+    }
+    return interaction.reply({ content: '✅ Finalizado. O canal será apagado automaticamente em ~3 minutos.', flags: MessageFlags.Ephemeral });
   }
 
   if (id.startsWith('ticket:member:submit')) {

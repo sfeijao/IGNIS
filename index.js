@@ -94,7 +94,7 @@ client.commands = new Collection();
 
 // Setup storage and ticket manager
 client.storage = storage;
-client.webhooks = new WebhookManager();
+client.webhooks = new WebhookManager(client);
 
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -197,6 +197,11 @@ client.once('ready', () => {
     
     // Tornar cliente disponível globalmente para o dashboard
     global.discordClient = client;
+    // Disponibilizar client no manager e hidratar webhooks do DB
+    try {
+        if (client.webhooks?.setClient) client.webhooks.setClient(client);
+        if (client.webhooks?.hydrateFromStorage) client.webhooks.hydrateFromStorage();
+    } catch {}
     // Restaurar painéis de tickets do storage (Mongo/SQLite)
     (async () => {
         try {

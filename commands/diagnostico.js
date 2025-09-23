@@ -25,7 +25,18 @@ module.exports = {
                 `⚡ Memória: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`
             ].join('\n');
 
-            await interaction.editReply(`✅ **Diagnóstico Completo:**\n\`\`\`${info}\`\`\``);
+            // Webhooks carregados (tipos)
+            let webhookInfo = '';
+            try {
+                const wm = interaction.client.webhooks;
+                if (wm && typeof wm.getAllLoaded === 'function') {
+                    const all = wm.getAllLoaded();
+                    const lines = Object.entries(all).map(([gid, types]) => `• ${gid}${gid === interaction.guild.id ? ' (este servidor)' : ''}: ${types.join(', ') || '—'}`);
+                    webhookInfo = lines.length ? `\n🔗 Webhooks carregados:\n${lines.join('\n')}` : '';
+                }
+            } catch {}
+
+            await interaction.editReply(`✅ **Diagnóstico Completo:**\n\`\`\`${info}\`\`\`${webhookInfo}`);
             console.log('✅ Diagnóstico concluído');
             
         } catch (error) {
