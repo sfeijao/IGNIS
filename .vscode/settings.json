@@ -1,0 +1,19 @@
+{
+    "dataworkspace.excludedProjects": [
+        "ola/ola.sqlproj"
+    ],
+    // Allow committing without staged changes using smart commit
+    "git.enableSmartCommit": true,
+    // Don't fail commits due to message validation (length or subject length)
+    "git.inputValidation": true,
+    "git.inputValidationSubjectLength": 0,
+    "git.inputValidationLength": 0,
+    // After committing, sync (push) automatically (optional)
+    "git.postCommitCommand": "sync",
+    // Show staged group and allow staging flow explicitly
+    "git.alwaysShowStagedChangesResourceGroup": true,
+    // Commit all by default when using smart commit
+    "git.commitSmartCommitChanges": "all",
+    // Allow passing --no-verify/-n from VS Code Git UI (if supported)
+    "git.allowNoVerifyCommit": true
+}
