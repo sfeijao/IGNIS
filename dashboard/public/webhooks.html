@@ -33,7 +33,7 @@
           <h1 class="section-title"><i class="fas fa-plug"></i> Gestão de Webhooks</h1>
         </div>
         <p class="text-secondary mb-4">Configure os webhooks (ex.: logs) para este servidor.</p>
-  <div class="glass-card card-pad mb-16" style="padding:24px">
+  <div class="glass-card card-pad mb-16 pad-24">
           <div class="grid grid-2">
             <div>
               <label>Tipo</label>
@@ -55,15 +55,34 @@
               <select id="whChannel" class="input" title="Selecionar canal"></select>
             </div>
           </div>
-          <div class="actions-row mt-12" style="flex-wrap: wrap">
-            <button id="btnSaveWebhook" class="btn btn-primary" style="min-width:180px"><i class="fas fa-save"></i> Guardar</button>
-            <button id="btnAutoSetup" class="btn btn-glass" style="min-width:180px"><i class="fas fa-magic"></i> Auto-Setup</button>
+          <div class="actions-row mt-12 flex-wrap">
+            <button id="btnSaveWebhook" class="btn btn-primary minw-180"><i class="fas fa-save"></i> Guardar</button>
+            <button id="btnAutoSetup" class="btn btn-glass minw-180"><i class="fas fa-magic"></i> Auto-Setup</button>
           </div>
         </div>
         <div id="webhooksList" class="server-grid"></div>
       </section>
     </div>
   </main>
+  <!-- Inline Modal for adding missing webhook types -->
+  <style>
+    .hidden{display:none}
+  </style>
+  <div id="modalOverlay" class="modal-overlay hidden">
+    <div class="modal hidden">
+      <div class="modal-header">
+        <h3><i class="fas fa-plug"></i> Adicionar tipos em falta</h3>
+        <button id="modalClose" class="btn btn-glass btn-sm" aria-label="Fechar"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-secondary">Selecione um canal para auto-criar ou cole a URL do webhook para cada tipo em falta.</p>
+        <div id="modalTypes"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="modalSubmit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>
+      </div>
+    </div>
+  </div>
   <script src="/js/webhooks.js"></script>
   <script>
     (async () => {
@@ -101,6 +120,15 @@
     .dot-green{background:#22c55e}
     .dot-red{background:#ef4444}
     .dot-gray{background:#6b7280}
+    /* Modal Styles */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:2000}
+    .modal{background:var(--glass-bg);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:12px;max-width:640px;width:100%;padding:16px}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .modal-body{max-height:60vh;overflow:auto}
+    .modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+    .type-row{display:grid;grid-template-columns:120px 1fr;gap:8px;align-items:center;margin-bottom:10px}
+    .input-row{display:flex;gap:8px}
+    .input{width:100%}
   </style>
   <script>
     (async () => {

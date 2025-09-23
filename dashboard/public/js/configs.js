@@ -4,6 +4,9 @@
   const logsSel = document.getElementById('cfgLogsChannel');
   const roleSel = document.getElementById('cfgStaffRole');
   const btn = document.getElementById('cfgSave');
+  const routeCreate = document.getElementById('routeCreate');
+  const routeClose = document.getElementById('routeClose');
+  const routeUpdate = document.getElementById('routeUpdate');
 
   function notify(msg, type='info') {
     const div = document.createElement('div');
@@ -32,12 +35,38 @@
       const cfg = d.config || {};
       if (cfg.logs_channel_id) logsSel.value = cfg.logs_channel_id;
       if (cfg.staff_role_id) roleSel.value = cfg.staff_role_id;
+      const routing = (cfg.webhookRouting) || {};
+      if (routeCreate) routeCreate.value = routing.create || 'tickets';
+      if (routeClose) routeClose.value = routing.close || 'tickets';
+      if (routeUpdate) routeUpdate.value = routing.update || 'updates';
     } catch {}
   }
 
   if (btn) btn.addEventListener('click', async () => {
     try {
-      const updates = { logs_channel_id: logsSel.value || null, staff_role_id: roleSel.value || null };
+      // Validation: warn when routing points to missing webhook types
+      try {
+        const listData = await api(`/api/guild/${guildId}/webhooks`);
+        const loadedTypes = new Set((listData.webhooks || []).map(w => w.type || 'logs'));
+        const sel = {
+          create: routeCreate?.value || 'tickets',
+          close: routeClose?.value || 'tickets',
+          update: routeUpdate?.value || 'updates'
+        };
+        const missing = Array.from(new Set(Object.values(sel))).filter(t => !loadedTypes.has(t));
+        if (missing.length) {
+          notify(`Atenção: mapeamento aponta para tipos não configurados: ${missing.join(', ')}`, 'error');
+        }
+      } catch {}
+      const updates = { 
+        logs_channel_id: logsSel.value || null, 
+        staff_role_id: roleSel.value || null,
+        webhookRouting: {
+          create: routeCreate?.value || 'tickets',
+          close: routeClose?.value || 'tickets',
+          update: routeUpdate?.value || 'updates'
+        }
+      };
       await api(`/api/guild/${guildId}/config`, { method: 'POST', body: JSON.stringify(updates) });
       notify('Configurações guardadas', 'success');
     } catch (err) { notify(err.message, 'error'); }

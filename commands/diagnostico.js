@@ -36,7 +36,16 @@ module.exports = {
                 }
             } catch {}
 
-            await interaction.editReply(`✅ **Diagnóstico Completo:**\n\`\`\`${info}\`\`\`${webhookInfo}`);
+            // Roteamento efetivo (config)
+            let routingInfo = '';
+            try {
+                const storage = require('../utils/storage');
+                const cfg = await storage.getGuildConfig(interaction.guild.id);
+                const routing = cfg?.webhookRouting || { create: 'tickets', close: 'tickets', update: 'updates' };
+                routingInfo = `\n🧭 Routing: create→${routing.create}, close→${routing.close}, update→${routing.update}`;
+            } catch {}
+
+            await interaction.editReply(`✅ **Diagnóstico Completo:**\n\`\`\`${info}\`\`\`${webhookInfo}${routingInfo}`);
             console.log('✅ Diagnóstico concluído');
             
         } catch (error) {

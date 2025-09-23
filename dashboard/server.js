@@ -882,6 +882,11 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
     if (preferSqlite) {
             const storage = require('../utils/storage-sqlite');
             const list = await storage.listWebhooks(req.params.guildId);
+            // Mark loaded types using runtime manager
+            try {
+                const loadedTypes = (global.discordClient?.webhooks?.getLoadedTypes?.(req.params.guildId)) || [];
+                for (const w of list) w.loaded = loadedTypes.includes(w.type || 'logs');
+            } catch {}
             return res.json({ success: true, webhooks: list });
         } else {
             if (!hasMongoEnv) return res.json({ success: true, webhooks: [] });
@@ -892,6 +897,10 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
             }
             const { WebhookModel } = require('../utils/db/models');
             const list = await WebhookModel.find({ guild_id: req.params.guildId }).lean();
+            try {
+                const loadedTypes = (global.discordClient?.webhooks?.getLoadedTypes?.(req.params.guildId)) || [];
+                for (const w of list) w.loaded = loadedTypes.includes(w.type || 'logs');
+            } catch {}
             return res.json({ success: true, webhooks: list });
         }
     } catch (e) {
@@ -1035,6 +1044,75 @@ app.post('/api/guild/:guildId/webhooks/auto-setup', async (req, res) => {
     } catch (e) {
         logger.error('Error auto-setup webhook:', e);
         res.status(500).json({ success: false, error: 'Failed to auto-setup webhook' });
+    }
+});
+
+// Create a webhook of a given type in a specific channel (server-side creation)
+app.post('/api/guild/:guildId/webhooks/create-in-channel', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const guild = check.guild;
+        const { type = 'logs', channel_id, name } = req.body || {};
+        if (!channel_id) return res.status(400).json({ success: false, error: 'Missing channel_id' });
+        const channel = guild.channels.cache.get(channel_id) || await client.channels.fetch(channel_id).catch(() => null);
+        if (!channel || !channel.createWebhook) return res.status(404).json({ success: false, error: 'Channel not found or unsupported' });
+        const wh = await channel.createWebhook({ name: name || `IGNIS ${type}` }).catch(() => null);
+        if (!wh || !wh.url) return res.status(500).json({ success: false, error: 'Failed to create webhook' });
+        // Persist and update runtime
+        try {
+            if (preferSqlite) {
+                const storage = require('../utils/storage-sqlite');
+                await storage.upsertWebhook({ guild_id: req.params.guildId, type, name: name || `IGNIS ${type}`, url: wh.url, channel_id, channel_name: channel.name, enabled: true });
+            } else if (hasMongoEnv) {
+                const { isReady } = require('../utils/db/mongoose');
+                if (isReady()) {
+                    const { WebhookModel } = require('../utils/db/models');
+                    await WebhookModel.findOneAndUpdate(
+                        { guild_id: req.params.guildId, type },
+                        { $set: { name: name || `IGNIS ${type}`, url: wh.url, channel_id, channel_name: channel.name, enabled: true } },
+                        { upsert: true }
+                    );
+                }
+            }
+            if (client?.webhooks?.addWebhook) {
+                await client.webhooks.addWebhook(req.params.guildId, type, name || `IGNIS ${type}`, wh.url);
+            }
+        } catch {}
+        return res.json({ success: true, webhook: { type, name: name || `IGNIS ${type}`, url: wh.url, channel_id, channel_name: channel.name } });
+    } catch (e) {
+        logger.error('Error creating webhook in channel:', e);
+        res.status(500).json({ success: false, error: 'Failed to create webhook in channel' });
+    }
+});
+
+// Test a specific webhook type by sending a sample embed
+app.post('/api/guild/:guildId/webhooks/test', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const { type = 'logs' } = req.body || {};
+        const wm = client.webhooks;
+        if (!wm) return res.status(500).json({ success: false, error: 'Webhook manager not available' });
+        const info = wm.getWebhookInfo(req.params.guildId, type);
+        if (!info || !info.webhook?.url) return res.status(404).json({ success: false, error: `Webhook type '${type}' not configured` });
+        const { EmbedBuilder } = require('discord.js');
+        const embed = new EmbedBuilder()
+            .setTitle('🔔 Teste de Webhook')
+            .setDescription(`Mensagem de teste enviada pelo dashboard (${type}).`)
+            .setColor(type === 'tickets' ? 0x60A5FA : type === 'updates' ? 0xF59E0B : 0x7C3AED)
+            .setTimestamp();
+        await info.webhook.send({ embeds: [embed], username: `IGNIS • ${type}` });
+        return res.json({ success: true, message: 'Test sent' });
+    } catch (e) {
+        logger.error('Error testing webhook:', e);
+        res.status(500).json({ success: false, error: 'Failed to test webhook' });
     }
 });
 

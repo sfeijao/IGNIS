@@ -235,8 +235,17 @@ class WebhookManager {
     }
 
     async sendTicketLog(guildId, event, data) {
-        // Choose target webhook type by event: create/close -> 'tickets', update -> 'updates', fallback -> 'logs'
-        const preferredType = (event === 'update') ? 'updates' : (event === 'create' || event === 'close') ? 'tickets' : 'logs';
+        // Choose target webhook type using guild-configured routing if available, else defaults
+        let preferredType = null;
+        try {
+            const storage = require('../storage');
+            const cfg = await storage.getGuildConfig(guildId);
+            const routing = cfg && cfg.webhookRouting ? cfg.webhookRouting : null;
+            if (routing && typeof routing === 'object' && routing[event]) preferredType = String(routing[event]);
+        } catch {}
+        if (!preferredType) {
+            preferredType = (event === 'update') ? 'updates' : (event === 'create' || event === 'close') ? 'tickets' : 'logs';
+        }
         const typeMap = this.webhooks.get(guildId);
         const webhookInfo = typeMap?.get?.(preferredType) || typeMap?.get?.('logs');
         if (!webhookInfo || !webhookInfo.webhook?.url) {

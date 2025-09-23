@@ -123,6 +123,14 @@ body {
     border-color: var(--primary);
 }
 
+/* Utilities */
+.gap-8 { gap: 8px; }
+.hr-soft { border: 0; border-top: 1px solid var(--glass-border); margin: 16px 0; opacity: 0.5; }
+.text-secondary { color: var(--text-secondary); }
+.pad-24 { padding: 24px; }
+.flex-wrap { flex-wrap: wrap; }
+.minw-180 { min-width: 180px; }
+
 /* Neuro Card Component */
 .neuro-card {
     background: var(--bg-secondary);
@@ -206,6 +214,11 @@ body {
     transition: all var(--transition-normal);
     position: relative;
     overflow: hidden; /* keep shimmer effect inside */
+}
+.btn-disabled, .btn[disabled] {
+    opacity: 0.5;
+    pointer-events: none;
+    filter: grayscale(0.6);
 }
 
 .btn::before {
@@ -313,6 +326,16 @@ label {
     box-shadow: 0 0 0 3px rgba(139,92,246,0.25);
 }
 
+/* Fix for Windows/Chrome: select dropdown uses light system background but inherits white text
+   Force options to dark text on light background so items are readable when the list opens. */
+select.input option,
+select.form-select option,
+select.input optgroup,
+select.form-select optgroup {
+    color: #111 !important;
+    background: #fff !important;
+}
+
 /* Grid Layouts */
 .grid {
     display: grid;
@@ -322,6 +345,30 @@ label {
 .grid-2 { grid-template-columns: repeat(2, 1fr); }
 .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-4 { grid-template-columns: repeat(4, 1fr); }
+/* Improve select dropdown legibility across platforms */
+select.input,
+select.form-select {
+    background-color: rgba(255,255,255,0.08);
+    color: var(--text-primary);
+}
+
+/* When the native dropdown list is open, browsers often use their own popup; ensure readable colors */
+select.input:focus,
+select.form-select:focus {
+    color: var(--text-primary);
+}
+
+/* Option hover/selection (where supported) */
+select.input option:checked,
+select.form-select option:checked {
+    background-color: #e5e7eb !important; /* gray-200 */
+    color: #111 !important;
+}
+select.input option:hover,
+select.form-select option:hover {
+    background-color: #f3f4f6 !important; /* gray-100 */
+    color: #111 !important;
+}
 
 @media (max-width: 768px) {
     .grid-2, .grid-3, .grid-4 {
