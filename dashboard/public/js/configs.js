@@ -7,6 +7,7 @@
   const routeCreate = document.getElementById('routeCreate');
   const routeClose = document.getElementById('routeClose');
   const routeUpdate = document.getElementById('routeUpdate');
+  const routeClaim = document.getElementById('routeClaim');
 
   function notify(msg, type='info') {
     const div = document.createElement('div');
@@ -35,10 +36,11 @@
       const cfg = d.config || {};
       if (cfg.logs_channel_id) logsSel.value = cfg.logs_channel_id;
       if (cfg.staff_role_id) roleSel.value = cfg.staff_role_id;
-      const routing = (cfg.webhookRouting) || {};
+  const routing = (cfg.webhookRouting) || {};
       if (routeCreate) routeCreate.value = routing.create || 'tickets';
       if (routeClose) routeClose.value = routing.close || 'tickets';
       if (routeUpdate) routeUpdate.value = routing.update || 'updates';
+  if (routeClaim) routeClaim.value = routing.claim || 'updates';
     } catch {}
   }
 
@@ -51,7 +53,8 @@
         const sel = {
           create: routeCreate?.value || 'tickets',
           close: routeClose?.value || 'tickets',
-          update: routeUpdate?.value || 'updates'
+          update: routeUpdate?.value || 'updates',
+          claim: routeClaim?.value || 'updates'
         };
         const missing = Array.from(new Set(Object.values(sel))).filter(t => !loadedTypes.has(t));
         if (missing.length) {
@@ -64,7 +67,8 @@
         webhookRouting: {
           create: routeCreate?.value || 'tickets',
           close: routeClose?.value || 'tickets',
-          update: routeUpdate?.value || 'updates'
+          update: routeUpdate?.value || 'updates',
+          claim: routeClaim?.value || 'updates'
         }
       };
       await api(`/api/guild/${guildId}/config`, { method: 'POST', body: JSON.stringify(updates) });

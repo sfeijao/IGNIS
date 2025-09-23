@@ -73,8 +73,16 @@
                   <option value="tickets">tickets</option>
                 </select>
               </div>
+              <div>
+                <label class="text-secondary">claim</label>
+                <select id="routeClaim" class="input" title="Tipo de webhook para evento claim">
+                  <option value="logs">logs</option>
+                  <option value="updates">updates</option>
+                  <option value="tickets">tickets</option>
+                </select>
+              </div>
             </div>
-            <small class="text-secondary">Exemplo: { webhookRouting: { create: 'logs', close: 'tickets', update: 'updates' } }</small>
+            <small class="text-secondary">Exemplo: { webhookRouting: { create: 'logs', close: 'tickets', update: 'updates', claim: 'updates' } }</small>
           </div>
           <div class="mt-12">
             <button id="cfgSave" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>

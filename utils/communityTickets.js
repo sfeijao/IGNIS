@@ -380,7 +380,7 @@ async function handleButton(interaction) {
       const embed = new EmbedBuilder().setColor(0x10B981).setDescription(`✋ Ticket reclamado por ${interaction.user}.`);
   await interaction.channel.send({ embeds: [embed] });
   try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'claim', message: 'Ticket reclamado', data: { channel_id: interaction.channel.id } }); } catch {}
-  try { const wm = interaction.client?.webhooks; if (wm?.sendTicketLog) await wm.sendTicketLog(interaction.guild.id, 'update', { updatedBy: interaction.user, ticketId: String(t.id), guild: interaction.guild, message: 'Ticket reclamado' }); } catch {}
+  try { const wm = interaction.client?.webhooks; if (wm?.sendTicketLog) await wm.sendTicketLog(interaction.guild.id, 'claim', { claimedBy: interaction.user, ticketId: String(t.id), guild: interaction.guild, channelId: interaction.channel.id, previousStatus: t.status, newStatus: 'claimed' }); } catch {}
       await updatePanelHeader(interaction.channel, updated || { ...t, assigned_to: interaction.user.id, status: 'claimed' });
       return interaction.reply({ content: '✅ Reclamado.', flags: MessageFlags.Ephemeral });
     }
@@ -396,6 +396,7 @@ async function handleButton(interaction) {
       const embed = new EmbedBuilder().setColor(0xF59E0B).setDescription(`👐 Ticket libertado por ${interaction.user}.`);
   await interaction.channel.send({ embeds: [embed] });
   try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'release', message: 'Ticket libertado', data: { channel_id: interaction.channel.id } }); } catch {}
+  try { const wm = interaction.client?.webhooks; if (wm?.sendTicketLog) await wm.sendTicketLog(interaction.guild.id, 'release', { releasedBy: interaction.user, ticketId: String(t.id), guild: interaction.guild, channelId: interaction.channel.id, previousAssigneeId: t.assigned_to, previousStatus: t.status, newStatus: (t.status === 'claimed' ? 'open' : t.status) }); } catch {}
       await updatePanelHeader(interaction.channel, updated || { ...t, assigned_to: null, status: t.status === 'claimed' ? 'open' : t.status });
       return interaction.reply({ content: '✅ Libertado.', flags: MessageFlags.Ephemeral });
     }

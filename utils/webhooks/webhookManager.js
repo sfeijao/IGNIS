@@ -244,7 +244,12 @@ class WebhookManager {
             if (routing && typeof routing === 'object' && routing[event]) preferredType = String(routing[event]);
         } catch {}
         if (!preferredType) {
-            preferredType = (event === 'update') ? 'updates' : (event === 'create' || event === 'close') ? 'tickets' : 'logs';
+            // Defaults: claim/release/update -> 'updates', create/close -> 'tickets', otherwise 'logs'
+            preferredType = (event === 'update' || event === 'claim' || event === 'release')
+                ? 'updates'
+                : (event === 'create' || event === 'close')
+                ? 'tickets'
+                : 'logs';
         }
         const typeMap = this.webhooks.get(guildId);
         const webhookInfo = typeMap?.get?.(preferredType) || typeMap?.get?.('logs');
@@ -300,6 +305,32 @@ class WebhookManager {
                         )
                         .setTimestamp();
                     break;
+
+                case 'claim':
+                    embed
+                        .setTitle('✋ Ticket Reclamado')
+                        .setDescription(`Ticket reclamado por ${data.claimedBy?.tag || 'Usuário desconhecido'}`)
+                        .addFields(
+                            { name: '🆔 ID do Ticket', value: data.ticketId || 'N/A', inline: true },
+                            { name: '📣 Canal', value: data.channelId ? `<#${data.channelId}>` : 'N/A', inline: true },
+                            { name: '👤 Responsável', value: data.claimedBy?.id ? `<@${data.claimedBy.id}>` : 'N/A', inline: true },
+                            { name: '📊 Status', value: `${data.previousStatus || 'N/A'} → ${data.newStatus || 'claimed'}` }
+                        )
+                        .setTimestamp();
+                    break;
+
+                case 'release':
+                    embed
+                        .setTitle('👐 Ticket Libertado')
+                        .setDescription(`Ticket libertado por ${data.releasedBy?.tag || 'Usuário desconhecido'}`)
+                        .addFields(
+                            { name: '🆔 ID do Ticket', value: data.ticketId || 'N/A', inline: true },
+                            { name: '📣 Canal', value: data.channelId ? `<#${data.channelId}>` : 'N/A', inline: true },
+                            { name: '👤 Antigo responsável', value: data.previousAssigneeId ? `<@${data.previousAssigneeId}>` : 'N/A', inline: true },
+                            { name: '📊 Status', value: `${data.previousStatus || 'claimed'} → ${data.newStatus || 'open'}` }
+                        )
+                        .setTimestamp();
+                    break;
             }
 
             // Send webhook message
@@ -325,6 +356,8 @@ class WebhookManager {
             case 'create': return 0x00FF00;  // Verde
             case 'close': return 0xFF0000;   // Vermelho
             case 'update': return 0xFFFF00;  // Amarelo
+            case 'claim': return 0x10B981;   // Verde teal
+            case 'release': return 0xF59E0B; // Laranja
             default: return 0x7289DA;        // Discord Blurple
         }
     }
