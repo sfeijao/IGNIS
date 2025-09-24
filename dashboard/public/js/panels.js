@@ -4,6 +4,7 @@
   const guildId = params.get('guildId');
   const container = document.getElementById('panelsContainer');
   const chanSel = document.getElementById('panelChannel');
+  const typeSel = document.getElementById('panelType');
   const themeSel = document.getElementById('panelTheme');
   const templateSel = document.getElementById('panelTemplate');
   const btnCreate = document.getElementById('btnCreatePanel');
@@ -161,10 +162,12 @@
   if (btnCreate) btnCreate.addEventListener('click', async () => {
     try {
       const channel_id = chanSel?.value;
+      const type = typeSel?.value || 'tickets';
       const theme = themeSel?.value || 'dark';
       const template = templateSel?.value || 'classic';
       if (!channel_id) return notify('Selecione um canal', 'error');
-      await api(`/api/guild/${guildId}/panels/create`, { method: 'POST', body: JSON.stringify({ channel_id, theme, template }) });
+      const body = { channel_id, theme, template, type };
+      await api(`/api/guild/${guildId}/panels/create`, { method: 'POST', body: JSON.stringify(body) });
       notify('Painel criado', 'success');
       await load();
     } catch (err) { notify(err.message, 'error'); }
@@ -203,40 +206,81 @@
   function renderPreview() {
     if (!preview) return;
     const theme = themeSel?.value || 'dark';
+    const type = typeSel?.value || 'tickets';
     const template = templateSel?.value || 'classic';
     preview.className = `preview-embed ${theme}`;
-    const title = template === 'premium' ? '🎫 Centro de Suporte • Premium'
-                 : template === 'compact' ? '🎫 Tickets • Compacto'
-                 : template === 'minimal' ? '🎫 Abrir ticket'
-                 : '🎫 Centro de Suporte';
-    const desc = template === 'minimal'
-      ? 'Clica num botão para abrir um ticket privado.'
-      : 'Escolhe o departamento abaixo para abrir um ticket privado com a equipa.';
-    const fields = [
-      { name: '• Resposta rápida', value: template==='compact' ? 'Minutos' : 'Tempo médio: minutos' },
-      { name: '• Canal privado', value: 'Visível só para ti e staff' },
-      { name: '• Histórico guardado', value: 'Transcript disponível' }
-    ];
-    const buttons = template === 'compact'
-      ? [
-          { label: 'Suporte', emoji: '🎫', style: 'primary' },
-          { label: 'Problema', emoji: '⚠️', style: 'danger' },
-        ]
-      : [
-          { label: 'Suporte Técnico', emoji: '🔧', style: 'primary' },
-          { label: 'Reportar Problema', emoji: '⚠️', style: 'danger' },
-          { label: 'Moderação & Segurança', emoji: '🛡️', style: 'secondary' },
-          { label: 'Dúvidas Gerais', emoji: '💬', style: 'secondary' },
-          { label: 'Suporte de Conta', emoji: '🧾', style: 'secondary' }
-        ];
-    preview.innerHTML = `
-      <div class="preview-title">${title}</div>
-      <div class="preview-desc">${desc}</div>
-      <div class="preview-fields">${fields.map(f => `<div class="preview-field"><div class="text-secondary" style="font-size:12px">${f.name}</div><div>${f.value}</div></div>`).join('')}</div>
-      <div class="preview-buttons">${buttons.map(b => `<div class="preview-btn">${b.emoji} ${b.label}</div>`).join('')}</div>
-    `;
+    if (type === 'verification') {
+      // Filter template options to verification-compatible
+      if (templateSel) {
+        Array.from(templateSel.options).forEach(opt => {
+          const forType = opt.getAttribute('data-for') || 'tickets';
+          opt.hidden = (forType !== 'verification');
+        });
+        if (!templateSel.value || templateSel.querySelector(`option[value="${templateSel.value}"][data-for="verification"]`) == null) {
+          templateSel.value = 'minimal';
+        }
+        templateSel.disabled = false;
+      }
+      const vt = templateSel?.value || 'minimal';
+      const title = '🔒 Verificação do Servidor';
+      const desc = vt === 'rich'
+        ? 'Bem-vindo(a)! Para aceder a todos os canais, conclui a verificação abaixo.'
+        : 'Clica em Verificar para concluir e ganhar acesso aos canais.';
+      const buttons = [{ label: 'Verificar', emoji: '✅' }];
+      const fields = vt === 'rich' ? [
+        { name: '⚠️ Importante', value: 'Segue as regras do servidor e mantém um perfil adequado.' }
+      ] : [];
+      preview.innerHTML = `
+        <div class="preview-title">${title}</div>
+        <div class="preview-desc">${desc}</div>
+        ${fields.length ? `<div class="preview-fields">${fields.map(f => `<div class=\"preview-field\"><div class=\"text-secondary\" style=\"font-size:12px\">${f.name}</div><div>${f.value}</div></div>`).join('')}</div>` : ''}
+        <div class="preview-buttons">${buttons.map(b => `<div class=\"preview-btn\">${b.emoji} ${b.label}</div>`).join('')}</div>
+      `;
+    } else {
+      if (templateSel) {
+        templateSel.disabled = false;
+        Array.from(templateSel.options).forEach(opt => {
+          const forType = opt.getAttribute('data-for') || 'tickets';
+          opt.hidden = (forType !== 'tickets');
+        });
+        if (!templateSel.value || templateSel.querySelector(`option[value="${templateSel.value}"][data-for="tickets"]`) == null) {
+          templateSel.value = 'classic';
+        }
+      }
+      const title = template === 'premium' ? '🎫 Centro de Suporte • Premium'
+                   : template === 'compact' ? '🎫 Tickets • Compacto'
+                   : template === 'minimal' ? '🎫 Abrir ticket'
+                   : '🎫 Centro de Suporte';
+      const desc = template === 'minimal'
+        ? 'Clica num botão para abrir um ticket privado.'
+        : 'Escolhe o departamento abaixo para abrir um ticket privado com a equipa.';
+      const fields = [
+        { name: '• Resposta rápida', value: template==='compact' ? 'Minutos' : 'Tempo médio: minutos' },
+        { name: '• Canal privado', value: 'Visível só para ti e staff' },
+        { name: '• Histórico guardado', value: 'Transcript disponível' }
+      ];
+      const buttons = template === 'compact'
+        ? [
+            { label: 'Suporte', emoji: '🎫', style: 'primary' },
+            { label: 'Problema', emoji: '⚠️', style: 'danger' },
+          ]
+        : [
+            { label: 'Suporte Técnico', emoji: '🔧', style: 'primary' },
+            { label: 'Reportar Problema', emoji: '⚠️', style: 'danger' },
+            { label: 'Moderação & Segurança', emoji: '🛡️', style: 'secondary' },
+            { label: 'Dúvidas Gerais', emoji: '💬', style: 'secondary' },
+            { label: 'Suporte de Conta', emoji: '🧾', style: 'secondary' }
+          ];
+      preview.innerHTML = `
+        <div class="preview-title">${title}</div>
+        <div class="preview-desc">${desc}</div>
+        <div class="preview-fields">${fields.map(f => `<div class="preview-field"><div class="text-secondary" style="font-size:12px">${f.name}</div><div>${f.value}</div></div>`).join('')}</div>
+        <div class="preview-buttons">${buttons.map(b => `<div class="preview-btn">${b.emoji} ${b.label}</div>`).join('')}</div>
+      `;
+    }
   }
 
+  if (typeSel) typeSel.addEventListener('change', renderPreview);
   if (themeSel) themeSel.addEventListener('change', renderPreview);
   if (templateSel) templateSel.addEventListener('change', renderPreview);
   renderPreview();

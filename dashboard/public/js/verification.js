@@ -5,9 +5,14 @@
 		mode:document.getElementById('mode'),
 		method:document.getElementById('method'),
 		logFails:document.getElementById('logFails'),
+		logFailRetention:document.getElementById('logFailRetention'),
 		save:document.getElementById('save'),
 		formError:document.getElementById('formError'),
 		methodHelp:document.getElementById('methodHelp'),
+		verifiedRole:document.getElementById('verifiedRole'),
+		unverifiedRole:document.getElementById('unverifiedRole'),
+		panelChannel:document.getElementById('panelChannel'),
+		createPanel:document.getElementById('createPanel'),
 		// Form builder
 		formBuilder:document.getElementById('formBuilder'),
 		newQuestionLabel:document.getElementById('newQuestionLabel'),
@@ -141,8 +146,9 @@
 	}
 
 	function updateDirty(errors){
-		const mode=els.mode?.value; const method=els.method?.value; const lf=!!els.logFails?.checked;
-		const changedBase = (original.mode!==mode) || (original.method!==method) || (Boolean(original.logFails)!==lf);
+		const mode=els.mode?.value; const method=els.method?.value; const lf=!!els.logFails?.checked; const lr = parseInt(els.logFailRetention?.value||'7',10);
+		const vr=els.verifiedRole?.value||''; const ur=els.unverifiedRole?.value||'';
+		const changedBase = (original.mode!==mode) || (original.method!==method) || (Boolean(original.logFails)!==lf) || ((original.logFailRetention||7)!==lr) || ((original.verifiedRoleId||'')!==vr) || ((original.unverifiedRoleId||'')!==ur);
 		const formChanged = JSON.stringify(original.formQuestions||[]) !== JSON.stringify(questions||[]);
 		const changed = changedBase || (method==='form' && formChanged);
 		els.save && (els.save.disabled = (Array.isArray(errors) && errors.length>0) || !changed);
@@ -153,31 +159,62 @@
 			const r=await fetch(`/api/guild/${guildId}/verification/config`, {credentials:'same-origin'});
 			const d=await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`);
 			const c=d.config||{};
-			original={ mode:c.mode||'easy', method:c.method||'button', logFails:!!c.logFails, formQuestions: Array.isArray(c?.form?.questions)? c.form.questions : [] };
+			original={ mode:c.mode||'easy', method:c.method||'button', logFails:!!c.logFails, logFailRetention: c.logFailRetention||7, verifiedRoleId: c.verifiedRoleId||'', unverifiedRoleId: c.unverifiedRoleId||'', formQuestions: Array.isArray(c?.form?.questions)? c.form.questions : [] };
 			questions = JSON.parse(JSON.stringify(original.formQuestions));
 			if(els.mode) els.mode.value=original.mode; if(els.method) els.method.value=original.method; if(els.logFails) els.logFails.checked=original.logFails;
+			if(els.logFailRetention){ els.logFailRetention.value = original.logFailRetention || 7; document.getElementById('retentionRow')?.classList.toggle('hidden', !original.logFails); }
+			// Fill roles/channels if empty
+			await Promise.all([loadRoles(), loadChannels()]);
+			if(els.verifiedRole && original.verifiedRoleId) els.verifiedRole.value = original.verifiedRoleId;
+			if(els.unverifiedRole && original.unverifiedRoleId) els.unverifiedRole.value = original.unverifiedRoleId;
 			setHelp(); renderQuestions(); validate();
 		}catch(e){ console.error(e); notify(e.message,'error'); }
+	}
+
+	async function loadRoles(){
+		try{ const r=await fetch(`/api/guild/${guildId}/roles`, {credentials:'same-origin'}); const d=await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`);
+			const list = d.roles||[]; const opts = ['<option value="">—</option>'].concat(list.map(r=>`<option value="${r.id}">${r.name}</option>`)).join('');
+			if(els.verifiedRole) els.verifiedRole.innerHTML = opts; if(els.unverifiedRole) els.unverifiedRole.innerHTML = opts;
+		}catch{}
+	}
+
+	async function loadChannels(){
+		try{ const r=await fetch(`/api/guild/${guildId}/channels`, {credentials:'same-origin'}); const d=await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`);
+			const list = d.channels||[]; const opts = ['<option value="">—</option>'].concat(list.map(c=>`<option value="${c.id}">${c.name}</option>`)).join('');
+			if(els.panelChannel) els.panelChannel.innerHTML = opts;
+		}catch{}
 	}
 
 	async function save(){
 		try{
 			validate(); if(els.save?.disabled) return; els.save.disabled=true;
 			const method = els.method?.value || 'button';
+			const lr = parseInt(els.logFailRetention?.value||'7',10);
 			const body = { mode:els.mode?.value||'easy', method, logFails:!!els.logFails?.checked };
+			if(body.logFails) body.logFailRetention = Math.max(1, Math.min(90, lr));
+			const vr = els.verifiedRole?.value||''; const ur = els.unverifiedRole?.value||'';
+			if(vr) body.verifiedRoleId = vr; if(ur) body.unverifiedRoleId = ur;
 			if(method==='form') body.form = { questions: questions.map(q=>({ id:q.id, label:q.label, type:q.type, required:!!q.required, options: Array.isArray(q.options)? q.options: undefined })) };
 			const r=await fetch(`/api/guild/${guildId}/verification/config`, { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify(body)});
 			const d=await r.json(); if(!r.ok||!d.success) throw new Error(Array.isArray(d.details)? d.details.join(' • ') : (d.error||`HTTP ${r.status}`));
-			original={ mode:body.mode, method:body.method, logFails:body.logFails, formQuestions: (body.form?.questions)||[] };
+			const c=d.config||body; // prefer server-config back
+			original={ mode:c.mode||body.mode, method:c.method||body.method, logFails:!!c.logFails, logFailRetention:c.logFailRetention||body.logFailRetention||7, verifiedRoleId:c.verifiedRoleId||vr||'', unverifiedRoleId:c.unverifiedRoleId||ur||'', formQuestions: (c.form?.questions)||(body.form?.questions)||[] };
 			notify('Guardado','success');
 		}catch(e){ console.error(e); notify(e.message,'error'); }
 		finally{ validate(); }
 	}
 
+	function updateRetentionVisibility(){
+		const enabled = !!els.logFails?.checked; const row = document.getElementById('retentionRow'); if(row) row.classList.toggle('hidden', !enabled);
+	}
+
 	// Events
 	els.mode?.addEventListener('change', ()=>{ setHelp(); validate(); });
 	els.method?.addEventListener('change', ()=>{ setHelp(); validate(); });
-	els.logFails?.addEventListener('change', ()=> validate());
+	els.logFails?.addEventListener('change', ()=> { updateRetentionVisibility(); validate(); });
+	els.logFailRetention?.addEventListener('input', ()=> validate());
+	els.verifiedRole?.addEventListener('change', ()=> validate());
+	els.unverifiedRole?.addEventListener('change', ()=> validate());
 	els.save?.addEventListener('click', save);
 
 	els.newQuestionType?.addEventListener('change', ()=>{ toggleOptionsEditor(); });
@@ -198,6 +235,18 @@
 		else { questions.push(q); }
 		renderQuestions(); resetNewQuestion(); updateDirty(); validate();
 	});
+
+	// Create verification panel
+	async function createPanel(){
+		try{
+			const ch = els.panelChannel?.value||''; if(!ch) { notify('Selecione um canal para publicar o painel','error'); return; }
+			const body = { type:'verification', channel_id: ch, theme: 'dark' };
+			const r = await fetch(`/api/guild/${guildId}/panels/create`, { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify(body)});
+			const d = await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`);
+			notify('Painel de verificação criado','success');
+		}catch(e){ console.error(e); notify(e.message,'error'); }
+	}
+	els.createPanel?.addEventListener('click', createPanel);
 
 	load();
 })();

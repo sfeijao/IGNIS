@@ -62,9 +62,26 @@
 							</select>
 							<p id="methodHelp" class="text-secondary small mt-6" aria-live="polite"></p>
 						</div>
+						<div>
+							<label for="verifiedRole">Cargo verificado</label>
+							<select id="verifiedRole" class="input" title="Cargo atribuído após verificação"></select>
+						</div>
+						<div>
+							<label for="unverifiedRole">Cargo não verificado</label>
+							<select id="unverifiedRole" class="input" title="Cargo atribuído enquanto não verificado"></select>
+						</div>
+						<div>
+							<label for="panelChannel">Canal para o painel</label>
+							<select id="panelChannel" class="input" title="Canal onde publicar o painel"></select>
+						</div>
 						<div class="grid-col-2">
 							<label for="logFails">Logs quando alguém falha</label>
 							<label class="switch"><input id="logFails" type="checkbox"><span>Ativar logs</span></label>
+						</div>
+						<div id="retentionRow" class="grid-col-2 hidden">
+							<label for="logFailRetention">Reter logs (dias)</label>
+							<input id="logFailRetention" type="number" class="input" min="1" max="90" value="7" />
+							<p class="text-secondary small mt-6">Máximo 90 dias. Apenas ativo quando os logs estão ligados.</p>
 						</div>
 					</div>
 
@@ -110,6 +127,7 @@
 					<div class="mt-12">
 						<div id="formError" class="text-danger hidden mb-8" role="alert"></div>
 						<button id="save" class="btn btn-primary" disabled><i class="fas fa-save"></i> Guardar</button>
+						<button id="createPanel" class="btn btn-glass ml-8"><i class="fas fa-plus"></i> Criar Painel de Verificação</button>
 					</div>
 				</div>
 			</section>

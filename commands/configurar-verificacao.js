@@ -22,36 +22,24 @@ module.exports = {
         }
 
         const embed = new EmbedBuilder()
-            .setColor(0x00ff00)
-            .setTitle('🌟 VERIFICAÇÃO DO SERVIDOR 🌟')
-            .setDescription(`Bem-vindo(a) ao **${config.serverName || interaction.guild.name}**!\n\n` +
-                '📋 **Sistema de Verificação**\n' +
-                'Para aceder todos os canais e interagir com a nossa comunidade, é necessário passar pela verificação.\n\n' +
-                'O processo é rápido e garante um ambiente seguro para todos os membros.\n\n' +
-                '⚡ **Processo de Verificação:**\n' +
-                '1. 🔄 Clique no botão "Verificar" abaixo\n' +
-                '2. 📝 Preenche o formulário solicitado\n' +
-                '3. 🎯 Escolhe um nickname adequado\n' +
-                '4. ✅ Recebe acesso completo ao servidor\n\n' +
-                '✨ **Benefícios:**\n' +
-                '• Acesso a todos os canais\n' +
-                '• Participação em eventos exclusivos\n' +
-                '• Tag de membro verificado\n' +
-                '• Interação com a comunidade\n\n' +
-                '⚠️ **Importante:**\n' +
-                '• Siga as regras do servidor\n' +
-                '• Mantenha um perfil adequado\n' +
-                '• Divirta-se!')
+            .setColor(0x7C3AED) // Roxo moderno (escuro). Alternativa clara: 0x60A5FA
+            .setTitle('🔒 Verificação do Servidor')
+            .setDescription(
+                `Bem-vindo(a) a **${config.serverName || interaction.guild.name}**.\n\n` +
+                'Para aceder a todos os canais, conclui a verificação clicando no botão abaixo. O processo é rápido e mantém a comunidade segura.'
+            )
+            .addFields(
+                { name: '⚠️ Importante', value: 'Segue as regras do servidor e mantém um perfil adequado. Tentativas de burlar a verificação podem resultar em penalizações.' }
+            )
             .setThumbnail(interaction.guild.iconURL({ dynamic: true, size: 256 }))
-            .setFooter({ 
-                text: 'IGNIS COMMUNITY™ • Sistema de verificação seguro • 2025'
-            })
+            .setFooter({ text: 'IGNIS COMMUNITY™ • Sistema de verificação' })
             .setTimestamp();
 
         const button = new ButtonBuilder()
             .setCustomId(BUTTON_IDS.VERIFY_USER)
-            .setLabel('🔒 Verificar Conta')
-            .setStyle(ButtonStyle.Success);
+            .setLabel('Verificar')
+            .setEmoji('✅')
+            .setStyle(ButtonStyle.Primary);
 
         const row = new ActionRowBuilder()
             .addComponents(button);

@@ -135,18 +135,32 @@ module.exports = {
                     try {
                         logger.interaction('button', customId, interaction, true);
                         
-                        // Prefer role ID from storage config, fallback to role name
+                        // Prefer role IDs from new verification config, fallback to legacy keys and name
                         let verifyRole = null;
+                        let unverifiedRole = null;
                         try {
                             const storage = require('../utils/storage');
                             const cfg = await storage.getGuildConfig(interaction.guild.id);
-                            const roleId = cfg?.roles?.verify || cfg?.verify_role_id || null;
-                            if (roleId) verifyRole = interaction.guild.roles.cache.get(roleId) || null;
+                            const vcfg = cfg?.verification || {};
+                            const verifiedRoleId = vcfg.verifiedRoleId || cfg?.roles?.verify || cfg?.verify_role_id || null;
+                            const unverifiedRoleId = vcfg.unverifiedRoleId || null;
+                            if (verifiedRoleId) verifyRole = interaction.guild.roles.cache.get(verifiedRoleId) || null;
+                            if (unverifiedRoleId) unverifiedRole = interaction.guild.roles.cache.get(unverifiedRoleId) || null;
                         } catch (e) {
                             // ignore and fallback
                         }
                         if (!verifyRole) verifyRole = interaction.guild.roles.cache.find(role => role.name === 'Verificado');
                         if (!verifyRole) {
+                            // Log failure for retention housekeeping
+                            try {
+                                const storage = require('../utils/storage');
+                                await storage.addLog({
+                                    guild_id: interaction.guild.id,
+                                    user_id: interaction.user.id,
+                                    type: 'verification_fail',
+                                    reason: 'role_not_found'
+                                });
+                            } catch {}
                             await errorHandler.handleInteractionError(interaction, new Error('VERIFY_ROLE_NOT_FOUND'));
                             return;
                         }
@@ -158,19 +172,48 @@ module.exports = {
                             });
                         }
 
-                        await interaction.member.roles.add(verifyRole);
+                        // Apply verified role and optionally remove unverified role
+                        let addOk = true;
+                        await interaction.member.roles.add(verifyRole).catch(() => { addOk = false; });
+                        if (!addOk) {
+                            try {
+                                const storage = require('../utils/storage');
+                                await storage.addLog({
+                                    guild_id: interaction.guild.id,
+                                    user_id: interaction.user.id,
+                                    type: 'verification_fail',
+                                    reason: 'role_add_failed',
+                                    role_id: verifyRole.id
+                                });
+                            } catch {}
+                            // Still respond gracefully
+                        }
+                        if (unverifiedRole && interaction.member.roles.cache.has(unverifiedRole.id)) {
+                            await interaction.member.roles.remove(unverifiedRole).catch(() => {});
+                        }
                         await interaction.reply({
                             content: `${EMOJIS.SUCCESS} Verificação completa! Bem-vindo(a) ao servidor!`,
                             flags: MessageFlags.Ephemeral
                         });
 
-                        // Log da verificação com sistema estruturado
+                        // Structured diagnostic log
                         logger.database('verification', {
                             userId: interaction.user.id,
                             guildId: interaction.guild.id,
                             roleId: verifyRole.id,
                             action: 'user_verified'
                         });
+
+                        // Optional retention pruning for failure logs based on dashboard config
+                        try {
+                            const storage = require('../utils/storage');
+                            const cfg = await storage.getGuildConfig(interaction.guild.id);
+                            const keepDays = Number(cfg?.verification?.logFailRetention);
+                            const logFails = Boolean(cfg?.verification?.logFails);
+                            if (logFails && keepDays && keepDays > 0) {
+                                await storage.pruneLogsByTypeOlderThan(interaction.guild.id, 'verification_fail', keepDays * 24 * 60 * 60 * 1000);
+                            }
+                        } catch {}
 
                         // Analytics para dashboard
                         if (global.socketManager) {

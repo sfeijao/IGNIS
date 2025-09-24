@@ -297,6 +297,28 @@ class SimpleStorage {
             .slice(0, limit);
     }
 
+    // Prune generic logs by type older than N milliseconds
+    async pruneLogsByTypeOlderThan(guildId, type, olderThanMs) {
+        try {
+            const logs = await this.readFile(this.logsFile) || [];
+            const cutoff = Date.now() - Math.max(0, Number(olderThanMs) || 0);
+            const filtered = logs.filter(l => {
+                if (guildId && l.guild_id !== guildId) return true; // keep other guilds
+                if (type && l.type !== type) return true; // keep other types
+                const t = new Date(l.timestamp).getTime();
+                return isNaN(t) || t >= cutoff; // keep if recent or invalid date
+            });
+            // Only write if changed to reduce IO
+            if (filtered.length !== logs.length) {
+                await this.writeFile(this.logsFile, filtered);
+            }
+            return { pruned: logs.length - filtered.length };
+        } catch (e) {
+            console.warn('pruneLogsByTypeOlderThan failed:', e?.message || e);
+            return { pruned: 0, error: e?.message || String(e) };
+        }
+    }
+
     // Ticket logs (lightweight action history)
     async addTicketLog({ ticket_id, guild_id, actor_id, action, message, data }) {
         if (useMongo && TicketLogModel) {

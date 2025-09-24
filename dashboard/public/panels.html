@@ -59,6 +59,13 @@
                 <div class="glass-card card-pad mb-16">
                     <div class="grid grid-3 gap-12">
                         <div>
+                            <label for="panelType">Tipo do painel</label>
+                            <select id="panelType" class="input" title="Selecionar tipo de painel">
+                                <option value="tickets">Tickets</option>
+                                <option value="verification">Verificação</option>
+                            </select>
+                        </div>
+                        <div>
                             <label for="panelChannel">Canal</label>
                             <select id="panelChannel" class="input" title="Selecionar canal"></select>
                         </div>
@@ -72,10 +79,14 @@
                         <div>
                             <label for="panelTemplate">Modelo</label>
                             <select id="panelTemplate" class="input" title="Selecionar modelo de painel">
-                                <option value="classic">Clássico</option>
-                                <option value="compact">Compacto</option>
-                                <option value="premium">Premium</option>
-                                <option value="minimal">Minimal</option>
+                                <!-- Tickets templates -->
+                                <option value="classic" data-for="tickets">Clássico</option>
+                                <option value="compact" data-for="tickets">Compacto</option>
+                                <option value="premium" data-for="tickets">Premium</option>
+                                <option value="minimal" data-for="tickets">Minimal</option>
+                                <!-- Verification templates -->
+                                <option value="minimal" data-for="verification">Verificação • Minimal</option>
+                                <option value="rich" data-for="verification">Verificação • Rich</option>
                             </select>
                         </div>
                         <div class="align-end">

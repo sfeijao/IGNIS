@@ -1429,8 +1429,9 @@ app.get('/api/guild/:guildId/verification/config', async (req, res) => {
         const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
-        const cfg = await storage.getGuildConfig(req.params.guildId);
-        res.json({ success: true, config: cfg?.verification || {} });
+    const cfg = await storage.getGuildConfig(req.params.guildId);
+    const v = cfg?.verification || {};
+    res.json({ success: true, config: v });
     } catch (e) { logger.error('Error get verification config:', e); res.status(500).json({ success: false, error: 'Failed to fetch verification config' }); }
 });
 
@@ -1458,6 +1459,10 @@ app.post('/api/guild/:guildId/verification/config', async (req, res) => {
             mode: Joi.string().valid('easy','medium','hard').default('easy'),
             method: Joi.string().valid('button','image','reaction','form').default('button'),
             logFails: Joi.boolean().default(false),
+            logFailRetention: Joi.number().integer().min(1).max(90)
+                .when('logFails', { is: true, then: Joi.default(7), otherwise: Joi.forbidden() }),
+            verifiedRoleId: Joi.string().trim().pattern(/^\d+$/).optional(),
+            unverifiedRoleId: Joi.string().trim().pattern(/^\d+$/).optional(),
             form: Joi.object({
                 questions: Joi.array().items(questionSchema).max(20)
             }).when('method', {
@@ -1492,10 +1497,10 @@ app.post('/api/guild/:guildId/verification/config', async (req, res) => {
             }
         }
 
-        const current = await storage.getGuildConfig(req.params.guildId) || {};
-        const next = { ...current, verification: { ...(current.verification || {}), ...value } };
+    const current = await storage.getGuildConfig(req.params.guildId) || {};
+    const next = { ...current, verification: { ...(current.verification || {}), ...value } };
         await storage.updateGuildConfig(req.params.guildId, next);
-        res.json({ success: true, message: 'Verification config updated' });
+    res.json({ success: true, message: 'Verification config updated', config: next.verification });
     } catch (e) { logger.error('Error set verification config:', e); res.status(500).json({ success: false, error: 'Failed to update verification config' }); }
 });
 
@@ -1901,11 +1906,17 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
     const storage = require('../utils/storage');
     const cfg = await storage.getGuildConfig(req.params.guildId).catch(() => ({}));
-    // Use guild default template if provided under tickets.config
-    const cfgTemplate = cfg?.tickets?.defaultTemplate;
+    // panel type: 'tickets' | 'verification'
+    const type = (req.body?.type === 'verification') ? 'verification' : 'tickets';
     const { channel_id, theme = 'dark' } = req.body || {};
+    // Template handling for tickets and verification
+    const cfgTemplate = type === 'tickets' ? (cfg?.tickets?.defaultTemplate) : 'minimal';
     let template = (req.body && req.body.template) ? String(req.body.template) : (typeof cfgTemplate === 'string' ? cfgTemplate : 'classic');
-    if (!['classic','compact','premium','minimal'].includes(template)) template = 'classic';
+    if (type === 'verification') {
+        if (!['minimal','rich'].includes(template)) template = 'minimal';
+    } else {
+        if (!['classic','compact','premium','minimal'].includes(template)) template = 'classic';
+    }
         if (!channel_id) return res.status(400).json({ success: false, error: 'Missing channel_id' });
         const guild = check.guild;
         const channel = guild.channels.cache.get(channel_id) || await client.channels.fetch(channel_id).catch(() => null);
@@ -1913,14 +1924,28 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
         // Build payload like slash command
         const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
         const visualAssets = require('../assets/visual-assets');
-        // Template-aware embed/buttons
-        const embed = new EmbedBuilder()
-            .setColor(theme === 'light' ? 0x60A5FA : 0x7C3AED)
-            .setThumbnail(visualAssets.realImages.supportIcon)
-            .setImage(visualAssets.realImages.supportBanner);
-
+        let embed = new EmbedBuilder().setColor(theme === 'light' ? 0x60A5FA : 0x7C3AED);
         let rows = [];
-        if (template === 'compact') {
+        if (type === 'verification') {
+            // Unified minimal verification panel
+            const vcfg = cfg?.verification || {};
+            embed
+                .setTitle('🔒 Verificação do Servidor')
+                .setDescription(template === 'rich'
+                  ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, conclui a verificação clicando no botão abaixo.`
+                  : 'Clica em Verificar para concluir e ganhar acesso aos canais.'
+                )
+                .setThumbnail(guild.iconURL({ size: 256 }))
+                .setFooter({ text: 'IGNIS COMMUNITY™ • Sistema de verificação' })
+                .setTimestamp();
+            if (template === 'rich') {
+                embed.addFields({ name: '⚠️ Importante', value: 'Segue as regras do servidor e mantém um perfil adequado.' });
+            }
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('verify_user').setLabel('Verificar').setEmoji('✅').setStyle(ButtonStyle.Primary)
+            );
+            rows = [row];
+        } else if (template === 'compact') {
             embed
                 .setTitle('🎫 Tickets • Compacto')
                 .setDescription('Escolhe abaixo e abre um ticket privado.');
@@ -1977,24 +2002,23 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             );
             rows = [row1, row2];
         }
-
         const payload = { embeds: [embed], components: rows };
         const msg = await channel.send(payload);
         // Persist panel to active storage backend
         try {
             if (preferSqlite) {
                 const storage = require('../utils/storage-sqlite');
-                await storage.upsertPanel({ guild_id: req.params.guildId, channel_id, message_id: msg.id, theme, template, payload, type: 'tickets' });
+                await storage.upsertPanel({ guild_id: req.params.guildId, channel_id, message_id: msg.id, theme, template, payload, type });
             } else if (process.env.MONGO_URI || process.env.MONGODB_URI) {
                 const { PanelModel } = require('../utils/db/models');
                 await PanelModel.findOneAndUpdate(
-                    { guild_id: req.params.guildId, channel_id, type: 'tickets' },
+                    { guild_id: req.params.guildId, channel_id, type },
                     { $set: { message_id: msg.id, theme, template, payload } },
                     { upsert: true }
                 );
             }
         } catch {}
-        res.json({ success: true, message: 'Panel created', panel: { channel_id, message_id: msg.id, theme, template } });
+    res.json({ success: true, message: 'Panel created', panel: { channel_id, message_id: msg.id, theme, template, type } });
     } catch (e) {
         logger.error('Error creating panel:', e);
         res.status(500).json({ success: false, error: 'Failed to create panel' });
