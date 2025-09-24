@@ -1601,5 +1601,14 @@ window.createPanelShortcut = () => {
     window.location.href = `/panels.html?guildId=${encodeURIComponent(dashboard.currentGuild)}#create`;
 };
 
+// Open tickets list page
+window.openTicketsList = () => {
+    if (!dashboard.currentGuild) {
+        dashboard.showError('Selecione um servidor primeiro');
+        return;
+    }
+    window.location.href = `/tickets.html?guildId=${encodeURIComponent(dashboard.currentGuild)}`;
+};
+
 // Export for global access
 window.IGNISDashboard = IGNISDashboard;

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IGNIS - Tickets</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="navbar-brand"><i class="fas fa-ticket-alt"></i> Tickets</div>
+      <div class="navbar-user">
+        <span id="healthBadge" class="badge health-badge" title="Estado do sistema">
+          <span id="health-mongo" class="dot dot-gray" title="DB"></span>
+          <span id="health-discord" class="dot dot-gray" title="Discord"></span>
+        </span>
+        <img id="userAvatar" src="/default-avatar.svg" alt="Avatar" class="user-avatar">
+        <span id="userName">Carregando...</span>
+        <a href="/dashboard" class="btn btn-glass"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="/logout" class="btn btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+      </div>
+    </div>
+  </nav>
+  <main class="main-content">
+    <div class="container">
+      <section class="dashboard-section fade-in">
+        <div class="section-header">
+          <h1 class="section-title"><i class="fas fa-list"></i> Lista de Tickets</h1>
+          <p class="text-secondary">Filtra, pesquisa e exporta tickets.</p>
+        </div>
+
+        <div class="glass-card card-pad">
+          <div class="filters grid grid-4 gap-12">
+            <div>
+              <label>Status</label>
+              <select id="fStatus" class="input" title="Filtrar por status">
+                <option value="">Todos</option>
+                <option value="open">Abertos</option>
+                <option value="claimed">Reclamados</option>
+                <option value="pending">Pendentes</option>
+                <option value="closed">Fechados</option>
+              </select>
+            </div>
+            <div>
+              <label>Prioridade</label>
+              <select id="fPriority" class="input" title="Filtrar por prioridade">
+                <option value="">Todas</option>
+                <option value="low">Baixa</option>
+                <option value="normal">Normal</option>
+                <option value="high">Alta</option>
+                <option value="urgent">Urgente</option>
+              </select>
+            </div>
+            <div>
+              <label>De</label>
+              <input id="fFrom" class="input" type="date" title="Data inicial" placeholder="YYYY-MM-DD" />
+            </div>
+            <div>
+              <label>Até</label>
+              <input id="fTo" class="input" type="date" title="Data final" placeholder="YYYY-MM-DD" />
+            </div>
+            <div>
+              <label>Cargo (para sugestões)</label>
+              <select id="fRole" class="input" title="Filtra sugestões pelo cargo"></select>
+            </div>
+            <div>
+              <label>Categoria</label>
+              <input id="fCategory" class="input" type="text" title="Categoria ex: suporte, denuncia" placeholder="Categoria" />
+            </div>
+            <div>
+              <label>Atribuído</label>
+              <input id="fAssigned" class="input" type="text" title="ID do membro ou 'me'" placeholder="userId ou 'me'" list="assignedList" />
+              <datalist id="assignedList"></datalist>
+            </div>
+            <div>
+              <label>Somente equipa (por cargo)</label>
+              <div class="flex-row items-center gap-8">
+                <input id="fStaffOnly" type="checkbox" title="Mostrar apenas tickets reclamados por membros do cargo selecionado" />
+                <small class="text-secondary">Filtra para status "reclamados" e atribuídos a membros do cargo acima.</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-3 gap-12 mt-12">
+            <div class="grid-col-2">
+              <label>Pesquisa</label>
+              <input id="fQuery" class="input" type="text" placeholder="ID, utilizador, assunto, descrição..." />
+            </div>
+            <div class="actions-row flex-row gap-8 items-end">
+              <button id="btnApply" class="btn btn-primary"><i class="fas fa-filter"></i> Aplicar</button>
+              <button id="btnReset" class="btn btn-glass"><i class="fas fa-undo"></i> Limpar</button>
+              <button id="btnCopyLink" class="btn btn-glass"><i class="fas fa-link"></i> Copiar link</button>
+              <div class="flex-spacer"></div>
+            </div>
+          </div>
+
+          <div class="grid grid-2 gap-12 mt-12">
+            <div>
+              <button id="btnExportCsv" class="btn btn-glass"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+              <button id="btnExportJson" class="btn btn-glass"><i class="fas fa-file-code"></i> Exportar JSON</button>
+            </div>
+            <div class="text-right">
+              <label>Por página</label>
+              <select id="pageSize" class="input w-100 inline ml-8" title="Itens por página">
+                <option value="10">10</option>
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div id="stats" class="cards-row mt-12"></div>
+
+        <div id="ticketsList" class="mt-12"></div>
+
+        <div id="pagination" class="pagination mt-12 flex-row items-center gap-8 justify-center"></div>
+      </section>
+    </div>
+  </main>
+  <script src="/js/tickets.js"></script>
+  <style>
+    .card-pad{padding:16px}
+    .gap-12{gap:12px}
+    .mt-12{margin-top:12px}
+    .grid-col-2{grid-column: span 2}
+    .badge.stat{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);border-radius:12px;padding:10px 12px}
+    .ticket-item{background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);border-radius:12px;padding:12px;margin-bottom:10px}
+    .ticket-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .ticket-meta{display:flex;gap:12px;color:var(--text-secondary);font-size:.9rem}
+    .pagination .btn{min-width:36px}
+    .flex-row{display:flex}
+    .items-end{align-items:flex-end}
+    .items-center{align-items:center}
+    .gap-8{gap:8px}
+    .justify-center{justify-content:center}
+    .text-right{text-align:right}
+    .w-100{width:100px}
+    .inline{display:inline-block}
+    .ml-8{margin-left:8px}
+  </style>
+  <script>
+    // Saúde - badge
+    (async () => {
+      const setTip = (text) => { const hb = document.getElementById('healthBadge'); if (hb) hb.title = text; };
+      const dot = (el, state) => { if (!el) return; el.classList.remove('dot-green','dot-red','dot-gray'); el.classList.add(state === 'ok' ? 'dot-green' : state === 'bad' ? 'dot-red' : 'dot-gray'); };
+      try {
+        const r = await fetch('/api/health', { credentials: 'same-origin' });
+        const h = await r.json();
+        dot(document.getElementById('health-mongo'), h.mongo === 'connected' ? 'ok' : (h.mongo === 'disabled' ? 'gray' : 'bad'));
+        dot(document.getElementById('health-discord'), h.discord ? 'ok' : 'bad');
+        setTip(`${h.mongo === 'connected' ? 'DB: ligado' : h.mongo === 'disabled' ? 'DB: desativado' : 'DB: desligado'} • ${h.discord ? 'Discord: online' : 'Discord: offline'}`);
+      } catch {}
+    })();
+  </script>
+</body>
+</html>

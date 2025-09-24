@@ -14,6 +14,7 @@
     welcomeMsg: document.getElementById('welcomeMsg'),
     closeReason: document.getElementById('closeReason'),
     closeTranscript: document.getElementById('closeTranscript'),
+    defaultTemplate: document.getElementById('defaultTemplate'),
     save: document.getElementById('btnSave'),
   };
   
@@ -50,6 +51,10 @@
       if (els.welcomeMsg) els.welcomeMsg.value = t.welcomeMsg || 'Olá {user}, obrigado por abrir o ticket #{ticket_id}! Explique-nos o seu problema.';
       (els.closeReason || {}).checked = !!t.closeReason;
       (els.closeTranscript || {}).checked = !!t.closeTranscript;
+      if (els.defaultTemplate) {
+        const allowed = ['classic','compact','premium','minimal'];
+        els.defaultTemplate.value = allowed.includes(t.defaultTemplate) ? t.defaultTemplate : 'classic';
+      }
     } catch (e) { console.error(e); notify(e.message, 'error'); }
   }
 
@@ -72,7 +77,11 @@
           slaMinutes: Math.max(1, Math.min(1440, parseInt(els.slaMinutes?.value || '15', 10))),
           welcomeMsg: els.welcomeMsg?.value || '',
           closeReason: !!els.closeReason?.checked,
-          closeTranscript: !!els.closeTranscript?.checked
+          closeTranscript: !!els.closeTranscript?.checked,
+          defaultTemplate: (() => {
+            const v = els.defaultTemplate?.value || 'classic';
+            return ['classic','compact','premium','minimal'].includes(v) ? v : 'classic';
+          })()
         }
       };
       await api(`/api/guild/${guildId}/tickets/config`, { method: 'POST', body: JSON.stringify(payload) });

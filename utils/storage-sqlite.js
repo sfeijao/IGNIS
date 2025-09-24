@@ -32,10 +32,18 @@ db.serialize(() => {
     reopened_at TEXT,
     notes TEXT
   )`);
-
-  // Best-effort migrations for new columns
-  try { db.run(`ALTER TABLE tickets ADD COLUMN panel_message_id TEXT`); } catch {}
-  try { db.run(`ALTER TABLE tickets ADD COLUMN locked INTEGER DEFAULT 0`); } catch {}
+  // Idempotent migrations for new columns using schema introspection
+  const ensureColumn = (table, column, alterSql) => {
+    db.all(`PRAGMA table_info(${table})`, [], (err, rows) => {
+      if (err) return; // silent fail to avoid crashing
+      const exists = Array.isArray(rows) && rows.some(r => String(r.name).toLowerCase() === String(column).toLowerCase());
+      if (!exists) {
+        db.run(alterSql, [], () => {});
+      }
+    });
+  };
+  ensureColumn('tickets', 'panel_message_id', 'ALTER TABLE tickets ADD COLUMN panel_message_id TEXT');
+  ensureColumn('tickets', 'locked', 'ALTER TABLE tickets ADD COLUMN locked INTEGER DEFAULT 0');
 
   // Guild config (JSON blob)
   db.run(`CREATE TABLE IF NOT EXISTS guild_config (
@@ -72,8 +80,8 @@ db.serialize(() => {
     template TEXT,
     payload TEXT
   )`);
-  // Migration attempts for new columns
-  try { db.run(`ALTER TABLE panels ADD COLUMN template TEXT`); } catch {}
+  // Ensure template column exists for legacy DBs
+  ensureColumn('panels', 'template', 'ALTER TABLE panels ADD COLUMN template TEXT');
 
   // Webhooks config
   db.run(`CREATE TABLE IF NOT EXISTS webhooks (

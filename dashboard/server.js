@@ -303,17 +303,87 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Guild not found' });
         }
 
-    // Usar storage JSON simples
-    const storage = require('../utils/storage');
-    const guildTickets = await storage.getTickets(guildId);
-        
-        // Enriquecer dados dos tickets com informações do Discord
-        const enrichedTickets = await Promise.all(guildTickets.map(async (ticket) => {
+        // Usar storage para obter tickets e aplicar filtros/paginação
+        const storage = require('../utils/storage');
+        const allTickets = await storage.getTickets(guildId);
+
+        // Inputs
+    const status = (req.query.status || '').toString().trim().toLowerCase(); // '', 'open', 'claimed', 'closed', 'pending'
+    const priority = (req.query.priority || '').toString().trim().toLowerCase(); // '', 'low','normal','high','urgent'
+        const q = (req.query.q || '').toString().trim().toLowerCase();
+        const from = req.query.from ? new Date(req.query.from) : null; // ISO or date string
+        const to = req.query.to ? new Date(req.query.to) : null;
+    const category = (req.query.category || '').toString().trim().toLowerCase();
+    let assigned = (req.query.assigned || '').toString().trim(); // user id or 'me' or ''
+    if (assigned.toLowerCase() === 'me') assigned = (req.user && req.user.id) ? req.user.id : '';
+        const roleId = (req.query.role || '').toString().trim();
+        const staffOnly = String(req.query.staffOnly || '').toLowerCase() === 'true' || String(req.query.staffOnly || '') === '1';
+        let page = parseInt(String(req.query.page || '1'), 10); if (!Number.isFinite(page) || page < 1) page = 1;
+        let pageSize = parseInt(String(req.query.pageSize || '20'), 10); if (!Number.isFinite(pageSize) || pageSize < 1) pageSize = 20; pageSize = Math.min(100, pageSize);
+
+        // Filter
+        let filtered = allTickets.slice();
+        if (status) filtered = filtered.filter(t => (t.status || '').toLowerCase() === status);
+        if (priority) filtered = filtered.filter(t => (t.priority || '').toLowerCase() === priority);
+    if (from && !Number.isNaN(from.getTime())) filtered = filtered.filter(t => new Date(t.created_at) >= from);
+    if (to && !Number.isNaN(to.getTime())) filtered = filtered.filter(t => new Date(t.created_at) <= to);
+    if (category) filtered = filtered.filter(t => (t.category || '').toLowerCase() === category);
+    if (assigned) filtered = filtered.filter(t => `${t.assigned_to || ''}` === `${assigned}`);
+        // staffOnly: status must be claimed and assigned_to must be a member of given role
+        if (staffOnly && roleId) {
+            try {
+                const role = guild.roles.cache.get(roleId);
+                if (role) {
+                    const roleMemberIds = new Set(role.members.map(m => `${m.id}`));
+                    filtered = filtered.filter(t => (t.status || '').toLowerCase() === 'claimed' && roleMemberIds.has(`${t.assigned_to || ''}`));
+                } else {
+                    // If role not found, result should be empty when staffOnly requested
+                    filtered = [];
+                }
+            } catch {}
+        }
+        if (q) {
+            filtered = filtered.filter(t => {
+                const hay = [
+                    t.id,
+                    t.channel_id,
+                    t.user_id,
+                    t.category,
+                    t.subject,
+                    t.description,
+                    t.status,
+                    t.priority
+                ].map(x => (x == null ? '' : String(x).toLowerCase())).join(' ');
+                return hay.includes(q);
+            });
+        }
+
+        // Sort by created_at desc
+        filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        // Stats for filtered set
+        const stats = {
+            total: filtered.length,
+            open: filtered.filter(t => t.status === 'open').length,
+            claimed: filtered.filter(t => t.status === 'claimed').length,
+            closed: filtered.filter(t => t.status === 'closed').length,
+            pending: filtered.filter(t => t.status === 'pending').length
+        };
+
+        // Pagination calculations
+        const total = filtered.length;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (page > totalPages) page = totalPages;
+        const start = (page - 1) * pageSize;
+        const end = start + pageSize;
+        const pageItems = filtered.slice(start, end);
+
+        // Enrich only the current page
+        const enrichedTickets = await Promise.all(pageItems.map(async (ticket) => {
             try {
                 const channel = guild.channels.cache.get(ticket.channel_id);
                 const owner = await client.users.fetch(ticket.user_id).catch(() => null);
                 const claimedBy = ticket.assigned_to ? await client.users.fetch(ticket.assigned_to).catch(() => null) : null;
-                
                 return {
                     ...ticket,
                     channelExists: !!channel,
@@ -338,25 +408,96 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
                 };
             }
         }));
-        
-        // Estatísticas dos tickets
-        const stats = {
-            total: guildTickets.length,
-            open: guildTickets.filter(t => t.status === 'open').length,
-            claimed: guildTickets.filter(t => t.status === 'claimed').length,
-            closed: guildTickets.filter(t => t.status === 'closed').length,
-            pending: guildTickets.filter(t => t.status === 'pending').length
-        };
-        
-        res.json({ 
-            success: true, 
-            tickets: enrichedTickets.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
-            stats 
+
+        res.json({
+            success: true,
+            tickets: enrichedTickets,
+            stats,
+            pagination: { page, pageSize, total, totalPages }
         });
         
     } catch (error) {
         logger.error('Error fetching tickets:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch tickets' });
+    }
+});
+
+// Export filtered tickets server-side with a safe cap
+app.get('/api/guild/:guildId/tickets/export', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    try {
+        const guildId = req.params.guildId;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+
+        const storage = require('../utils/storage');
+        const allTickets = await storage.getTickets(guildId);
+        // Apply same filters
+        const status = (req.query.status || '').toString().trim().toLowerCase();
+        const priority = (req.query.priority || '').toString().trim().toLowerCase();
+        const q = (req.query.q || '').toString().trim().toLowerCase();
+        const from = req.query.from ? new Date(req.query.from) : null;
+        const to = req.query.to ? new Date(req.query.to) : null;
+        const category = (req.query.category || '').toString().trim().toLowerCase();
+        let assigned = (req.query.assigned || '').toString().trim();
+        if (assigned.toLowerCase() === 'me') assigned = (req.user && req.user.id) ? req.user.id : '';
+        const roleId = (req.query.role || '').toString().trim();
+        const staffOnly = String(req.query.staffOnly || '').toLowerCase() === 'true' || String(req.query.staffOnly || '') === '1';
+        let filtered = allTickets.slice();
+        if (status) filtered = filtered.filter(t => (t.status || '').toLowerCase() === status);
+        if (priority) filtered = filtered.filter(t => (t.priority || '').toLowerCase() === priority);
+        if (from && !Number.isNaN(from.getTime())) filtered = filtered.filter(t => new Date(t.created_at) >= from);
+        if (to && !Number.isNaN(to.getTime())) filtered = filtered.filter(t => new Date(t.created_at) <= to);
+        if (category) filtered = filtered.filter(t => (t.category || '').toLowerCase() === category);
+        if (assigned) filtered = filtered.filter(t => `${t.assigned_to || ''}` === `${assigned}`);
+        if (staffOnly && roleId) {
+            try {
+                const role = guild.roles.cache.get(roleId);
+                if (role) {
+                    const roleMemberIds = new Set(role.members.map(m => `${m.id}`));
+                    filtered = filtered.filter(t => (t.status || '').toLowerCase() === 'claimed' && roleMemberIds.has(`${t.assigned_to || ''}`));
+                } else {
+                    filtered = [];
+                }
+            } catch {}
+        }
+        if (q) {
+            filtered = filtered.filter(t => {
+                const hay = [t.id, t.channel_id, t.user_id, t.category, t.subject, t.description, t.status, t.priority]
+                    .map(x => (x == null ? '' : String(x).toLowerCase())).join(' ');
+                return hay.includes(q);
+            });
+        }
+        filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        // Safe cap
+        const cap = Math.max(10, Math.min(5000, parseInt(String(req.query.cap || '1000'), 10) || 1000));
+        const items = filtered.slice(0, cap);
+
+        const format = (req.query.format || 'json').toString().toLowerCase();
+        if (format === 'csv') {
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename=tickets-${guildId}.csv`);
+            const headers = ['id','status','priority','user_id','assigned_to','channel_id','category','subject','created_at'];
+            const escape = (s='') => '"' + String(s).replace(/"/g,'""') + '"';
+            const lines = [headers.join(',')];
+            for (const t of items) {
+                lines.push([
+                    t.id, t.status||'', t.priority||'', t.user_id||'', t.assigned_to||'', t.channel_id||'', t.category||'', t.subject||'', t.created_at||''
+                ].map(escape).join(','));
+            }
+            return res.send(lines.join('\n'));
+        }
+        // JSON
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=tickets-${guildId}.json`);
+        return res.send(JSON.stringify({ success: true, tickets: items }, null, 2));
+    } catch (e) {
+        logger.error('Error exporting tickets:', e);
+        return res.status(500).json({ success: false, error: 'Failed to export tickets' });
     }
 });
 
@@ -911,6 +1052,51 @@ app.get('/api/guild/:guildId/roles', async (req, res) => {
     } catch (e) {
         logger.error('Error listing roles:', e);
         res.status(500).json({ success: false, error: 'Failed to list roles' });
+    }
+});
+
+// Members search (for pickers) - admin gated
+app.get('/api/guild/:guildId/members/search', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const guild = check.guild;
+        const q = (req.query.q || '').toString().trim();
+        let limit = parseInt(String(req.query.limit || '10'), 10);
+        if (!Number.isFinite(limit) || limit <= 0) limit = 10;
+        limit = Math.min(25, Math.max(1, limit));
+        const roleId = (req.query.roleId || '').toString().trim();
+        let members = [];
+        try {
+            if (q && guild.members?.search) {
+                const resSearch = await guild.members.search({ query: q, limit }).catch(() => null);
+                if (resSearch) members = Array.from(resSearch.values());
+            }
+            if (!members.length) {
+                // fallback: filter from cache
+                members = guild.members.cache.filter(m => {
+                    if (roleId && !m.roles.cache.has(roleId)) return false;
+                    const tag = `${m.user.username}#${m.user.discriminator}`.toLowerCase();
+                    return !q || tag.includes(q.toLowerCase()) || m.id === q;
+                }).first(limit);
+            } else if (roleId) {
+                members = members.filter(m => m.roles.cache.has(roleId));
+            }
+        } catch {}
+        const list = (members || []).slice(0, limit).map(m => ({
+            id: m.id,
+            username: m.user.username,
+            discriminator: m.user.discriminator,
+            tag: `${m.user.username}#${m.user.discriminator}`,
+            avatar: m.user.displayAvatarURL({ size: 32 })
+        }));
+        return res.json({ success: true, members: list });
+    } catch (e) {
+        logger.error('Error searching members:', e);
+        res.status(500).json({ success: false, error: 'Failed to search members' });
     }
 });
 
