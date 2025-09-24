@@ -78,10 +78,13 @@
               <datalist id="assignedList"></datalist>
             </div>
             <div>
-              <label>Somente equipa (por cargo)</label>
+              <label>
+                Somente equipa (por cargo)
+                <span class="tooltip" title="Aplica apenas quando um cargo está selecionado: mostra tickets reclamados por membros desse cargo."><i class="fas fa-circle-info"></i></span>
+              </label>
               <div class="flex-row items-center gap-8">
                 <input id="fStaffOnly" type="checkbox" title="Mostrar apenas tickets reclamados por membros do cargo selecionado" />
-                <small class="text-secondary">Filtra para status "reclamados" e atribuídos a membros do cargo acima.</small>
+                <small class="text-secondary">Requer um cargo selecionado acima.</small>
               </div>
             </div>
           </div>

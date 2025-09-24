@@ -316,8 +316,9 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
     const category = (req.query.category || '').toString().trim().toLowerCase();
     let assigned = (req.query.assigned || '').toString().trim(); // user id or 'me' or ''
     if (assigned.toLowerCase() === 'me') assigned = (req.user && req.user.id) ? req.user.id : '';
-        const roleId = (req.query.role || '').toString().trim();
-        const staffOnly = String(req.query.staffOnly || '').toLowerCase() === 'true' || String(req.query.staffOnly || '') === '1';
+    const roleId = (req.query.role || '').toString().trim();
+    const staffOnly = String(req.query.staffOnly || '').toLowerCase() === 'true' || String(req.query.staffOnly || '') === '1';
+    const deepRoleFetch = String(req.query.deepRoleFetch || '').toLowerCase() === 'true' || String(req.query.deepRoleFetch || '') === '1';
         let page = parseInt(String(req.query.page || '1'), 10); if (!Number.isFinite(page) || page < 1) page = 1;
         let pageSize = parseInt(String(req.query.pageSize || '20'), 10); if (!Number.isFinite(pageSize) || pageSize < 1) pageSize = 20; pageSize = Math.min(100, pageSize);
 
@@ -332,6 +333,9 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
         // staffOnly: status must be claimed and assigned_to must be a member of given role
         if (staffOnly && roleId) {
             try {
+                if (deepRoleFetch) {
+                    try { await guild.members.fetch(); } catch {}
+                }
                 const role = guild.roles.cache.get(roleId);
                 if (role) {
                     const roleMemberIds = new Set(role.members.map(m => `${m.id}`));
@@ -445,8 +449,9 @@ app.get('/api/guild/:guildId/tickets/export', async (req, res) => {
         const category = (req.query.category || '').toString().trim().toLowerCase();
         let assigned = (req.query.assigned || '').toString().trim();
         if (assigned.toLowerCase() === 'me') assigned = (req.user && req.user.id) ? req.user.id : '';
-        const roleId = (req.query.role || '').toString().trim();
-        const staffOnly = String(req.query.staffOnly || '').toLowerCase() === 'true' || String(req.query.staffOnly || '') === '1';
+    const roleId = (req.query.role || '').toString().trim();
+    const staffOnly = String(req.query.staffOnly || '').toLowerCase() === 'true' || String(req.query.staffOnly || '') === '1';
+    const deepRoleFetch = String(req.query.deepRoleFetch || '').toLowerCase() === 'true' || String(req.query.deepRoleFetch || '') === '1';
         let filtered = allTickets.slice();
         if (status) filtered = filtered.filter(t => (t.status || '').toLowerCase() === status);
         if (priority) filtered = filtered.filter(t => (t.priority || '').toLowerCase() === priority);
@@ -456,6 +461,9 @@ app.get('/api/guild/:guildId/tickets/export', async (req, res) => {
         if (assigned) filtered = filtered.filter(t => `${t.assigned_to || ''}` === `${assigned}`);
         if (staffOnly && roleId) {
             try {
+                if (deepRoleFetch) {
+                    try { await guild.members.fetch(); } catch {}
+                }
                 const role = guild.roles.cache.get(roleId);
                 if (role) {
                     const roleMemberIds = new Set(role.members.map(m => `${m.id}`));

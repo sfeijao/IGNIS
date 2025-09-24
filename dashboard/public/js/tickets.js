@@ -45,7 +45,8 @@
     const category = (els.category?.value||'').trim(); if (category) u.searchParams.set('category', category);
     const assigned = (els.assigned?.value||'').trim(); if (assigned) u.searchParams.set('assigned', assigned);
     const role = (els.role?.value||'').trim(); if (role) u.searchParams.set('role', role); else u.searchParams.delete('role');
-    const staffOnly = !!els.staffOnly?.checked; if (staffOnly) u.searchParams.set('staffOnly','true'); else u.searchParams.delete('staffOnly');
+    const staffOnly = !!els.staffOnly?.checked && !!role; if (staffOnly) u.searchParams.set('staffOnly','true'); else u.searchParams.delete('staffOnly');
+    const deepRoleFetch = (params.get('deepRoleFetch')||'').toLowerCase(); if (deepRoleFetch === 'true' || deepRoleFetch === '1') u.searchParams.set('deepRoleFetch','true');
     const ps = parseInt(els.pageSize?.value||'20',10); u.searchParams.set('pageSize', String(ps));
     u.searchParams.set('page', String(pageOverride ?? page));
     return u.toString();
@@ -64,7 +65,8 @@
     const query = (els.q?.value||'').trim(); if (query) q.set('q', query); else q.delete('q');
     const category = (els.category?.value||'').trim(); if (category) q.set('category', category); else q.delete('category');
     const assigned = (els.assigned?.value||'').trim(); if (assigned) q.set('assigned', assigned); else q.delete('assigned');
-    const staffOnly = !!els.staffOnly?.checked; if (staffOnly) q.set('staffOnly','true'); else q.delete('staffOnly');
+    const staffOnly = !!els.staffOnly?.checked && !!role; if (staffOnly) q.set('staffOnly','true'); else q.delete('staffOnly');
+    const deepRoleFetch = (params.get('deepRoleFetch')||'').toLowerCase(); if (deepRoleFetch === 'true' || deepRoleFetch === '1') q.set('deepRoleFetch','true'); else q.delete('deepRoleFetch');
     const ps = parseInt(els.pageSize?.value||'20',10); q.set('pageSize', String(ps));
     q.set('page', String(pageOverride ?? page));
     const nextUrl = `${cur.pathname}?${q.toString()}`;
@@ -198,7 +200,8 @@
     const category = (els.category?.value||'').trim(); if (category) url.searchParams.set('category', category);
     const assigned = (els.assigned?.value||'').trim(); if (assigned) url.searchParams.set('assigned', assigned);
     const role = (els.role?.value||'').trim(); if (role) url.searchParams.set('role', role);
-    const staffOnly = !!els.staffOnly?.checked; if (staffOnly) url.searchParams.set('staffOnly','true');
+    const staffOnly = !!els.staffOnly?.checked && !!role; if (staffOnly) url.searchParams.set('staffOnly','true');
+    const deepRoleFetch = (params.get('deepRoleFetch')||'').toLowerCase(); if (deepRoleFetch === 'true' || deepRoleFetch === '1') url.searchParams.set('deepRoleFetch','true');
     url.searchParams.set('cap','1000');
     url.searchParams.set('format', format === 'csv' ? 'csv' : 'json');
     // Trigger download directly
@@ -225,12 +228,26 @@
     els.role?.addEventListener('change', () => {
       // Update URL and retrigger suggestions for assigned based on new role filter
       syncUrlBar(1);
+      // Enable/disable staffOnly based on role presence
+      const hasRole = !!(els.role?.value||'').trim();
+      if (els.staffOnly) {
+        els.staffOnly.disabled = !hasRole;
+        if (!hasRole) els.staffOnly.checked = false;
+      }
       const val = (els.assigned?.value||'').trim();
       if (val.length >= 2 && val.toLowerCase() !== 'me') fetchAssignedSuggestions(val);
     });
     els.category?.addEventListener('change', () => { page = 1; fetchTickets(); });
     els.assigned?.addEventListener('change', () => { page = 1; fetchTickets(); });
-  els.staffOnly?.addEventListener('change', () => { page = 1; fetchTickets(); });
+    els.staffOnly?.addEventListener('change', () => {
+      const role = (els.role?.value||'').trim();
+      if (!role && els.staffOnly?.checked) {
+        els.staffOnly.checked = false;
+        notify('Selecione um cargo primeiro para usar "Somente equipa".','info');
+        return;
+      }
+      page = 1; fetchTickets();
+    });
     // Typeahead for assigned: query members when typing >=2 chars
     els.assigned?.addEventListener('input', () => {
       const val = (els.assigned?.value||'').trim();
@@ -255,7 +272,8 @@
       const query = (els.q?.value||'').trim(); if (query) q.set('q', query); else q.delete('q');
       const category = (els.category?.value||'').trim(); if (category) q.set('category', category); else q.delete('category');
       const assigned = (els.assigned?.value||'').trim(); if (assigned) q.set('assigned', assigned); else q.delete('assigned');
-      const staffOnly = !!els.staffOnly?.checked; if (staffOnly) q.set('staffOnly','true'); else q.delete('staffOnly');
+      const staffOnly = !!els.staffOnly?.checked && !!role; if (staffOnly) q.set('staffOnly','true'); else q.delete('staffOnly');
+      const deepRoleFetch = (params.get('deepRoleFetch')||'').toLowerCase(); if (deepRoleFetch === 'true' || deepRoleFetch === '1') q.set('deepRoleFetch','true'); else q.delete('deepRoleFetch');
       const ps = parseInt(els.pageSize?.value||'20',10); q.set('pageSize', String(ps));
       q.set('page', '1');
       const url = `${base}?${q.toString()}`;
@@ -318,6 +336,12 @@
     if (roleParam && els.role && !Array.from(els.role.options).some(o => `${o.value}` === `${roleParam}`)) {
       els.role.value = '';
       syncUrlBar(1);
+    }
+    // Initialize staffOnly disabled state based on role presence
+    const hasRoleInit = !!(els.role?.value||'').trim();
+    if (els.staffOnly) {
+      els.staffOnly.disabled = !hasRoleInit;
+      if (!hasRoleInit) els.staffOnly.checked = false;
     }
   });
   fetchTickets();
