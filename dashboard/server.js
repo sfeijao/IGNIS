@@ -442,6 +442,7 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                         message_id: msg.id,
                         type: 'tickets',
                         theme: 'dark',
+                        template: 'classic',
                         channelName: channel.name,
                         channelExists: true,
                         messageExists: true,
@@ -462,7 +463,7 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                 const savedKeys = new Set();
                 const newlySaved = [];
                 for (const d of detected) {
-                    const doc = await storage.upsertPanel({ guild_id: d.guild_id, channel_id: d.channel_id, message_id: d.message_id, theme: d.theme, type: 'tickets' });
+                        const doc = await storage.upsertPanel({ guild_id: d.guild_id, channel_id: d.channel_id, message_id: d.message_id, theme: d.theme, template: d.template || 'classic', type: 'tickets' });
                     if (doc) {
                         const key = `${doc.channel_id}`;
                         savedKeys.add(key);
@@ -491,7 +492,7 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                     for (const d of detected) {
                         const doc = await PanelModel.findOneAndUpdate(
                             { guild_id: d.guild_id, channel_id: d.channel_id, type: 'tickets' },
-                            { $setOnInsert: { message_id: d.message_id, theme: d.theme }, $set: { message_id: d.message_id } },
+                            { $setOnInsert: { message_id: d.message_id, theme: d.theme, template: d.template || 'classic' }, $set: { message_id: d.message_id } },
                             { upsert: true, new: true }
                         ).lean();
                         if (doc) {
@@ -576,6 +577,7 @@ app.post('/api/guild/:guildId/panels/scan', async (req, res) => {
                         message_id: msg.id,
                         type: 'tickets',
                         theme: 'dark',
+                        template: 'classic',
                         channelName: channel.name,
                         channelExists: true,
                         messageExists: true,
@@ -599,6 +601,7 @@ app.post('/api/guild/:guildId/panels/scan', async (req, res) => {
                             channel_id: d.channel_id,
                             message_id: d.message_id,
                             theme: d.theme,
+                            template: d.template || 'classic',
                             type: 'tickets'
                         });
                         if (r && r._id) persisted++;
@@ -611,7 +614,7 @@ app.post('/api/guild/:guildId/panels/scan', async (req, res) => {
                         for (const d of detected) {
                             const r = await PanelModel.findOneAndUpdate(
                                 { guild_id: d.guild_id, channel_id: d.channel_id, type: 'tickets' },
-                                { $setOnInsert: { message_id: d.message_id, theme: d.theme }, $set: { message_id: d.message_id } },
+                                { $setOnInsert: { message_id: d.message_id, theme: d.theme, template: d.template || 'classic' }, $set: { message_id: d.message_id } },
                                 { upsert: true, new: true }
                             );
                             if (r) persisted++;
@@ -692,12 +695,12 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 if (!chId || !msgId) return res.status(400).json({ success: false, error: 'Invalid detected panel id' });
                 if (preferSqlite) {
                     const storage = require('../utils/storage-sqlite');
-                    const doc = await storage.upsertPanel({ guild_id: guildId, channel_id: chId, message_id: msgId, theme: (data?.theme || 'dark') });
+                    const doc = await storage.upsertPanel({ guild_id: guildId, channel_id: chId, message_id: msgId, theme: (data?.theme || 'dark'), template: (data?.template || 'classic') });
                     return res.json({ success: true, message: 'Panel saved', panel: doc });
                 } else {
                     const doc = await PanelModel.findOneAndUpdate(
                         { guild_id: guildId, channel_id: chId, type: 'tickets' },
-                        { $setOnInsert: { message_id: msgId, theme: (data?.theme || 'dark') }, $set: { message_id: msgId } },
+                        { $setOnInsert: { message_id: msgId, theme: (data?.theme || 'dark'), template: (data?.template || 'classic') }, $set: { message_id: msgId } },
                         { upsert: true, new: true }
                     ).lean();
                     return res.json({ success: true, message: 'Panel saved', panel: doc });
@@ -778,6 +781,80 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                     ? await PanelModel.findByIdAndUpdate(panelId, { $set: { theme: newTheme } }, { new: true }).lean()
                     : await (async () => { const storage = require('../utils/storage'); return await storage.updatePanel(panelId, { theme: newTheme }); })();
                 return res.json({ success: true, message: 'Theme updated', theme: newTheme, panel: updatedTheme });
+            }
+            case 'template': {
+                const newTemplate = typeof data?.template === 'string' ? String(data.template) : 'classic';
+                const allowed = new Set(['classic','compact','premium','minimal']);
+                const tpl = allowed.has(newTemplate) ? newTemplate : 'classic';
+                // Rebuild payload using existing theme for consistency
+                const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+                const visualAssets = require('../assets/visual-assets');
+                const embed = new EmbedBuilder()
+                    .setColor((panel.theme || 'dark') === 'light' ? 0x60A5FA : 0x7C3AED)
+                    .setThumbnail(visualAssets.realImages.supportIcon)
+                    .setImage(visualAssets.realImages.supportBanner);
+                let rows = [];
+                if (tpl === 'compact') {
+                    embed.setTitle('🎫 Tickets • Compacto').setDescription('Escolhe abaixo e abre um ticket privado.');
+                    rows = [ new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId('ticket:create:support').setLabel('Suporte').setEmoji('🎫').setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger)
+                    ) ];
+                } else if (tpl === 'minimal') {
+                    embed.setTitle('🎫 Abrir ticket').setDescription('Carrega num botão para abrir um ticket.');
+                    rows = [ new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Abrir Ticket').setEmoji('🎟️').setStyle(ButtonStyle.Primary)
+                    ) ];
+                } else if (tpl === 'premium') {
+                    embed.setTitle('🎫 Centro de Suporte • Premium')
+                        .setDescription('Serviço prioritário, acompanhamento dedicado e histórico guardado.')
+                        .addFields(
+                            { name: '• Resposta express', value: 'Prioridade máxima', inline: true },
+                            { name: '• Privado & seguro', value: 'Só tu e equipa', inline: true },
+                            { name: '• Transcript', value: 'Disponível a pedido', inline: true },
+                        );
+                    const r1 = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId('ticket:create:vip').setLabel('VIP / Premium').setEmoji('👑').setStyle(ButtonStyle.Success),
+                        new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger)
+                    );
+                    const r2 = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary)
+                    );
+                    rows = [r1, r2];
+                } else {
+                    embed.setTitle('🎫 Centro de Suporte')
+                        .setDescription('Escolhe o departamento abaixo para abrir um ticket privado com a equipa.')
+                        .addFields(
+                            { name: '• Resposta rápida', value: 'Tempo médio: minutos', inline: true },
+                            { name: '• Canal privado', value: 'Visível só para ti e staff', inline: true },
+                            { name: '• Histórico guardado', value: 'Transcript disponível', inline: true },
+                        );
+                    const r1 = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
+                        new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary)
+                    );
+                    const r2 = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('🧾').setStyle(ButtonStyle.Secondary)
+                    );
+                    rows = [r1, r2];
+                }
+                const newPayload = { embeds: [embed], components: rows };
+                // Try to edit existing message for seamless change
+                if (panel.message_id && channel.messages?.fetch) {
+                    const old = await channel.messages.fetch(panel.message_id).catch(() => null);
+                    if (old) {
+                        await old.edit(newPayload).catch(() => {});
+                    }
+                }
+                // Persist template and payload
+                const updatedPanel = useMongoPanels
+                    ? await PanelModel.findByIdAndUpdate(panelId, { $set: { template: tpl, payload: newPayload } }, { new: true }).lean()
+                    : await (async () => { const storage = require('../utils/storage'); return await storage.updatePanel(panelId, { template: tpl, payload: newPayload }); })();
+                return res.json({ success: true, message: 'Template updated', template: tpl, panel: updatedPanel });
             }
             default:
                 return res.status(400).json({ success: false, error: 'Invalid action' });
@@ -1161,7 +1238,13 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        const { channel_id, theme = 'dark' } = req.body || {};
+    const storage = require('../utils/storage');
+    const cfg = await storage.getGuildConfig(req.params.guildId).catch(() => ({}));
+    // Use guild default template if provided under tickets.config
+    const cfgTemplate = cfg?.tickets?.defaultTemplate;
+    const { channel_id, theme = 'dark' } = req.body || {};
+    let template = (req.body && req.body.template) ? String(req.body.template) : (typeof cfgTemplate === 'string' ? cfgTemplate : 'classic');
+    if (!['classic','compact','premium','minimal'].includes(template)) template = 'classic';
         if (!channel_id) return res.status(400).json({ success: false, error: 'Missing channel_id' });
         const guild = check.guild;
         const channel = guild.channels.cache.get(channel_id) || await client.channels.fetch(channel_id).catch(() => null);
@@ -1169,43 +1252,88 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
         // Build payload like slash command
         const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
         const visualAssets = require('../assets/visual-assets');
+        // Template-aware embed/buttons
         const embed = new EmbedBuilder()
             .setColor(theme === 'light' ? 0x60A5FA : 0x7C3AED)
-            .setTitle('🎫 Centro de Suporte')
-            .setDescription('Escolhe o departamento abaixo para abrir um ticket privado com a equipa.')
             .setThumbnail(visualAssets.realImages.supportIcon)
-            .setImage(visualAssets.realImages.supportBanner)
-            .addFields(
-                { name: '• Resposta rápida', value: 'Tempo médio: minutos', inline: true },
-                { name: '• Canal privado', value: 'Visível só para ti e staff', inline: true },
-                { name: '• Histórico guardado', value: 'Transcript disponível', inline: true },
+            .setImage(visualAssets.realImages.supportBanner);
+
+        let rows = [];
+        if (template === 'compact') {
+            embed
+                .setTitle('🎫 Tickets • Compacto')
+                .setDescription('Escolhe abaixo e abre um ticket privado.');
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('ticket:create:support').setLabel('Suporte').setEmoji('🎫').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger)
             );
-        const row1 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary)
-        );
-        const row2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('🧾').setStyle(ButtonStyle.Secondary)
-        );
-        const payload = { embeds: [embed], components: [row1, row2] };
+            rows = [row];
+        } else if (template === 'minimal') {
+            embed
+                .setTitle('🎫 Abrir ticket')
+                .setDescription('Carrega num botão para abrir um ticket.');
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Abrir Ticket').setEmoji('🎟️').setStyle(ButtonStyle.Primary)
+            );
+            rows = [row];
+        } else if (template === 'premium') {
+            embed
+                .setTitle('🎫 Centro de Suporte • Premium')
+                .setDescription('Serviço prioritário, acompanhamento dedicado e histórico guardado.')
+                .addFields(
+                    { name: '• Resposta express', value: 'Prioridade máxima', inline: true },
+                    { name: '• Privado & seguro', value: 'Só tu e equipa', inline: true },
+                    { name: '• Transcript', value: 'Disponível a pedido', inline: true },
+                );
+            const row1 = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('ticket:create:vip').setLabel('VIP / Premium').setEmoji('👑').setStyle(ButtonStyle.Success),
+                new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger)
+            );
+            const row2 = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary)
+            );
+            rows = [row1, row2];
+        } else {
+            // classic (default)
+            embed
+                .setTitle('🎫 Centro de Suporte')
+                .setDescription('Escolhe o departamento abaixo para abrir um ticket privado com a equipa.')
+                .addFields(
+                    { name: '• Resposta rápida', value: 'Tempo médio: minutos', inline: true },
+                    { name: '• Canal privado', value: 'Visível só para ti e staff', inline: true },
+                    { name: '• Histórico guardado', value: 'Transcript disponível', inline: true },
+                );
+            const row1 = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
+                new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary)
+            );
+            const row2 = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('🧾').setStyle(ButtonStyle.Secondary)
+            );
+            rows = [row1, row2];
+        }
+
+        const payload = { embeds: [embed], components: rows };
         const msg = await channel.send(payload);
         // Persist panel to active storage backend
         try {
             if (preferSqlite) {
                 const storage = require('../utils/storage-sqlite');
-                await storage.upsertPanel({ guild_id: req.params.guildId, channel_id, message_id: msg.id, theme, payload, type: 'tickets' });
+                await storage.upsertPanel({ guild_id: req.params.guildId, channel_id, message_id: msg.id, theme, template, payload, type: 'tickets' });
             } else if (process.env.MONGO_URI || process.env.MONGODB_URI) {
                 const { PanelModel } = require('../utils/db/models');
                 await PanelModel.findOneAndUpdate(
                     { guild_id: req.params.guildId, channel_id, type: 'tickets' },
-                    { $set: { message_id: msg.id, theme, payload } },
+                    { $set: { message_id: msg.id, theme, template, payload } },
                     { upsert: true }
                 );
             }
         } catch {}
-        res.json({ success: true, message: 'Panel created', panel: { channel_id, message_id: msg.id, theme } });
+        res.json({ success: true, message: 'Panel created', panel: { channel_id, message_id: msg.id, theme, template } });
     } catch (e) {
         logger.error('Error creating panel:', e);
         res.status(500).json({ success: false, error: 'Failed to create panel' });

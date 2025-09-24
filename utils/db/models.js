@@ -29,6 +29,7 @@ const PanelSchema = new mongoose.Schema({
   message_id: { type: String, index: true },
   type: { type: String, default: 'tickets' },
   theme: { type: String, default: 'dark' },
+  template: { type: String, default: 'classic' },
   payload: { type: Object, default: null }
 }, { timestamps: true });
 

@@ -5,12 +5,14 @@
   const container = document.getElementById('panelsContainer');
   const chanSel = document.getElementById('panelChannel');
   const themeSel = document.getElementById('panelTheme');
+  const templateSel = document.getElementById('panelTemplate');
   const btnCreate = document.getElementById('btnCreatePanel');
   const btnScan = document.getElementById('btnScanPanels');
   const scanBox = document.getElementById('scanAdvanced');
   const scanChannels = document.getElementById('scanChannels');
   const scanMessages = document.getElementById('scanMessages');
   const btnScanNow = document.getElementById('btnScanNow');
+  const preview = document.getElementById('panelPreview');
 
   if (!guildId) {
     if (container) container.innerHTML = `<div class="notification notification-error">ID do servidor em falta. Volte ao dashboard e selecione um servidor.</div>`;
@@ -50,6 +52,19 @@
     const html = visible.map(p => {
       const created = new Date(p.createdAt || p.created_at || p._id?.toString().substring(0,8)).toLocaleString('pt-PT');
       const detectedBadge = p.detected ? '<span class="badge badge-warn">detectado</span>' : '<span class="badge badge-ok">guardado</span>';
+      const currentTemplate = (p.template || 'classic');
+      const tFriendly = {
+        classic: 'Clássico',
+        compact: 'Compacto',
+        premium: 'Premium',
+        minimal: 'Minimal'
+      };
+      const nextTemplate = (cur) => {
+        const order = ['classic','compact','premium','minimal'];
+        const idx = order.indexOf(cur);
+        return order[(idx >= 0 ? idx : 0) + 1 === order.length ? 0 : (idx >= 0 ? idx + 1 : 1)];
+      };
+      const nextT = nextTemplate(currentTemplate);
       // Controls: if detected, only allow Save; other actions require a persisted panel
       const controls = p.detected
         ? '<button class="btn btn-success btn-sm" data-action="save" title="Registar este painel na base de dados"><i class="fas fa-save"></i> Guardar</button>'
@@ -57,6 +72,7 @@
             '<button class="btn btn-glass btn-sm" data-action="resend"><i class="fas fa-paper-plane"></i> Reenviar</button>',
             '<button class="btn btn-primary btn-sm" data-action="recreate"><i class="fas fa-rotate"></i> Recriar</button>',
             `<button class=\"btn btn-glass btn-sm\" data-action=\"theme\" data-theme=\"${p.theme==='dark'?'light':'dark'}\"><i class=\"fas fa-adjust\"></i> Tema: ${p.theme==='dark'?'Claro':'Escuro'}</button>`,
+            `<button class=\"btn btn-glass btn-sm\" data-action=\"template\" data-template=\"${nextT}\"><i class=\"fas fa-layer-group\"></i> Modelo: ${tFriendly[nextT] || nextT}</button>`,
             '<button class="btn btn-logout btn-sm" data-action="delete"><i class="fas fa-trash"></i> Eliminar</button>'
           ].join('');
       return `
@@ -67,6 +83,7 @@
               <h3>Canal: #${p.channelName || p.channel_id} ${detectedBadge}</h3>
               <div class="server-stats">
                 <span><i class="fas fa-palette"></i> Tema: ${p.theme || 'dark'}</span>
+                <span><i class="fas fa-layer-group"></i> Modelo: ${p.template || 'classic'}</span>
                 <span class="server-status ${p.messageExists ? 'online':'offline'}">
                   <i class="fas fa-circle"></i> Mensagem ${p.messageExists ? 'encontrada':'não encontrada'}
                 </span>
@@ -92,6 +109,10 @@
         try {
           const body = { action };
           if (action === 'theme') body.data = { theme };
+          if (action === 'template') {
+            const template = e.currentTarget.dataset.template;
+            if (template) body.data = { template };
+          }
           const res = await api(`/api/guild/${guildId}/panels/${panelId}/action`, {
             method: 'POST',
             body: JSON.stringify(body)
@@ -141,8 +162,9 @@
     try {
       const channel_id = chanSel?.value;
       const theme = themeSel?.value || 'dark';
+      const template = templateSel?.value || 'classic';
       if (!channel_id) return notify('Selecione um canal', 'error');
-      await api(`/api/guild/${guildId}/panels/create`, { method: 'POST', body: JSON.stringify({ channel_id, theme }) });
+      await api(`/api/guild/${guildId}/panels/create`, { method: 'POST', body: JSON.stringify({ channel_id, theme, template }) });
       notify('Painel criado', 'success');
       await load();
     } catch (err) { notify(err.message, 'error'); }
@@ -176,6 +198,48 @@
 
   loadChannels();
   load();
+
+  // Live preview rendering
+  function renderPreview() {
+    if (!preview) return;
+    const theme = themeSel?.value || 'dark';
+    const template = templateSel?.value || 'classic';
+    preview.className = `preview-embed ${theme}`;
+    const title = template === 'premium' ? '🎫 Centro de Suporte • Premium'
+                 : template === 'compact' ? '🎫 Tickets • Compacto'
+                 : template === 'minimal' ? '🎫 Abrir ticket'
+                 : '🎫 Centro de Suporte';
+    const desc = template === 'minimal'
+      ? 'Clica num botão para abrir um ticket privado.'
+      : 'Escolhe o departamento abaixo para abrir um ticket privado com a equipa.';
+    const fields = [
+      { name: '• Resposta rápida', value: template==='compact' ? 'Minutos' : 'Tempo médio: minutos' },
+      { name: '• Canal privado', value: 'Visível só para ti e staff' },
+      { name: '• Histórico guardado', value: 'Transcript disponível' }
+    ];
+    const buttons = template === 'compact'
+      ? [
+          { label: 'Suporte', emoji: '🎫', style: 'primary' },
+          { label: 'Problema', emoji: '⚠️', style: 'danger' },
+        ]
+      : [
+          { label: 'Suporte Técnico', emoji: '🔧', style: 'primary' },
+          { label: 'Reportar Problema', emoji: '⚠️', style: 'danger' },
+          { label: 'Moderação & Segurança', emoji: '🛡️', style: 'secondary' },
+          { label: 'Dúvidas Gerais', emoji: '💬', style: 'secondary' },
+          { label: 'Suporte de Conta', emoji: '🧾', style: 'secondary' }
+        ];
+    preview.innerHTML = `
+      <div class="preview-title">${title}</div>
+      <div class="preview-desc">${desc}</div>
+      <div class="preview-fields">${fields.map(f => `<div class="preview-field"><div class="text-secondary" style="font-size:12px">${f.name}</div><div>${f.value}</div></div>`).join('')}</div>
+      <div class="preview-buttons">${buttons.map(b => `<div class="preview-btn">${b.emoji} ${b.label}</div>`).join('')}</div>
+    `;
+  }
+
+  if (themeSel) themeSel.addEventListener('change', renderPreview);
+  if (templateSel) templateSel.addEventListener('change', renderPreview);
+  renderPreview();
 
   // Mostrar opções avançadas apenas para administradores
   (async () => {

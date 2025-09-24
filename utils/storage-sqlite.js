@@ -69,8 +69,11 @@ db.serialize(() => {
     message_id TEXT,
     type TEXT,
     theme TEXT,
+    template TEXT,
     payload TEXT
   )`);
+  // Migration attempts for new columns
+  try { db.run(`ALTER TABLE panels ADD COLUMN template TEXT`); } catch {}
 
   // Webhooks config
   db.run(`CREATE TABLE IF NOT EXISTS webhooks (
@@ -301,19 +304,20 @@ class SqliteStorage {
       message_id: p.message_id,
       type: p.type || 'tickets',
       theme: p.theme || 'dark',
+      template: p.template || 'classic',
       payload: parseJSON(p.payload, null)
     }));
   }
 
-  async upsertPanel({ guild_id, channel_id, message_id, theme = 'dark', payload = null, type = 'tickets' }) {
+  async upsertPanel({ guild_id, channel_id, message_id, theme = 'dark', template = 'classic', payload = null, type = 'tickets' }) {
     // Try update existing by guild/channel/type
     const existing = await get(`SELECT * FROM panels WHERE guild_id = ? AND channel_id = ? AND (type IS NULL OR type = ?)`, [guild_id, channel_id, type]);
     if (existing) {
-      await run(`UPDATE panels SET message_id = ?, theme = ?, payload = ? WHERE id = ?`, [message_id || existing.message_id, theme, payload ? JSON.stringify(payload) : existing.payload, existing.id]);
-      return { _id: String(existing.id), guild_id, channel_id, message_id: message_id || existing.message_id, theme, payload, type };
+      await run(`UPDATE panels SET message_id = ?, theme = ?, template = ?, payload = ? WHERE id = ?`, [message_id || existing.message_id, theme, template, payload ? JSON.stringify(payload) : existing.payload, existing.id]);
+      return { _id: String(existing.id), guild_id, channel_id, message_id: message_id || existing.message_id, theme, template, payload, type };
     }
-    const r = await run(`INSERT INTO panels (guild_id, channel_id, message_id, type, theme, payload) VALUES (?, ?, ?, ?, ?, ?)`, [guild_id, channel_id, message_id || null, type, theme, payload ? JSON.stringify(payload) : null]);
-    return { _id: String(r.lastID), guild_id, channel_id, message_id: message_id || null, theme, payload, type };
+    const r = await run(`INSERT INTO panels (guild_id, channel_id, message_id, type, theme, template, payload) VALUES (?, ?, ?, ?, ?, ?, ?)`, [guild_id, channel_id, message_id || null, type, theme, template, payload ? JSON.stringify(payload) : null]);
+    return { _id: String(r.lastID), guild_id, channel_id, message_id: message_id || null, theme, template, payload, type };
   }
 
   async findPanelById(id) {
@@ -326,6 +330,7 @@ class SqliteStorage {
       message_id: row.message_id,
       type: row.type || 'tickets',
       theme: row.theme || 'dark',
+      template: row.template || 'classic',
       payload: parseJSON(row.payload, null)
     };
   }
@@ -334,12 +339,13 @@ class SqliteStorage {
     const cur = await get(`SELECT * FROM panels WHERE id = ?`, [id]);
     if (!cur) return null;
     const next = { ...cur, ...updates };
-    await run(`UPDATE panels SET guild_id = ?, channel_id = ?, message_id = ?, type = ?, theme = ?, payload = ? WHERE id = ?`, [
+    await run(`UPDATE panels SET guild_id = ?, channel_id = ?, message_id = ?, type = ?, theme = ?, template = ?, payload = ? WHERE id = ?`, [
       next.guild_id,
       next.channel_id,
       next.message_id || null,
       next.type || 'tickets',
       next.theme || 'dark',
+      next.template || 'classic',
       next.payload ? JSON.stringify(next.payload) : null,
       id
     ]);
@@ -350,6 +356,7 @@ class SqliteStorage {
       message_id: next.message_id || null,
       type: next.type || 'tickets',
       theme: next.theme || 'dark',
+      template: next.template || 'classic',
       payload: next.payload || null
     };
   }
