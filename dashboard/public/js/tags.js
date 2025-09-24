@@ -1,3 +1,4 @@
+// Tags management with selection, bulk actions, and drag-and-drop reordering
 (function(){
 	const p=new URLSearchParams(window.location.search); const guildId=p.get('guildId');
 	const els={
@@ -8,7 +9,9 @@
 		renameCategoryFrom:document.getElementById('renameCategoryFrom'), renameCategoryTo:document.getElementById('renameCategoryTo'), renameCategory:document.getElementById('renameCategory'),
 		deleteCategoryName:document.getElementById('deleteCategoryName'), deleteCategory:document.getElementById('deleteCategory')
 	};
+
 	let _allTags=[]; let _sel=new Set();
+	let dragState = { fromIndex: null };
 
 	function notify(m,t='info'){ const n=document.createElement('div'); n.className=`notification notification-${t} slide-up`; n.innerHTML=`<i class="fas ${t==='error'?'fa-exclamation-circle': t==='success'?'fa-check-circle':'fa-info-circle'}"></i><span>${m}</span>`; document.body.appendChild(n); setTimeout(()=>{n.style.animation='slideDown 0.3s ease-in'; setTimeout(()=>n.remove(),300);},2500); }
 
@@ -20,13 +23,66 @@
 
 	function currentFilters(){ const q=(els.search?.value||'').toLowerCase(); const cat=(els.filterCategory?.value||'').trim(); return { q, cat }; }
 
-	function render(){ const {q,cat}=currentFilters(); const list = (_allTags||[]).filter(t=>{ const name=(t?.name||'').toLowerCase(); const text=(t?.text||'').toLowerCase(); const matchesQ = !q || name.includes(q) || text.includes(q); const matchesCat = !cat || String(t?.category||'')===cat; return matchesQ && matchesCat; });
-		els.list.innerHTML = list.map((t)=>{ const idx = (_allTags||[]).indexOf(t); const checked=_sel.has(idx)?'checked':''; return `<div class="tag" data-i="${idx}"><div class="tag-left"><span class="drag-handle" title="Arrastar"><i class="fas fa-grip-vertical"></i></span><input type="checkbox" class="sel" data-i="${idx}" ${checked} /><div><strong>${escapeHtml(t?.name||'')}</strong> — ${escapeHtml(t?.text||'')}</div>${t?.category?`<div class=\"mt-4\"><span class=\"badge\">${escapeHtml(t.category)}</span></div>`:''}</div><div class="tag-actions"><button data-act="up" data-i="${idx}" class="btn btn-glass btn-sm" title="Subir"><i class="fas fa-arrow-up"></i></button><button data-act="down" data-i="${idx}" class="btn btn-glass btn-sm" title="Descer"><i class="fas fa-arrow-down"></i></button><button data-act="remove" data-i="${idx}" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button></div></div>`; }).join('');
+	function render(){
+		const {q,cat}=currentFilters();
+		const list = (_allTags||[]).filter(t=>{ const name=(t?.name||'').toLowerCase(); const text=(t?.text||'').toLowerCase(); const matchesQ = !q || name.includes(q) || text.includes(q); const matchesCat = !cat || String(t?.category||'')===cat; return matchesQ && matchesCat; });
+
+		els.list.innerHTML = list.map((t)=>{
+			const idx = (_allTags||[]).indexOf(t);
+			const checked=_sel.has(idx)?'checked':'';
+			return `<div class="tag" data-i="${idx}" draggable="true">
+				<div class="tag-left">
+					<span class="drag-handle" title="Arrastar"><i class="fas fa-grip-vertical"></i></span>
+					<input type="checkbox" class="sel" data-i="${idx}" ${checked} />
+					<div><strong>${escapeHtml(t?.name||'')}</strong> — ${escapeHtml(t?.text||'')}</div>
+					${t?.category?`<div class=\"mt-4\"><span class=\"badge\">${escapeHtml(t.category)}</span></div>`:''}
+				</div>
+				<div class="tag-actions">
+					<button data-act="up" data-i="${idx}" class="btn btn-glass btn-sm" title="Subir"><i class="fas fa-arrow-up"></i></button>
+					<button data-act="down" data-i="${idx}" class="btn btn-glass btn-sm" title="Descer"><i class="fas fa-arrow-down"></i></button>
+					<button data-act="remove" data-i="${idx}" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+				</div>
+			</div>`;
+		}).join('');
+
+		// Selection checkboxes
 		els.list.querySelectorAll('input.sel').forEach(chk=> chk.addEventListener('change', ()=>{ const i=parseInt(chk.getAttribute('data-i'),10); if(Number.isNaN(i)) return; if(chk.checked) _sel.add(i); else _sel.delete(i); }));
+
+		// Button actions
 		els.list.querySelectorAll('button[data-act]').forEach(btn=> btn.addEventListener('click', async()=>{ const act=btn.getAttribute('data-act'); const idx=parseInt(btn.getAttribute('data-i'),10); if(Number.isNaN(idx)) return; if(act==='remove'){ const next=(_allTags||[]).filter((_,j)=>j!==idx); _sel.delete(idx); await saveAll(next, 'Removido'); } else if(act==='up' && idx>0){ const next=_allTags.slice(); [next[idx-1], next[idx]] = [next[idx], next[idx-1]]; await saveAll(next, 'Reordenado'); } else if(act==='down' && idx<_allTags.length-1){ const next=_allTags.slice(); [next[idx+1], next[idx]] = [next[idx], next[idx+1]]; await saveAll(next, 'Reordenado'); } }) );
+
+		// Drag & Drop events per row
+		els.list.querySelectorAll('.tag').forEach(row=>{
+			row.addEventListener('dragstart', (ev)=>{
+				const i = parseInt(row.getAttribute('data-i'),10);
+				dragState.fromIndex = Number.isNaN(i)? null : i;
+				ev.dataTransfer.effectAllowed = 'move';
+				try{ ev.dataTransfer.setData('text/plain', String(i)); }catch{}
+			});
+			row.addEventListener('dragenter', ()=>{ row.classList.add('drag-over'); });
+			row.addEventListener('dragleave', ()=>{ row.classList.remove('drag-over'); });
+			row.addEventListener('dragover', (ev)=>{ ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; });
+			row.addEventListener('drop', async(ev)=>{
+				ev.preventDefault(); row.classList.remove('drag-over');
+				const toIndex = parseInt(row.getAttribute('data-i'),10);
+				const fromIndex = dragState.fromIndex;
+				dragState.fromIndex = null;
+				if(Number.isNaN(toIndex) || Number.isNaN(fromIndex) || toIndex===fromIndex) return;
+
+				const next=_allTags.slice();
+				const [moved] = next.splice(fromIndex,1);
+				next.splice(toIndex,0,moved);
+				await saveAll(next, 'Reordenado');
+			});
+			row.addEventListener('dragend', ()=>{ row.classList.remove('drag-over'); dragState.fromIndex=null; });
+		});
 	}
 
-	async function saveAll(next, okMsg='Guardado'){ const r=await fetch(`/api/guild/${guildId}/quick-tags`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify({ tags: next })}); const d=await r.json(); if(d?.success){ _allTags = next; _sel = new Set(); renderFilters(); render(); notify(okMsg,'success'); } }
+	async function saveAll(next, okMsg='Guardado'){
+		const r=await fetch(`/api/guild/${guildId}/quick-tags`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify({ tags: next })});
+		const d=await r.json();
+		if(d?.success){ _allTags = next; _sel = new Set(); renderFilters(); render(); notify(okMsg,'success'); }
+	}
 
 	function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c)); }
 
@@ -46,5 +102,4 @@
 	els.search?.addEventListener('input', render); els.filterCategory?.addEventListener('change', render); els.resetFilters?.addEventListener('click', ()=>{ if(els.search) els.search.value=''; if(els.filterCategory) els.filterCategory.value=''; render(); });
 
 	load();
- })();
- (function(){ const p=new URLSearchParams(window.location.search); const guildId=p.get('guildId'); const els={ list:document.getElementById('tagsList'), name:document.getElementById('tagName'), text:document.getElementById('tagText'), category:document.getElementById('tagCategory'), add:document.getElementById('addTag'), search:document.getElementById('search'), filterCategory:document.getElementById('filterCategory'), resetFilters:document.getElementById('resetFilters') }; let _allTags=[]; function notify(m,t='info'){const n=document.createElement('div'); n.className=`notification notification-${t} slide-up`; n.innerHTML=`<i class="fas ${t==='error'?'fa-exclamation-circle': t==='success'?'fa-check-circle':'fa-info-circle'}"></i><span>${m}</span>`; document.body.appendChild(n); setTimeout(()=>{n.style.animation='slideDown 0.3s ease-in'; setTimeout(()=>n.remove(),300);},2500);} async function load(){ try{ const r=await fetch(`/api/guild/${guildId}/quick-tags`, {credentials:'same-origin'}); const d=await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`); _allTags=Array.isArray(d.tags)?d.tags:[]; renderFilters(); render(); }catch(e){console.error(e); notify(e.message,'error');} } function renderFilters(){ const cats=[...new Set(_allTags.map(t=>String(t?.category||'').trim()).filter(Boolean))]; if(els.filterCategory){ els.filterCategory.innerHTML = '<option value="">Todas as categorias</option>' + cats.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join(''); } } function currentFilters(){ const q=(els.search?.value||'').toLowerCase(); const cat=(els.filterCategory?.value||'').trim(); return { q, cat }; } function render(){ const {q,cat}=currentFilters(); const list = (_allTags||[]).filter(t=>{ const name=(t?.name||'').toLowerCase(); const text=(t?.text||'').toLowerCase(); const matchesQ = !q || name.includes(q) || text.includes(q); const matchesCat = !cat || String(t?.category||'')===cat; return matchesQ && matchesCat; }); els.list.innerHTML = list.map((t,i)=>{ const idx = (_allTags||[]).indexOf(t); return `<div class="tag"><div class="tag-left"><div><strong>${escapeHtml(t?.name||'')}</strong> — ${escapeHtml(t?.text||'')}</div>${t?.category?`<div class="mt-4"><span class="badge">${escapeHtml(t.category)}</span></div>`:''}</div><div class="tag-actions"><button data-act="up" data-i="${idx}" class="btn btn-glass btn-sm" title="Subir"><i class="fas fa-arrow-up"></i></button><button data-act="down" data-i="${idx}" class="btn btn-glass btn-sm" title="Descer"><i class="fas fa-arrow-down"></i></button><button data-act="remove" data-i="${idx}" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button></div></div>`; }).join(''); els.list.querySelectorAll('button[data-act]').forEach(btn=> btn.addEventListener('click', async()=>{ const act=btn.getAttribute('data-act'); const idx=parseInt(btn.getAttribute('data-i'),10); if(Number.isNaN(idx)) return; if(act==='remove'){ const next=(_allTags||[]).filter((_,j)=>j!==idx); await saveAll(next, 'Removido'); } else if(act==='up' && idx>0){ const next=_allTags.slice(); [next[idx-1], next[idx]] = [next[idx], next[idx-1]]; await saveAll(next, 'Reordenado'); } else if(act==='down' && idx<_allTags.length-1){ const next=_allTags.slice(); [next[idx+1], next[idx]] = [next[idx], next[idx+1]]; await saveAll(next, 'Reordenado'); } }) ); } async function saveAll(next, okMsg='Guardado'){ const r=await fetch(`/api/guild/${guildId}/quick-tags`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify({ tags: next })}); const d=await r.json(); if(d?.success){ _allTags = next; renderFilters(); render(); notify(okMsg,'success'); } } function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c)); } els.add?.addEventListener('click', async ()=>{ const name=(els.name?.value||'').trim(); const text=(els.text?.value||'').trim(); const category=(els.category?.value||'').trim(); if(!name||!text) return notify('Preencha nome e conteúdo','error'); try{ const next=[..._allTags, { name, text, category: category||undefined }]; const r=await fetch(`/api/guild/${guildId}/quick-tags`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify({ tags: next })}); const d=await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`); notify('Adicionado','success'); els.name.value=''; els.text.value=''; if(els.category) els.category.value=''; _allTags = next; renderFilters(); render(); }catch(e){console.error(e); notify(e.message,'error');} }); els.search?.addEventListener('input', render); els.filterCategory?.addEventListener('change', render); els.resetFilters?.addEventListener('click', ()=>{ if(els.search) els.search.value=''; if(els.filterCategory) els.filterCategory.value=''; render(); }); load(); })();
+})();

@@ -27,6 +27,19 @@ if ((process.env.NODE_ENV || 'production') === 'production') {
 const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
 const preferSqlite = isSqlite || !hasMongoEnv;
 
+// In-memory performance history (lightweight)
+const perfHistory = {
+    // guildId: [{ t: epochMs, cpu, memMB, ticketsOpen, activeUsers }, ...]
+};
+
+function pushPerfSample(guildId, sample){
+    const maxLen = 200; // keep last 200 samples
+    if(!perfHistory[guildId]) perfHistory[guildId] = [];
+    const row = { t: Date.now(), ...sample };
+    perfHistory[guildId].push(row);
+    if(perfHistory[guildId].length > maxLen) perfHistory[guildId].splice(0, perfHistory[guildId].length - maxLen);
+}
+
 // Helper function for OAuth callback URL
 const getCallbackURL = () => {
     if (process.env.CALLBACK_URL) {
@@ -276,6 +289,13 @@ app.get('/api/guild/:guildId/stats', async (req, res) => {
                 member.presence?.status === 'dnd'
             ).size
         };
+
+        // Push a perf sample
+        try {
+            const cpu = 0; // Placeholder (no OS read); could integrate os.loadavg()[0]
+            const memMB = Math.round(process.memoryUsage().rss / 1024 / 1024);
+            pushPerfSample(guildId, { cpu, memMB, ticketsOpen: 0, activeUsers: stats.onlineCount });
+        } catch {}
         
         res.json({ success: true, stats });
         
@@ -1400,6 +1420,61 @@ app.post('/api/guild/:guildId/quick-tags', async (req, res) => {
     } catch (e) { logger.error('Error set quick-tags:', e); res.status(500).json({ success: false, error: 'Failed to update quick tags' }); }
 });
 
+// Commands API (custom slash-like commands rendered by bot)
+const commandSchema = Joi.object({
+    name: Joi.string().trim().min(1).max(32).regex(/^[a-z0-9_\-]+$/i).required(),
+    description: Joi.string().trim().allow('').max(100).default(''),
+    type: Joi.string().valid('text','embed').required(),
+    content: Joi.alternatives().conditional('type', {
+        is: 'embed',
+        then: Joi.object().unknown(true),
+        otherwise: Joi.string().trim().max(2000)
+    }),
+    enabled: Joi.boolean().default(true)
+});
+
+const commandsPayloadSchema = Joi.object({
+    commands: Joi.array().items(commandSchema).max(200).default([])
+});
+
+app.get('/api/guild/:guildId/commands', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const storage = require('../utils/storage');
+        const existing = await storage.getGuildConfig(req.params.guildId, 'customCommands');
+        return res.json({ success: true, commands: Array.isArray(existing) ? existing : [] });
+    } catch (e) {
+        logger.error('Error get commands:', e);
+        return res.status(500).json({ success: false, error: 'Failed to fetch commands' });
+    }
+});
+
+app.post('/api/guild/:guildId/commands', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const { error, value } = commandsPayloadSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
+        if (error) return res.status(400).json({ success: false, error: 'validation_error', details: error.details.map(d=>d.message) });
+
+        // Sanitize names (remove leading '/') and enforce uniqueness (case-insensitive)
+        const dedup = [];
+        const seen = new Set();
+        for (const raw of value.commands) {
+            const name = String(raw.name || '').replace(/^\//,'');
+            const key = name.toLowerCase();
+            if (seen.has(key)) continue; // skip duplicates
+            seen.add(key);
+            dedup.push({ ...raw, name });
+        }
+
+        const storage = require('../utils/storage');
+        await storage.setGuildConfig(req.params.guildId, 'customCommands', dedup);
+        return res.json({ success: true, count: dedup.length });
+    } catch (e) {
+        logger.error('Error set commands:', e);
+        return res.status(500).json({ success: false, error: 'Failed to update commands' });
+    }
+});
+
 // Diagnostics (basic heuristics)
 app.get('/api/guild/:guildId/diagnostics', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -1452,17 +1527,53 @@ app.get('/api/guild/:guildId/backup/export', async (req, res) => {
 app.get('/api/guild/:guildId/performance', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guildId = req.params.guildId;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+
+        // Current metrics
         const processMem = process.memoryUsage();
         const uptime = process.uptime();
         const apiPing = client.ws?.ping || null;
-        res.json({ success: true, metrics: {
+
+        // Optional active users (online) snapshot
+        let activeUsers = 0;
+        try {
+            const guild = client.guilds.cache.get(guildId);
+            if (guild) {
+                activeUsers = guild.members.cache.filter(m => {
+                    const s = m.presence?.status; return s==='online'||s==='idle'||s==='dnd';
+                }).size;
+            }
+        } catch {}
+
+        const memMB = Math.round((processMem.rss || 0)/1024/1024);
+        // Sample into history
+        try { pushPerfSample(guildId, { cpu: 0, memMB, activeUsers, ticketsOpen: 0 }); } catch {}
+
+        // Build history + trend
+        const history = perfHistory[guildId] || [];
+        let trend = null;
+        if(history.length >= 5){
+            const last = history[history.length-1];
+            const prev = history.slice(0, -1);
+            const avg = (arr, k)=> arr.reduce((s,x)=>s+(x[k]||0),0)/arr.length;
+            trend = {
+                memMB: last.memMB - avg(prev, 'memMB'),
+                activeUsers: last.activeUsers - avg(prev, 'activeUsers')
+            };
+        }
+
+        return res.json({ success: true, metrics: {
             uptimeSeconds: Math.round(uptime),
-            memoryMB: Math.round((processMem.rss || 0)/1024/1024),
+            memoryMB: memMB,
             heapUsedMB: Math.round((processMem.heapUsed || 0)/1024/1024),
-            apiPing: apiPing
-        }});
-    } catch (e) { logger.error('Error performance:', e); res.status(500).json({ success: false, error: 'Failed to fetch performance' }); }
+            apiPing
+        }, history, trend });
+    } catch (e) {
+        logger.error('Error perf endpoint:', e);
+        return res.status(500).json({ success: false, error: 'Failed to fetch performance history' });
+    }
 });
 
 
