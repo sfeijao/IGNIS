@@ -305,6 +305,101 @@ app.get('/api/guild/:guildId/stats', async (req, res) => {
     }
 });
 
+// Roles and Members management
+app.get('/api/guild/:guildId/roles', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    try {
+        const guildId = req.params.guildId;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        // Fetch roles
+        const roles = guild.roles.cache
+            .sort((a,b)=> a.position === b.position ? 0 : a.position > b.position ? -1 : 1)
+            .map(r => ({ id: r.id, name: r.name, color: r.hexColor, position: r.position, managed: r.managed, hoist: r.hoist, mentionable: r.mentionable }));
+        return res.json({ success: true, roles });
+    } catch (e) {
+        logger.error('roles list error', e);
+        return res.status(500).json({ success: false, error: 'roles_failed' });
+    }
+});
+
+app.get('/api/guild/:guildId/members', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    try {
+        const guildId = req.params.guildId;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const q = String(req.query.q || '').toLowerCase();
+        const roleId = String(req.query.role || '');
+        let limit = parseInt(String(req.query.limit || '50'), 10); if (!Number.isFinite(limit) || limit < 1) limit = 50; limit = Math.min(200, limit);
+        const refresh = String(req.query.refresh || '').toLowerCase() === 'true';
+        if (refresh) { try { await guild.members.fetch(); } catch {}
+        }
+        let members = guild.members.cache;
+        if (roleId) {
+            const role = guild.roles.cache.get(roleId);
+            if (role) members = role.members;
+            else members = guild.members.cache.filter(() => false);
+        }
+        const out = [];
+        for (const m of members.values()) {
+            if (out.length >= limit) break;
+            const name = `${m.user.username}#${m.user.discriminator}`.toLowerCase();
+            if (q && !name.includes(q) && !(m.nickname || '').toLowerCase().includes(q)) continue;
+            out.push({ id: m.id, username: m.user.username, discriminator: m.user.discriminator, avatar: m.user.avatar, nick: m.nickname || null, roles: [...m.roles.cache.keys()] });
+        }
+        return res.json({ success: true, members: out, count: out.length });
+    } catch (e) {
+        logger.error('members list error', e);
+        return res.status(500).json({ success: false, error: 'members_failed' });
+    }
+});
+
+app.post('/api/guild/:guildId/members/:userId/roles', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    try {
+        const guildId = req.params.guildId; const userId = req.params.userId;
+        const { add, remove } = req.body || {};
+        const toAdd = Array.isArray(add) ? add.map(String) : [];
+        const toRemove = Array.isArray(remove) ? remove.map(String) : [];
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        let member = guild.members.cache.get(userId);
+        if (!member) { try { member = await guild.members.fetch(userId); } catch {}
+        }
+        if (!member) return res.status(404).json({ success: false, error: 'Member not found' });
+        // Permission checks: the bot must be higher than target roles
+        const me = guild.members.me || guild.members.cache.get(client.user.id);
+        const myHighest = me?.roles?.highest?.position ?? 0;
+        const blocked = [...toAdd, ...toRemove].some(rid => {
+            const r = guild.roles.cache.get(rid); return r && r.position >= myHighest;
+        });
+        if (blocked) return res.status(403).json({ success: false, error: 'insufficient_role_hierarchy' });
+        if (toAdd.length) {
+            try { await member.roles.add(toAdd, 'Dashboard roles update'); } catch (e) { logger.warn('roles add failed', e); return res.status(500).json({ success:false, error:'add_failed' }); }
+        }
+        if (toRemove.length) {
+            try { await member.roles.remove(toRemove, 'Dashboard roles update'); } catch (e) { logger.warn('roles remove failed', e); return res.status(500).json({ success:false, error:'remove_failed' }); }
+        }
+        return res.json({ success: true });
+    } catch (e) {
+        logger.error('member roles update error', e);
+        return res.status(500).json({ success: false, error: 'roles_update_failed' });
+    }
+});
+
 app.get('/api/guild/:guildId/tickets', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });

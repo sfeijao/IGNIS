@@ -1257,6 +1257,15 @@ function manageTags() {
     window.location.href = `/tags.html?guildId=${gid}`;
 }
 
+function manageRoles() {
+    if (!dashboard.currentGuild) {
+        dashboard.showError('Nenhum servidor selecionado');
+        return;
+    }
+    const gid = encodeURIComponent(dashboard.currentGuild);
+    window.location.href = `/roles.html?guildId=${gid}`;
+}
+
 function viewLogs() {
     if (!dashboard.currentGuild) {
         dashboard.showError('Nenhum servidor selecionado');

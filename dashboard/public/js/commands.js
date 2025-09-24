@@ -1,6 +1,6 @@
 (function(){
 	const p=new URLSearchParams(window.location.search); const guildId=p.get('guildId');
-	const els={ name:document.getElementById('cmdName'), desc:document.getElementById('cmdDesc'), type:document.getElementById('cmdType'), content:document.getElementById('cmdContent'), preview:document.getElementById('preview'), save:document.getElementById('save'), list:document.getElementById('cmdsList') };
+	const els={ name:document.getElementById('cmdName'), desc:document.getElementById('cmdDesc'), type:document.getElementById('cmdType'), content:document.getElementById('cmdContent'), preview:document.getElementById('preview'), save:document.getElementById('save'), list:document.getElementById('cmdsList'), modal:document.getElementById('modal'), modalBody:document.getElementById('modalBody'), modalOk:document.getElementById('modalOk'), modalCancel:document.getElementById('modalCancel') };
 	let all = [];
 
 	function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c)); }
@@ -41,7 +41,19 @@
 		els.list.innerHTML = all.map((c,i)=>{
 			const enabled = c.enabled!==false;
 			const descr = c.description? ` — ${escapeHtml(c.description)}`: '';
-			return `<div class=\"cmd-item\" data-i=\"${i}\">\n\	\t\t\t<div class=\"cmd-left\">\n\	\t\t\t\t<div><strong>/${escapeHtml(c.name||'')}</strong>${descr}</div>\n\	\t\t\t\t<div class=\"text-secondary\">Tipo: ${escapeHtml(c.type||'text')}</div>\n\	\t\t\t</div>\n\	\t\t\t<div class=\"cmd-actions\">\n\	\t\t\t\t<label class=\"switch\" title=\"Ativar/Desativar\"><input type=\"checkbox\" class=\"cmd-toggle\" data-i=\"${i}\" ${enabled?'checked':''} /><span class=\"slider\"></span></label>\n\	\t\t\t\t<button class=\"btn btn-glass btn-sm\" data-act=\"edit\" data-i=\"${i}\"><i class=\"fas fa-edit\"></i></button>\n\	\t\t\t\t<button class=\"btn btn-danger btn-sm\" data-act=\"delete\" data-i=\"${i}\"><i class=\"fas fa-trash\"></i></button>\n\	\t\t\t</div>\n\	\t\t</div>`;
+			const disabledBadge = enabled? '' : ' <span class="badge" title="Desativado"><i class="fas fa-ban"></i> Desativado</span>';
+			const muted = enabled? '' : ' style="opacity:.6"';
+			return `<div class="cmd-item" data-i="${i}">
+				<div class="cmd-left"${muted}>
+					<div><strong>/${escapeHtml(c.name||'')}</strong>${descr}${disabledBadge}</div>
+					<div class="text-secondary">Tipo: ${escapeHtml(c.type||'text')}</div>
+				</div>
+				<div class="cmd-actions">
+					<label class="switch" title="Ativar/Desativar"><input type="checkbox" class="cmd-toggle" data-i="${i}" ${enabled?'checked':''} /><span class="slider"></span></label>
+					<button class="btn btn-glass btn-sm" data-act="edit" data-i="${i}"><i class="fas fa-edit"></i></button>
+					<button class="btn btn-danger btn-sm" data-act="delete" data-i="${i}"><i class="fas fa-trash"></i></button>
+				</div>
+			</div>`;
 		}).join('');
 		// Handlers
 		els.list.querySelectorAll('button[data-act="edit"]').forEach(btn=> btn.addEventListener('click', ()=>{
@@ -53,14 +65,17 @@
 			els.content.value = c.type==='embed'? JSON.stringify(c.content||{}, null, 2): String(c.content||'');
 			update();
 		}));
-		els.list.querySelectorAll('button[data-act="delete"]').forEach(btn=> btn.addEventListener('click', async()=>{
+		els.list.querySelectorAll('button[data-act="delete"]').forEach(btn=> btn.addEventListener('click', ()=>{
 			const i=parseInt(btn.getAttribute('data-i'),10); if(Number.isNaN(i)) return;
-			const next = all.filter((_,idx)=> idx!==i);
-			try{
-				const r=await fetch(`/api/guild/${guildId}/commands`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify({ commands: next })});
-				const d=await r.json(); if(!r.ok||!d.success) throw new Error((d.details&&d.details.join(', '))||d.error||`HTTP ${r.status}`);
-				all = next; renderList(); notify('Comando removido','success');
-			}catch(e){ console.error(e); notify(e.message,'error'); }
+			const c = all[i]; if(!c) return;
+			confirmModal(`Eliminar comando /${escapeHtml(c.name||'')}?`, async()=>{
+				const next = all.filter((_,idx)=> idx!==i);
+				try{
+					const r=await fetch(`/api/guild/${guildId}/commands`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify({ commands: next })});
+					const d=await r.json(); if(!r.ok||!d.success) throw new Error((d.details&&d.details.join(', '))||d.error||`HTTP ${r.status}`);
+					all = next; renderList(); notify('Comando removido','success');
+				}catch(e){ console.error(e); notify(e.message,'error'); }
+			});
 		}));
 		els.list.querySelectorAll('input.cmd-toggle').forEach(chk=> chk.addEventListener('change', async()=>{
 			const i=parseInt(chk.getAttribute('data-i'),10); if(Number.isNaN(i)) return;
@@ -68,7 +83,7 @@
 			try{
 				const r=await fetch(`/api/guild/${guildId}/commands`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify({ commands: next })});
 				const d=await r.json(); if(!r.ok||!d.success) throw new Error((d.details&&d.details.join(', '))||d.error||`HTTP ${r.status}`);
-				all = next; notify(chk.checked? 'Ativado':'Desativado','success');
+				all = next; renderList(); notify(chk.checked? 'Ativado':'Desativado','success');
 			}catch(e){ console.error(e); notify(e.message,'error'); chk.checked = !chk.checked; }
 		}));
 	}
@@ -99,5 +114,15 @@
 
 	['input','change'].forEach(evt=>{ els.name?.addEventListener(evt, update); els.desc?.addEventListener(evt, update); els.type?.addEventListener(evt, update); els.content?.addEventListener(evt, update); });
 	els.save?.addEventListener('click', save);
+
+	function confirmModal(message, onOk){
+		if(!els.modal||!els.modalBody||!els.modalOk||!els.modalCancel){ if(window.confirm(message)) onOk?.(); return; }
+		els.modalBody.textContent = message;
+		els.modal.style.display='block'; els.modal.setAttribute('aria-hidden','false');
+		const close=()=>{ els.modal.style.display='none'; els.modal.setAttribute('aria-hidden','true'); els.modalOk.onclick=null; els.modalCancel.onclick=null; };
+		els.modalOk.onclick = ()=>{ const fn=onOk; close(); Promise.resolve().then(()=>fn?.()); };
+		els.modalCancel.onclick = close;
+	}
+
 	load().then(update);
 })();
