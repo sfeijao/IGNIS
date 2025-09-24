@@ -337,8 +337,10 @@ app.get('/api/guild/:guildId/members', async (req, res) => {
         const guildId = req.params.guildId;
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
+    const guild = client.guilds.cache.get(guildId);
         if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+    const me = guild.members.me || guild.members.cache.get(client.user.id);
+    const myHighest = me?.roles?.highest?.position ?? 0;
         const q = String(req.query.q || '').toLowerCase();
         const roleId = String(req.query.role || '');
         let limit = parseInt(String(req.query.limit || '50'), 10); if (!Number.isFinite(limit) || limit < 1) limit = 50; limit = Math.min(200, limit);
@@ -356,7 +358,9 @@ app.get('/api/guild/:guildId/members', async (req, res) => {
             if (out.length >= limit) break;
             const name = `${m.user.username}#${m.user.discriminator}`.toLowerCase();
             if (q && !name.includes(q) && !(m.nickname || '').toLowerCase().includes(q)) continue;
-            out.push({ id: m.id, username: m.user.username, discriminator: m.user.discriminator, avatar: m.user.avatar, nick: m.nickname || null, roles: [...m.roles.cache.keys()] });
+            const memberHighest = m?.roles?.highest?.position ?? 0;
+            const manageable = memberHighest < myHighest;
+            out.push({ id: m.id, username: m.user.username, discriminator: m.user.discriminator, avatar: m.user.avatar, nick: m.nickname || null, roles: [...m.roles.cache.keys()], manageable });
         }
         return res.json({ success: true, members: out, count: out.length });
     } catch (e) {
