@@ -317,10 +317,12 @@ app.get('/api/guild/:guildId/roles', async (req, res) => {
         const guild = client.guilds.cache.get(guildId);
         if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
         // Fetch roles
+        const me = guild.members.me || guild.members.cache.get(client.user.id);
+        const myHighest = me?.roles?.highest?.position ?? 0;
         const roles = guild.roles.cache
             .sort((a,b)=> a.position === b.position ? 0 : a.position > b.position ? -1 : 1)
-            .map(r => ({ id: r.id, name: r.name, color: r.hexColor, position: r.position, managed: r.managed, hoist: r.hoist, mentionable: r.mentionable }));
-        return res.json({ success: true, roles });
+            .map(r => ({ id: r.id, name: r.name, color: r.hexColor, position: r.position, managed: r.managed, hoist: r.hoist, mentionable: r.mentionable, manageable: !r.managed && r.position < myHighest }));
+        return res.json({ success: true, roles, botMax: myHighest });
     } catch (e) {
         logger.error('roles list error', e);
         return res.status(500).json({ success: false, error: 'roles_failed' });
@@ -380,13 +382,19 @@ app.post('/api/guild/:guildId/members/:userId/roles', async (req, res) => {
         if (!member) { try { member = await guild.members.fetch(userId); } catch {}
         }
         if (!member) return res.status(404).json({ success: false, error: 'Member not found' });
-        // Permission checks: the bot must be higher than target roles
+        // Permission checks: the bot must be higher than target roles AND member's highest
         const me = guild.members.me || guild.members.cache.get(client.user.id);
         const myHighest = me?.roles?.highest?.position ?? 0;
+        // 1) Cannot manage roles at or above bot's highest
         const blocked = [...toAdd, ...toRemove].some(rid => {
             const r = guild.roles.cache.get(rid); return r && r.position >= myHighest;
         });
         if (blocked) return res.status(403).json({ success: false, error: 'insufficient_role_hierarchy' });
+        // 2) Cannot edit member whose highest role is >= bot's highest
+        const memberHighest = member?.roles?.highest?.position ?? 0;
+        if (memberHighest >= myHighest) {
+            return res.status(403).json({ success: false, error: 'insufficient_member_hierarchy' });
+        }
         if (toAdd.length) {
             try { await member.roles.add(toAdd, 'Dashboard roles update'); } catch (e) { logger.warn('roles add failed', e); return res.status(500).json({ success:false, error:'add_failed' }); }
         }
