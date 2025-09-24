@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IGNIS - Logs</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="navbar-brand"><i class="fas fa-clipboard-list"></i> Logs</div>
+      <div class="navbar-user">
+        <span id="healthBadge" class="badge health-badge" title="Estado do sistema">
+          <span id="health-mongo" class="dot dot-gray" title="DB"></span>
+          <span id="health-discord" class="dot dot-gray" title="Discord"></span>
+        </span>
+        <img id="userAvatar" src="/default-avatar.svg" alt="Avatar" class="user-avatar">
+        <span id="userName">Carregando...</span>
+        <a href="/dashboard" class="btn btn-glass"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="/logout" class="btn btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+      </div>
+    </div>
+  </nav>
+  <main class="main-content">
+    <div class="container">
+      <section class="dashboard-section fade-in">
+        <div class="section-header">
+          <h1 class="section-title"><i class="fas fa-list"></i> Logs</h1>
+          <p class="text-secondary">Pesquisa e exportação de logs.</p>
+        </div>
+
+        <div class="glass-card card-pad">
+          <div class="grid grid-4 gap-12">
+            <div>
+              <label>Tipo</label>
+              <input id="fType" class="input" placeholder="logs, tickets, updates..." />
+            </div>
+            <div>
+              <label>De</label>
+              <input id="fFrom" class="input" type="date" title="Data inicial" placeholder="YYYY-MM-DD" />
+            </div>
+            <div>
+              <label>Até</label>
+              <input id="fTo" class="input" type="date" title="Data final" placeholder="YYYY-MM-DD" />
+            </div>
+            <div>
+              <label>Pesquisa</label>
+              <input id="fQuery" class="input" placeholder="Texto, user, ticket..." />
+            </div>
+          </div>
+          <div class="mt-12">
+            <button id="btnApply" class="btn btn-primary"><i class="fas fa-filter"></i> Aplicar</button>
+            <button id="btnExportCsv" class="btn btn-glass"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+            <button id="btnExportTxt" class="btn btn-glass"><i class="fas fa-file"></i> Exportar TXT</button>
+          </div>
+        </div>
+
+        <div id="logsList" class="mt-12"></div>
+      </section>
+    </div>
+  </main>
+  <style>
+    .card-pad{padding:16px}
+    .gap-12{gap:12px}
+    .mt-12{margin-top:12px}
+    .log-item{background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);border-radius:12px;padding:12px;margin-bottom:8px}
+    .log-meta{color:var(--text-secondary);font-size:.9rem}
+  </style>
+  <script src="/js/logs.js"></script>
+</body>
+</html>

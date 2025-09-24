@@ -1179,6 +1179,83 @@ app.post('/api/guild/:guildId/config', async (req, res) => {
     }
 });
 
+// Logs API (general bot logs, lightweight)
+app.get('/api/guild/:guildId/logs', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const q = (req.query.q || '').toString().toLowerCase().trim();
+        const type = (req.query.type || '').toString().toLowerCase().trim();
+        const from = req.query.from ? new Date(req.query.from) : null;
+        const to = req.query.to ? new Date(req.query.to) : null;
+        const limit = Math.max(1, Math.min(1000, parseInt(String(req.query.limit || '200'), 10) || 200));
+        const all = await storage.getLogs(req.params.guildId, 1000);
+        let filtered = Array.isArray(all) ? all.slice() : [];
+        if (type) filtered = filtered.filter(l => (l.type || '').toLowerCase() === type);
+        if (from && !Number.isNaN(from.getTime())) filtered = filtered.filter(l => new Date(l.timestamp) >= from);
+        if (to && !Number.isNaN(to.getTime())) filtered = filtered.filter(l => new Date(l.timestamp) <= to);
+        if (q) filtered = filtered.filter(l => {
+            const hay = [l.message, l.type, l.actor_id, l.ticket_id].map(x => (x ? String(x).toLowerCase() : '')).join(' ');
+            return hay.includes(q);
+        });
+        filtered.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+        return res.json({ success: true, logs: filtered.slice(0, limit) });
+    } catch (e) {
+        logger.error('Error fetching logs:', e);
+        return res.status(500).json({ success: false, error: 'Failed to fetch logs' });
+    }
+});
+
+app.get('/api/guild/:guildId/logs/export', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        // Reuse list logic
+        const storage = require('../utils/storage');
+        const q = (req.query.q || '').toString().toLowerCase().trim();
+        const type = (req.query.type || '').toString().toLowerCase().trim();
+        const from = req.query.from ? new Date(req.query.from) : null;
+        const to = req.query.to ? new Date(req.query.to) : null;
+        const format = (req.query.format || 'csv').toString().toLowerCase();
+        const all = await storage.getLogs(req.params.guildId, 1000);
+        let filtered = Array.isArray(all) ? all.slice() : [];
+        if (type) filtered = filtered.filter(l => (l.type || '').toLowerCase() === type);
+        if (from && !Number.isNaN(from.getTime())) filtered = filtered.filter(l => new Date(l.timestamp) >= from);
+        if (to && !Number.isNaN(to.getTime())) filtered = filtered.filter(l => new Date(l.timestamp) <= to);
+        if (q) filtered = filtered.filter(l => {
+            const hay = [l.message, l.type, l.actor_id, l.ticket_id].map(x => (x ? String(x).toLowerCase() : '')).join(' ');
+            return hay.includes(q);
+        });
+        filtered.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+        if (format === 'txt') {
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename=logs-${req.params.guildId}.txt`);
+            const lines = filtered.map(l => `[${l.timestamp}] [${l.type||'log'}] ${l.message || ''}`);
+            return res.send(lines.join('\n'));
+        }
+        // CSV default
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=logs-${req.params.guildId}.csv`);
+        const headers = ['timestamp','type','message','actor_id','ticket_id'];
+        const escape = (s='') => '"' + String(s).replace(/"/g,'""') + '"';
+        const lines = [headers.join(',')];
+        for (const l of filtered) {
+            lines.push([l.timestamp||'', l.type||'', l.message||'', l.actor_id||'', l.ticket_id||''].map(escape).join(','));
+        }
+        return res.send(lines.join('\n'));
+    } catch (e) {
+        logger.error('Error exporting logs:', e);
+        return res.status(500).json({ success: false, error: 'Failed to export logs' });
+    }
+});
+
 // Webhooks API
 app.get('/api/guild/:guildId/webhooks', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -1216,6 +1293,125 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
         res.status(500).json({ success: false, error: 'Failed to list webhooks' });
     }
 });
+
+// Verification Config (stub)
+app.get('/api/guild/:guildId/verification/config', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const cfg = await storage.getGuildConfig(req.params.guildId);
+        res.json({ success: true, config: cfg?.verification || {} });
+    } catch (e) { logger.error('Error get verification config:', e); res.status(500).json({ success: false, error: 'Failed to fetch verification config' }); }
+});
+
+app.post('/api/guild/:guildId/verification/config', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const current = await storage.getGuildConfig(req.params.guildId) || {};
+        const next = { ...current, verification: { ...(current.verification || {}), ...(req.body || {}) } };
+        await storage.updateGuildConfig(req.params.guildId, next);
+        res.json({ success: true, message: 'Verification config updated' });
+    } catch (e) { logger.error('Error set verification config:', e); res.status(500).json({ success: false, error: 'Failed to update verification config' }); }
+});
+
+// Quick Tags (guild-level quick replies)
+app.get('/api/guild/:guildId/quick-tags', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const cfg = await storage.getGuildConfig(req.params.guildId);
+        const list = Array.isArray(cfg?.quickTags) ? cfg.quickTags : [];
+        res.json({ success: true, tags: list });
+    } catch (e) { logger.error('Error get quick-tags:', e); res.status(500).json({ success: false, error: 'Failed to fetch quick tags' }); }
+});
+
+app.post('/api/guild/:guildId/quick-tags', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const current = await storage.getGuildConfig(req.params.guildId) || {};
+        const existing = Array.isArray(current.quickTags) ? current.quickTags : [];
+        const body = req.body || {};
+        const nextList = Array.isArray(body.tags) ? body.tags : existing;
+        const next = { ...current, quickTags: nextList }; await storage.updateGuildConfig(req.params.guildId, next);
+        res.json({ success: true, tags: nextList });
+    } catch (e) { logger.error('Error set quick-tags:', e); res.status(500).json({ success: false, error: 'Failed to update quick tags' }); }
+});
+
+// Diagnostics (basic heuristics)
+app.get('/api/guild/:guildId/diagnostics', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(req.params.guildId); if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const roles = Array.from(guild.roles.cache.values());
+        const channels = Array.from(guild.channels.cache.values());
+        const suggestions = [];
+        // Duplicate role names
+        const byName = new Map();
+        for (const r of roles) { const k = (r.name||'').toLowerCase(); byName.set(k, (byName.get(k)||0)+1); }
+        for (const [name,count] of byName) { if (count>1) suggestions.push({ type:'roles', message:`Há ${count} cargos com o nome "${name}"` }); }
+        // Inactive text channels heuristic: no topic and low message limit on cache (shallow)
+        const inactive = channels.filter(c => c.type === 0 && !c.topic);
+        if (inactive.length >= 10) suggestions.push({ type:'channels', message: `${inactive.length} canais de texto sem tópico (pode indicar desorganização)` });
+        // Bots without manage roles/admin (best-effort)
+        const bots = guild.members.cache.filter(m => m.user.bot);
+        const weakBots = [];
+        for (const m of bots.values()) {
+            const perms = m.permissions || m.roles?.botRole?.permissions;
+            if (perms && !perms.has) continue;
+            weakBots.push(m.user.username);
+        }
+        if (weakBots.length) suggestions.push({ type:'bots', message:`Bots com permissões possivelmente insuficientes: ${weakBots.slice(0,5).join(', ')}` });
+        res.json({ success: true, stats: { memberCount: guild.memberCount, roleCount: roles.length, channelCount: channels.length }, suggestions });
+    } catch (e) { logger.error('Error diagnostics:', e); res.status(500).json({ success: false, error: 'Failed to run diagnostics' }); }
+});
+
+// Backup export (JSON bundle)
+app.get('/api/guild/:guildId/backup/export', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const [tickets, config, logs] = await Promise.all([
+            storage.getTickets(req.params.guildId),
+            storage.getGuildConfig(req.params.guildId),
+            storage.getLogs(req.params.guildId, 1000)
+        ]);
+        const bundle = { guild_id: req.params.guildId, exported_at: new Date().toISOString(), tickets, config, logs };
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=backup-${req.params.guildId}.json`);
+        return res.send(JSON.stringify(bundle, null, 2));
+    } catch (e) { logger.error('Error backup export:', e); res.status(500).json({ success: false, error: 'Failed to export backup' }); }
+});
+
+// Performance metrics
+app.get('/api/guild/:guildId/performance', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const processMem = process.memoryUsage();
+        const uptime = process.uptime();
+        const apiPing = client.ws?.ping || null;
+        res.json({ success: true, metrics: {
+            uptimeSeconds: Math.round(uptime),
+            memoryMB: Math.round((processMem.rss || 0)/1024/1024),
+            heapUsedMB: Math.round((processMem.heapUsed || 0)/1024/1024),
+            apiPing: apiPing
+        }});
+    } catch (e) { logger.error('Error performance:', e); res.status(500).json({ success: false, error: 'Failed to fetch performance' }); }
+});
+
 
 app.post('/api/guild/:guildId/webhooks', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });

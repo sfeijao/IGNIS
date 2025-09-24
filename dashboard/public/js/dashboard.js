@@ -1243,7 +1243,8 @@ function configureVerification() {
         return;
     }
     
-    dashboard.showNotification('Configuração de verificação em desenvolvimento', 'info');
+    const gid = encodeURIComponent(dashboard.currentGuild);
+    window.location.href = `/verification.html?guildId=${gid}`;
 }
 
 function manageTags() {
@@ -1252,7 +1253,8 @@ function manageTags() {
         return;
     }
     
-    dashboard.showNotification('Gestão de tags em desenvolvimento', 'info');
+    const gid = encodeURIComponent(dashboard.currentGuild);
+    window.location.href = `/tags.html?guildId=${gid}`;
 }
 
 function viewLogs() {
@@ -1261,7 +1263,8 @@ function viewLogs() {
         return;
     }
     
-    dashboard.showNotification('Visualização de logs em desenvolvimento', 'info');
+    const gid = encodeURIComponent(dashboard.currentGuild);
+    window.location.href = `/logs.html?guildId=${gid}`;
 }
 
 function botSettings() {
@@ -1270,7 +1273,8 @@ function botSettings() {
         return;
     }
     
-    dashboard.showNotification('Configurações do bot em desenvolvimento', 'info');
+    const gid = encodeURIComponent(dashboard.currentGuild);
+    window.location.href = `/configs.html?guildId=${gid}`;
 }
 
 function serverDiagnostics() {
@@ -1279,7 +1283,8 @@ function serverDiagnostics() {
         return;
     }
     
-    dashboard.showNotification('Diagnóstico do servidor em desenvolvimento', 'info');
+    const gid = encodeURIComponent(dashboard.currentGuild);
+    window.location.href = `/diagnostics.html?guildId=${gid}`;
 }
 
 function backupData() {
@@ -1288,7 +1293,8 @@ function backupData() {
         return;
     }
     
-    dashboard.showNotification('Backup de dados em desenvolvimento', 'info');
+    const gid = encodeURIComponent(dashboard.currentGuild);
+    window.location.href = `/backup.html?guildId=${gid}`;
 }
 
 function botPerformance() {
@@ -1297,7 +1303,8 @@ function botPerformance() {
         return;
     }
     
-    dashboard.showNotification('Performance do bot em desenvolvimento', 'info');
+    const gid = encodeURIComponent(dashboard.currentGuild);
+    window.location.href = `/performance.html?guildId=${gid}`;
 }
 
 function customCommands() {
@@ -1306,7 +1313,8 @@ function customCommands() {
         return;
     }
     
-    dashboard.showNotification('Comandos personalizados em desenvolvimento', 'info');
+    const gid = encodeURIComponent(dashboard.currentGuild);
+    window.location.href = `/commands.html?guildId=${gid}`;
 }
 
 function viewAllTickets() {
