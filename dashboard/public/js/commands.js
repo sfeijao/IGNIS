@@ -1,6 +1,6 @@
 (function(){
 	const p=new URLSearchParams(window.location.search); const guildId=p.get('guildId');
-	const els={ name:document.getElementById('cmdName'), desc:document.getElementById('cmdDesc'), type:document.getElementById('cmdType'), content:document.getElementById('cmdContent'), preview:document.getElementById('preview'), save:document.getElementById('save') };
+	const els={ name:document.getElementById('cmdName'), desc:document.getElementById('cmdDesc'), type:document.getElementById('cmdType'), content:document.getElementById('cmdContent'), preview:document.getElementById('preview'), save:document.getElementById('save'), list:document.getElementById('cmdsList') };
 	let all = [];
 
 	function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c)); }
@@ -31,7 +31,46 @@
 			const d=await r.json();
 			if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`);
 			all = Array.isArray(d.commands)? d.commands: [];
+			renderList();
 		}catch(e){ console.error(e); notify(e.message,'error'); }
+	}
+
+	function renderList(){
+		if(!els.list) return;
+		if(!Array.isArray(all) || all.length===0){ els.list.innerHTML = '<div class="text-secondary">Sem comandos.</div>'; return; }
+		els.list.innerHTML = all.map((c,i)=>{
+			const enabled = c.enabled!==false;
+			const descr = c.description? ` — ${escapeHtml(c.description)}`: '';
+			return `<div class=\"cmd-item\" data-i=\"${i}\">\n\	\t\t\t<div class=\"cmd-left\">\n\	\t\t\t\t<div><strong>/${escapeHtml(c.name||'')}</strong>${descr}</div>\n\	\t\t\t\t<div class=\"text-secondary\">Tipo: ${escapeHtml(c.type||'text')}</div>\n\	\t\t\t</div>\n\	\t\t\t<div class=\"cmd-actions\">\n\	\t\t\t\t<label class=\"switch\" title=\"Ativar/Desativar\"><input type=\"checkbox\" class=\"cmd-toggle\" data-i=\"${i}\" ${enabled?'checked':''} /><span class=\"slider\"></span></label>\n\	\t\t\t\t<button class=\"btn btn-glass btn-sm\" data-act=\"edit\" data-i=\"${i}\"><i class=\"fas fa-edit\"></i></button>\n\	\t\t\t\t<button class=\"btn btn-danger btn-sm\" data-act=\"delete\" data-i=\"${i}\"><i class=\"fas fa-trash\"></i></button>\n\	\t\t\t</div>\n\	\t\t</div>`;
+		}).join('');
+		// Handlers
+		els.list.querySelectorAll('button[data-act="edit"]').forEach(btn=> btn.addEventListener('click', ()=>{
+			const i=parseInt(btn.getAttribute('data-i'),10); if(Number.isNaN(i)) return;
+			const c=all[i]; if(!c) return;
+			els.name.value = `/${c.name||''}`;
+			els.desc.value = c.description||'';
+			els.type.value = c.type||'text';
+			els.content.value = c.type==='embed'? JSON.stringify(c.content||{}, null, 2): String(c.content||'');
+			update();
+		}));
+		els.list.querySelectorAll('button[data-act="delete"]').forEach(btn=> btn.addEventListener('click', async()=>{
+			const i=parseInt(btn.getAttribute('data-i'),10); if(Number.isNaN(i)) return;
+			const next = all.filter((_,idx)=> idx!==i);
+			try{
+				const r=await fetch(`/api/guild/${guildId}/commands`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify({ commands: next })});
+				const d=await r.json(); if(!r.ok||!d.success) throw new Error((d.details&&d.details.join(', '))||d.error||`HTTP ${r.status}`);
+				all = next; renderList(); notify('Comando removido','success');
+			}catch(e){ console.error(e); notify(e.message,'error'); }
+		}));
+		els.list.querySelectorAll('input.cmd-toggle').forEach(chk=> chk.addEventListener('change', async()=>{
+			const i=parseInt(chk.getAttribute('data-i'),10); if(Number.isNaN(i)) return;
+			const next = all.slice(); next[i] = { ...next[i], enabled: !!chk.checked };
+			try{
+				const r=await fetch(`/api/guild/${guildId}/commands`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify({ commands: next })});
+				const d=await r.json(); if(!r.ok||!d.success) throw new Error((d.details&&d.details.join(', '))||d.error||`HTTP ${r.status}`);
+				all = next; notify(chk.checked? 'Ativado':'Desativado','success');
+			}catch(e){ console.error(e); notify(e.message,'error'); chk.checked = !chk.checked; }
+		}));
 	}
 
 	function notify(m,t='info'){ const n=document.createElement('div'); n.className=`notification notification-${t} slide-up`; n.innerHTML=`<i class="fas ${t==='error'?'fa-exclamation-circle': t==='success'?'fa-check-circle':'fa-info-circle'}"></i><span>${m}</span>`; document.body.appendChild(n); setTimeout(()=>{n.style.animation='slideDown 0.3s ease-in'; setTimeout(()=>n.remove(),300);},2500); }

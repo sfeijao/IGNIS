@@ -75,6 +75,25 @@
 				await saveAll(next, 'Reordenado');
 			});
 			row.addEventListener('dragend', ()=>{ row.classList.remove('drag-over'); dragState.fromIndex=null; });
+			// Keyboard reordering (focus on drag handle or row)
+			row.setAttribute('tabindex','0');
+			row.addEventListener('keydown', async(e)=>{
+				const idx = parseInt(row.getAttribute('data-i'),10);
+				if(Number.isNaN(idx)) return;
+				if(e.key==='ArrowUp' && idx>0){ e.preventDefault(); const next=_allTags.slice(); [next[idx-1], next[idx]]=[next[idx], next[idx-1]]; await saveAll(next,'Reordenado'); const prev=els.list.querySelector(`.tag[data-i="${idx-1}"]`); prev?.focus(); }
+				if(e.key==='ArrowDown' && idx<_allTags.length-1){ e.preventDefault(); const next=_allTags.slice(); [next[idx+1], next[idx]]=[next[idx], next[idx+1]]; await saveAll(next,'Reordenado'); const nxt=els.list.querySelector(`.tag[data-i="${idx+1}"]`); nxt?.focus(); }
+			});
+			// Basic touch support
+			let touchStartY=null; let touchFromIndex=null;
+			row.addEventListener('touchstart', (ev)=>{ touchStartY = ev.touches[0].clientY; touchFromIndex = parseInt(row.getAttribute('data-i'),10); }, {passive:true});
+			row.addEventListener('touchmove', (ev)=>{ ev.preventDefault(); }, {passive:false});
+			row.addEventListener('touchend', async(ev)=>{
+				if(touchStartY==null) return; const dy = (ev.changedTouches && ev.changedTouches[0]?.clientY || 0) - touchStartY;
+				const from = touchFromIndex; touchStartY=null; touchFromIndex=null; if(Number.isNaN(from)) return;
+				let to = from + (dy>20? 1: dy<-20? -1: 0);
+				if(to<0||to>=_allTags.length||to===from) return;
+				const next=_allTags.slice(); const [m]=next.splice(from,1); next.splice(to,0,m); await saveAll(next,'Reordenado');
+			});
 		});
 	}
 
