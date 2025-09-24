@@ -1,1 +1,120 @@
-<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>IGNIS - Verificação</title><link rel="stylesheet" href="/css/style.css"/><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/></head><body><nav class="navbar"><div class="navbar-container"><div class="navbar-brand"><i class="fas fa-user-check"></i> Verificação</div><div class="navbar-user"><a href="/dashboard" class="btn btn-glass"><i class="fas fa-home"></i> Dashboard</a></div></div></nav><main class="main-content"><div class="container"><section class="dashboard-section"><div class="section-header"><h1 class="section-title"><i class="fas fa-shield"></i> Sistema de Verificação</h1><p class="text-secondary">Captcha por botão/imagem, reação ou formulário.</p></div><div class="glass-card card-pad"><div class="grid grid-2 gap-12"><div><label for="mode">Modo</label><select id="mode" class="input" title="Selecionar modo de dificuldade"><option value="easy">Fácil</option><option value="medium">Médio</option><option value="hard">Hard</option></select></div><div><label for="method">Método</label><select id="method" class="input" title="Selecionar método de verificação"><option value="button">Captcha por botão</option><option value="image">Captcha de imagem</option><option value="reaction">Verificação por reação</option><option value="form">Formulário</option></select><p id="methodHelp" class="text-secondary small mt-6" aria-live="polite"></p></div><div class="grid-col-2"><label for="logFails">Logs quando alguém falha</label><label class="switch"><input id="logFails" type="checkbox"><span>Ativar logs</span></label></div></div><div class="mt-12"><div id="formError" class="text-danger hidden mb-8" role="alert"></div><button id="save" class="btn btn-primary" disabled><i class="fas fa-save"></i> Guardar</button></div></div></section></div></main><style>.card-pad{padding:16px}.gap-12{gap:12px}.grid-col-2{grid-column: span 2}.small{font-size:12px}.text-danger{color:#ef4444}.hidden{display:none}.mb-8{margin-bottom:8px}.mt-6{margin-top:6px}</style><script src="/js/verification.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>IGNIS - Verificação</title>
+	<link rel="stylesheet" href="/css/style.css" />
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+	<style>
+		.card-pad{padding:16px}
+		.gap-12{gap:12px}
+		.grid-col-2{grid-column: span 2}
+		.small{font-size:12px}
+		.text-danger{color:#ef4444}
+		.hidden{display:none}
+		.mb-8{margin-bottom:8px}
+		.mt-6{margin-top:6px}
+		.mt-8{margin-top:8px}
+		.mt-12{margin-top:12px}
+		.flex-row{display:flex;gap:8px}
+		.align-center{align-items:center}
+		.list{list-style:none;padding-left:0}
+		.list li{display:flex;align-items:center;justify-content:space-between;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:8px;padding:8px;margin-bottom:6px}
+		.badge{background:var(--bg-card);border:1px solid var(--glass-border);border-radius:6px;padding:2px 6px;font-size:12px;color:var(--text-secondary)}
+		.actions button{margin-left:6px}
+	</style>
+	</head>
+<body>
+	<nav class="navbar">
+		<div class="navbar-container">
+			<div class="navbar-brand"><i class="fas fa-user-check"></i> Verificação</div>
+			<div class="navbar-user"><a href="/dashboard" class="btn btn-glass"><i class="fas fa-home"></i> Dashboard</a></div>
+		</div>
+	</nav>
+	<main class="main-content">
+		<div class="container">
+			<section class="dashboard-section">
+				<div class="section-header">
+					<h1 class="section-title"><i class="fas fa-shield"></i> Sistema de Verificação</h1>
+					<p class="text-secondary">Captcha por botão/imagem, reação ou formulário.</p>
+				</div>
+				<div class="glass-card card-pad">
+					<div class="grid grid-2 gap-12">
+						<div>
+							<label for="mode">Modo</label>
+							<select id="mode" class="input" title="Selecionar modo de dificuldade">
+								<option value="easy">Fácil</option>
+								<option value="medium">Médio</option>
+								<option value="hard">Hard</option>
+							</select>
+						</div>
+						<div>
+							<label for="method">Método</label>
+							<select id="method" class="input" title="Selecionar método de verificação">
+								<option value="button">Captcha por botão</option>
+								<option value="image">Captcha de imagem</option>
+								<option value="reaction">Verificação por reação</option>
+								<option value="form">Formulário</option>
+							</select>
+							<p id="methodHelp" class="text-secondary small mt-6" aria-live="polite"></p>
+						</div>
+						<div class="grid-col-2">
+							<label for="logFails">Logs quando alguém falha</label>
+							<label class="switch"><input id="logFails" type="checkbox"><span>Ativar logs</span></label>
+						</div>
+					</div>
+
+					<div id="formBuilder" class="mt-12 hidden" aria-hidden="true">
+						<h3 class="section-subtitle"><i class="fas fa-list-check"></i> Perguntas do formulário</h3>
+						<p class="text-secondary small mb-8">Adicione 1-20 perguntas. Suporta tipos: texto curto, texto longo, sim/não, múltipla escolha, dropdown.</p>
+						<div class="mb-8">
+							<label for="newQuestionLabel">Pergunta</label>
+							<input id="newQuestionLabel" class="input" placeholder="Ex: Qual é o seu ID do jogo?" />
+						</div>
+						<div class="grid grid-2 gap-12">
+							<div>
+								<label for="newQuestionType">Tipo</label>
+								<select id="newQuestionType" class="input" title="Selecionar tipo de pergunta">
+									<option value="short_text">Texto curto</option>
+									<option value="long_text">Texto longo</option>
+									<option value="yes_no">Sim/Não</option>
+									<option value="multiple_choice">Múltipla escolha</option>
+									<option value="dropdown">Dropdown</option>
+								</select>
+							</div>
+							<div class="flex-row align-center">
+								<label class="switch" title="Obrigatória?">
+									<input id="newQuestionRequired" type="checkbox" />
+									<span>Obrigatória</span>
+								</label>
+							</div>
+						</div>
+						<div id="optionsEditor" class="mt-6 hidden">
+							<label for="newOptionText">Opções</label>
+							<div class="flex-row gap-12">
+								<input id="newOptionText" class="input" placeholder="Adicionar opção" />
+								<button id="addOption" type="button" class="btn btn-secondary"><i class="fas fa-plus"></i> Adicionar</button>
+							</div>
+							<ul id="optionsList" class="list mt-6"></ul>
+						</div>
+						<div class="mt-8">
+							<button id="addQuestion" type="button" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Adicionar pergunta</button>
+						</div>
+						<ul id="questionsList" class="list mt-12"></ul>
+					</div>
+
+					<div class="mt-12">
+						<div id="formError" class="text-danger hidden mb-8" role="alert"></div>
+						<button id="save" class="btn btn-primary" disabled><i class="fas fa-save"></i> Guardar</button>
+					</div>
+				</div>
+			</section>
+		</div>
+	</main>
+	<script src="/js/verification.js"></script>
+</body>
+</html>

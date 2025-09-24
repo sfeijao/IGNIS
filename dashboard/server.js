@@ -3,6 +3,7 @@ const session = require('express-session');
 const passport = require('passport');
 const DiscordStrategy = require('passport-discord').Strategy;
 const path = require('path');
+const Joi = require('joi');
 require('dotenv').config();
 
 const config = require('../utils/config');
@@ -1312,8 +1313,60 @@ app.post('/api/guild/:guildId/verification/config', async (req, res) => {
         const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
+
+        // Validate payload using Joi
+        const questionSchema = Joi.object({
+            id: Joi.string().max(64).optional(),
+            label: Joi.string().trim().min(1).max(200).required(),
+            type: Joi.string().valid('short_text','long_text','yes_no','multiple_choice','dropdown').required(),
+            required: Joi.boolean().default(false),
+            // For choice-based questions, at least 2 options of non-empty strings
+            options: Joi.alternatives().conditional('type', {
+                is: Joi.valid('multiple_choice','dropdown'),
+                then: Joi.array().items(Joi.string().trim().min(1).max(100)).min(2).max(25),
+                otherwise: Joi.forbidden()
+            })
+        });
+        const schema = Joi.object({
+            mode: Joi.string().valid('easy','medium','hard').default('easy'),
+            method: Joi.string().valid('button','image','reaction','form').default('button'),
+            logFails: Joi.boolean().default(false),
+            form: Joi.object({
+                questions: Joi.array().items(questionSchema).max(20)
+            }).when('method', {
+                is: 'form',
+                then: Joi.object({ questions: Joi.array().min(1).items(questionSchema).max(20) }).required(),
+                otherwise: Joi.forbidden()
+            })
+        });
+        const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: true });
+        if (error) {
+            return res.status(400).json({ success: false, error: 'validation_failed', details: error.details.map(d => d.message) });
+        }
+
+        // Sanitize options (dedupe, trim) best-effort
+        if (value.form && Array.isArray(value.form.questions)) {
+            for (const q of value.form.questions) {
+                if (Array.isArray(q.options)) {
+                    const uniq = [];
+                    const seen = new Set();
+                    for (const opt of q.options) {
+                        const s = String(opt).trim();
+                        if (!s) continue;
+                        const k = s.toLowerCase();
+                        if (seen.has(k)) continue;
+                        seen.add(k);
+                        uniq.push(s);
+                    }
+                    q.options = uniq.slice(0, 25);
+                }
+                // Assign an id if missing
+                if (!q.id) q.id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            }
+        }
+
         const current = await storage.getGuildConfig(req.params.guildId) || {};
-        const next = { ...current, verification: { ...(current.verification || {}), ...(req.body || {}) } };
+        const next = { ...current, verification: { ...(current.verification || {}), ...value } };
         await storage.updateGuildConfig(req.params.guildId, next);
         res.json({ success: true, message: 'Verification config updated' });
     } catch (e) { logger.error('Error set verification config:', e); res.status(500).json({ success: false, error: 'Failed to update verification config' }); }
