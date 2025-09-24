@@ -854,6 +854,43 @@ app.get('/api/guild/:guildId/config', async (req, res) => {
     }
 });
 
+// Tickets Config API (subset of guild config)
+app.get('/api/guild/:guildId/tickets/config', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const cfg = await storage.getGuildConfig(req.params.guildId);
+        res.json({ success: true, config: cfg || {} });
+    } catch (e) {
+        logger.error('Error fetching tickets config:', e);
+        res.status(500).json({ success: false, error: 'Failed to fetch tickets config' });
+    }
+});
+
+app.post('/api/guild/:guildId/tickets/config', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const updates = req.body || {};
+        // Merge into guild config under `tickets`
+        const storage = require('../utils/storage');
+        const current = await storage.getGuildConfig(req.params.guildId) || {};
+        const next = { ...current, tickets: { ...(current.tickets || {}), ...(updates.tickets || {}) } };
+        await storage.updateGuildConfig(req.params.guildId, next);
+        res.json({ success: true, message: 'Tickets config updated' });
+    } catch (e) {
+        logger.error('Error updating tickets config:', e);
+        res.status(500).json({ success: false, error: 'Failed to update tickets config' });
+    }
+});
+
 app.post('/api/guild/:guildId/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {

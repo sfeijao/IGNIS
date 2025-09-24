@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IGNIS - Configurar Sistema de Tickets</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="navbar-brand"><i class="fas fa-ticket-alt"></i> Configurar Tickets</div>
+      <div class="navbar-user">
+        <span id="healthBadge" class="badge health-badge" title="Estado do sistema">
+          <span id="health-mongo" class="dot dot-gray" title="DB"></span>
+          <span id="health-discord" class="dot dot-gray" title="Discord"></span>
+        </span>
+        <img id="userAvatar" src="/default-avatar.svg" alt="Avatar" class="user-avatar">
+        <span id="userName">Carregando...</span>
+        <a href="/dashboard" class="btn btn-glass"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="/logout" class="btn btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+      </div>
+    </div>
+  </nav>
+  <main class="main-content">
+    <div class="container">
+      <section class="dashboard-section fade-in">
+        <div class="section-header">
+          <h1 class="section-title"><i class="fas fa-sliders-h"></i> Sistema de Tickets</h1>
+          <p class="text-secondary">Define categorias, tipos, SLA e mensagens padrão.</p>
+        </div>
+
+        <div class="grid grid-2 gap-12">
+          <!-- Categorias automáticas -->
+          <div class="glass-card card-pad">
+            <h3 class="mb-8"><i class="fas fa-folder-tree"></i> Categorias automáticas</h3>
+            <div class="grid grid-2 gap-8">
+              <label class="switch"><input type="checkbox" id="catSupport"><span>Suporte</span></label>
+              <label class="switch"><input type="checkbox" id="catReport"><span>Denúncia</span></label>
+              <label class="switch"><input type="checkbox" id="catPartner"><span>Parceria</span></label>
+              <label class="switch"><input type="checkbox" id="catStaff"><span>Staff</span></label>
+            </div>
+          </div>
+          <!-- Tipos de ticket -->
+          <div class="glass-card card-pad">
+            <h3 class="mb-8"><i class="fas fa-list-ul"></i> Tipos de ticket</h3>
+            <div class="grid grid-2 gap-8">
+              <label class="switch"><input type="checkbox" id="typeDm"><span>DM staff</span></label>
+              <label class="switch"><input type="checkbox" id="typeChannel"><span>Canal privado</span></label>
+              <label class="switch"><input type="checkbox" id="typeForm"><span>Formulário</span></label>
+            </div>
+          </div>
+
+          <!-- Auto-atribuição & SLA -->
+          <div class="glass-card card-pad">
+            <h3 class="mb-8"><i class="fas fa-people-arrows"></i> Atribuição & SLA</h3>
+            <div class="grid grid-2 gap-12">
+              <div>
+                <label>Método de atribuição</label>
+                <select id="autoAssign" class="input" title="Método de atribuição de tickets">
+                  <option value="first">Quem pega primeiro</option>
+                  <option value="free">Quem está livre</option>
+                  <option value="random">Aleatório</option>
+                </select>
+              </div>
+              <div>
+                <label>SLA (minutos para 1ª resposta)</label>
+                <input id="slaMinutes" class="input" type="number" min="1" max="1440" value="15" title="Minutos para primeira resposta" placeholder="Minutos" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Mensagem inicial & Fecho -->
+          <div class="glass-card card-pad">
+            <h3 class="mb-8"><i class="fas fa-message"></i> Mensagens</h3>
+            <div class="grid gap-8">
+              <div>
+                <label>Mensagem inicial (placeholders: {user}, {ticket_id})</label>
+                <textarea id="welcomeMsg" class="input" rows="4" placeholder="Olá {user}, obrigado por abrir o ticket #{ticket_id}! Explique-nos o seu problema."></textarea>
+              </div>
+              <div>
+                <label>Fechar com motivo + transcript opcional</label>
+                <label class="switch"><input type="checkbox" id="closeReason"><span>Exigir motivo ao fechar</span></label>
+                <label class="switch"><input type="checkbox" id="closeTranscript"><span>Gerar transcript por padrão</span></label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-12">
+          <button id="btnSave" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Configurações</button>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script src="/js/tickets-config.js"></script>
+  <style>
+    .card-pad{padding:16px}
+    .gap-12{gap:12px}
+    .gap-8{gap:8px}
+    .mb-8{margin-bottom:8px}
+    .mt-12{margin-top:12px}
+    .switch{display:flex;align-items:center;gap:8px}
+    .switch input[type=checkbox]{appearance:none;width:42px;height:24px;border-radius:999px;background:rgba(255,255,255,0.1);position:relative;outline:none;cursor:pointer;transition:.2s}
+    .switch input[type=checkbox]:checked{background:#22c55e}
+    .switch input[type=checkbox]::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s}
+    .switch input[type=checkbox]:checked::after{transform:translateX(18px)}
+  </style>
+  <script>
+    // Badge de saúde reutilizado
+    (async () => {
+      const setTip = (text) => { const hb = document.getElementById('healthBadge'); if (hb) hb.title = text; };
+      const dot = (el, state) => { if (!el) return; el.classList.remove('dot-green','dot-red','dot-gray'); el.classList.add(state === 'ok' ? 'dot-green' : state === 'bad' ? 'dot-red' : 'dot-gray'); };
+      try {
+        const r = await fetch('/api/health', { credentials: 'same-origin' });
+        const h = await r.json();
+        dot(document.getElementById('health-mongo'), h.mongo === 'connected' ? 'ok' : (h.mongo === 'disabled' ? 'gray' : 'bad'));
+        dot(document.getElementById('health-discord'), h.discord ? 'ok' : 'bad');
+        setTip(`${h.mongo === 'connected' ? 'DB: ligado' : h.mongo === 'disabled' ? 'DB: desativado' : 'DB: desligado'} • ${h.discord ? 'Discord: online' : 'Discord: offline'}`);
+      } catch {}
+    })();
+  </script>
+</body>
+</html>

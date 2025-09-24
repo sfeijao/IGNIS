@@ -1330,6 +1330,15 @@ function viewPanels() {
     }
 }
 
+function configureTickets() {
+    if (!dashboard.currentGuild) {
+        dashboard.showError('Nenhum servidor selecionado');
+        return;
+    }
+    const gid = encodeURIComponent(dashboard.currentGuild);
+    window.location.href = `/tickets-config.html?guildId=${gid}`;
+}
+
 // Additional CSS for notifications and ticket cards
 const additionalStyles = `
     .notification {
