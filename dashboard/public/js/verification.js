@@ -239,12 +239,28 @@
 	// Create verification panel
 	async function createPanel(){
 		try{
+			// Prevent double-clicks
+			if(els.createPanel){
+				if(els.createPanel.dataset.loading === '1') return; // already in-flight
+				els.createPanel.dataset.loading = '1';
+				els.createPanel.disabled = true;
+				els.createPanel.innerHTML = '<i class="fas fa-spinner fa-spin"></i> A criar...';
+			}
 			const ch = els.panelChannel?.value||''; if(!ch) { notify('Selecione um canal para publicar o painel','error'); return; }
 			const body = { type:'verification', channel_id: ch, theme: 'dark' };
-			const r = await fetch(`/api/guild/${guildId}/panels/create`, { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify(body)});
+			// Include a simple idempotency key per click to help server de-dup (best-effort)
+			const idemKey = `ver:${guildId}:${ch}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`;
+			const r = await fetch(`/api/guild/${guildId}/panels/create`, { method:'POST', headers:{'Content-Type':'application/json','X-Idempotency-Key': idemKey}, credentials:'same-origin', body: JSON.stringify(body)});
 			const d = await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`);
 			notify('Painel de verificação criado','success');
 		}catch(e){ console.error(e); notify(e.message,'error'); }
+		finally{
+			if(els.createPanel){
+				els.createPanel.dataset.loading = '0';
+				els.createPanel.disabled = false;
+				els.createPanel.innerHTML = '<i class="fas fa-plus"></i> Criar Painel de Verificação';
+			}
+		}
 	}
 	els.createPanel?.addEventListener('click', createPanel);
 

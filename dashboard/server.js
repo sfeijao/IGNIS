@@ -1897,6 +1897,22 @@ app.post('/api/guild/:guildId/webhooks/test', async (req, res) => {
 });
 
 // Create a panel directly from dashboard
+// Simple in-memory guard to prevent double panel creation within short window
+const __panelCreateLocks = new Map(); // key -> expiresAt (ms)
+function __makePanelKey(guildId, channelId, type, idem) {
+    return `${guildId}:${channelId}:${type}:${idem||''}`;
+}
+function __isLocked(key) {
+    const now = Date.now();
+    const exp = __panelCreateLocks.get(key);
+    if (typeof exp === 'number' && exp > now) return true;
+    if (typeof exp === 'number' && exp <= now) __panelCreateLocks.delete(key);
+    return false;
+}
+function __lock(key, ttlMs = 5000) {
+    __panelCreateLocks.set(key, Date.now() + Math.max(1000, ttlMs));
+}
+
 app.post('/api/guild/:guildId/panels/create', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -1918,6 +1934,15 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
         if (!['classic','compact','premium','minimal'].includes(template)) template = 'classic';
     }
         if (!channel_id) return res.status(400).json({ success: false, error: 'Missing channel_id' });
+        // Idempotency/lock: avoid duplicate sends for same (guild, channel, type) within a short window
+        const idemHeader = (req.get && req.get('X-Idempotency-Key')) || (req.headers && (req.headers['x-idempotency-key'] || req.headers['X-Idempotency-Key'])) || '';
+        const guardKey = __makePanelKey(req.params.guildId, channel_id, type, idemHeader ? String(idemHeader) : '');
+        const altGuardKey = __makePanelKey(req.params.guildId, channel_id, type, '');
+        if (__isLocked(guardKey) || __isLocked(altGuardKey)) {
+            return res.status(202).json({ success: true, message: 'Panel creation in progress (deduplicated)' });
+        }
+        __lock(guardKey, 7000); // hold ~7s
+        __lock(altGuardKey, 7000);
         const guild = check.guild;
         const channel = guild.channels.cache.get(channel_id) || await client.channels.fetch(channel_id).catch(() => null);
         if (!channel || !channel.send) return res.status(404).json({ success: false, error: 'Channel not found' });
@@ -1929,11 +1954,19 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
         if (type === 'verification') {
             // Unified minimal verification panel
             const vcfg = cfg?.verification || {};
+            const method = (vcfg.method || 'button');
+            const isReaction = method === 'reaction';
             embed
                 .setTitle('🔒 Verificação do Servidor')
-                .setDescription(template === 'rich'
-                  ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, conclui a verificação clicando no botão abaixo.`
-                  : 'Clica em Verificar para concluir e ganhar acesso aos canais.'
+                .setDescription(isReaction
+                  ? (template === 'rich'
+                      ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, reage com ✅ nesta mensagem para concluir a verificação.`
+                      : 'Reage com ✅ nesta mensagem para te verificares.'
+                    )
+                  : (template === 'rich'
+                      ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, conclui a verificação clicando no botão abaixo.`
+                      : 'Clica em Verificar para concluir e ganhar acesso aos canais.'
+                    )
                 )
                 .setThumbnail(guild.iconURL({ size: 256 }))
                 .setFooter({ text: 'IGNIS COMMUNITY™ • Sistema de verificação' })
@@ -1941,10 +1974,14 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             if (template === 'rich') {
                 embed.addFields({ name: '⚠️ Importante', value: 'Segue as regras do servidor e mantém um perfil adequado.' });
             }
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('verify_user').setLabel('Verificar').setEmoji('✅').setStyle(ButtonStyle.Primary)
-            );
-            rows = [row];
+            if (!isReaction) {
+                const row = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('verify_user').setLabel('Verificar').setEmoji('✅').setStyle(ButtonStyle.Primary)
+                );
+                rows = [row];
+            } else {
+                rows = [];
+            }
         } else if (template === 'compact') {
             embed
                 .setTitle('🎫 Tickets • Compacto')
@@ -2004,6 +2041,15 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
         }
         const payload = { embeds: [embed], components: rows };
         const msg = await channel.send(payload);
+        // If method=reaction, add the ✅ reaction to guide users
+        try {
+            if (type === 'verification') {
+                const vcfg = cfg?.verification || {};
+                if ((vcfg.method || 'button') === 'reaction') {
+                    await msg.react('✅').catch(() => {});
+                }
+            }
+        } catch {}
         // Persist panel to active storage backend
         try {
             if (preferSqlite) {
