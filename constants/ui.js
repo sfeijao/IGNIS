@@ -5,6 +5,8 @@
 const BUTTON_IDS = {
     // Sistema de Verificação
     VERIFY_USER: 'verify_user',
+    VERIFY_OPEN_CAPTCHA: 'verify_captcha_open',
+    VERIFY_REFRESH_CAPTCHA: 'verify_captcha_refresh',
     
     // Sistema de Tickets
     CREATE_TICKET: 'create_ticket',
@@ -50,6 +52,7 @@ const BUTTON_IDS = {
  */
 const MODAL_IDS = {
     TICKET_CREATE: 'ticket_create_modal',
+    VERIFICATION_CAPTCHA: 'modal_verification_captcha',
     TAG_REQUEST: 'tag_request_modal',
     USER_REPORT: 'user_report_modal',
     BUG_REPORT: 'bug_report_modal',
@@ -79,6 +82,7 @@ const INPUT_IDS = {
     USER_ID: 'user_id',
     REASON: 'reason',
     MESSAGE: 'message',
+    CAPTCHA_INPUT: 'captcha_input',
 };
 
 /**

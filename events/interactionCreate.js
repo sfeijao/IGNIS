@@ -134,6 +134,57 @@ module.exports = {
                 if (customId === BUTTON_IDS.VERIFY_USER) {
                     try {
                         logger.interaction('button', customId, interaction, true);
+                        // Per-user throttle (3s)
+                        const key = `verify:${interaction.user.id}`;
+                        if (!global.__verifyPressCache) global.__verifyPressCache = new Map();
+                        const last = global.__verifyPressCache.get(key) || 0;
+                        if (Date.now() - last < 3000) {
+                            return await interaction.reply({ content: `${EMOJIS.WARNING} Aguarda um momento antes de tentar novamente.`, flags: MessageFlags.Ephemeral });
+                        }
+                        global.__verifyPressCache.set(key, Date.now());
+                        // Check verification method
+                        let vcfg = {};
+                        try {
+                            const storage = require('../utils/storage');
+                            const cfg = await storage.getGuildConfig(interaction.guild.id);
+                            vcfg = cfg?.verification || {};
+                        } catch {}
+                        if ((vcfg.method || 'button') === 'image') {
+                            // Start captcha flow (image)
+                            const mode = vcfg.mode || 'easy';
+                            const cm = require('../utils/captchaManager');
+                            const { renderCaptchaImage } = require('../utils/captchaImage');
+                            const data = cm.refresh(interaction.guild.id, interaction.user.id, mode);
+                            let files = [];
+                            try {
+                                const img = await renderCaptchaImage(data.code);
+                                if (img) files = [{ name: 'captcha.png', attachment: img }];
+                            } catch {}
+                            const row = new ActionRowBuilder().addComponents(
+                                new ButtonBuilder().setCustomId(BUTTON_IDS.VERIFY_OPEN_CAPTCHA).setLabel('Inserir Código').setEmoji('⌨️').setStyle(ButtonStyle.Primary),
+                                new ButtonBuilder().setCustomId(BUTTON_IDS.VERIFY_REFRESH_CAPTCHA).setLabel('Atualizar').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
+                            );
+                            const desc = files.length
+                                ? `${EMOJIS.INFO} Introduz o código que vês na imagem abaixo.`
+                                : `${EMOJIS.WARNING} Não foi possível gerar a imagem. Código: ${data.code}`;
+                            await interaction.reply({ content: desc, files, components: [row], flags: MessageFlags.Ephemeral });
+                            return;
+                        }
+                        if ((vcfg.method || 'button') === 'form') {
+                            const questions = Array.isArray(vcfg?.form?.questions) ? vcfg.form.questions.slice(0,5) : [];
+                            if (!questions.length) {
+                                return await interaction.reply({ content: `${EMOJIS.ERROR} O formulário de verificação não está configurado.`, flags: MessageFlags.Ephemeral });
+                            }
+                            const modal = new ModalBuilder().setCustomId('modal_verification_form').setTitle('Verificação - Formulário');
+                            const safe = (s) => String(s||'').slice(0,45) || 'Pergunta';
+                            for (let i=0;i<questions.length;i++){
+                                const q = questions[i];
+                                const input = new TextInputBuilder().setCustomId(`vf_q_${i}`).setLabel(safe(q.label)).setRequired(!!q.required).setStyle((q.type==='long_text')? TextInputStyle.Paragraph : TextInputStyle.Short).setMaxLength(4000);
+                                modal.addComponents(new ActionRowBuilder().addComponents(input));
+                            }
+                            await interaction.showModal(modal);
+                            return;
+                        }
                         
                         // Prefer role IDs from new verification config, fallback to legacy keys and name
                         let verifyRole = null;
@@ -174,7 +225,7 @@ module.exports = {
 
                         // Apply verified role and optionally remove unverified role
                         let addOk = true;
-                        await interaction.member.roles.add(verifyRole).catch(() => { addOk = false; });
+                        await interaction.member.roles.add(verifyRole).catch((e) => { addOk = false; logger.debug('role add fail', e?.message); });
                         if (!addOk) {
                             try {
                                 const storage = require('../utils/storage');
@@ -227,6 +278,34 @@ module.exports = {
                     } catch (error) {
                         await errorHandler.handleInteractionError(interaction, error);
                     }
+                    return;
+                }
+
+                // Verification captcha buttons
+                if (customId === BUTTON_IDS.VERIFY_OPEN_CAPTCHA) {
+                    try {
+                        const modal = new ModalBuilder().setCustomId(MODAL_IDS.VERIFICATION_CAPTCHA).setTitle('Verificação Captcha');
+                        const input = new TextInputBuilder().setCustomId(INPUT_IDS.CAPTCHA_INPUT).setLabel('Código da imagem').setMaxLength(16).setRequired(true).setStyle(TextInputStyle.Short);
+                        modal.addComponents(new ActionRowBuilder().addComponents(input));
+                        await interaction.showModal(modal);
+                    } catch (error) { await errorHandler.handleInteractionError(interaction, error); }
+                    return;
+                }
+                if (customId === BUTTON_IDS.VERIFY_REFRESH_CAPTCHA) {
+                    try {
+                        let vcfg = {};
+                        try { const storage = require('../utils/storage'); const cfg = await storage.getGuildConfig(interaction.guild.id); vcfg = cfg?.verification || {}; } catch {}
+                        const mode = vcfg.mode || 'easy';
+                        const cm = require('../utils/captchaManager');
+                        const { renderCaptchaImage } = require('../utils/captchaImage');
+                        const data = cm.refresh(interaction.guild.id, interaction.user.id, mode);
+                        let files = [];
+                        try { const img = await renderCaptchaImage(data.code); if (img) files = [{ name: 'captcha.png', attachment: img }]; } catch {}
+                        const desc = files.length
+                            ? `${EMOJIS.INFO} Novo captcha gerado. Introduz o código da imagem abaixo.`
+                            : `${EMOJIS.WARNING} Não foi possível gerar a imagem. Código: ${data.code}`;
+                        await interaction.reply({ content: desc, files, flags: MessageFlags.Ephemeral });
+                    } catch (error) { await errorHandler.handleInteractionError(interaction, error); }
                     return;
                 }
 
@@ -723,6 +802,73 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
             // Modals
             if (interaction.isModalSubmit()) {
                 const customId = interaction.customId;
+                if (customId === 'modal_verification_form') {
+                    try {
+                        const storage = require('../utils/storage');
+                        const cfg = await storage.getGuildConfig(interaction.guild.id);
+                        const vcfg = cfg?.verification || {};
+                        const questions = Array.isArray(vcfg?.form?.questions) ? vcfg.form.questions.slice(0,5) : [];
+                        const answers = [];
+                        for (let i=0;i<questions.length;i++){
+                            const q = questions[i];
+                            const val = interaction.fields.getTextInputValue(`vf_q_${i}`) || '';
+                            if (q.required && !String(val).trim()) {
+                                return await interaction.reply({ content: `${EMOJIS.ERROR} Responde a todas as perguntas obrigatórias.`, flags: MessageFlags.Ephemeral });
+                            }
+                            answers.push({ id: q.id, label: q.label, value: val });
+                        }
+                        // Grant roles
+                        let verifyRole = null; let unverifiedRole = null;
+                        const verifiedRoleId = vcfg.verifiedRoleId || cfg?.roles?.verify || cfg?.verify_role_id || null;
+                        const unverifiedRoleId = vcfg.unverifiedRoleId || null;
+                        if (verifiedRoleId) verifyRole = interaction.guild.roles.cache.get(verifiedRoleId) || null;
+                        if (unverifiedRoleId) unverifiedRole = interaction.guild.roles.cache.get(unverifiedRoleId) || null;
+                        if (!verifyRole) return await interaction.reply({ content: `${EMOJIS.ERROR} Cargo de verificado não encontrado.`, flags: MessageFlags.Ephemeral });
+                        if (interaction.member.roles.cache.has(verifyRole.id)) return await interaction.reply({ content: `${EMOJIS.SUCCESS} Já estás verificado!`, flags: MessageFlags.Ephemeral });
+                        await interaction.member.roles.add(verifyRole).catch(()=>{});
+                        if (unverifiedRole && interaction.member.roles.cache.has(unverifiedRole.id)) await interaction.member.roles.remove(unverifiedRole).catch(()=>{});
+                        // store a lightweight log entry
+                        try { await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_form', data: { answersCount: answers.length } }); } catch {}
+                        await interaction.reply({ content: `${EMOJIS.SUCCESS} Verificação completa! Bem-vindo(a) ao servidor!`, flags: MessageFlags.Ephemeral });
+                    } catch (error) { await errorHandler.handleInteractionError(interaction, error); }
+                    return;
+                }
+                if (customId === MODAL_IDS.VERIFICATION_CAPTCHA) {
+                    try {
+                        const input = interaction.fields.getTextInputValue(INPUT_IDS.CAPTCHA_INPUT).trim();
+                        const cm = require('../utils/captchaManager');
+                        const res = cm.validate(interaction.guild.id, interaction.user.id, input);
+                        if (!res.ok) {
+                            const reason = res.reason === 'expired' ? 'Captcha expirado. Carrega em Atualizar e tenta novamente.' : 'Código incorreto. Tenta outra vez.';
+                            // Log fail
+                            try {
+                                const storage = require('../utils/storage');
+                                await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_fail', reason: `captcha_${res.reason||'mismatch'}` });
+                            } catch {}
+                            return await interaction.reply({ content: `${EMOJIS.ERROR} ${reason}`, flags: MessageFlags.Ephemeral });
+                        }
+
+                        // On success, grant role (reuse existing logic)
+                        let verifyRole = null; let unverifiedRole = null;
+                        try {
+                            const storage = require('../utils/storage');
+                            const cfg = await storage.getGuildConfig(interaction.guild.id);
+                            const vcfg = cfg?.verification || {};
+                            const verifiedRoleId = vcfg.verifiedRoleId || cfg?.roles?.verify || cfg?.verify_role_id || null;
+                            const unverifiedRoleId = vcfg.unverifiedRoleId || null;
+                            if (verifiedRoleId) verifyRole = interaction.guild.roles.cache.get(verifiedRoleId) || null;
+                            if (unverifiedRoleId) unverifiedRole = interaction.guild.roles.cache.get(unverifiedRoleId) || null;
+                        } catch {}
+                        if (!verifyRole) return await interaction.reply({ content: `${EMOJIS.ERROR} Cargo de verificado não encontrado.`, flags: MessageFlags.Ephemeral });
+                        if (interaction.member.roles.cache.has(verifyRole.id)) return await interaction.reply({ content: `${EMOJIS.SUCCESS} Já estás verificado!`, flags: MessageFlags.Ephemeral });
+                        await interaction.member.roles.add(verifyRole).catch(()=>{});
+                        if (unverifiedRole && interaction.member.roles.cache.has(unverifiedRole.id)) {
+                            await interaction.member.roles.remove(unverifiedRole).catch(()=>{});
+                        }
+                        await interaction.reply({ content: `${EMOJIS.SUCCESS} Verificação completa! Bem-vindo(a) ao servidor!`, flags: MessageFlags.Ephemeral });
+                    } catch (error) { await errorHandler.handleInteractionError(interaction, error); }
+                    return;
+                }
                 // Desativar fluxos legados de tickets baseados em modais
                 const legacyModals = new Set(['modal_add_member','modal_remove_member','modal_move_ticket','modal_rename_channel','modal_internal_note']);
                 if (customId.startsWith('ticket_modal_') || legacyModals.has(customId)) {

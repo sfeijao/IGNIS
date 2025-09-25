@@ -1956,14 +1956,20 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             const vcfg = cfg?.verification || {};
             const method = (vcfg.method || 'button');
             const isReaction = method === 'reaction';
-            embed
-                .setTitle('🔒 Verificação do Servidor')
-                .setDescription(isReaction
+                        const isImage = method === 'image';
+                        embed
+                                .setTitle('🔒 Verificação do Servidor')
+                                .setDescription(isReaction
                   ? (template === 'rich'
                       ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, reage com ✅ nesta mensagem para concluir a verificação.`
                       : 'Reage com ✅ nesta mensagem para te verificares.'
                     )
-                  : (template === 'rich'
+                                    : isImage
+                                        ? (template === 'rich'
+                                                ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nCarrega em Verificar para receberes um captcha por imagem e concluir a verificação.`
+                                                : 'Carrega em Verificar para resolveres o captcha por imagem.'
+                                            )
+                                        : (template === 'rich'
                       ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, conclui a verificação clicando no botão abaixo.`
                       : 'Clica em Verificar para concluir e ganhar acesso aos canais.'
                     )
