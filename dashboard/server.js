@@ -1460,7 +1460,7 @@ app.post('/api/guild/:guildId/verification/config', async (req, res) => {
             method: Joi.string().valid('button','image','reaction','form').default('button'),
             logFails: Joi.boolean().default(false),
             logFailRetention: Joi.number().integer().min(1).max(90)
-                .when('logFails', { is: true, then: Joi.default(7), otherwise: Joi.forbidden() }),
+                .when('logFails', { is: true, then: Joi.number().integer().min(1).max(90).default(7), otherwise: Joi.forbidden() }),
             verifiedRoleId: Joi.string().trim().pattern(/^\d+$/).optional(),
             unverifiedRoleId: Joi.string().trim().pattern(/^\d+$/).optional(),
             form: Joi.object({
