@@ -170,12 +170,31 @@
 
   function renderFeed(items){
     if (!items.length){ els.feed.innerHTML = `<div class="no-tickets">Sem eventos</div>`; return; }
-    els.feed.innerHTML = items.map(l => `
+    const iconFor = (t) => {
+      if (!t) return 'fa-list';
+      if (t.startsWith('mod_message')) return 'fa-comment-dots';
+      if (t.startsWith('mod_member')) return 'fa-user';
+      if (t.startsWith('mod_voice')) return 'fa-microphone';
+      if (t.startsWith('mod_ban')) return 'fa-ban';
+      if (t.startsWith('mod_channel')) return 'fa-hashtag';
+      if (t.startsWith('mod_role')) return 'fa-user-shield';
+      return 'fa-list';
+    };
+    els.feed.innerHTML = items.map(l => {
+      const d = l.data || {};
+      const dt = new Date(l.timestamp).toLocaleString('pt-PT');
+      const meta = [
+        d.userId ? `<span title="Usuário"><i class=\"fas fa-user\"></i> ${escapeHtml(d.userId)}</span>` : '',
+        d.executorId ? `<span title="Moderador"><i class=\"fas fa-shield-alt\"></i> ${escapeHtml(d.executorId)}</span>` : '',
+        d.channelId ? `<span title="Canal"><i class=\"fas fa-hashtag\"></i> ${escapeHtml(d.channelId)}</span>` : ''
+      ].filter(Boolean).join(' • ');
+      return `
       <button class="feed-item" data-log-id="${l.id}" aria-label="Abrir detalhes do evento">
-        <div class="feed-meta">[${new Date(l.timestamp).toLocaleString('pt-PT')}] [${escapeHtml(l.type||'log')}]</div>
-        <div>${escapeHtml(l.message||'')}</div>
-      </button>
-    `).join('');
+        <div class="feed-meta"><i class="fas ${iconFor(l.type||'')}"></i> <b>${escapeHtml(l.type||'log')}</b> • ${dt}</div>
+        ${meta ? `<div class="feed-meta" style="margin-top:6px">${meta}</div>`:''}
+        ${l.message ? `<div style="margin-top:6px">${escapeHtml(l.message)}</div>`:''}
+      </button>`;
+    }).join('');
     // Attach handlers
     [...els.feed.querySelectorAll('[data-log-id]')].forEach(btn => btn.addEventListener('click', () => openEventModal(btn.getAttribute('data-log-id'))));
   }
@@ -208,7 +227,18 @@
       const u = new URL(`/api/guild/${guildId}/moderation/event/${encodeURIComponent(logId)}`, window.location.origin);
       const r = await fetch(u, { credentials: 'same-origin' });
       const d = await r.json();
-      if (!r.ok || !d.success) throw new Error(d.error || `HTTP ${r.status}`);
+      if (!r.ok || !d.success) {
+        if (r.status === 404 || d.error === 'log_not_found') {
+          // Friendly modal for missing events
+          els.modalTitle.textContent = 'Evento indisponível';
+          els.modalBody.innerHTML = `<div class="kv"><b>Este evento já não existe.</b></div><div class="text-secondary" style="margin-top:6px">Pode ter sido removido ou está fora do histórico guardado.</div>`;
+          els.modal.classList.remove('modal-hidden');
+          els.modal.classList.add('modal-visible');
+          els.modal.setAttribute('aria-hidden','false');
+          return;
+        }
+        throw new Error(d.error || `HTTP ${r.status}`);
+      }
       const ev = d.event;
       // Build actions based on type
       const actions = [];
