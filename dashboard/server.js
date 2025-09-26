@@ -1499,7 +1499,7 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
         const client = global.discordClient; if (!client) return res.status(500).json({ success:false, error:'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success:false, error: check.error });
         const guild = check.guild;
-        const { action, userId, reason, durationSeconds, logId } = req.body || {};
+    const { action, userId, reason, durationSeconds, logId, dryRun } = req.body || {};
         if (!action) return res.status(400).json({ success:false, error:'missing_action' });
         const storage = require('../utils/storage');
         const me = guild.members.me || guild.members.cache.get(client.user.id);
@@ -1617,6 +1617,9 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                 const snap = log.type==='mod_channel_delete' ? log.data : (log.data.before || null);
                 if (!snap || !snap.name || snap.type == null) return res.status(400).json({ success:false, error:'invalid_channel_snapshot' });
                 try {
+                    if (dryRun) {
+                        return res.json({ success:true, dryRun:true, plan: { create: { name: snap.name, type: snap.type, parentId: snap.parentId||null }, overwrites: (snap.permissionOverwrites||[]).length } });
+                    }
                     const parent = snap.parentId ? (guild.channels.cache.get(snap.parentId) || await guild.channels.fetch(snap.parentId).catch(()=>null)) : null;
                     const created = await guild.channels.create({
                         name: snap.name,
@@ -1642,6 +1645,7 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                 const newName = (log.data.before?.name); // revert to previous name
                 if (!targetId || !newName) return res.status(400).json({ success:false, error:'missing_target_or_name' });
                 try {
+                    if (dryRun) { return res.json({ success:true, dryRun:true, plan: { edit: { channelId: targetId, name: newName } } }); }
                     const ch = guild.channels.cache.get(targetId) || await guild.channels.fetch(targetId).catch(()=>null);
                     if (!ch || !ch.edit) return res.status(404).json({ success:false, error:'channel_not_found' });
                     await ch.edit({ name: newName, reason: reason||'Dashboard revert channel name' });
@@ -1654,6 +1658,7 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                 const snap = log.type==='mod_role_delete' ? log.data : (log.data.before || null);
                 if (!snap || !snap.name) return res.status(400).json({ success:false, error:'invalid_role_snapshot' });
                 try {
+                    if (dryRun) { return res.json({ success:true, dryRun:true, plan: { create: { name: snap.name, permissions: snap.permissions||'0' }, restoreMembers: Array.isArray(snap.members) ? snap.members.length : 0 } }); }
                     const created = await guild.roles.create({
                         name: snap.name,
                         color: snap.color || undefined,
@@ -1662,6 +1667,20 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                         permissions: snap.permissions ? BigInt(snap.permissions) : undefined,
                         reason: reason||'Dashboard restore role'
                     });
+                    // Best-effort restore membership captured in delete snapshot
+                    if (Array.isArray(snap.members) && snap.members.length) {
+                        const me = guild.members.me || guild.members.cache.get(client.user.id);
+                        const myHighest = me?.roles?.highest?.position ?? 0;
+                        const roleHighest = created.position;
+                        if (roleHighest < myHighest) {
+                            for (const uid of snap.members.slice(0, 2000)) { // safety cap
+                                try {
+                                    const m = await guild.members.fetch(uid).catch(()=>null);
+                                    if (m) await m.roles.add(created, 'Dashboard restore role membership');
+                                } catch {}
+                            }
+                        }
+                    }
                     await logAction('mod_dashboard_restore_role', `Restored role ${created.id}`, { fromLog: log.id, roleId: created.id });
                     return res.json({ success:true, roleId: created.id });
                 } catch (e) { logger.warn('restore_role failed', e); return res.status(500).json({ success:false, error:'restore_role_failed' }); }
@@ -1670,6 +1689,7 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                 if (!log || !(log.type==='mod_role_update' && log.data?.before && log.data?.after)) return res.status(400).json({ success:false, error:'no_role_update_log' });
                 const roleId = log.data.after.id; const before = log.data.before;
                 try {
+                    if (dryRun) { return res.json({ success:true, dryRun:true, plan: { edit: { roleId, name: before.name, permissions: before.permissions||'0' } } }); }
                     const role = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(()=>null);
                     if (!role) return res.status(404).json({ success:false, error:'role_not_found' });
                     await role.edit({

@@ -18,7 +18,13 @@ module.exports = {
         try {
             const storage = require('../utils/storage');
             const guildId = role?.guild?.id; if (!guildId) return;
-            await storage.addLog({ guild_id: guildId, type: 'mod_role_delete', message: role.name, data: snap(role) });
+            let members = [];
+            try {
+                if (role && role.members && role.members.size >= 0) {
+                    members = [...role.members.keys()];
+                }
+            } catch {}
+            await storage.addLog({ guild_id: guildId, type: 'mod_role_delete', message: role.name, data: { ...snap(role), members } });
         } catch (e) { try { require('../utils/logger').warn('roleDelete log failed:', e?.message||e); } catch {} }
     }
 };

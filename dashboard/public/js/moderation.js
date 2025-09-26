@@ -192,6 +192,7 @@
 
       if (actions.length) {
         body.push('<div class="actions-row">' + actions.map(a => `<button class="btn btn-primary" data-action="${a.key}"><i class="fas ${a.icon}"></i> ${a.label}</button>`).join(' ') + '</div>');
+        body.push('<div class="kv" style="margin-top:8px"><label><input type="checkbox" id="dryRunToggle" /> Pré-visualizar (dry run)</label></div>');
       }
 
   els.modalTitle.textContent = 'Evento de moderação';
@@ -208,14 +209,22 @@
             try {
               btn.disabled = true; btn.textContent = 'A executar...';
               const payload = { action: a.key, ...a.payload, logId: ev.id };
+              const dry = !!(els.modalBody.querySelector('#dryRunToggle')?.checked);
+              if (dry) payload.dryRun = true;
               const r = await fetch(`/api/guild/${guildId}/moderation/action`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
               const d2 = await r.json();
               if (!r.ok || !d2.success) throw new Error(d2.error || `HTTP ${r.status}`);
-              notify('Ação concluída','success');
-              els.modal.classList.add('modal-hidden');
-              els.modal.classList.remove('modal-visible');
-              els.modal.setAttribute('aria-hidden','true');
-              await loadFeed(); await loadSummary();
+              if (payload.dryRun) {
+                notify('Pré-visualização pronta (sem aplicar mudanças).','success');
+                // Show plan in modal
+                els.modalBody.insertAdjacentHTML('beforeend', `<pre class="code-block" style="margin-top:8px">${escapeHtml(JSON.stringify(d2.plan||d2, null, 2))}</pre>`);
+              } else {
+                notify('Ação concluída','success');
+                els.modal.classList.add('modal-hidden');
+                els.modal.classList.remove('modal-visible');
+                els.modal.setAttribute('aria-hidden','true');
+                await loadFeed(); await loadSummary();
+              }
             } catch(e){ console.error(e); notify(e.message,'error'); } finally { btn.disabled = false; }
           });
         });
