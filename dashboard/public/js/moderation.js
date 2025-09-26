@@ -38,6 +38,83 @@
     setTimeout(()=>{n.style.animation='slideDown 0.3s ease-in'; setTimeout(()=>n.remove(),300);},2500);
   }
 
+  // Modal helpers and polished confirmation UI
+  function isModalVisible(){ return els.modal && els.modal.classList.contains('modal-visible'); }
+  function openModal(title, html){
+    if (!els.modal) return;
+    if (title != null) els.modalTitle.textContent = title;
+    if (html != null) els.modalBody.innerHTML = html;
+    els.modal.classList.remove('modal-hidden');
+    els.modal.classList.add('modal-visible');
+    els.modal.setAttribute('aria-hidden','false');
+  }
+  function closeModal(){
+    if (!els.modal) return;
+    // clean any transient confirm blocks
+    try { els.modalBody?.querySelectorAll?.('.confirm-block')?.forEach(n=> n.remove()); } catch {}
+    els.modal.classList.add('modal-hidden');
+    els.modal.classList.remove('modal-visible');
+    els.modal.setAttribute('aria-hidden','true');
+  }
+  function buildConfirmBlock(plan){
+    const risks = Array.isArray(plan?.risks) ? plan.risks : [];
+    const planObj = plan?.plan ?? plan;
+    const pre = escapeHtml(JSON.stringify(planObj, null, 2));
+    return `
+      <div class="confirm-block" style="margin-top:10px">
+        <div class="kv"><b>Pré-visualização</b> (sem aplicar alterações)</div>
+        ${risks.length ? `<div class="alert alert-warning" style="margin-top:8px"><b>Riscos potenciais</b><ul>${risks.map(r=>`<li>${escapeHtml(r)}</li>`).join('')}</ul></div>`:''}
+        <pre class="code-block" style="margin-top:8px" id="__confirmPlanPre">${pre}</pre>
+        <div class="actions-row" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn" data-confirm-cancel><i class="fas fa-times"></i> Cancelar</button>
+          <button class="btn" data-copy-plan><i class="fas fa-copy"></i> Copiar</button>
+          <button class="btn btn-primary" data-confirm-apply><i class="fas fa-check"></i> Confirmar</button>
+        </div>
+      </div>`;
+  }
+  function attachConfirmHandlers(container, onConfirm, onCancel){
+    const btnCancel = container.querySelector('[data-confirm-cancel]');
+    const btnCopy = container.querySelector('[data-copy-plan]');
+    const btnApply = container.querySelector('[data-confirm-apply]');
+    const getText = () => {
+      const pre = container.querySelector('#__confirmPlanPre');
+      return pre ? pre.textContent : '';
+    };
+    const copyText = async () => {
+      const text = getText();
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+        }
+        notify('Plano copiado para a área de transferência','success');
+      } catch(e){ notify('Não foi possível copiar','error'); }
+    };
+    btnCancel?.addEventListener('click', ()=>{ onCancel?.(); });
+    btnCopy?.addEventListener('click', copyText);
+    btnApply?.addEventListener('click', ()=>{ onConfirm?.(); });
+  }
+  // Show confirmation as a new modal replacing current content; returns Promise<boolean>
+  function showConfirmModal(plan, title){
+    return new Promise(resolve => {
+      openModal(title || 'Confirmar alterações', buildConfirmBlock(plan));
+      const block = els.modalBody.querySelector('.confirm-block');
+      attachConfirmHandlers(block, ()=>{ closeModal(); resolve(true); }, ()=>{ closeModal(); resolve(false); });
+    });
+  }
+  // Inject confirmation block into current, already open modal; returns Promise<boolean>
+  function injectConfirmInCurrentModal(plan){
+    return new Promise(resolve => {
+      // remove any prior confirm blocks to avoid stacking
+      els.modalBody.querySelectorAll('.confirm-block')?.forEach(n=> n.remove());
+      els.modalBody.insertAdjacentHTML('beforeend', buildConfirmBlock(plan));
+      const block = els.modalBody.querySelector('.confirm-block');
+      attachConfirmHandlers(block, ()=>{ block.remove(); resolve(true); }, ()=>{ block.remove(); resolve(false); });
+    });
+  }
+
   function buildTypeParam(){
     switch(currentFamily){
       case 'messages': return 'mod_message*';
@@ -192,7 +269,8 @@
 
       if (actions.length) {
         body.push('<div class="actions-row">' + actions.map(a => `<button class="btn btn-primary" data-action="${a.key}"><i class="fas ${a.icon}"></i> ${a.label}</button>`).join(' ') + '</div>');
-        body.push('<div class="kv" style="margin-top:8px"><label><input type="checkbox" id="dryRunToggle" /> Pré-visualizar (dry run)</label></div>');
+        const persisted = localStorage.getItem('mod-event-dryrun') === 'true';
+        body.push(`<div class="kv" style="margin-top:8px"><label><input type="checkbox" id="dryRunToggle" ${persisted? 'checked':''} /> Pré-visualizar (dry run)</label></div>`);
       }
 
   els.modalTitle.textContent = 'Evento de moderação';
@@ -200,6 +278,9 @@
   els.modal.classList.remove('modal-hidden');
   els.modal.classList.add('modal-visible');
   els.modal.setAttribute('aria-hidden','false');
+      // Persist dry-run toggle changes
+      const dryToggle = els.modalBody.querySelector('#dryRunToggle');
+      if (dryToggle){ dryToggle.addEventListener('change', ()=>{ localStorage.setItem('mod-event-dryrun', dryToggle.checked ? 'true':'false'); }); }
       // Wire action clicks
       if (actions.length) {
         actions.forEach(a => {
@@ -215,9 +296,20 @@
               const d2 = await r.json();
               if (!r.ok || !d2.success) throw new Error(d2.error || `HTTP ${r.status}`);
               if (payload.dryRun) {
-                notify('Pré-visualização pronta (sem aplicar mudanças).','success');
-                // Show plan in modal
-                els.modalBody.insertAdjacentHTML('beforeend', `<pre class="code-block" style="margin-top:8px">${escapeHtml(JSON.stringify(d2.plan||d2, null, 2))}</pre>`);
+                // Polished in-modal confirmation: show risks + plan, then confirm to apply
+                const ok = await injectConfirmInCurrentModal(d2);
+                if (!ok) { btn.disabled = false; btn.textContent = `${a.label}`; return; }
+                // Apply for real
+                const payload2 = { ...payload };
+                delete payload2.dryRun;
+                const r2 = await fetch(`/api/guild/${guildId}/moderation/action`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload2) });
+                const d3 = await r2.json();
+                if (!r2.ok || !d3.success) throw new Error(d3.error || `HTTP ${r2.status}`);
+                notify('Ação concluída','success');
+                els.modal.classList.add('modal-hidden');
+                els.modal.classList.remove('modal-visible');
+                els.modal.setAttribute('aria-hidden','true');
+                await loadFeed(); await loadSummary();
               } else {
                 notify('Ação concluída','success');
                 els.modal.classList.add('modal-hidden');
@@ -286,15 +378,23 @@
   // Initial load
   loadSummary();
   loadFeed();
+  // UX: Close modal on ESC and overlay background click
+  try {
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isModalVisible()) closeModal();
+    });
+    els.modal?.addEventListener('click', (e) => {
+      if (e.target === els.modal) closeModal();
+    });
+  } catch {}
   // Hierarchy quick tools
   async function postAction(body){
     const r = await fetch(`/api/guild/${guildId}/moderation/action`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(body) });
     const d = await r.json(); if(!r.ok || !d.success) throw new Error(d.error||`HTTP ${r.status}`); return d;
   }
-  function confirmPlan(plan){
-    const risks = plan.risks||[]; const pre = escapeHtml(JSON.stringify(plan.plan||plan, null, 2));
-    const text = `<div class="kv"><b>Pré-visualização</b> (sem aplicar alterações)</div>${risks.length? `<div class="alert alert-warning"><b>Riscos potenciais</b><ul>${risks.map(r=>`<li>${escapeHtml(r)}</li>`).join('')}</ul></div>`:''}<pre class="code-block">${pre}</pre><div class="mt-8">Continuar e aplicar estas alterações?</div>`;
-    return new Promise(resolve=>{ const ok = window.confirm(text.replace(/<[^>]+>/g,'')); resolve(ok); });
+  async function confirmPlan(plan, title){
+    // Use modal-based confirmation everywhere
+    return await showConfirmModal(plan, title || 'Confirmar alterações');
   }
   const roleUp = document.getElementById('btnRoleUp');
   const roleDown = document.getElementById('btnRoleDown');
@@ -302,19 +402,26 @@
   const chanDown = document.getElementById('btnChanDown');
   const moveToCat = document.getElementById('btnMoveToCategory');
   function bool(id){ return !!document.getElementById(id)?.checked; }
+  // Restore persisted state for hierarchy dry run
+  try {
+    const hierDry = document.getElementById('hierDryRun');
+    const val = localStorage.getItem('mod-hier-dryrun');
+    if (hierDry && (val === 'true' || val === 'false')) hierDry.checked = (val === 'true');
+    hierDry?.addEventListener('change', ()=>{ localStorage.setItem('mod-hier-dryrun', hierDry.checked ? 'true':'false'); });
+  } catch {}
   roleUp?.addEventListener('click', async()=>{
-    try{ const roleId=(document.getElementById('roleIdQuick')?.value||'').trim(); if(!roleId) return notify('ID do cargo em falta','error'); const steps=parseInt(document.getElementById('roleSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_role_up', roleId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp); if(!ok) return; const resp2=await postAction({ action:'move_role_up', roleId, steps }); if(resp2.success) notify('Cargo movido','success'); } else { notify('Cargo movido','success'); } }catch(e){ notify(e.message,'error'); }
+    try{ const roleId=(document.getElementById('roleIdQuick')?.value||'').trim(); if(!roleId) return notify('ID do cargo em falta','error'); const steps=parseInt(document.getElementById('roleSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_role_up', roleId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp, 'Confirmar mover cargo'); if(!ok) return; const resp2=await postAction({ action:'move_role_up', roleId, steps }); if(resp2.success) { notify('Cargo movido','success'); closeModal(); } } else { notify('Cargo movido','success'); } }catch(e){ notify(e.message,'error'); }
   });
   roleDown?.addEventListener('click', async()=>{
-    try{ const roleId=(document.getElementById('roleIdQuick')?.value||'').trim(); if(!roleId) return notify('ID do cargo em falta','error'); const steps=parseInt(document.getElementById('roleSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_role_down', roleId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp); if(!ok) return; const resp2=await postAction({ action:'move_role_down', roleId, steps }); if(resp2.success) notify('Cargo movido','success'); } else { notify('Cargo movido','success'); } }catch(e){ notify(e.message,'error'); }
+    try{ const roleId=(document.getElementById('roleIdQuick')?.value||'').trim(); if(!roleId) return notify('ID do cargo em falta','error'); const steps=parseInt(document.getElementById('roleSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_role_down', roleId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp, 'Confirmar mover cargo'); if(!ok) return; const resp2=await postAction({ action:'move_role_down', roleId, steps }); if(resp2.success) { notify('Cargo movido','success'); closeModal(); } } else { notify('Cargo movido','success'); } }catch(e){ notify(e.message,'error'); }
   });
   chanUp?.addEventListener('click', async()=>{
-    try{ const channelId=(document.getElementById('channelIdQuick')?.value||'').trim(); if(!channelId) return notify('ID do canal em falta','error'); const steps=parseInt(document.getElementById('channelSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_channel_up', channelId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp); if(!ok) return; const resp2=await postAction({ action:'move_channel_up', channelId, steps }); if(resp2.success) notify('Canal movido','success'); } else { notify('Canal movido','success'); } }catch(e){ notify(e.message,'error'); }
+    try{ const channelId=(document.getElementById('channelIdQuick')?.value||'').trim(); if(!channelId) return notify('ID do canal em falta','error'); const steps=parseInt(document.getElementById('channelSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_channel_up', channelId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp, 'Confirmar mover canal'); if(!ok) return; const resp2=await postAction({ action:'move_channel_up', channelId, steps }); if(resp2.success) { notify('Canal movido','success'); closeModal(); } } else { notify('Canal movido','success'); } }catch(e){ notify(e.message,'error'); }
   });
   chanDown?.addEventListener('click', async()=>{
-    try{ const channelId=(document.getElementById('channelIdQuick')?.value||'').trim(); if(!channelId) return notify('ID do canal em falta','error'); const steps=parseInt(document.getElementById('channelSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_channel_down', channelId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp); if(!ok) return; const resp2=await postAction({ action:'move_channel_down', channelId, steps }); if(resp2.success) notify('Canal movido','success'); } else { notify('Canal movido','success'); } }catch(e){ notify(e.message,'error'); }
+    try{ const channelId=(document.getElementById('channelIdQuick')?.value||'').trim(); if(!channelId) return notify('ID do canal em falta','error'); const steps=parseInt(document.getElementById('channelSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_channel_down', channelId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp, 'Confirmar mover canal'); if(!ok) return; const resp2=await postAction({ action:'move_channel_down', channelId, steps }); if(resp2.success) { notify('Canal movido','success'); closeModal(); } } else { notify('Canal movido','success'); } }catch(e){ notify(e.message,'error'); }
   });
   moveToCat?.addEventListener('click', async()=>{
-    try{ const channelId=(document.getElementById('channelIdQuick')?.value||'').trim(); if(!channelId) return notify('ID do canal em falta','error'); const parentId=(document.getElementById('channelToCategory')?.value||'').trim(); const dry=bool('hierDryRun'); const payload={ action:'move_channel_to_category', channelId, parentId: parentId||null }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp); if(!ok) return; const resp2=await postAction({ action:'move_channel_to_category', channelId, parentId: parentId||null }); if(resp2.success) notify('Canal movido para categoria','success'); } else { notify('Canal movido para categoria','success'); } }catch(e){ notify(e.message,'error'); }
+    try{ const channelId=(document.getElementById('channelIdQuick')?.value||'').trim(); if(!channelId) return notify('ID do canal em falta','error'); const parentId=(document.getElementById('channelToCategory')?.value||'').trim(); const dry=bool('hierDryRun'); const payload={ action:'move_channel_to_category', channelId, parentId: parentId||null }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp, 'Confirmar mover canal para categoria'); if(!ok) return; const resp2=await postAction({ action:'move_channel_to_category', channelId, parentId: parentId||null }); if(resp2.success) { notify('Canal movido para categoria','success'); closeModal(); } } else { notify('Canal movido para categoria','success'); } }catch(e){ notify(e.message,'error'); }
   });
 })();
