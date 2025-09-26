@@ -1446,7 +1446,11 @@ app.get('/api/guild/:guildId/moderation/event/:logId', async (req, res) => {
         const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
-        const log = await storage.getLogById(req.params.guildId, req.params.logId);
+        let log = null;
+        try { log = await storage.getLogById(req.params.guildId, req.params.logId); } catch (e) {
+            logger.warn('getLogById failed', e?.message || e);
+            return res.status(404).json({ success:false, error:'log_not_found' });
+        }
         if (!log || !(log.type||'').startsWith('mod_')) return res.status(404).json({ success:false, error:'log_not_found' });
         const guild = check.guild;
         const data = log.data || {};
