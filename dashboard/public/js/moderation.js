@@ -282,16 +282,16 @@
         }
       }
 
-      const resolved = ev.resolved || {};
-      const user = resolved.user ? `${escapeHtml(resolved.user.username||'')} (${resolved.user.id})` : (data.userId ? data.userId : '-');
-      const mod = resolved.executor ? `${escapeHtml(resolved.executor.username||'')} (${resolved.executor.id})` : (data.executorId ? data.executorId : '-');
-      const channel = resolved.channel ? `#${escapeHtml(resolved.channel.name)} (${resolved.channel.id})` : (data.channelId ? data.channelId : '-');
-      const body = [];
-      body.push(`<div class="kv"><b>Tipo:</b> ${escapeHtml(ev.type)}</div>`);
-      body.push(`<div class="kv"><b>Quando:</b> ${new Date(ev.timestamp).toLocaleString('pt-PT')}</div>`);
-      body.push(`<div class="kv"><b>Usuário:</b> ${user}</div>`);
-      body.push(`<div class="kv"><b>Moderador:</b> ${mod}</div>`);
-      body.push(`<div class="kv"><b>Canal:</b> ${channel}</div>`);
+  const resolved = ev.resolved || {};
+  const userText = resolved.user ? `${escapeHtml(resolved.user.username||'')}${resolved.user.nick? ' ('+escapeHtml(resolved.user.nick)+')':''} [${escapeHtml(resolved.user.id)}]` : (data.userId ? escapeHtml(data.userId) : '-');
+  const modText = resolved.executor ? `${escapeHtml(resolved.executor.username||'')}${resolved.executor.nick? ' ('+escapeHtml(resolved.executor.nick)+')':''} [${escapeHtml(resolved.executor.id)}]` : (data.executorId ? escapeHtml(data.executorId) : '-');
+  const chanText = resolved.channel ? `#${escapeHtml(resolved.channel.name||'')} [${escapeHtml(resolved.channel.id)}]` : (data.channelId ? escapeHtml(data.channelId) : '-');
+  const body = [];
+  body.push(`<div class="kv"><b>Tipo:</b> ${escapeHtml(ev.type)}</div>`);
+  body.push(`<div class="kv"><b>Quando:</b> ${new Date(ev.timestamp).toLocaleString('pt-PT')}</div>`);
+  body.push(`<div class="kv"><b>Usuário:</b> ${userText} ${data.userId? `<button class=\"btn btn-sm btn-glass\" data-copy-id=\"${escapeHtml(data.userId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
+  body.push(`<div class="kv"><b>Moderador:</b> ${modText} ${data.executorId? `<button class=\"btn btn-sm btn-glass\" data-copy-id=\"${escapeHtml(data.executorId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
+  body.push(`<div class="kv"><b>Canal:</b> ${chanText} ${data.channelId? `<button class=\"btn btn-sm btn-glass\" data-copy-id=\"${escapeHtml(data.channelId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
       if (ev.message) body.push(`<div class="kv"><b>Motivo:</b> ${escapeHtml(ev.message)}</div>`);
       if (ev.type === 'mod_message_update') {
         if (data.before) body.push(`<pre class="code-block"><b>Antes:</b>\n${escapeHtml(data.before)}</pre>`);
@@ -312,6 +312,17 @@
   els.modal.classList.remove('modal-hidden');
   els.modal.classList.add('modal-visible');
   els.modal.setAttribute('aria-hidden','false');
+      // Wire copy buttons
+      els.modalBody.querySelectorAll('[data-copy-id]')?.forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const val = btn.getAttribute('data-copy-id');
+          try {
+            if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(val);
+            else { const ta=document.createElement('textarea'); ta.value=val; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }
+            notify('ID copiado','success');
+          } catch { notify('Não foi possível copiar','error'); }
+        });
+      });
       // Persist dry-run toggle changes
       const dryToggle = els.modalBody.querySelector('#dryRunToggle');
       if (dryToggle){ dryToggle.addEventListener('change', ()=>{ localStorage.setItem('mod-event-dryrun', dryToggle.checked ? 'true':'false'); }); }
