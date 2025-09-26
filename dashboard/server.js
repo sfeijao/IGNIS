@@ -1323,7 +1323,15 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
         const limit = Math.max(1, Math.min(1000, parseInt(String(req.query.limit || '200'), 10) || 200));
         const all = await storage.getLogs(req.params.guildId, 1000);
         let filtered = Array.isArray(all) ? all.slice() : [];
-        if (type) filtered = filtered.filter(l => (l.type || '').toLowerCase() === type);
+        if (type) {
+            const t = type.toLowerCase();
+            if (t.endsWith('*')) {
+                const prefix = t.slice(0, -1);
+                filtered = filtered.filter(l => (l.type || '').toLowerCase().startsWith(prefix));
+            } else {
+                filtered = filtered.filter(l => (l.type || '').toLowerCase() === t);
+            }
+        }
         if (from && !Number.isNaN(from.getTime())) filtered = filtered.filter(l => new Date(l.timestamp) >= from);
         if (to && !Number.isNaN(to.getTime())) filtered = filtered.filter(l => new Date(l.timestamp) <= to);
         if (q) filtered = filtered.filter(l => {
@@ -1354,7 +1362,15 @@ app.get('/api/guild/:guildId/logs/export', async (req, res) => {
         const format = (req.query.format || 'csv').toString().toLowerCase();
         const all = await storage.getLogs(req.params.guildId, 1000);
         let filtered = Array.isArray(all) ? all.slice() : [];
-        if (type) filtered = filtered.filter(l => (l.type || '').toLowerCase() === type);
+        if (type) {
+            const t = type.toLowerCase();
+            if (t.endsWith('*')) {
+                const prefix = t.slice(0, -1);
+                filtered = filtered.filter(l => (l.type || '').toLowerCase().startsWith(prefix));
+            } else {
+                filtered = filtered.filter(l => (l.type || '').toLowerCase() === t);
+            }
+        }
         if (from && !Number.isNaN(from.getTime())) filtered = filtered.filter(l => new Date(l.timestamp) >= from);
         if (to && !Number.isNaN(to.getTime())) filtered = filtered.filter(l => new Date(l.timestamp) <= to);
         if (q) filtered = filtered.filter(l => {
