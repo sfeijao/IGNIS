@@ -182,11 +182,15 @@
     };
     els.feed.innerHTML = items.map(l => {
       const d = l.data || {};
+      const r = l.resolved || {};
       const dt = new Date(l.timestamp).toLocaleString('pt-PT');
+      const userLabel = r.user ? `${escapeHtml(r.user.username||'')}${r.user.nick? ' ('+escapeHtml(r.user.nick)+')':''} [${escapeHtml(r.user.id)}]` : (d.userId ? escapeHtml(d.userId) : '');
+      const modLabel = r.executor ? `${escapeHtml(r.executor.username||'')}${r.executor.nick? ' ('+escapeHtml(r.executor.nick)+')':''} [${escapeHtml(r.executor.id)}]` : (d.executorId ? escapeHtml(d.executorId) : '');
+      const chanLabel = r.channel ? `#${escapeHtml(r.channel.name||'')} [${escapeHtml(r.channel.id)}]` : (d.channelId ? escapeHtml(d.channelId) : '');
       const meta = [
-        d.userId ? `<span title="Usuário"><i class=\"fas fa-user\"></i> ${escapeHtml(d.userId)}</span>` : '',
-        d.executorId ? `<span title="Moderador"><i class=\"fas fa-shield-alt\"></i> ${escapeHtml(d.executorId)}</span>` : '',
-        d.channelId ? `<span title="Canal"><i class=\"fas fa-hashtag\"></i> ${escapeHtml(d.channelId)}</span>` : ''
+        userLabel ? `<span title="Usuário"><i class=\"fas fa-user\"></i> ${userLabel}</span>` : '',
+        modLabel ? `<span title="Moderador"><i class=\"fas fa-shield-alt\"></i> ${modLabel}</span>` : '',
+        chanLabel ? `<span title="Canal"><i class=\"fas fa-hashtag\"></i> ${chanLabel}</span>` : ''
       ].filter(Boolean).join(' • ');
       return `
       <button class="feed-item" data-log-id="${l.id}" aria-label="Abrir detalhes do evento">

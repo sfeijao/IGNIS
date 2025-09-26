@@ -1357,7 +1357,38 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
             return hay.includes(q);
         });
         filtered.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-        return res.json({ success: true, logs: filtered.slice(0, limit) });
+        const limited = filtered.slice(0, limit);
+        // Enrich with resolved names from caches (best-effort, no network fetch here)
+        try {
+            const guild = check.guild;
+            const withResolved = limited.map(l => {
+                const d = l.data || {};
+                const out = { ...l };
+                out.resolved = {};
+                try {
+                    if (d.userId) {
+                        const m = guild.members.cache.get(d.userId);
+                        if (m && m.user) out.resolved.user = { id: m.id, username: m.user.username, nick: m.nickname||null, avatar: m.user.avatar };
+                    }
+                } catch {}
+                try {
+                    if (d.executorId) {
+                        const m = guild.members.cache.get(d.executorId);
+                        if (m && m.user) out.resolved.executor = { id: m.id, username: m.user.username, nick: m.nickname||null, avatar: m.user.avatar };
+                    }
+                } catch {}
+                try {
+                    if (d.channelId) {
+                        const c = guild.channels.cache.get(d.channelId);
+                        if (c) out.resolved.channel = { id: c.id, name: c.name };
+                    }
+                } catch {}
+                return out;
+            });
+            return res.json({ success: true, logs: withResolved });
+        } catch {
+            return res.json({ success: true, logs: limited });
+        }
     } catch (e) {
         logger.error('Error fetching logs:', e);
         return res.status(500).json({ success: false, error: 'Failed to fetch logs' });
