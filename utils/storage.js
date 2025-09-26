@@ -319,6 +319,28 @@ class SimpleStorage {
         }
     }
 
+    // Verification metrics since a cutoff ISO string
+    async countVerificationMetrics(guildId, sinceIso) {
+        const logs = await this.readFile(this.logsFile) || [];
+        const cutoff = sinceIso ? new Date(sinceIso).getTime() : (Date.now() - 24*60*60*1000);
+        const out = { success: 0, fail: 0, byMethod: {}, failReasons: {} };
+        for (const l of logs) {
+            if (l.guild_id !== guildId) continue;
+            const t = new Date(l.timestamp).getTime();
+            if (!(t >= cutoff)) continue;
+            if (l.type === 'verification_success') {
+                out.success += 1;
+                const method = l.message || 'unknown';
+                out.byMethod[method] = (out.byMethod[method] || 0) + 1;
+            } else if (l.type === 'verification_fail') {
+                out.fail += 1;
+                const reason = l.message || 'unknown';
+                out.failReasons[reason] = (out.failReasons[reason] || 0) + 1;
+            }
+        }
+        return out;
+    }
+
     // Ticket logs (lightweight action history)
     async addTicketLog({ ticket_id, guild_id, actor_id, action, message, data }) {
         if (useMongo && TicketLogModel) {

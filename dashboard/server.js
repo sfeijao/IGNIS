@@ -1458,6 +1458,7 @@ app.post('/api/guild/:guildId/verification/config', async (req, res) => {
         const schema = Joi.object({
             mode: Joi.string().valid('easy','medium','hard').default('easy'),
             method: Joi.string().valid('button','image','reaction','form').default('button'),
+            cooldownSeconds: Joi.number().integer().min(0).max(3600).default(0),
             logFails: Joi.boolean().default(false),
             logFailRetention: Joi.number().integer().min(1).max(90)
                 .when('logFails', { is: true, then: Joi.number().integer().min(1).max(90).default(7), otherwise: Joi.forbidden() }),
@@ -1502,6 +1503,49 @@ app.post('/api/guild/:guildId/verification/config', async (req, res) => {
         await storage.updateGuildConfig(req.params.guildId, next);
     res.json({ success: true, message: 'Verification config updated', config: next.verification });
     } catch (e) { logger.error('Error set verification config:', e); res.status(500).json({ success: false, error: 'Failed to update verification config' }); }
+});
+
+// Verification metrics API
+app.get('/api/guild/:guildId/verification/metrics', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const window = String(req.query.window || '24h');
+        let sinceMs = 24*60*60*1000;
+        if (window === '1h') sinceMs = 60*60*1000;
+        else if (window === '7d') sinceMs = 7*24*60*60*1000;
+        const sinceIso = new Date(Date.now() - sinceMs).toISOString();
+        const metrics = await storage.countVerificationMetrics(req.params.guildId, sinceIso);
+        return res.json({ success: true, since: sinceIso, window, metrics });
+    } catch (e) { logger.error('Error verification metrics:', e); return res.status(500).json({ success: false, error: 'Failed to fetch verification metrics' }); }
+});
+
+// Verification logs export and clean
+app.get('/api/guild/:guildId/verification/logs', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const limit = Math.min(1000, Math.max(1, parseInt(String(req.query.limit || '200'), 10) || 200));
+        const all = await storage.getLogs(req.params.guildId, limit);
+        const filtered = all.filter(l => l.type === 'verification_success' || l.type === 'verification_fail');
+        return res.json({ success: true, logs: filtered });
+    } catch (e) { logger.error('Error verification logs:', e); return res.status(500).json({ success: false, error: 'Failed to fetch verification logs' }); }
+});
+
+app.delete('/api/guild/:guildId/verification/logs', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const olderThanDays = Math.max(1, Math.min(365, parseInt(String(req.query.olderThanDays || '30'), 10) || 30));
+        const r = await storage.pruneLogsByTypeOlderThan(req.params.guildId, 'verification_fail', olderThanDays * 24 * 60 * 60 * 1000);
+        return res.json({ success: true, pruned: r?.pruned !== false });
+    } catch (e) { logger.error('Error prune verification logs:', e); return res.status(500).json({ success: false, error: 'Failed to prune verification logs' }); }
 });
 
 // Quick Tags (guild-level quick replies)

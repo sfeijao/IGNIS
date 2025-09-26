@@ -138,17 +138,17 @@ module.exports = {
                         const key = `verify:${interaction.user.id}`;
                         if (!global.__verifyPressCache) global.__verifyPressCache = new Map();
                         const last = global.__verifyPressCache.get(key) || 0;
-                        if (Date.now() - last < 3000) {
+                        // Optional configurable cooldown from dashboard (overrides default)
+                        let vcfg = {};
+                        try { const storage = require('../utils/storage'); const cfg = await storage.getGuildConfig(interaction.guild.id); vcfg = cfg?.verification || {}; } catch {}
+                        const configuredCooldownMs = Math.max(0, Number(vcfg.cooldownSeconds || 0)) * 1000;
+                        const minCooldown = configuredCooldownMs || 3000;
+                        if (Date.now() - last < minCooldown) {
                             return await interaction.reply({ content: `${EMOJIS.WARNING} Aguarda um momento antes de tentar novamente.`, flags: MessageFlags.Ephemeral });
                         }
                         global.__verifyPressCache.set(key, Date.now());
                         // Check verification method
-                        let vcfg = {};
-                        try {
-                            const storage = require('../utils/storage');
-                            const cfg = await storage.getGuildConfig(interaction.guild.id);
-                            vcfg = cfg?.verification || {};
-                        } catch {}
+                        
                         if ((vcfg.method || 'button') === 'image') {
                             // Start captcha flow (image)
                             const mode = vcfg.mode || 'easy';
@@ -209,7 +209,7 @@ module.exports = {
                                     guild_id: interaction.guild.id,
                                     user_id: interaction.user.id,
                                     type: 'verification_fail',
-                                    reason: 'role_not_found'
+                                    message: 'role_not_found'
                                 });
                             } catch {}
                             await errorHandler.handleInteractionError(interaction, new Error('VERIFY_ROLE_NOT_FOUND'));
@@ -233,7 +233,7 @@ module.exports = {
                                     guild_id: interaction.guild.id,
                                     user_id: interaction.user.id,
                                     type: 'verification_fail',
-                                    reason: 'role_add_failed',
+                                    message: 'role_add_failed',
                                     role_id: verifyRole.id
                                 });
                             } catch {}
@@ -246,6 +246,12 @@ module.exports = {
                             content: `${EMOJIS.SUCCESS} Verificação completa! Bem-vindo(a) ao servidor!`,
                             flags: MessageFlags.Ephemeral
                         });
+
+                        // Log success with method for metrics
+                        try {
+                            const storage = require('../utils/storage');
+                            await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_success', message: (vcfg.method || 'button') });
+                        } catch {}
 
                         // Structured diagnostic log
                         logger.database('verification', {
@@ -271,6 +277,7 @@ module.exports = {
                             global.socketManager.broadcast('verification', {
                                 userId: interaction.user.id,
                                 username: interaction.user.username,
+                                method: vcfg.method || 'button',
                                 timestamp: new Date().toISOString()
                             });
                         }
@@ -644,6 +651,9 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                 // Painel do ticket - chamar membro
                 if (customId === BUTTON_IDS.TICKET_CALL_MEMBER) {
                     try {
+                        // Permission check: ManageChannels or Moderator-like
+                        const can = interaction.member.permissions.has(PermissionFlagsBits.ManageChannels);
+                        if (!can) return await interaction.reply({ content: `${EMOJIS.ERROR} Precisas da permissão Gerir Canais para usar esta ação.`, flags: MessageFlags.Ephemeral });
                         await interaction.reply({ content: 'Indica o ID ou menção do membro que queres chamar (responde neste chat):', flags: MessageFlags.Ephemeral });
                     } catch (err) {
                         logger.warn('Erro ao pedir ID para chamar membro', { error: err && err.message ? err.message : err });
@@ -654,6 +664,8 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                 // Adicionar membro ao ticket (abre modal para inserir ID)
                 if (customId === BUTTON_IDS.TICKET_ADD_MEMBER) {
                     try {
+                        const can = interaction.member.permissions.has(PermissionFlagsBits.ManageChannels);
+                        if (!can) return await interaction.reply({ content: `${EMOJIS.ERROR} Precisas da permissão Gerir Canais para adicionar membros.`, flags: MessageFlags.Ephemeral });
                         const modal = new ModalBuilder().setCustomId('modal_add_member').setTitle('Adicionar Membro ao Ticket');
                         // existing project may not have TextInputBuilder imported here; create if needed
                         const TextInput = TextInputBuilder;
@@ -670,6 +682,8 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                 // Remover membro do ticket (abre modal)
                 if (customId === BUTTON_IDS.TICKET_REMOVE_MEMBER) {
                     try {
+                        const can = interaction.member.permissions.has(PermissionFlagsBits.ManageChannels);
+                        if (!can) return await interaction.reply({ content: `${EMOJIS.ERROR} Precisas da permissão Gerir Canais para remover membros.`, flags: MessageFlags.Ephemeral });
                         const modal = new ModalBuilder().setCustomId('modal_remove_member').setTitle('Remover Membro do Ticket');
                         const TextInput = TextInputBuilder;
                         const input = new TextInput().setCustomId('remove_member_id').setLabel('ID ou menção do utilizador').setStyle(TextInputStyle.Short).setRequired(true);
@@ -685,6 +699,8 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                 // Mover ticket (abre modal com nome da categoria alvo)
                 if (customId === BUTTON_IDS.TICKET_MOVE) {
                     try {
+                        const can = interaction.member.permissions.has(PermissionFlagsBits.ManageChannels);
+                        if (!can) return await interaction.reply({ content: `${EMOJIS.ERROR} Precisas da permissão Gerir Canais para mover tickets.`, flags: MessageFlags.Ephemeral });
                         const modal = new ModalBuilder().setCustomId('modal_move_ticket').setTitle('Mover Ticket para Categoria');
                         const TextInput = TextInputBuilder;
                         const input = new TextInput().setCustomId('move_category_name').setLabel('Nome da categoria (ex: Tickets-Arquivados)').setStyle(TextInputStyle.Short).setRequired(true);
@@ -700,6 +716,8 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                 // Trocar nome do canal
                 if (customId === BUTTON_IDS.TICKET_RENAME_CHANNEL) {
                     try {
+                        const can = interaction.member.permissions.has(PermissionFlagsBits.ManageChannels);
+                        if (!can) return await interaction.reply({ content: `${EMOJIS.ERROR} Precisas da permissão Gerir Canais para renomear tickets.`, flags: MessageFlags.Ephemeral });
                         const modal = new ModalBuilder().setCustomId('modal_rename_channel').setTitle('Trocar Nome do Canal');
                         const TextInput = TextInputBuilder;
                         const input = new TextInput().setCustomId('new_channel_name').setLabel('Novo nome do canal (sem espaços)').setStyle(TextInputStyle.Short).setRequired(true);
@@ -743,6 +761,8 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                 // Finalizar ticket (equivalente a fechar)
                 if (customId === BUTTON_IDS.TICKET_FINALIZE) {
                     try {
+                        const can = interaction.member.permissions.has(PermissionFlagsBits.ManageChannels);
+                        if (!can) return await interaction.reply({ content: `${EMOJIS.ERROR} Precisas da permissão Gerir Canais para finalizar tickets.`, flags: MessageFlags.Ephemeral });
                         // Reutilizar fluxo de fechar ticket (abrir confirmação)
                         const confirmEmbed = new EmbedBuilder()
                             .setTitle('⚠️ Finalizar Ticket')
@@ -829,6 +849,8 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                         if (unverifiedRole && interaction.member.roles.cache.has(unverifiedRole.id)) await interaction.member.roles.remove(unverifiedRole).catch(()=>{});
                         // store a lightweight log entry
                         try { await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_form', data: { answersCount: answers.length } }); } catch {}
+                        // metrics success
+                        try { await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_success', message: 'form' }); } catch {}
                         await interaction.reply({ content: `${EMOJIS.SUCCESS} Verificação completa! Bem-vindo(a) ao servidor!`, flags: MessageFlags.Ephemeral });
                     } catch (error) { await errorHandler.handleInteractionError(interaction, error); }
                     return;
@@ -843,7 +865,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                             // Log fail
                             try {
                                 const storage = require('../utils/storage');
-                                await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_fail', reason: `captcha_${res.reason||'mismatch'}` });
+                                await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_fail', message: `captcha_${res.reason||'mismatch'}` });
                             } catch {}
                             return await interaction.reply({ content: `${EMOJIS.ERROR} ${reason}`, flags: MessageFlags.Ephemeral });
                         }
@@ -866,6 +888,8 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                             await interaction.member.roles.remove(unverifiedRole).catch(()=>{});
                         }
                         await interaction.reply({ content: `${EMOJIS.SUCCESS} Verificação completa! Bem-vindo(a) ao servidor!`, flags: MessageFlags.Ephemeral });
+                        // metrics success
+                        try { const storage = require('../utils/storage'); await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_success', message: 'image' }); } catch {}
                     } catch (error) { await errorHandler.handleInteractionError(interaction, error); }
                     return;
                 }

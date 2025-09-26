@@ -302,9 +302,68 @@ class SqliteStorage {
     }));
   }
 
+  // Prune logs by type older than N milliseconds
+  async pruneLogsByTypeOlderThan(guildId, type, olderThanMs) {
+    try {
+      const cutoff = new Date(Date.now() - Math.max(0, Number(olderThanMs) || 0)).toISOString();
+      if (guildId && type) {
+        await run(`DELETE FROM logs WHERE guild_id = ? AND type = ? AND datetime(timestamp) < datetime(?)`, [guildId, type, cutoff]);
+      } else if (guildId) {
+        await run(`DELETE FROM logs WHERE guild_id = ? AND datetime(timestamp) < datetime(?)`, [guildId, cutoff]);
+      } else if (type) {
+        await run(`DELETE FROM logs WHERE type = ? AND datetime(timestamp) < datetime(?)`, [type, cutoff]);
+      } else {
+        await run(`DELETE FROM logs WHERE datetime(timestamp) < datetime(?)`, [cutoff]);
+      }
+      return { pruned: true };
+    } catch (e) {
+      return { pruned: false, error: e?.message || String(e) };
+    }
+  }
+
+  // Count verification metrics grouped by type/message since cutoff
+  async countVerificationMetrics(guildId, sinceIso) {
+    const cutoff = sinceIso || new Date(Date.now() - 24*60*60*1000).toISOString();
+    const rows = await all(
+      `SELECT type, COALESCE(message, '') as message, COUNT(*) as count
+       FROM logs
+       WHERE guild_id = ? AND datetime(timestamp) >= datetime(?) AND (type = 'verification_success' OR type = 'verification_fail')
+       GROUP BY type, message`,
+      [guildId, cutoff]
+    );
+    const out = { success: 0, fail: 0, byMethod: {}, failReasons: {} };
+    for (const r of rows) {
+      const n = Number(r.count) || 0;
+      if (r.type === 'verification_success') {
+        out.success += n;
+        const method = r.message || 'unknown';
+        out.byMethod[method] = (out.byMethod[method] || 0) + n;
+      } else if (r.type === 'verification_fail') {
+        out.fail += n;
+        const reason = r.message || 'unknown';
+        out.failReasons[reason] = (out.failReasons[reason] || 0) + n;
+      }
+    }
+    return out;
+  }
+
   // Panels API
   async getPanels(guildId) {
     const rows = await all(`SELECT * FROM panels WHERE guild_id = ? AND (type IS NULL OR type = 'tickets')`, [guildId]);
+    return rows.map(p => ({
+      _id: String(p.id),
+      guild_id: p.guild_id,
+      channel_id: p.channel_id,
+      message_id: p.message_id,
+      type: p.type || 'tickets',
+      theme: p.theme || 'dark',
+      template: p.template || 'classic',
+      payload: parseJSON(p.payload, null)
+    }));
+  }
+
+  async getPanelsByType(guildId, type = 'tickets') {
+    const rows = await all(`SELECT * FROM panels WHERE guild_id = ? AND (type ${type ? '= ?' : 'IS NULL'})`, type ? [guildId, type] : [guildId]);
     return rows.map(p => ({
       _id: String(p.id),
       guild_id: p.guild_id,

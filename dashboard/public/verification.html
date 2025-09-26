@@ -26,6 +26,8 @@
 		.list li{display:flex;align-items:center;justify-content:space-between;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:8px;padding:8px;margin-bottom:6px}
 		.badge{background:var(--bg-card);border:1px solid var(--glass-border);border-radius:6px;padding:2px 6px;font-size:12px;color:var(--text-secondary)}
 		.actions button{margin-left:6px}
+		.max-w-180{max-width:180px}
+		.max-w-120{max-width:120px}
 	</style>
 	</head>
 <body>
@@ -73,6 +75,11 @@
 						<div>
 							<label for="panelChannel">Canal para o painel</label>
 							<select id="panelChannel" class="input" title="Canal onde publicar o painel"></select>
+						</div>
+						<div>
+							<label for="cooldownSeconds">Cooldown (segundos)</label>
+							<input id="cooldownSeconds" type="number" class="input" min="0" max="3600" value="0" />
+							<p class="text-secondary small mt-6">Aguarde este tempo entre tentativas de verificação. 0 para desativar.</p>
 						</div>
 						<div class="grid-col-2">
 							<label for="logFails">Logs quando alguém falha</label>
@@ -130,6 +137,62 @@
 						<button id="save" class="btn btn-primary" disabled><i class="fas fa-save"></i> Guardar</button>
 						<button id="createPanel" class="btn btn-glass ml-8"><i class="fas fa-plus"></i> Criar Painel de Verificação</button>
 					</div>
+				</div>
+
+				<!-- Métricas de Verificação -->
+				<div class="glass-card card-pad mt-12">
+					<div class="section-header">
+						<h2 class="section-title"><i class="fas fa-chart-line"></i> Métricas</h2>
+						<p class="text-secondary small">Visão geral do sucesso/falha e métodos usados.</p>
+					</div>
+					<div class="flex-row align-center mt-8">
+						<label for="metricsWindow">Janela</label>
+						<select id="metricsWindow" class="input max-w-180">
+							<option value="1h">Última 1 hora</option>
+							<option value="24h" selected>Últimas 24 horas</option>
+							<option value="7d">Últimos 7 dias</option>
+						</select>
+						<button id="metricsRefresh" class="btn btn-glass"><i class="fas fa-rotate"></i> Atualizar</button>
+					</div>
+					<div class="grid grid-3 gap-12 mt-12">
+						<div class="stat-card">
+							<div class="stat-title">Sucessos</div>
+							<div id="metricSuccess" class="stat-value">—</div>
+						</div>
+						<div class="stat-card">
+							<div class="stat-title">Falhas</div>
+							<div id="metricFail" class="stat-value">—</div>
+						</div>
+						<div class="stat-card">
+							<div class="stat-title">Total</div>
+							<div id="metricTotal" class="stat-value">—</div>
+						</div>
+					</div>
+					<div class="grid grid-2 gap-12 mt-12">
+						<div>
+							<h3 class="section-subtitle">Por método</h3>
+							<ul id="byMethodList" class="list mt-6"></ul>
+						</div>
+						<div>
+							<h3 class="section-subtitle">Motivos de falha</h3>
+							<ul id="failReasonsList" class="list mt-6"></ul>
+						</div>
+					</div>
+				</div>
+
+				<!-- Logs de Verificação -->
+				<div class="glass-card card-pad mt-12">
+					<div class="section-header">
+						<h2 class="section-title"><i class="fas fa-clipboard-list"></i> Logs</h2>
+						<p class="text-secondary small">Últimos eventos de verificação.</p>
+					</div>
+					<div class="flex-row align-center mt-8">
+						<button id="exportLogs" class="btn btn-secondary"><i class="fas fa-file-export"></i> Exportar JSON</button>
+						<label for="pruneDays" class="ml-8">Limpar anteriores a (dias)</label>
+						<input id="pruneDays" type="number" class="input max-w-120" min="1" max="365" value="30" />
+						<button id="pruneLogs" class="btn btn-danger"><i class="fas fa-broom"></i> Limpar</button>
+					</div>
+					<ul id="logsList" class="list mt-12"></ul>
 				</div>
 			</section>
 		</div>

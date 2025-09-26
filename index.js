@@ -141,36 +141,29 @@ process.on('uncaughtException', error => {
 async function registerCommands() {
     try {
         logger.info('🔄 Registrando comandos slash...');
-        
+
         const commands = [];
         for (const file of commandFiles) {
             const filePath = path.join(commandsPath, file);
             const command = require(filePath);
-            
             if ('data' in command && 'execute' in command) {
-                const commandData = command.data.toJSON();
-                commands.push(commandData);
-                logger.info(`📝 Preparando comando: ${commandData.name} (global: ${!commandData.dm_permission})`);
+                commands.push(command.data.toJSON());
             }
         }
 
         const rest = new REST({ version: '10' }).setToken(config.DISCORD.TOKEN);
-        
-        // Registrar comandos globalmente (disponíveis em todos os servidores)
         logger.info(`🌐 Registrando ${commands.length} comandos globalmente...`);
         const result = await rest.put(
             Routes.applicationCommands(config.DISCORD.CLIENT_ID),
             { body: commands }
         );
-        
+
         logger.info(`✅ ${result.length} comandos registrados com sucesso!`);
         logger.info('⏰ Nota: Comandos podem demorar até 1 hora para aparecer em todos os servidores devido ao cache do Discord');
-        
-        // Log dos comandos registrados
+
         result.forEach(cmd => {
             logger.info(`   ✓ ${cmd.name}: ${cmd.description}`);
         });
-        
     } catch (error) {
         logger.error('❌ Erro ao registrar comandos', { error: error && error.message ? error.message : error, stack: error && error.stack });
     }
@@ -179,7 +172,6 @@ async function registerCommands() {
 // Registrar comandos e fazer login
 (async () => {
     await registerCommands();
-    
     client.login(config.DISCORD.TOKEN).catch(error => {
         logger.error('❌ Erro ao fazer login:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         process.exit(1);
@@ -202,25 +194,25 @@ client.once('ready', () => {
         if (client.webhooks?.setClient) client.webhooks.setClient(client);
         if (client.webhooks?.hydrateFromStorage) client.webhooks.hydrateFromStorage();
     } catch {}
-    // Restaurar painéis de tickets do storage (Mongo/SQLite)
+
+    // Restaurar painéis de tickets e verificação do storage (Mongo/SQLite)
     (async () => {
         try {
             const isSqlite = (process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite';
             let panels = [];
             if (isSqlite) {
                 const storage = require('./utils/storage');
-                // Não temos guild_id aqui, então restauramos por fetch por guilds mais tarde; como fallback, não fazer scan global pesado.
-                // Estratégia: iterar guilds e tentar recriar por canal conhecido
                 for (const guild of client.guilds.cache.values()) {
                     try {
-                        const list = await storage.getPanels(guild.id);
-                        panels.push(...list);
+                        const tickets = await storage.getPanels(guild.id);
+                        const verifs = (storage.getPanelsByType ? await storage.getPanelsByType(guild.id, 'verification') : []);
+                        panels.push(...tickets, ...verifs);
                     } catch {}
                 }
             } else {
                 if (!mongoReady) return;
                 const { PanelModel } = require('./utils/db/models');
-                panels = await PanelModel.find({ type: 'tickets' }).lean();
+                panels = await PanelModel.find({ type: { $in: ['tickets','verification'] } }).lean();
             }
             for (const p of panels) {
                 try {
@@ -242,26 +234,46 @@ client.once('ready', () => {
                         }
                         if (!msg) {
                             const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
-                            const embed = new EmbedBuilder().setTitle('🎫 Centro de Suporte').setDescription('Escolhe um departamento para abrir um ticket.').setColor(0x7C3AED);
-                            const row1 = new ActionRowBuilder().addComponents(
-                                new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
-                                new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
-                                new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary)
-                            );
-                            const row2 = new ActionRowBuilder().addComponents(
-                                new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
-                                new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('🧾').setStyle(ButtonStyle.Secondary)
-                            );
-                            msg = await channel.send({ embeds: [embed], components: [row1, row2] });
+                            if (p.type === 'verification') {
+                                const embed = new EmbedBuilder()
+                                    .setTitle('🔒 Verificação do Servidor')
+                                    .setDescription('Clica em Verificar para concluir e ganhar acesso aos canais.')
+                                    .setColor(0x7C3AED);
+                                const row = new ActionRowBuilder().addComponents(
+                                    new ButtonBuilder().setCustomId('verify_user').setLabel('Verificar').setEmoji('✅').setStyle(ButtonStyle.Primary)
+                                );
+                                msg = await channel.send({ embeds: [embed], components: [row] });
+                                // Optional enhancement: if verification method is reaction and this is a fallback render,
+                                // add the ✅ reaction to guide users immediately.
+                                try {
+                                    const cfg = await storage.getGuildConfig(p.guild_id).catch(() => ({}));
+                                    const method = cfg?.verification?.method || 'button';
+                                    if (method === 'reaction') {
+                                        await msg.react('✅').catch(() => {});
+                                    }
+                                } catch {}
+                            } else {
+                                const embed = new EmbedBuilder().setTitle('🎫 Centro de Suporte').setDescription('Escolhe um departamento para abrir um ticket.').setColor(0x7C3AED);
+                                const row1 = new ActionRowBuilder().addComponents(
+                                    new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
+                                    new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
+                                    new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary)
+                                );
+                                const row2 = new ActionRowBuilder().addComponents(
+                                    new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
+                                    new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('🧾').setStyle(ButtonStyle.Secondary)
+                                );
+                                msg = await channel.send({ embeds: [embed], components: [row1, row2] });
+                            }
                         }
                         // Atualizar/guardar painel
                         if (isSqlite) {
                             const storage = require('./utils/storage');
-                            await storage.upsertPanel({ guild_id: p.guild_id, channel_id: p.channel_id, message_id: msg.id, theme: p.theme || 'dark', payload: p.payload || null, type: 'tickets' });
+                            await storage.upsertPanel({ guild_id: p.guild_id, channel_id: p.channel_id, message_id: msg.id, theme: p.theme || 'dark', payload: p.payload || null, type: p.type || 'tickets' });
                         } else {
                             const { PanelModel } = require('./utils/db/models');
                             await PanelModel.findOneAndUpdate(
-                                { guild_id: p.guild_id, channel_id: p.channel_id, type: 'tickets' },
+                                { guild_id: p.guild_id, channel_id: p.channel_id, type: p.type || 'tickets' },
                                 { $set: { message_id: msg.id, theme: p.theme || 'dark', payload: p.payload || null } },
                                 { upsert: true }
                             );

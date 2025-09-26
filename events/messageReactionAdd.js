@@ -55,7 +55,7 @@ module.exports = {
       const unverifiedRoleId = vcfg.unverifiedRoleId || null;
       const verifyRole = verifiedRoleId ? message.guild.roles.cache.get(verifiedRoleId) : null;
       if (!verifyRole) {
-        try { await storage.addLog({ guild_id: message.guild.id, user_id: user.id, type: 'verification_fail', reason: 'role_not_found' }); } catch {}
+        try { await storage.addLog({ guild_id: message.guild.id, user_id: user.id, type: 'verification_fail', message: 'role_not_found' }); } catch {}
         return;
       }
 
@@ -65,7 +65,7 @@ module.exports = {
       let addOk = true;
       await member.roles.add(verifyRole).catch(() => { addOk = false; });
       if (!addOk) {
-        try { await storage.addLog({ guild_id: message.guild.id, user_id: user.id, type: 'verification_fail', reason: 'role_add_failed', role_id: verifyRole.id }); } catch {}
+        try { await storage.addLog({ guild_id: message.guild.id, user_id: user.id, type: 'verification_fail', message: 'role_add_failed', role_id: verifyRole.id }); } catch {}
         return;
       }
       if (unverifiedRoleId && member.roles.cache.has(unverifiedRoleId)) {
@@ -86,6 +86,9 @@ module.exports = {
           await storage.pruneLogsByTypeOlderThan(message.guild.id, 'verification_fail', keepDays * 24 * 60 * 60 * 1000);
         }
       } catch {}
+
+      // Success log with method for metrics
+      try { await storage.addLog({ guild_id: message.guild.id, user_id: user.id, type: 'verification_success', message: 'reaction' }); } catch {}
 
       // No direct reply in reaction flow; optional dashboard event
       if (global.socketManager) {

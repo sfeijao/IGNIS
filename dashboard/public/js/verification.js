@@ -4,6 +4,7 @@
 	const els={
 		mode:document.getElementById('mode'),
 		method:document.getElementById('method'),
+		cooldownSeconds:document.getElementById('cooldownSeconds'),
 		logFails:document.getElementById('logFails'),
 		logFailRetention:document.getElementById('logFailRetention'),
 		save:document.getElementById('save'),
@@ -13,6 +14,18 @@
 		unverifiedRole:document.getElementById('unverifiedRole'),
 		panelChannel:document.getElementById('panelChannel'),
 		createPanel:document.getElementById('createPanel'),
+		// Metrics & logs
+		metricsWindow:document.getElementById('metricsWindow'),
+		metricsRefresh:document.getElementById('metricsRefresh'),
+		metricSuccess:document.getElementById('metricSuccess'),
+		metricFail:document.getElementById('metricFail'),
+		metricTotal:document.getElementById('metricTotal'),
+		byMethodList:document.getElementById('byMethodList'),
+		failReasonsList:document.getElementById('failReasonsList'),
+		exportLogs:document.getElementById('exportLogs'),
+		pruneDays:document.getElementById('pruneDays'),
+		pruneLogs:document.getElementById('pruneLogs'),
+		logsList:document.getElementById('logsList'),
 		// Form builder
 		formBuilder:document.getElementById('formBuilder'),
 		newQuestionLabel:document.getElementById('newQuestionLabel'),
@@ -148,7 +161,8 @@
 	function updateDirty(errors){
 		const mode=els.mode?.value; const method=els.method?.value; const lf=!!els.logFails?.checked; const lr = parseInt(els.logFailRetention?.value||'7',10);
 		const vr=els.verifiedRole?.value||''; const ur=els.unverifiedRole?.value||'';
-		const changedBase = (original.mode!==mode) || (original.method!==method) || (Boolean(original.logFails)!==lf) || ((original.logFailRetention||7)!==lr) || ((original.verifiedRoleId||'')!==vr) || ((original.unverifiedRoleId||'')!==ur);
+		const cd = Math.max(0, Math.min(3600, parseInt(els.cooldownSeconds?.value||'0', 10) || 0));
+		const changedBase = (original.mode!==mode) || (original.method!==method) || (Boolean(original.logFails)!==lf) || ((original.logFailRetention||7)!==lr) || ((original.verifiedRoleId||'')!==vr) || ((original.unverifiedRoleId||'')!==ur) || ((original.cooldownSeconds||0)!==cd);
 		const formChanged = JSON.stringify(original.formQuestions||[]) !== JSON.stringify(questions||[]);
 		const changed = changedBase || (method==='form' && formChanged);
 		els.save && (els.save.disabled = (Array.isArray(errors) && errors.length>0) || !changed);
@@ -159,15 +173,19 @@
 			const r=await fetch(`/api/guild/${guildId}/verification/config`, {credentials:'same-origin'});
 			const d=await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`);
 			const c=d.config||{};
-			original={ mode:c.mode||'easy', method:c.method||'button', logFails:!!c.logFails, logFailRetention: c.logFailRetention||7, verifiedRoleId: c.verifiedRoleId||'', unverifiedRoleId: c.unverifiedRoleId||'', formQuestions: Array.isArray(c?.form?.questions)? c.form.questions : [] };
+			original={ mode:c.mode||'easy', method:c.method||'button', cooldownSeconds: Number(c.cooldownSeconds||0), logFails:!!c.logFails, logFailRetention: c.logFailRetention||7, verifiedRoleId: c.verifiedRoleId||'', unverifiedRoleId: c.unverifiedRoleId||'', formQuestions: Array.isArray(c?.form?.questions)? c.form.questions : [] };
 			questions = JSON.parse(JSON.stringify(original.formQuestions));
 			if(els.mode) els.mode.value=original.mode; if(els.method) els.method.value=original.method; if(els.logFails) els.logFails.checked=original.logFails;
 			if(els.logFailRetention){ els.logFailRetention.value = original.logFailRetention || 7; document.getElementById('retentionRow')?.classList.toggle('hidden', !original.logFails); }
+			if(els.cooldownSeconds){ els.cooldownSeconds.value = String(original.cooldownSeconds||0); }
 			// Fill roles/channels if empty
 			await Promise.all([loadRoles(), loadChannels()]);
 			if(els.verifiedRole && original.verifiedRoleId) els.verifiedRole.value = original.verifiedRoleId;
 			if(els.unverifiedRole && original.unverifiedRoleId) els.unverifiedRole.value = original.unverifiedRoleId;
 			setHelp(); renderQuestions(); validate();
+			// Initial metrics/logs fetch
+			await refreshMetrics();
+			await refreshLogs();
 		}catch(e){ console.error(e); notify(e.message,'error'); }
 	}
 
@@ -190,7 +208,8 @@
 			validate(); if(els.save?.disabled) return; els.save.disabled=true;
 			const method = els.method?.value || 'button';
 			const lr = parseInt(els.logFailRetention?.value||'7',10);
-			const body = { mode:els.mode?.value||'easy', method, logFails:!!els.logFails?.checked };
+			const cd = Math.max(0, Math.min(3600, parseInt(els.cooldownSeconds?.value||'0', 10) || 0));
+			const body = { mode:els.mode?.value||'easy', method, cooldownSeconds: cd, logFails:!!els.logFails?.checked };
 			if(body.logFails) body.logFailRetention = Math.max(1, Math.min(90, lr));
 			const vr = els.verifiedRole?.value||''; const ur = els.unverifiedRole?.value||'';
 			if(vr) body.verifiedRoleId = vr; if(ur) body.unverifiedRoleId = ur;
@@ -198,7 +217,7 @@
 			const r=await fetch(`/api/guild/${guildId}/verification/config`, { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify(body)});
 			const d=await r.json(); if(!r.ok||!d.success) throw new Error(Array.isArray(d.details)? d.details.join(' • ') : (d.error||`HTTP ${r.status}`));
 			const c=d.config||body; // prefer server-config back
-			original={ mode:c.mode||body.mode, method:c.method||body.method, logFails:!!c.logFails, logFailRetention:c.logFailRetention||body.logFailRetention||7, verifiedRoleId:c.verifiedRoleId||vr||'', unverifiedRoleId:c.unverifiedRoleId||ur||'', formQuestions: (c.form?.questions)||(body.form?.questions)||[] };
+			original={ mode:c.mode||body.mode, method:c.method||body.method, cooldownSeconds: Number(c.cooldownSeconds||body.cooldownSeconds||0), logFails:!!c.logFails, logFailRetention:c.logFailRetention||body.logFailRetention||7, verifiedRoleId:c.verifiedRoleId||vr||'', unverifiedRoleId:c.unverifiedRoleId||ur||'', formQuestions: (c.form?.questions)||(body.form?.questions)||[] };
 			notify('Guardado','success');
 		}catch(e){ console.error(e); notify(e.message,'error'); }
 		finally{ validate(); }
@@ -211,6 +230,7 @@
 	// Events
 	els.mode?.addEventListener('change', ()=>{ setHelp(); validate(); });
 	els.method?.addEventListener('change', ()=>{ setHelp(); validate(); });
+	els.cooldownSeconds?.addEventListener('input', ()=> validate());
 	els.logFails?.addEventListener('change', ()=> { updateRetentionVisibility(); validate(); });
 	els.logFailRetention?.addEventListener('input', ()=> validate());
 	els.verifiedRole?.addEventListener('change', ()=> validate());
@@ -263,6 +283,83 @@
 		}
 	}
 	els.createPanel?.addEventListener('click', createPanel);
+
+	// Metrics
+	async function refreshMetrics(){
+		try{
+			const win = els.metricsWindow?.value || '24h';
+			const r = await fetch(`/api/guild/${guildId}/verification/metrics?window=${encodeURIComponent(win)}`, { credentials:'same-origin' });
+			const d = await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`);
+			const m = d.metrics || { success:0, fail:0, byMethod:{}, failReasons:{} };
+			if(els.metricSuccess) els.metricSuccess.textContent = String(m.success||0);
+			if(els.metricFail) els.metricFail.textContent = String(m.fail||0);
+			if(els.metricTotal) els.metricTotal.textContent = String((m.success||0)+(m.fail||0));
+			if(els.byMethodList){
+				els.byMethodList.innerHTML='';
+				const entries = Object.entries(m.byMethod||{}).sort((a,b)=>b[1]-a[1]);
+				for(const [k,v] of entries){
+					const li=document.createElement('li');
+					li.innerHTML = `<span>${k}</span><span class="badge">${v}</span>`;
+					els.byMethodList.appendChild(li);
+				}
+				if(entries.length===0){ els.byMethodList.innerHTML = '<li><span class="text-secondary">Sem dados</span></li>'; }
+			}
+			if(els.failReasonsList){
+				els.failReasonsList.innerHTML='';
+				const entries = Object.entries(m.failReasons||{}).sort((a,b)=>b[1]-a[1]);
+				for(const [k,v] of entries){
+					const li=document.createElement('li');
+					li.innerHTML = `<span>${k}</span><span class="badge">${v}</span>`;
+					els.failReasonsList.appendChild(li);
+				}
+				if(entries.length===0){ els.failReasonsList.innerHTML = '<li><span class="text-secondary">Sem dados</span></li>'; }
+			}
+		}catch(e){ console.error(e); notify(e.message,'error'); }
+	}
+	els.metricsWindow?.addEventListener('change', refreshMetrics);
+	els.metricsRefresh?.addEventListener('click', refreshMetrics);
+
+	// Logs
+	async function refreshLogs(){
+		try{
+			const r = await fetch(`/api/guild/${guildId}/verification/logs?limit=200`, { credentials:'same-origin' });
+			const d = await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`);
+			const list = Array.isArray(d.logs) ? d.logs : [];
+			if(els.logsList){
+				els.logsList.innerHTML='';
+				for(const log of list){
+					const ts = new Date(log.timestamp).toLocaleString();
+					const li=document.createElement('li');
+					const icon = log.type === 'verification_success' ? '<i class="fas fa-check-circle" style="color:#22c55e"></i>' : '<i class="fas fa-times-circle" style="color:#ef4444"></i>';
+					li.innerHTML = `<div class="flex-row align-center"><span>${icon}</span><strong style="margin-left:6px">${log.type}</strong><span class="badge" style="margin-left:6px">${log.message||'-'}</span></div><div class="text-secondary small">${ts}</div>`;
+					els.logsList.appendChild(li);
+				}
+				if(list.length===0){ els.logsList.innerHTML = '<li><span class="text-secondary">Sem logs</span></li>'; }
+			}
+		}catch(e){ console.error(e); notify(e.message,'error'); }
+	}
+	async function exportLogs(){
+		try{
+			const r = await fetch(`/api/guild/${guildId}/verification/logs?limit=1000`, { credentials:'same-origin' });
+			const d = await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`);
+			const blob = new Blob([JSON.stringify(d.logs||[], null, 2)], { type: 'application/json' });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url; a.download = `verification-logs-${guildId}.json`;
+			document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+		}catch(e){ console.error(e); notify(e.message,'error'); }
+	}
+	async function pruneLogs(){
+		try{
+			const days = Math.max(1, Math.min(365, parseInt(els.pruneDays?.value||'30', 10) || 30));
+			const r = await fetch(`/api/guild/${guildId}/verification/logs?olderThanDays=${encodeURIComponent(days)}`, { method:'DELETE', credentials:'same-origin' });
+			const d = await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`);
+			notify('Logs limpos','success');
+			refreshLogs();
+		}catch(e){ console.error(e); notify(e.message,'error'); }
+	}
+	els.exportLogs?.addEventListener('click', exportLogs);
+	els.pruneLogs?.addEventListener('click', pruneLogs);
 
 	load();
 })();
