@@ -284,7 +284,7 @@
 
       const resolved = ev.resolved || {};
       const avatarUrl = (id, avatar) => {
-        if (id && avatar) return `https://cdn.discordapp.com/avatars/${encodeURIComponent(id)}/${encodeURIComponent(avatar)}.png?size=64`;
+        if (id && avatar) return `https://cdn.discordapp.com/avatars/${encodeURIComponent(id)}/${encodeURIComponent(avatar)}.png?size=128`;
         return '/default-avatar.svg';
       };
   const userText = resolved.user ? `${escapeHtml(resolved.user.username||'')}${resolved.user.nick? ' ('+escapeHtml(resolved.user.nick)+')':''} [${escapeHtml(resolved.user.id)}]` : (data.userId ? escapeHtml(data.userId) : '-');
@@ -300,14 +300,14 @@
             <img class="avatar-sm" src="${avatarUrl(resolved.user?.id, resolved.user?.avatar)}" alt="avatar usuário" />
             <div class="id-meta">
               <div class="id-title"><i class="fas fa-user"></i> Usuário</div>
-              <div class="id-name">${resolved.user ? escapeHtml(resolved.user.username||'') : (data.userId? escapeHtml(data.userId) : '-')}</div>
+              <div class="id-name">${resolved.user ? `${escapeHtml(resolved.user.username||'')}${resolved.user.nick? ' ('+escapeHtml(resolved.user.nick)+')':''}` : (data.userId? escapeHtml(data.userId) : '-')}</div>
             </div>
           </div>
           <div class="id-card">
             <img class="avatar-sm" src="${avatarUrl(resolved.executor?.id, resolved.executor?.avatar)}" alt="avatar moderador" />
             <div class="id-meta">
               <div class="id-title"><i class="fas fa-shield-alt"></i> Moderador</div>
-              <div class="id-name">${resolved.executor ? escapeHtml(resolved.executor.username||'') : (data.executorId? escapeHtml(data.executorId) : '-')}</div>
+              <div class="id-name">${resolved.executor ? `${escapeHtml(resolved.executor.username||'')}${resolved.executor.nick? ' ('+escapeHtml(resolved.executor.nick)+')':''}` : (data.executorId? escapeHtml(data.executorId) : '-')}</div>
             </div>
           </div>
         </div>
@@ -317,7 +317,8 @@
       const userOpen = data.userId ? `<a class=\"btn btn-sm btn-glass\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(data.userId)}\"><i class=\"fas fa-external-link-alt\"></i> Abrir no Discord</a>` : '';
       const modOpen = data.executorId ? `<a class=\"btn btn-sm btn-glass\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(data.executorId)}\"><i class=\"fas fa-external-link-alt\"></i> Abrir no Discord</a>` : '';
       const chanOpen = data.channelId ? `<a class=\"btn btn-sm btn-glass\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(data.channelId)}\"><i class=\"fas fa-external-link-alt\"></i> Abrir no Discord</a>` : '';
-      body.push(`<div class=\"kv\"><b>Abrir:</b> ${[userOpen, modOpen, chanOpen].filter(Boolean).join(' ')||'-'}</div>`);
+      const msgOpen = (data.channelId && data.messageId) ? `<a class=\"btn btn-sm btn-glass\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(data.channelId)}/${encodeURIComponent(data.messageId)}\"><i class=\"fas fa-external-link-alt\"></i> Abrir mensagem</a>` : '';
+      body.push(`<div class=\"kv\"><b>Abrir:</b> ${[userOpen, modOpen, chanOpen, msgOpen].filter(Boolean).join(' ')||'-'}</div>`);
       body.push(`<div class=\"kv\"><b>Canal:</b> ${chanText} ${data.channelId? `<button class=\"btn btn-sm btn-glass\" data-copy-id=\"${escapeHtml(data.channelId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
       if (ev.message) body.push(`<div class="kv"><b>Motivo:</b> ${escapeHtml(ev.message)}</div>`);
       if (ev.type === 'mod_message_update') {
