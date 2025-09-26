@@ -693,6 +693,7 @@ select.form-select option:hover {
 
 .hidden { display: none !important; }
 .visible { display: block !important; }
+ .flex-1 { flex: 1 1 auto; }
 
 .mb-0 { margin-bottom: 0 !important; }
 .mb-1 { margin-bottom: var(--space-xs) !important; }

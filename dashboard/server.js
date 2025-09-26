@@ -1564,6 +1564,51 @@ app.delete('/api/guild/:guildId/verification/logs', async (req, res) => {
     } catch (e) { logger.error('Error prune verification logs:', e); return res.status(500).json({ success: false, error: 'Failed to prune verification logs' }); }
 });
 
+// Moderation summary API (counts by family within a time window)
+app.get('/api/guild/:guildId/moderation/summary', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const window = String(req.query.window || '24h');
+        let sinceMs = 24*60*60*1000;
+        if (window === '1h') sinceMs = 60*60*1000; else if (window === '7d') sinceMs = 7*24*60*60*1000;
+        const since = Date.now() - sinceMs;
+        const all = await storage.getLogs(req.params.guildId, 1000);
+        const relevant = (Array.isArray(all) ? all : []).filter(l => l && l.type && l.type.startsWith('mod_') && new Date(l.timestamp).getTime() >= since);
+        // Counters
+        const metrics = {
+            messageDeletes: 0,
+            messageBulkDeletes: 0,
+            messageUpdates: 0,
+            banAdds: 0,
+            banRemoves: 0,
+            memberJoins: 0,
+            memberLeaves: 0,
+            memberUpdates: 0,
+            voiceJoins: 0,
+            voiceLeaves: 0,
+            voiceMoves: 0
+        };
+        for (const l of relevant) {
+            const t = l.type;
+            if (t === 'mod_message_delete') metrics.messageDeletes++;
+            else if (t === 'mod_message_bulk_delete') metrics.messageBulkDeletes++;
+            else if (t === 'mod_message_update') metrics.messageUpdates++;
+            else if (t === 'mod_ban_add') metrics.banAdds++;
+            else if (t === 'mod_ban_remove') metrics.banRemoves++;
+            else if (t === 'mod_member_join') metrics.memberJoins++;
+            else if (t === 'mod_member_leave') metrics.memberLeaves++;
+            else if (t === 'mod_member_update') metrics.memberUpdates++;
+            else if (t === 'mod_voice_join') metrics.voiceJoins++;
+            else if (t === 'mod_voice_leave') metrics.voiceLeaves++;
+            else if (t === 'mod_voice_move') metrics.voiceMoves++;
+        }
+        return res.json({ success: true, window, metrics });
+    } catch (e) { logger.error('Error moderation summary:', e); return res.status(500).json({ success: false, error: 'Failed to fetch moderation summary' }); }
+});
+
 // Quick Tags (guild-level quick replies)
 app.get('/api/guild/:guildId/quick-tags', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });

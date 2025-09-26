@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IGNIS - Moderação</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <style>
+    .card-pad{padding:16px}
+    .gap-12{gap:12px}
+    .mt-12{margin-top:12px}
+    .mt-16{margin-top:16px}
+    .grid-auto{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+    .mini-stat{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--glass-border);border-radius:12px;background:rgba(255,255,255,.03)}
+    .mini-stat .icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(124,58,237,.15);color:#c4b5fd}
+    .mini-stat .value{font-size:1.2rem;font-weight:700}
+    .feed-item{background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);border-radius:12px;padding:12px;margin-bottom:8px}
+    .feed-meta{color:var(--text-secondary);font-size:.9rem}
+    .controls-row{display:flex;flex-wrap:wrap;gap:8px}
+    .btn-toggle{padding:8px 10px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,.04);color:var(--text-primary);cursor:pointer}
+    .btn-toggle.active{background:rgba(124,58,237,.15);border-color:#7C3AED}
+  </style>
+  </head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="navbar-brand"><i class="fas fa-hammer"></i> Moderação</div>
+      <div class="navbar-user">
+        <span id="healthBadge" class="badge health-badge" title="Estado do sistema">
+          <span id="health-mongo" class="dot dot-gray" title="DB"></span>
+          <span id="health-discord" class="dot dot-gray" title="Discord"></span>
+        </span>
+        <img id="userAvatar" src="/default-avatar.svg" alt="Avatar" class="user-avatar">
+        <span id="userName">Carregando...</span>
+        <a id="btnDashboard" href="/dashboard" class="btn btn-glass"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="/logout" class="btn btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+      </div>
+    </div>
+  </nav>
+  <main class="main-content">
+    <div class="container">
+      <section class="dashboard-section fade-in">
+        <div class="section-header">
+          <h1 class="section-title"><i class="fas fa-shield-alt"></i> Moderation Center</h1>
+          <p class="text-secondary">Acompanhe ações de moderação em tempo real e filtre por tipo.</p>
+        </div>
+
+        <div class="glass-card card-pad">
+          <div class="controls-row">
+            <div class="input-group">
+              <label for="window">Janela</label>
+              <select id="window" class="input" title="Intervalo de tempo para contar eventos">
+                <option value="1h">Última 1h</option>
+                <option value="24h" selected>Últimas 24h</option>
+                <option value="7d">Últimos 7 dias</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="q">Pesquisar</label>
+              <input id="q" class="input" placeholder="Usuário, canal, motivo..." title="Texto para pesquisar nos logs" />
+            </div>
+            <div class="input-group">
+              <label for="from">De</label>
+              <input id="from" type="date" class="input" title="Data inicial" placeholder="YYYY-MM-DD" />
+            </div>
+            <div class="input-group">
+              <label for="to">Até</label>
+              <input id="to" type="date" class="input" title="Data final" placeholder="YYYY-MM-DD" />
+            </div>
+          </div>
+          <div class="controls-row mt-12">
+            <button class="btn-toggle active" data-filter="all"><i class="fas fa-list"></i> Todos</button>
+            <button class="btn-toggle" data-filter="messages"><i class="fas fa-comment-dots"></i> Mensagens</button>
+            <button class="btn-toggle" data-filter="members"><i class="fas fa-user"></i> Membros</button>
+            <button class="btn-toggle" data-filter="voice"><i class="fas fa-microphone"></i> Voz</button>
+            <button class="btn-toggle" data-filter="bans"><i class="fas fa-ban"></i> Banimentos</button>
+            <span class="flex-1"></span>
+            <button id="btnRefresh" class="btn btn-primary"><i class="fas fa-rotate"></i> Atualizar</button>
+            <button id="btnAuto" class="btn btn-glass" aria-pressed="false"><i class="fas fa-play"></i> Auto</button>
+            <button id="btnExport" class="btn btn-glass"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+          </div>
+        </div>
+
+        <div class="grid-auto mt-16" id="statsGrid">
+          <div class="mini-stat"><div class="icon"><i class="fas fa-ban"></i></div><div><div class="label">Banimentos</div><div class="value" id="countBans">-</div></div></div>
+          <div class="mini-stat"><div class="icon"><i class="fas fa-comment-slash"></i></div><div><div class="label">Mensagens apagadas</div><div class="value" id="countMsgDel">-</div></div></div>
+          <div class="mini-stat"><div class="icon"><i class="fas fa-pen"></i></div><div><div class="label">Mensagens editadas</div><div class="value" id="countMsgEdit">-</div></div></div>
+          <div class="mini-stat"><div class="icon"><i class="fas fa-users"></i></div><div><div class="label">Entradas/Saídas</div><div class="value" id="countJoinsLeaves">-</div></div></div>
+          <div class="mini-stat"><div class="icon"><i class="fas fa-microphone"></i></div><div><div class="label">Eventos de voz</div><div class="value" id="countVoice">-</div></div></div>
+        </div>
+
+        <div class="glass-card card-pad mt-16">
+          <h3 class="section-title"><i class="fas fa-stream"></i> Feed</h3>
+          <div id="feed" class="mt-12"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="/js/moderation.js"></script>
+  <script>
+    // Navbar user avatar/name & health
+    (async()=>{ try{ const r = await fetch('/api/user'); const d = await r.json(); if(d?.success){ const a=document.getElementById('userAvatar'); const n=document.getElementById('userName'); if(a&&d.user.avatar) a.src=d.user.avatar; if(n) n.textContent=d.user.username; } }catch{} })();
+    (async()=>{ const setTip=(t)=>{const hb=document.getElementById('healthBadge'); if(hb) hb.title=t;}; const dot=(el, st)=>{ if(!el) return; el.classList.remove('dot-green','dot-red','dot-gray'); el.classList.add(st==='ok'?'dot-green': st==='bad'?'dot-red':'dot-gray');}; try{ const r=await fetch('/api/health',{credentials:'same-origin'}); const h=await r.json(); dot(document.getElementById('health-mongo'), h.mongo==='connected'?'ok': (h.mongo==='disabled'?'gray':'bad')); dot(document.getElementById('health-discord'), h.discord?'ok':'bad'); setTip(`${h.mongo==='connected'?'DB: ligado': h.mongo==='disabled'?'DB: desativado':'DB: desligado'} • ${h.discord?'Discord: online':'Discord: offline'}`);}catch{}})();
+  </script>
+</body>
+</html>

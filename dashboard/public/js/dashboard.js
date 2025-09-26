@@ -215,6 +215,16 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             this.showError('Erro ao carregar dados do servidor');
         }
     }
+
+    // Open Moderation Center page
+    openModeration() {
+        const guildId = this.currentGuild;
+        if (!guildId) {
+            this.showError('Selecione um servidor primeiro');
+            return;
+        }
+        window.location.href = `/moderation.html?guildId=${encodeURIComponent(guildId)}`;
+    }
     
     async loadGuildData(guildId) {
         try {
@@ -1274,6 +1284,15 @@ function viewLogs() {
     
     const gid = encodeURIComponent(dashboard.currentGuild);
     window.location.href = `/logs.html?guildId=${gid}`;
+}
+
+function openModeration() {
+    if (!dashboard.currentGuild) {
+        dashboard.showError('Nenhum servidor selecionado');
+        return;
+    }
+    const gid = encodeURIComponent(dashboard.currentGuild);
+    window.location.href = `/moderation.html?guildId=${gid}`;
 }
 
 function botSettings() {
