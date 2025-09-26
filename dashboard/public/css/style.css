@@ -163,6 +163,37 @@ body {
     padding: 10px 12px;
 }
 
+/* Modal identity header */
+.identity-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin: 8px 0 12px;
+}
+.identity-row .id-card {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    padding: 6px 10px;
+}
+.avatar-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--glass-border);
+    object-fit: cover;
+}
+.id-meta .id-title {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+.id-meta .id-name {
+    font-size: 0.95rem;
+}
+
 /* Neuro Card Component */
 .neuro-card {
     background: var(--bg-secondary);

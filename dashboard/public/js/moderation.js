@@ -282,16 +282,43 @@
         }
       }
 
-  const resolved = ev.resolved || {};
+      const resolved = ev.resolved || {};
+      const avatarUrl = (id, avatar) => {
+        if (id && avatar) return `https://cdn.discordapp.com/avatars/${encodeURIComponent(id)}/${encodeURIComponent(avatar)}.png?size=64`;
+        return '/default-avatar.svg';
+      };
   const userText = resolved.user ? `${escapeHtml(resolved.user.username||'')}${resolved.user.nick? ' ('+escapeHtml(resolved.user.nick)+')':''} [${escapeHtml(resolved.user.id)}]` : (data.userId ? escapeHtml(data.userId) : '-');
   const modText = resolved.executor ? `${escapeHtml(resolved.executor.username||'')}${resolved.executor.nick? ' ('+escapeHtml(resolved.executor.nick)+')':''} [${escapeHtml(resolved.executor.id)}]` : (data.executorId ? escapeHtml(data.executorId) : '-');
   const chanText = resolved.channel ? `#${escapeHtml(resolved.channel.name||'')} [${escapeHtml(resolved.channel.id)}]` : (data.channelId ? escapeHtml(data.channelId) : '-');
   const body = [];
   body.push(`<div class="kv"><b>Tipo:</b> ${escapeHtml(ev.type)}</div>`);
   body.push(`<div class="kv"><b>Quando:</b> ${new Date(ev.timestamp).toLocaleString('pt-PT')}</div>`);
+      // Identity header with avatars
+      body.push(`
+        <div class="identity-row">
+          <div class="id-card">
+            <img class="avatar-sm" src="${avatarUrl(resolved.user?.id, resolved.user?.avatar)}" alt="avatar usuário" />
+            <div class="id-meta">
+              <div class="id-title"><i class="fas fa-user"></i> Usuário</div>
+              <div class="id-name">${resolved.user ? escapeHtml(resolved.user.username||'') : (data.userId? escapeHtml(data.userId) : '-')}</div>
+            </div>
+          </div>
+          <div class="id-card">
+            <img class="avatar-sm" src="${avatarUrl(resolved.executor?.id, resolved.executor?.avatar)}" alt="avatar moderador" />
+            <div class="id-meta">
+              <div class="id-title"><i class="fas fa-shield-alt"></i> Moderador</div>
+              <div class="id-name">${resolved.executor ? escapeHtml(resolved.executor.username||'') : (data.executorId? escapeHtml(data.executorId) : '-')}</div>
+            </div>
+          </div>
+        </div>
+      `);
   body.push(`<div class="kv"><b>Usuário:</b> ${userText} ${data.userId? `<button class=\"btn btn-sm btn-glass\" data-copy-id=\"${escapeHtml(data.userId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
-  body.push(`<div class="kv"><b>Moderador:</b> ${modText} ${data.executorId? `<button class=\"btn btn-sm btn-glass\" data-copy-id=\"${escapeHtml(data.executorId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
-  body.push(`<div class="kv"><b>Canal:</b> ${chanText} ${data.channelId? `<button class=\"btn btn-sm btn-glass\" data-copy-id=\"${escapeHtml(data.channelId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
+      body.push(`<div class="kv"><b>Moderador:</b> ${modText} ${data.executorId? `<button class=\"btn btn-sm btn-glass\" data-copy-id=\"${escapeHtml(data.executorId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
+      const userOpen = data.userId ? `<a class=\"btn btn-sm btn-glass\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(data.userId)}\"><i class=\"fas fa-external-link-alt\"></i> Abrir no Discord</a>` : '';
+      const modOpen = data.executorId ? `<a class=\"btn btn-sm btn-glass\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(data.executorId)}\"><i class=\"fas fa-external-link-alt\"></i> Abrir no Discord</a>` : '';
+      const chanOpen = data.channelId ? `<a class=\"btn btn-sm btn-glass\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(data.channelId)}\"><i class=\"fas fa-external-link-alt\"></i> Abrir no Discord</a>` : '';
+      body.push(`<div class=\"kv\"><b>Abrir:</b> ${[userOpen, modOpen, chanOpen].filter(Boolean).join(' ')||'-'}</div>`);
+      body.push(`<div class=\"kv\"><b>Canal:</b> ${chanText} ${data.channelId? `<button class=\"btn btn-sm btn-glass\" data-copy-id=\"${escapeHtml(data.channelId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
       if (ev.message) body.push(`<div class="kv"><b>Motivo:</b> ${escapeHtml(ev.message)}</div>`);
       if (ev.type === 'mod_message_update') {
         if (data.before) body.push(`<pre class="code-block"><b>Antes:</b>\n${escapeHtml(data.before)}</pre>`);
