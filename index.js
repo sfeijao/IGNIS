@@ -96,6 +96,17 @@ client.commands = new Collection();
 client.storage = storage;
 client.webhooks = new WebhookManager(client);
 
+// Bridge Discord events to dashboard sockets (if available)
+client.socketManager = {
+    onDiscordEvent: (eventName, guildId, data) => {
+        try {
+            if (global.socketManager && typeof global.socketManager.broadcastModeration === 'function') {
+                global.socketManager.broadcastModeration(guildId, { event: eventName, data });
+            }
+        } catch {}
+    }
+};
+
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 

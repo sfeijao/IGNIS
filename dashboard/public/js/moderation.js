@@ -154,7 +154,21 @@
         if (data.userId) actions.push({ key:'deafen', label:'Ensurdecer', icon:'fa-deaf', payload:{ userId: data.userId } });
         if (data.userId) actions.push({ key:'undeafen', label:'Dessurdir', icon:'fa-assistive-listening-systems', payload:{ userId: data.userId } });
       } else if (ev.type.startsWith('mod_message_')) {
-        // Read-only for now
+        if (ev.type === 'mod_message_delete' && (data.content && data.channelId)) {
+          actions.push({ key:'restore_message', label:'Restaurar mensagem', icon:'fa-undo', payload:{ logId: ev.id } });
+        }
+      } else if (ev.type.startsWith('mod_channel_')) {
+        if (ev.type === 'mod_channel_delete') {
+          actions.push({ key:'recreate_channel', label:'Recriar canal', icon:'fa-plus-square', payload:{ logId: ev.id } });
+        } else if (ev.type === 'mod_channel_update') {
+          actions.push({ key:'rename_channel', label:'Reverter nome do canal', icon:'fa-i-cursor', payload:{ logId: ev.id } });
+        }
+      } else if (ev.type.startsWith('mod_role_')) {
+        if (ev.type === 'mod_role_delete') {
+          actions.push({ key:'restore_role', label:'Restaurar cargo', icon:'fa-user-shield', payload:{ logId: ev.id } });
+        } else if (ev.type === 'mod_role_update') {
+          actions.push({ key:'revert_role_props', label:'Reverter propriedades do cargo', icon:'fa-undo', payload:{ logId: ev.id } });
+        }
       }
 
       const resolved = ev.resolved || {};
@@ -220,12 +234,45 @@
   els.userId?.addEventListener('keyup', (e)=>{ if(e.key==='Enter') loadFeed(); });
   els.moderatorId?.addEventListener('keyup', (e)=>{ if(e.key==='Enter') loadFeed(); });
   els.channelId?.addEventListener('keyup', (e)=>{ if(e.key==='Enter') loadFeed(); });
+  // Simple autocomplete for user/mod/channel fields
+  function attachAutocomplete(inputEl, endpoint){
+    if (!inputEl) return;
+    let dd;
+    const ensureDd = () => { if (!dd){ dd = document.createElement('div'); dd.className = 'dropdown'; dd.style.position='absolute'; dd.style.zIndex=10; dd.style.background='var(--bg-elev)'; dd.style.border='1px solid var(--glass-border)'; dd.style.borderRadius='8px'; dd.style.minWidth = (inputEl.offsetWidth+"px"); document.body.appendChild(dd);} return dd; };
+    const placeDd = () => { const r = inputEl.getBoundingClientRect(); dd.style.left = (window.scrollX + r.left)+"px"; dd.style.top = (window.scrollY + r.bottom + 4)+"px"; dd.style.minWidth = r.width+"px"; };
+    const hide = () => { if(dd) dd.style.display='none'; };
+    const show = () => { if(dd) dd.style.display='block'; };
+    inputEl.addEventListener('input', async ()=>{
+      const q = inputEl.value.trim(); if (!q || q.length < 2) { hide(); return; }
+      try {
+        const u = new URL(`/api/guild/${guildId}/search/${endpoint}`, window.location.origin); u.searchParams.set('q', q);
+        const r = await fetch(u, { credentials: 'same-origin' }); const d = await r.json(); if(!d.success) throw new Error(d.error||'search_failed');
+        const list = Array.isArray(d.results)? d.results: [];
+        const el = ensureDd(); placeDd(); el.innerHTML = list.map(it => {
+          if (endpoint==='members') return `<div class="dd-item" data-id="${it.id}"><span>${(it.nick? (escapeHtml(it.nick)+' • '):'')+escapeHtml(it.username)}</span> <small>${it.id}</small></div>`;
+          return `<div class="dd-item" data-id="${it.id}"><span>#${escapeHtml(it.name||'')}</span> <small>${it.id}</small></div>`;
+        }).join('');
+        el.querySelectorAll('.dd-item').forEach(n=> n.addEventListener('click', ()=>{ inputEl.value = n.getAttribute('data-id'); hide(); loadFeed(); }));
+        show();
+      } catch(e){ hide(); }
+    });
+    inputEl.addEventListener('blur', ()=> setTimeout(hide, 200));
+  }
+  attachAutocomplete(els.userId, 'members');
+  attachAutocomplete(els.moderatorId, 'members');
+  attachAutocomplete(els.channelId, 'channels');
   els.filterButtons.forEach(btn=> btn.addEventListener('click', ()=>{
     els.filterButtons.forEach(b=> b.classList.remove('active'));
     btn.classList.add('active');
     currentFamily = btn.getAttribute('data-filter') || 'all';
     loadFeed();
   }));
+
+  // Public API for socket-driven refreshes
+  window.ModerationPage = {
+    refresh: async () => { await loadSummary(); await loadFeed(); }
+  };
+  window.addEventListener('moderation:refresh', () => { window.ModerationPage.refresh(); });
 
   // Initial load
   loadSummary();

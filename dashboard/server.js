@@ -11,6 +11,7 @@ const logger = require('../utils/logger');
 const { PermissionFlagsBits } = require('discord.js');
 
 const app = express();
+let io = null;
 const PORT = process.env.PORT || 4000;
 const isSqlite = (process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite';
 const OAUTH_VERBOSE = (process.env.OAUTH_VERBOSE_LOGS || '').toLowerCase() === 'true';
@@ -60,7 +61,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Session configuration
-app.use(session({
+const sessionMiddleware = session({
     secret: process.env.SESSION_SECRET || 'ignis-dashboard-development-secret-2024',
     resave: false,
     saveUninitialized: false,
@@ -69,7 +70,8 @@ app.use(session({
         maxAge: 24 * 60 * 60 * 1000, // 24 horas
         httpOnly: true
     }
-}));
+});
+app.use(sessionMiddleware);
 
 // Passport configuration
 app.use(passport.initialize());
@@ -1457,6 +1459,38 @@ app.get('/api/guild/:guildId/moderation/event/:logId', async (req, res) => {
     } catch (e) { logger.error('Error moderation event detail:', e); return res.status(500).json({ success:false, error:'Failed to fetch event' }); }
 });
 
+// Autocomplete endpoints
+app.get('/api/guild/:guildId/search/members', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success:false, error: check.error });
+        const q = (req.query.q || '').toString().toLowerCase();
+        const guild = check.guild;
+        await guild.members.fetch({ withPresences: false }).catch(()=>{});
+        const results = guild.members.cache
+            .filter(m => m && m.user && (m.user.username?.toLowerCase().includes(q) || (m.nickname||'').toLowerCase().includes(q) || m.id === q))
+            .first(20)
+            .map(m => ({ id: m.id, username: m.user.username, nick: m.nickname||null, avatar: m.user.displayAvatarURL() }));
+        return res.json({ success:true, results });
+    } catch (e) { logger.warn('search members failed', e); return res.status(500).json({ success:false, error:'search_failed' }); }
+});
+
+app.get('/api/guild/:guildId/search/channels', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success:false, error: check.error });
+        const q = (req.query.q || '').toString().toLowerCase();
+        const guild = check.guild;
+        const results = guild.channels.cache
+            .filter(c => c && (c.name?.toLowerCase().includes(q) || c.id === q))
+            .first(20)
+            .map(c => ({ id: c.id, name: c.name, type: c.type }));
+        return res.json({ success:true, results });
+    } catch (e) { logger.warn('search channels failed', e); return res.status(500).json({ success:false, error:'search_failed' }); }
+});
+
 // Moderation actions via dashboard
 // POST /api/guild/:guildId/moderation/action { action, userId, reason, durationSeconds, logId }
 app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
@@ -1480,7 +1514,7 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
             try { return await guild.members.fetch(id); } catch { return null; }
         };
         // Execute supported actions
-        switch(String(action)){
+    switch(String(action)){
             case 'unban': {
                 if (!userId) return res.status(400).json({ success:false, error:'missing_userId' });
                 try { await guild.bans.remove(userId, reason||'Dashboard unban'); await logAction('mod_dashboard_unban', `Unbanned ${userId}`, { userId, reason, logId: log?.id||null }); return res.json({ success:true }); } catch (e) { logger.warn('unban failed', e); return res.status(500).json({ success:false, error:'unban_failed' }); }
@@ -1555,6 +1589,100 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                     await logAction(`mod_dashboard_${action}`, `${action} ${m.id}`, { userId:m.id, reason, logId: log?.id||null });
                     return res.json({ success:true });
                 } catch(e){ logger.warn('voice action failed', e); return res.status(500).json({ success:false, error:'voice_action_failed' }); }
+            }
+            case 'restore_message': {
+                // Restore a deleted message content to its original channel (best-effort)
+                if (!log || log.type !== 'mod_message_delete') return res.status(400).json({ success:false, error:'not_a_message_delete_log' });
+                const data = log.data || {};
+                const channelId = data.channelId; const content = data.content;
+                if (!channelId || !content) return res.status(400).json({ success:false, error:'missing_message_content_or_channel' });
+                try {
+                    const channel = guild.channels.cache.get(channelId) || await guild.channels.fetch(channelId).catch(()=>null);
+                    if (!channel || !channel.send) return res.status(404).json({ success:false, error:'channel_not_found' });
+                    // Truncate to fit Discord message length
+                    const maxLen = 1800;
+                    const snippet = String(content).length > maxLen ? (String(content).slice(0,maxLen) + '…') : String(content);
+                    const header = `🧩 Mensagem recuperada pelo dashboard\n— Autor: <@${data.authorId||'desconhecido'}>\n— ID original: ${log.message || data.messageId || 'N/A'}\n`;
+                    const body = `${header}\n${'```'}\n${snippet}\n${'```'}`;
+                    await channel.send({ content: body, allowedMentions: { parse: [] } });
+                    await logAction('mod_dashboard_restore_message', `Restored message ${log.message||''}`, { channelId, logId: log.id });
+                    return res.json({ success:true });
+                } catch (e) {
+                    logger.warn('restore_message failed', e);
+                    return res.status(500).json({ success:false, error:'restore_failed' });
+                }
+            }
+            case 'recreate_channel': {
+                if (!log || !(log.type==='mod_channel_delete' || (log.type==='mod_channel_update' && log.data?.before))) return res.status(400).json({ success:false, error:'no_channel_snapshot' });
+                const snap = log.type==='mod_channel_delete' ? log.data : (log.data.before || null);
+                if (!snap || !snap.name || snap.type == null) return res.status(400).json({ success:false, error:'invalid_channel_snapshot' });
+                try {
+                    const parent = snap.parentId ? (guild.channels.cache.get(snap.parentId) || await guild.channels.fetch(snap.parentId).catch(()=>null)) : null;
+                    const created = await guild.channels.create({
+                        name: snap.name,
+                        type: snap.type,
+                        parent: parent || undefined,
+                        topic: snap.topic || undefined,
+                        nsfw: !!snap.nsfw,
+                        rateLimitPerUser: snap.rateLimitPerUser || 0
+                    });
+                    // Best-effort restore permission overwrites
+                    if (Array.isArray(snap.permissionOverwrites) && snap.permissionOverwrites.length) {
+                        for (const po of snap.permissionOverwrites) {
+                            try { await created.permissionOverwrites.create(po.id, { Allow: BigInt(po.allow||'0'), Deny: BigInt(po.deny||'0') }); } catch {}
+                        }
+                    }
+                    await logAction('mod_dashboard_recreate_channel', `Recreated channel ${created.id}`, { fromLog: log.id, channelId: created.id });
+                    return res.json({ success:true, channelId: created.id });
+                } catch (e) { logger.warn('recreate_channel failed', e); return res.status(500).json({ success:false, error:'recreate_channel_failed' }); }
+            }
+            case 'rename_channel': {
+                if (!log || !(log.data?.before || log.data?.after)) return res.status(400).json({ success:false, error:'no_channel_update_log' });
+                const targetId = (log.data.after?.id || log.data.before?.id);
+                const newName = (log.data.before?.name); // revert to previous name
+                if (!targetId || !newName) return res.status(400).json({ success:false, error:'missing_target_or_name' });
+                try {
+                    const ch = guild.channels.cache.get(targetId) || await guild.channels.fetch(targetId).catch(()=>null);
+                    if (!ch || !ch.edit) return res.status(404).json({ success:false, error:'channel_not_found' });
+                    await ch.edit({ name: newName, reason: reason||'Dashboard revert channel name' });
+                    await logAction('mod_dashboard_rename_channel', `Renamed channel ${ch.id} -> ${newName}`, { fromLog: log.id, channelId: ch.id });
+                    return res.json({ success:true });
+                } catch (e) { logger.warn('rename_channel failed', e); return res.status(500).json({ success:false, error:'rename_channel_failed' }); }
+            }
+            case 'restore_role': {
+                if (!log || !(log.type==='mod_role_delete' || (log.type==='mod_role_update' && log.data?.before))) return res.status(400).json({ success:false, error:'no_role_snapshot' });
+                const snap = log.type==='mod_role_delete' ? log.data : (log.data.before || null);
+                if (!snap || !snap.name) return res.status(400).json({ success:false, error:'invalid_role_snapshot' });
+                try {
+                    const created = await guild.roles.create({
+                        name: snap.name,
+                        color: snap.color || undefined,
+                        hoist: !!snap.hoist,
+                        mentionable: !!snap.mentionable,
+                        permissions: snap.permissions ? BigInt(snap.permissions) : undefined,
+                        reason: reason||'Dashboard restore role'
+                    });
+                    await logAction('mod_dashboard_restore_role', `Restored role ${created.id}`, { fromLog: log.id, roleId: created.id });
+                    return res.json({ success:true, roleId: created.id });
+                } catch (e) { logger.warn('restore_role failed', e); return res.status(500).json({ success:false, error:'restore_role_failed' }); }
+            }
+            case 'revert_role_props': {
+                if (!log || !(log.type==='mod_role_update' && log.data?.before && log.data?.after)) return res.status(400).json({ success:false, error:'no_role_update_log' });
+                const roleId = log.data.after.id; const before = log.data.before;
+                try {
+                    const role = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(()=>null);
+                    if (!role) return res.status(404).json({ success:false, error:'role_not_found' });
+                    await role.edit({
+                        name: before.name,
+                        color: before.color,
+                        hoist: !!before.hoist,
+                        mentionable: !!before.mentionable,
+                        permissions: before.permissions ? BigInt(before.permissions) : undefined,
+                        reason: reason||'Dashboard revert role props'
+                    });
+                    await logAction('mod_dashboard_revert_role_props', `Reverted role ${role.id}`, { fromLog: log.id, roleId });
+                    return res.json({ success:true });
+                } catch (e) { logger.warn('revert_role_props failed', e); return res.status(500).json({ success:false, error:'revert_role_props_failed' }); }
             }
             default:
                 return res.status(400).json({ success:false, error:'unsupported_action' });
@@ -2696,7 +2824,41 @@ function formatTimeAgo(date) {
 
 // Start server only if not in bot-only mode
 if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only') {
-    app.listen(PORT, () => {
+    // Attach socket.io on an HTTP server to support live updates
+    const http = require('http');
+    const server = http.createServer(app);
+    try {
+        const { Server } = require('socket.io');
+        io = new Server(server, { cors: { origin: '*', methods: ['GET','POST'] } });
+        // Share session & passport with Socket.io and require authenticated session
+        io.use((socket, next) => sessionMiddleware(socket.request, {}, next));
+        io.use((socket, next) => passport.initialize()(socket.request, {}, next));
+        io.use((socket, next) => passport.session()(socket.request, {}, next));
+        io.use((socket, next) => {
+            try {
+                const req = socket.request;
+                if (typeof req.isAuthenticated === 'function' && req.isAuthenticated()) return next();
+            } catch {}
+            next(new Error('unauthorized'));
+        });
+        io.on('connection', (socket) => {
+            socket.on('joinGuild', (guildId) => {
+                try {
+                    const req = socket.request;
+                    if (!(typeof req.isAuthenticated === 'function' && req.isAuthenticated())) return;
+                    if (guildId) socket.join(`g:${guildId}`);
+                } catch {}
+            });
+        });
+        // Expose a simple broadcaster for bot events
+        global.socketManager = {
+            broadcastModeration: (guildId, payload) => {
+                try { io && io.to(`g:${guildId}`).emit('moderation_event', payload); } catch {}
+            }
+        };
+    } catch (e) { logger.warn('socket.io init failed:', e?.message||e); }
+
+    server.listen(PORT, () => {
         const callbackURL = getCallbackURL();
         logger.info(`🌐 Dashboard servidor iniciado em http://localhost:${PORT}`);
         logger.info(`🔑 OAuth Callback URL: ${callbackURL}`);

@@ -135,6 +135,38 @@
     </div>
   </div>
 
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js" integrity="sha384-a1GLJkKqR5f0f7VbJZg7tJd8qYwTrcZsQVNwo4t9RPTD0U4d5QYhQ8Yw3mDR8S8w" crossorigin="anonymous"></script>
+  <script>
+    // Connect to socket server for live updates
+    (function(){
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const guildId = params.get('guildId');
+        if (!guildId) return;
+        const socket = io('/', { transports: ['websocket','polling'] });
+        socket.on('connect', () => {
+          try { socket.emit('joinGuild', guildId); } catch {}
+        });
+        socket.on('moderation_event', async (payload) => {
+          // Debounced refresh to avoid spamming on bursts
+          if (!window.__modRefreshPending) {
+            window.__modRefreshPending = true;
+            setTimeout(async () => {
+              try {
+                if (window.ModerationPage && typeof window.ModerationPage.refresh === 'function') {
+                  await window.ModerationPage.refresh();
+                } else {
+                  // Fallback: soft reload of key widgets
+                  const ev = new CustomEvent('moderation:refresh');
+                  window.dispatchEvent(ev);
+                }
+              } finally { window.__modRefreshPending = false; }
+            }, 800);
+          }
+        });
+      } catch {}
+    })();
+  </script>
   <script src="/js/moderation.js"></script>
   <script>
     // Navbar user avatar/name & health
