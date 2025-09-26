@@ -9,6 +9,8 @@ module.exports = {
         const logsChannel = guild.channels.cache.get(config.CHANNELS.LOGS);
         
         try {
+            const storage = require('../utils/storage');
+            await storage.addLog({ guild_id: member.guild.id, type: 'mod_member_leave', message: member.user.id, data: { userId: member.user.id, joinedAt: member.joinedAt } });
             // Log member leave to database
             if (member.client.database) {
                 await member.client.database.createLog({

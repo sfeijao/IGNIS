@@ -45,6 +45,11 @@ module.exports = {
                     joinedAt: new Date().toISOString()
                 });
             }
+            // Persist moderation log
+            try {
+                const storage = require('../utils/storage');
+                await storage.addLog({ guild_id: member.guild.id, type: 'mod_member_join', message: member.user.id, data: { userId: member.user.id } });
+            } catch {}
         } catch (error) {
             console.error('Erro ao processar entrada de membro:', error);
         }

@@ -20,6 +20,12 @@ module.exports = {
                     timestamp: new Date().toISOString()
                 };
 
+                // Persist mod log
+                try {
+                    const storage = require('../utils/storage');
+                    await storage.addLog({ guild_id: guildId, type: 'mod_voice_join', message: userId, data: { channelId: newState.channelId } });
+                } catch {}
+
                 // Analytics
                 if (newState.client.database) {
                     await newState.client.database.recordAnalytics(
@@ -44,6 +50,12 @@ module.exports = {
                     action: 'left',
                     timestamp: new Date().toISOString()
                 };
+
+                // Persist mod log
+                try {
+                    const storage = require('../utils/storage');
+                    await storage.addLog({ guild_id: guildId, type: 'mod_voice_leave', message: userId, data: { channelId: oldState.channelId } });
+                } catch {}
 
                 // Analytics
                 if (oldState.client.database) {
@@ -71,6 +83,12 @@ module.exports = {
                     action: 'moved',
                     timestamp: new Date().toISOString()
                 };
+
+                // Persist mod log
+                try {
+                    const storage = require('../utils/storage');
+                    await storage.addLog({ guild_id: guildId, type: 'mod_voice_move', message: userId, data: { fromChannelId: oldState.channelId, toChannelId: newState.channelId } });
+                } catch {}
 
                 // Analytics
                 if (newState.client.database) {
