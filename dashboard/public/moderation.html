@@ -71,6 +71,18 @@
               <label for="to">Até</label>
               <input id="to" type="date" class="input" title="Data final" placeholder="YYYY-MM-DD" />
             </div>
+            <div class="input-group">
+              <label for="userId">Usuário</label>
+              <input id="userId" class="input" placeholder="ID do usuário" title="Filtrar por usuário (ID)" />
+            </div>
+            <div class="input-group">
+              <label for="moderatorId">Moderador</label>
+              <input id="moderatorId" class="input" placeholder="ID do moderador" title="Filtrar por moderador (executor)" />
+            </div>
+            <div class="input-group">
+              <label for="channelId">Canal</label>
+              <input id="channelId" class="input" placeholder="ID do canal" title="Filtrar por canal" />
+            </div>
           </div>
           <div class="controls-row mt-12">
             <button class="btn-toggle active" data-filter="all"><i class="fas fa-list"></i> Todos</button>
@@ -81,7 +93,16 @@
             <span class="flex-1"></span>
             <button id="btnRefresh" class="btn btn-primary"><i class="fas fa-rotate"></i> Atualizar</button>
             <button id="btnAuto" class="btn btn-glass" aria-pressed="false"><i class="fas fa-play"></i> Auto</button>
-            <button id="btnExport" class="btn btn-glass"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+            <div class="input-group">
+              <label for="exportFormat">Exportar</label>
+              <div class="inline-group">
+                <select id="exportFormat" class="input" title="Formato de exportação">
+                  <option value="csv" selected>CSV</option>
+                  <option value="json">JSON</option>
+                </select>
+                <button id="btnExport" class="btn btn-glass"><i class="fas fa-download"></i> Exportar</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -100,6 +121,19 @@
       </section>
     </div>
   </main>
+
+  <!-- Modal para detalhes de evento de moderação -->
+  <div id="moderationModal" class="modal-overlay modal-hidden" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-content ticket-modal moderation-modal">
+      <div class="modal-header">
+        <h2 id="modModalTitle">Detalhes do evento</h2>
+  <button class="modal-close" aria-label="Fechar" onclick="(function(m){m.classList.add('modal-hidden');m.classList.remove('modal-visible');m.setAttribute('aria-hidden','true');})(document.getElementById('moderationModal'))">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="modModalBody">Carregando...</div>
+      </div>
+    </div>
+  </div>
 
   <script src="/js/moderation.js"></script>
   <script>

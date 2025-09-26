@@ -297,6 +297,15 @@ class SimpleStorage {
             .slice(0, limit);
     }
 
+    // Fetch a single log by id (number or string) for a given guild
+    async getLogById(guildId, id) {
+        const logs = await this.readFile(this.logsFile) || [];
+        const idNum = typeof id === 'string' ? Number(id) : id;
+        // Prefer exact match on id; fallback to string compare
+        const found = logs.find(l => l.guild_id === guildId && (l.id === idNum || `${l.id}` === `${id}`));
+        return found || null;
+    }
+
     // Prune generic logs by type older than N milliseconds
     async pruneLogsByTypeOlderThan(guildId, type, olderThanMs) {
         try {

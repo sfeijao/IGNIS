@@ -44,7 +44,8 @@ module.exports = {
                     data: {
                         channelId: message.channel.id,
                         authorId: message.author?.id || null,
-                        hasAttachments: Array.isArray(message.attachments) ? message.attachments.size > 0 : false
+                        hasAttachments: Array.isArray(message.attachments) ? message.attachments.size > 0 : false,
+                        content: message.content || null
                     }
                 });
             } catch {}

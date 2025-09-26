@@ -1152,3 +1152,12 @@ select.form-select option:hover {
     from { opacity: 0; }
     to { opacity: 1; }
 }
+
+/* Moderation utilities */
+.inline-group { display:flex; gap:8px; align-items:center; }
+.modal-hidden { display:none; }
+.modal-visible { display:block; }
+.modal-content.moderation-modal { max-width: 720px; }
+.kv { margin: 6px 0; }
+.code-block { background: rgba(255,255,255,0.04); border:1px solid var(--glass-border); padding:10px; border-radius:8px; white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+.actions-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }

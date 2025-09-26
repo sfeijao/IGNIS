@@ -1321,7 +1321,7 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
         const from = req.query.from ? new Date(req.query.from) : null;
         const to = req.query.to ? new Date(req.query.to) : null;
         const limit = Math.max(1, Math.min(1000, parseInt(String(req.query.limit || '200'), 10) || 200));
-        const all = await storage.getLogs(req.params.guildId, 1000);
+    const all = await storage.getLogs(req.params.guildId, 1000);
         let filtered = Array.isArray(all) ? all.slice() : [];
         if (type) {
             const t = type.toLowerCase();
@@ -1334,6 +1334,22 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
         }
         if (from && !Number.isNaN(from.getTime())) filtered = filtered.filter(l => new Date(l.timestamp) >= from);
         if (to && !Number.isNaN(to.getTime())) filtered = filtered.filter(l => new Date(l.timestamp) <= to);
+        // Advanced filters: userId, moderatorId (executorId), channelId (from l.data)
+        const userId = (req.query.userId || '').toString().trim();
+        const moderatorId = (req.query.moderatorId || '').toString().trim();
+        const channelId = (req.query.channelId || '').toString().trim();
+        if (userId) filtered = filtered.filter(l => {
+            const d = l.data || {};
+            return (`${d.userId||''}` === userId) || (`${l.actor_id||''}` === userId) || (`${d.authorId||''}` === userId);
+        });
+        if (moderatorId) filtered = filtered.filter(l => {
+            const d = l.data || {};
+            return (`${d.executorId||''}` === moderatorId) || (`${l.actor_id||''}` === moderatorId);
+        });
+        if (channelId) filtered = filtered.filter(l => {
+            const d = l.data || {};
+            return (`${d.channelId||''}` === channelId);
+        });
         if (q) filtered = filtered.filter(l => {
             const hay = [l.message, l.type, l.actor_id, l.ticket_id].map(x => (x ? String(x).toLowerCase() : '')).join(' ');
             return hay.includes(q);
@@ -1359,7 +1375,7 @@ app.get('/api/guild/:guildId/logs/export', async (req, res) => {
         const type = (req.query.type || '').toString().toLowerCase().trim();
         const from = req.query.from ? new Date(req.query.from) : null;
         const to = req.query.to ? new Date(req.query.to) : null;
-        const format = (req.query.format || 'csv').toString().toLowerCase();
+    const format = (req.query.format || 'csv').toString().toLowerCase();
         const all = await storage.getLogs(req.params.guildId, 1000);
         let filtered = Array.isArray(all) ? all.slice() : [];
         if (type) {
@@ -1377,12 +1393,33 @@ app.get('/api/guild/:guildId/logs/export', async (req, res) => {
             const hay = [l.message, l.type, l.actor_id, l.ticket_id].map(x => (x ? String(x).toLowerCase() : '')).join(' ');
             return hay.includes(q);
         });
+        // Advanced filters (mirror list API)
+        const userId = (req.query.userId || '').toString().trim();
+        const moderatorId = (req.query.moderatorId || '').toString().trim();
+        const channelId = (req.query.channelId || '').toString().trim();
+        if (userId) filtered = filtered.filter(l => {
+            const d = l.data || {};
+            return (`${d.userId||''}` === userId) || (`${l.actor_id||''}` === userId) || (`${d.authorId||''}` === userId);
+        });
+        if (moderatorId) filtered = filtered.filter(l => {
+            const d = l.data || {};
+            return (`${d.executorId||''}` === moderatorId) || (`${l.actor_id||''}` === moderatorId);
+        });
+        if (channelId) filtered = filtered.filter(l => {
+            const d = l.data || {};
+            return (`${d.channelId||''}` === channelId);
+        });
         filtered.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
         if (format === 'txt') {
             res.setHeader('Content-Type', 'text/plain; charset=utf-8');
             res.setHeader('Content-Disposition', `attachment; filename=logs-${req.params.guildId}.txt`);
             const lines = filtered.map(l => `[${l.timestamp}] [${l.type||'log'}] ${l.message || ''}`);
             return res.send(lines.join('\n'));
+        }
+        if (format === 'json') {
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename=logs-${req.params.guildId}.json`);
+            return res.send(JSON.stringify(filtered, null, 2));
         }
         // CSV default
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -1397,6 +1434,134 @@ app.get('/api/guild/:guildId/logs/export', async (req, res) => {
     } catch (e) {
         logger.error('Error exporting logs:', e);
         return res.status(500).json({ success: false, error: 'Failed to export logs' });
+    }
+});
+
+// Moderation event details by log id
+app.get('/api/guild/:guildId/moderation/event/:logId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const log = await storage.getLogById(req.params.guildId, req.params.logId);
+        if (!log || !(log.type||'').startsWith('mod_')) return res.status(404).json({ success:false, error:'log_not_found' });
+        const guild = check.guild;
+        const data = log.data || {};
+        const out = { ...log, resolved: {} };
+        // Best-effort resolve names
+        try { if (data.userId) { const m = await guild.members.fetch(data.userId).catch(()=>null); out.resolved.user = m ? { id: m.id, username: m.user.username, nick: m.nickname||null, avatar: m.user.avatar } : { id: data.userId }; } } catch {}
+        try { if (data.executorId) { const m = await guild.members.fetch(data.executorId).catch(()=>null); out.resolved.executor = m ? { id: m.id, username: m.user.username, nick: m.nickname||null, avatar: m.user.avatar } : { id: data.executorId }; } } catch {}
+        try { if (data.channelId) { const c = guild.channels.cache.get(data.channelId) || await guild.channels.fetch(data.channelId).catch(()=>null); if (c) out.resolved.channel = { id:c.id, name:c.name }; } } catch {}
+        return res.json({ success:true, event: out });
+    } catch (e) { logger.error('Error moderation event detail:', e); return res.status(500).json({ success:false, error:'Failed to fetch event' }); }
+});
+
+// Moderation actions via dashboard
+// POST /api/guild/:guildId/moderation/action { action, userId, reason, durationSeconds, logId }
+app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success:false, error: check.error });
+        const guild = check.guild;
+        const { action, userId, reason, durationSeconds, logId } = req.body || {};
+        if (!action) return res.status(400).json({ success:false, error:'missing_action' });
+        const storage = require('../utils/storage');
+        const me = guild.members.me || guild.members.cache.get(client.user.id);
+        const myHighest = me?.roles?.highest?.position ?? 0;
+        const log = logId ? await storage.getLogById(req.params.guildId, logId).catch(()=>null) : null;
+        // Helper to log dashboard actions
+        const logAction = async (type, message, extra) => {
+            try { await storage.addLog({ guild_id: guild.id, type, message, actor_id: req.user.id, data: { via:'dashboard', ...(extra||{}) } }); } catch {}
+        };
+        // Resolve member when needed
+        const getMember = async (id) => {
+            try { return await guild.members.fetch(id); } catch { return null; }
+        };
+        // Execute supported actions
+        switch(String(action)){
+            case 'unban': {
+                if (!userId) return res.status(400).json({ success:false, error:'missing_userId' });
+                try { await guild.bans.remove(userId, reason||'Dashboard unban'); await logAction('mod_dashboard_unban', `Unbanned ${userId}`, { userId, reason, logId: log?.id||null }); return res.json({ success:true }); } catch (e) { logger.warn('unban failed', e); return res.status(500).json({ success:false, error:'unban_failed' }); }
+            }
+            case 'ban': {
+                if (!userId) return res.status(400).json({ success:false, error:'missing_userId' });
+                // Cannot ban members with higher/equal role
+                const m = await getMember(userId).catch(()=>null);
+                if (m) {
+                    const memberHighest = m?.roles?.highest?.position ?? 0; if (memberHighest >= myHighest) return res.status(403).json({ success:false, error:'insufficient_member_hierarchy' });
+                }
+                try { await guild.bans.create(userId, { reason: reason||'Dashboard ban', deleteMessageSeconds: 0 }); await logAction('mod_dashboard_ban', `Banned ${userId}`, { userId, reason, logId: log?.id||null }); return res.json({ success:true }); } catch(e){ logger.warn('ban failed', e); return res.status(500).json({ success:false, error:'ban_failed' }); }
+            }
+            case 'kick': {
+                if (!userId) return res.status(400).json({ success:false, error:'missing_userId' });
+                const m = await getMember(userId); if (!m) return res.status(404).json({ success:false, error:'member_not_found' });
+                const memberHighest = m?.roles?.highest?.position ?? 0; if (memberHighest >= myHighest) return res.status(403).json({ success:false, error:'insufficient_member_hierarchy' });
+                try { await m.kick(reason||'Dashboard kick'); await logAction('mod_dashboard_kick', `Kicked ${m.id}`, { userId:m.id, reason, logId: log?.id||null }); return res.json({ success:true }); } catch(e){ logger.warn('kick failed', e); return res.status(500).json({ success:false, error:'kick_failed' }); }
+            }
+            case 'timeout': {
+                if (!userId) return res.status(400).json({ success:false, error:'missing_userId' });
+                const seconds = Math.max(60, Math.min(28*24*60*60, parseInt(String(durationSeconds||'0'),10)||0));
+                if (!seconds) return res.status(400).json({ success:false, error:'missing_duration' });
+                const m = await getMember(userId); if (!m) return res.status(404).json({ success:false, error:'member_not_found' });
+                const memberHighest = m?.roles?.highest?.position ?? 0; if (memberHighest >= myHighest) return res.status(403).json({ success:false, error:'insufficient_member_hierarchy' });
+                const until = new Date(Date.now() + seconds*1000);
+                try { await m.timeout(until, reason||'Dashboard timeout'); await logAction('mod_dashboard_timeout', `Timeout ${m.id} for ${seconds}s`, { userId:m.id, reason, seconds, logId: log?.id||null }); return res.json({ success:true }); } catch(e){ logger.warn('timeout failed', e); return res.status(500).json({ success:false, error:'timeout_failed' }); }
+            }
+            case 'remove_timeout': {
+                if (!userId) return res.status(400).json({ success:false, error:'missing_userId' });
+                const m = await getMember(userId); if (!m) return res.status(404).json({ success:false, error:'member_not_found' });
+                const memberHighest = m?.roles?.highest?.position ?? 0; if (memberHighest >= myHighest) return res.status(403).json({ success:false, error:'insufficient_member_hierarchy' });
+                try { await m.timeout(null, reason||'Dashboard remove timeout'); await logAction('mod_dashboard_remove_timeout', `Removed timeout for ${m.id}`, { userId:m.id, reason, logId: log?.id||null }); return res.json({ success:true }); } catch(e){ logger.warn('remove timeout failed', e); return res.status(500).json({ success:false, error:'remove_timeout_failed' }); }
+            }
+            case 'revert_nickname': {
+                // Requires log with data.nickname.before
+                if (!log || !log.data || !('nickname' in log.data) || !('before' in (log.data.nickname||{}))) return res.status(400).json({ success:false, error:'no_previous_nickname' });
+                const uid = userId || log.data.userId; if (!uid) return res.status(400).json({ success:false, error:'missing_userId' });
+                const m = await getMember(uid); if (!m) return res.status(404).json({ success:false, error:'member_not_found' });
+                const memberHighest = m?.roles?.highest?.position ?? 0; if (memberHighest >= myHighest) return res.status(403).json({ success:false, error:'insufficient_member_hierarchy' });
+                try { await m.setNickname(log.data.nickname.before || null, reason||'Dashboard revert nickname'); await logAction('mod_dashboard_revert_nick', `Reverted nick of ${m.id}`, { userId:m.id, before: log.data.nickname.before||null, after: log.data.nickname.after||null, logId: log?.id||null }); return res.json({ success:true }); } catch(e){ logger.warn('revert nickname failed', e); return res.status(500).json({ success:false, error:'revert_nickname_failed' }); }
+            }
+            case 'revert_roles': {
+                if (!log || !log.data || !('roles' in log.data)) return res.status(400).json({ success:false, error:'no_roles_change' });
+                const uid = userId || log.data.userId; if (!uid) return res.status(400).json({ success:false, error:'missing_userId' });
+                const m = await getMember(uid); if (!m) return res.status(404).json({ success:false, error:'member_not_found' });
+                const memberHighest = m?.roles?.highest?.position ?? 0; if (memberHighest >= myHighest) return res.status(403).json({ success:false, error:'insufficient_member_hierarchy' });
+                const roles = log.data.roles || {}; const added = Array.isArray(roles.added)? roles.added: []; const removed = Array.isArray(roles.removed)? roles.removed: [];
+                const toAdd = removed.filter(rid => { const r = guild.roles.cache.get(rid); return r && r.position < myHighest; });
+                const toRemove = added.filter(rid => { const r = guild.roles.cache.get(rid); return r && r.position < myHighest; });
+                try {
+                    if (toAdd.length) await m.roles.add(toAdd, 'Dashboard revert roles (add removed)');
+                    if (toRemove.length) await m.roles.remove(toRemove, 'Dashboard revert roles (remove added)');
+                    await logAction('mod_dashboard_revert_roles', `Reverted roles of ${m.id}`, { userId:m.id, add: toAdd, remove: toRemove, logId: log?.id||null });
+                    return res.json({ success:true });
+                } catch(e){ logger.warn('revert roles failed', e); return res.status(500).json({ success:false, error:'revert_roles_failed' }); }
+            }
+            case 'mute':
+            case 'unmute':
+            case 'deafen':
+            case 'undeafen': {
+                if (!userId) return res.status(400).json({ success:false, error:'missing_userId' });
+                const m = await getMember(userId); if (!m) return res.status(404).json({ success:false, error:'member_not_found' });
+                const memberHighest = m?.roles?.highest?.position ?? 0; if (memberHighest >= myHighest) return res.status(403).json({ success:false, error:'insufficient_member_hierarchy' });
+                try {
+                    const vs = m.voice;
+                    if (!vs) return res.status(400).json({ success:false, error:'no_voice_state' });
+                    if (action === 'mute') await vs.setMute(true, reason||'Dashboard mute');
+                    if (action === 'unmute') await vs.setMute(false, reason||'Dashboard unmute');
+                    if (action === 'deafen') await vs.setDeaf(true, reason||'Dashboard deafen');
+                    if (action === 'undeafen') await vs.setDeaf(false, reason||'Dashboard undeafen');
+                    await logAction(`mod_dashboard_${action}`, `${action} ${m.id}`, { userId:m.id, reason, logId: log?.id||null });
+                    return res.json({ success:true });
+                } catch(e){ logger.warn('voice action failed', e); return res.status(500).json({ success:false, error:'voice_action_failed' }); }
+            }
+            default:
+                return res.status(400).json({ success:false, error:'unsupported_action' });
+        }
+    } catch (e) {
+        logger.error('Error moderation action:', e);
+        return res.status(500).json({ success:false, error:'Failed to perform moderation action' });
     }
 });
 
