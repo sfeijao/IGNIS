@@ -118,6 +118,36 @@
           <h3 class="section-title"><i class="fas fa-stream"></i> Feed</h3>
           <div id="feed" class="mt-12"></div>
         </div>
+
+        <div class="glass-card card-pad mt-16">
+          <h3 class="section-title"><i class="fas fa-sitemap"></i> Hierarquia rápida</h3>
+          <p class="text-secondary">Mover rapidamente cargos e canais. Use com cuidado.</p>
+          <div class="grid-auto mt-12">
+            <div>
+              <h4 class="section-subtitle"><i class="fas fa-user-tag"></i> Cargos</h4>
+              <div class="controls-row mt-8">
+                <input id="roleIdQuick" class="input" placeholder="ID do cargo" title="Role ID" />
+                <input id="roleSteps" type="number" class="input w-120" value="1" min="1" title="Passos" />
+                <button id="btnRoleUp" class="btn btn-secondary"><i class="fas fa-arrow-up"></i> Subir</button>
+                <button id="btnRoleDown" class="btn btn-glass"><i class="fas fa-arrow-down"></i> Descer</button>
+              </div>
+            </div>
+            <div>
+              <h4 class="section-subtitle"><i class="fas fa-hashtag"></i> Canais</h4>
+              <div class="controls-row mt-8">
+                <input id="channelIdQuick" class="input" placeholder="ID do canal" title="Channel ID" />
+                <input id="channelSteps" type="number" class="input w-120" value="1" min="1" title="Passos" />
+                <button id="btnChanUp" class="btn btn-secondary"><i class="fas fa-arrow-up"></i> Subir</button>
+                <button id="btnChanDown" class="btn btn-glass"><i class="fas fa-arrow-down"></i> Descer</button>
+              </div>
+              <div class="controls-row mt-8">
+                <input id="channelToCategory" class="input" placeholder="ID categoria alvo (opcional)" title="Categoria" />
+                <button id="btnMoveToCategory" class="btn btn-secondary"><i class="fas fa-folder-open"></i> Mover para categoria</button>
+              </div>
+            </div>
+          </div>
+          <div class="mt-12"><label><input type="checkbox" id="hierDryRun" checked/> Pré-visualizar antes de aplicar</label></div>
+        </div>
       </section>
     </div>
   </main>

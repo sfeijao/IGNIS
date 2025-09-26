@@ -286,4 +286,35 @@
   // Initial load
   loadSummary();
   loadFeed();
+  // Hierarchy quick tools
+  async function postAction(body){
+    const r = await fetch(`/api/guild/${guildId}/moderation/action`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(body) });
+    const d = await r.json(); if(!r.ok || !d.success) throw new Error(d.error||`HTTP ${r.status}`); return d;
+  }
+  function confirmPlan(plan){
+    const risks = plan.risks||[]; const pre = escapeHtml(JSON.stringify(plan.plan||plan, null, 2));
+    const text = `<div class="kv"><b>Pré-visualização</b> (sem aplicar alterações)</div>${risks.length? `<div class="alert alert-warning"><b>Riscos potenciais</b><ul>${risks.map(r=>`<li>${escapeHtml(r)}</li>`).join('')}</ul></div>`:''}<pre class="code-block">${pre}</pre><div class="mt-8">Continuar e aplicar estas alterações?</div>`;
+    return new Promise(resolve=>{ const ok = window.confirm(text.replace(/<[^>]+>/g,'')); resolve(ok); });
+  }
+  const roleUp = document.getElementById('btnRoleUp');
+  const roleDown = document.getElementById('btnRoleDown');
+  const chanUp = document.getElementById('btnChanUp');
+  const chanDown = document.getElementById('btnChanDown');
+  const moveToCat = document.getElementById('btnMoveToCategory');
+  function bool(id){ return !!document.getElementById(id)?.checked; }
+  roleUp?.addEventListener('click', async()=>{
+    try{ const roleId=(document.getElementById('roleIdQuick')?.value||'').trim(); if(!roleId) return notify('ID do cargo em falta','error'); const steps=parseInt(document.getElementById('roleSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_role_up', roleId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp); if(!ok) return; const resp2=await postAction({ action:'move_role_up', roleId, steps }); if(resp2.success) notify('Cargo movido','success'); } else { notify('Cargo movido','success'); } }catch(e){ notify(e.message,'error'); }
+  });
+  roleDown?.addEventListener('click', async()=>{
+    try{ const roleId=(document.getElementById('roleIdQuick')?.value||'').trim(); if(!roleId) return notify('ID do cargo em falta','error'); const steps=parseInt(document.getElementById('roleSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_role_down', roleId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp); if(!ok) return; const resp2=await postAction({ action:'move_role_down', roleId, steps }); if(resp2.success) notify('Cargo movido','success'); } else { notify('Cargo movido','success'); } }catch(e){ notify(e.message,'error'); }
+  });
+  chanUp?.addEventListener('click', async()=>{
+    try{ const channelId=(document.getElementById('channelIdQuick')?.value||'').trim(); if(!channelId) return notify('ID do canal em falta','error'); const steps=parseInt(document.getElementById('channelSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_channel_up', channelId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp); if(!ok) return; const resp2=await postAction({ action:'move_channel_up', channelId, steps }); if(resp2.success) notify('Canal movido','success'); } else { notify('Canal movido','success'); } }catch(e){ notify(e.message,'error'); }
+  });
+  chanDown?.addEventListener('click', async()=>{
+    try{ const channelId=(document.getElementById('channelIdQuick')?.value||'').trim(); if(!channelId) return notify('ID do canal em falta','error'); const steps=parseInt(document.getElementById('channelSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_channel_down', channelId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp); if(!ok) return; const resp2=await postAction({ action:'move_channel_down', channelId, steps }); if(resp2.success) notify('Canal movido','success'); } else { notify('Canal movido','success'); } }catch(e){ notify(e.message,'error'); }
+  });
+  moveToCat?.addEventListener('click', async()=>{
+    try{ const channelId=(document.getElementById('channelIdQuick')?.value||'').trim(); if(!channelId) return notify('ID do canal em falta','error'); const parentId=(document.getElementById('channelToCategory')?.value||'').trim(); const dry=bool('hierDryRun'); const payload={ action:'move_channel_to_category', channelId, parentId: parentId||null }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp); if(!ok) return; const resp2=await postAction({ action:'move_channel_to_category', channelId, parentId: parentId||null }); if(resp2.success) notify('Canal movido para categoria','success'); } else { notify('Canal movido para categoria','success'); } }catch(e){ notify(e.message,'error'); }
+  });
 })();

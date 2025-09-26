@@ -127,6 +127,7 @@ body {
 .gap-8 { gap: 8px; }
 .hr-soft { border: 0; border-top: 1px solid var(--glass-border); margin: 16px 0; opacity: 0.5; }
 .text-secondary { color: var(--text-secondary); }
+.w-120 { width: 120px; }
 .pad-24 { padding: 24px; }
 .flex-wrap { flex-wrap: wrap; }
 .minw-180 { min-width: 180px; }

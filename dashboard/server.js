@@ -1617,23 +1617,52 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                 const snap = log.type==='mod_channel_delete' ? log.data : (log.data.before || null);
                 if (!snap || !snap.name || snap.type == null) return res.status(400).json({ success:false, error:'invalid_channel_snapshot' });
                 try {
-                    if (dryRun) {
-                        return res.json({ success:true, dryRun:true, plan: { create: { name: snap.name, type: snap.type, parentId: snap.parentId||null }, overwrites: (snap.permissionOverwrites||[]).length } });
-                    }
+                    const me = guild.members.me || guild.members.cache.get(client.user.id);
+                    const risks = [];
+                    if (!me?.permissions?.has?.(PermissionFlagsBits.ManageChannels)) risks.push('Bot may lack Manage Channels permission.');
                     const parent = snap.parentId ? (guild.channels.cache.get(snap.parentId) || await guild.channels.fetch(snap.parentId).catch(()=>null)) : null;
-                    const created = await guild.channels.create({
-                        name: snap.name,
-                        type: snap.type,
-                        parent: parent || undefined,
-                        topic: snap.topic || undefined,
-                        nsfw: !!snap.nsfw,
-                        rateLimitPerUser: snap.rateLimitPerUser || 0
-                    });
-                    // Best-effort restore permission overwrites
-                    if (Array.isArray(snap.permissionOverwrites) && snap.permissionOverwrites.length) {
-                        for (const po of snap.permissionOverwrites) {
-                            try { await created.permissionOverwrites.create(po.id, { Allow: BigInt(po.allow||'0'), Deny: BigInt(po.deny||'0') }); } catch {}
-                        }
+                    if (snap.parentId && !parent) risks.push('Parent category missing; channel will be created at the top level.');
+                    // Validate overwrite targets
+                    const rawOverwrites = Array.isArray(snap.permissionOverwrites) ? snap.permissionOverwrites : [];
+                    const validOverwrites = [];
+                    let missingTargets = 0;
+                    for (const po of rawOverwrites) {
+                        const targetRole = guild.roles.cache.get(po.id);
+                        const targetMember = guild.members.cache.get(po.id);
+                        if (!targetRole && !targetMember) { missingTargets++; continue; }
+                        validOverwrites.push({ id: po.id, type: po.type, allow: BigInt(po.allow||'0'), deny: BigInt(po.deny||'0') });
+                    }
+                    if (missingTargets) risks.push(`${missingTargets} permission overwrite targets are missing and will be skipped.`);
+                    // Type-aware options (ignore unsupported props)
+                    const isTextLike = [0, 5, 15].includes(snap.type); // Text, Announcement, Forum
+                    const isVoiceLike = [2, 13].includes(snap.type); // Voice, Stage
+                    const opts = { name: snap.name, type: snap.type };
+                    if (parent) opts.parent = parent;
+                    if (isTextLike) {
+                        if (snap.topic != null) opts.topic = snap.topic;
+                        if (snap.rateLimitPerUser != null) opts.rateLimitPerUser = snap.rateLimitPerUser;
+                        if (snap.nsfw != null) opts.nsfw = !!snap.nsfw;
+                    }
+                    if (isVoiceLike) {
+                        if (snap.bitrate != null) opts.bitrate = snap.bitrate;
+                        if (snap.userLimit != null) opts.userLimit = snap.userLimit;
+                        if (snap.rtcRegion != null) opts.rtcRegion = snap.rtcRegion;
+                        if (snap.videoQualityMode != null) opts.videoQualityMode = snap.videoQualityMode;
+                    }
+                    if (snap.type === 15) { // Forum
+                        if (snap.defaultAutoArchiveDuration != null) opts.defaultAutoArchiveDuration = snap.defaultAutoArchiveDuration;
+                        if (snap.defaultThreadRateLimitPerUser != null) opts.defaultThreadRateLimitPerUser = snap.defaultThreadRateLimitPerUser;
+                        if (snap.defaultSortOrder != null) opts.defaultSortOrder = snap.defaultSortOrder;
+                        if (snap.defaultForumLayout != null) opts.defaultForumLayout = snap.defaultForumLayout;
+                        if (snap.defaultReactionEmoji) opts.defaultReactionEmoji = snap.defaultReactionEmoji;
+                        if (Array.isArray(snap.availableTags)) opts.availableTags = snap.availableTags;
+                    }
+                    if (dryRun) {
+                        return res.json({ success:true, dryRun:true, plan: { create: opts, overwrites: validOverwrites.length }, risks });
+                    }
+                    const created = await guild.channels.create(opts);
+                    if (validOverwrites.length) {
+                        try { await created.permissionOverwrites.set(validOverwrites); } catch { risks.push('Failed to set some permission overwrites.'); }
                     }
                     await logAction('mod_dashboard_recreate_channel', `Recreated channel ${created.id}`, { fromLog: log.id, channelId: created.id });
                     return res.json({ success:true, channelId: created.id });
@@ -1689,7 +1718,7 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                 if (!log || !(log.type==='mod_role_update' && log.data?.before && log.data?.after)) return res.status(400).json({ success:false, error:'no_role_update_log' });
                 const roleId = log.data.after.id; const before = log.data.before;
                 try {
-                    if (dryRun) { return res.json({ success:true, dryRun:true, plan: { edit: { roleId, name: before.name, permissions: before.permissions||'0' } } }); }
+                    if (dryRun) { return res.json({ success:true, dryRun:true, plan: { edit: { roleId, name: before.name, permissions: before.permissions||'0' } }, risks: [] }); }
                     const role = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(()=>null);
                     if (!role) return res.status(404).json({ success:false, error:'role_not_found' });
                     await role.edit({
@@ -1703,6 +1732,69 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                     await logAction('mod_dashboard_revert_role_props', `Reverted role ${role.id}`, { fromLog: log.id, roleId });
                     return res.json({ success:true });
                 } catch (e) { logger.warn('revert_role_props failed', e); return res.status(500).json({ success:false, error:'revert_role_props_failed' }); }
+            }
+            case 'move_role_up':
+            case 'move_role_down': {
+                const { roleId, steps } = req.body || {};
+                if (!roleId) return res.status(400).json({ success:false, error:'missing_roleId' });
+                const role = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(()=>null);
+                if (!role) return res.status(404).json({ success:false, error:'role_not_found' });
+                const me = guild.members.me || guild.members.cache.get(client.user.id);
+                const myHighest = me?.roles?.highest?.position ?? 0;
+                const risks = [];
+                if (!me?.permissions?.has?.(PermissionFlagsBits.ManageRoles)) risks.push('Bot may lack Manage Roles permission.');
+                if (role.position >= myHighest) return res.status(403).json({ success:false, error:'insufficient_role_hierarchy' });
+                const delta = Math.max(1, parseInt(String(steps||'1'),10)||1) * (action==='move_role_up'? +1 : -1);
+                const target = Math.min(myHighest-1, Math.max(1, role.position + delta));
+                if (dryRun) return res.json({ success:true, dryRun:true, plan: { roleId, from: role.position, to: target }, risks });
+                try {
+                    await role.setPosition(target, { reason: reason||'Dashboard move role' });
+                    await logAction(`mod_dashboard_${action}`, `Moved role ${role.id} to ${target}`, { roleId: role.id, from: role.position, to: target });
+                    return res.json({ success:true, roleId: role.id, position: target });
+                } catch(e){ logger.warn('move role failed', e); return res.status(500).json({ success:false, error:'move_role_failed' }); }
+            }
+            case 'move_channel_up':
+            case 'move_channel_down': {
+                const { channelId, steps } = req.body || {};
+                if (!channelId) return res.status(400).json({ success:false, error:'missing_channelId' });
+                const ch = guild.channels.cache.get(channelId) || await guild.channels.fetch(channelId).catch(()=>null);
+                if (!ch) return res.status(404).json({ success:false, error:'channel_not_found' });
+                const me = guild.members.me || guild.members.cache.get(client.user.id);
+                const risks = [];
+                if (!me?.permissions?.has?.(PermissionFlagsBits.ManageChannels)) risks.push('Bot may lack Manage Channels permission.');
+                const siblings = guild.channels.cache.filter(c => (c.parentId||null) === (ch.parentId||null) && c.type === ch.type);
+                const sorted = [...siblings.values()].sort((a,b)=> a.rawPosition - b.rawPosition);
+                const idx = sorted.findIndex(c => c.id === ch.id);
+                const delta = Math.max(1, parseInt(String(steps||'1'),10)||1) * (action==='move_channel_up'? -1 : +1);
+                const newIndex = Math.min(sorted.length-1, Math.max(0, idx + delta));
+                const targetPos = sorted[newIndex]?.rawPosition ?? ch.rawPosition;
+                if (dryRun) return res.json({ success:true, dryRun:true, plan: { channelId, fromIndex: idx, toIndex: newIndex }, risks });
+                try {
+                    await ch.setPosition(targetPos, { reason: reason||'Dashboard move channel' });
+                    await logAction(`mod_dashboard_${action}`, `Moved channel ${ch.id} to index ${newIndex}`, { channelId: ch.id, fromIndex: idx, toIndex: newIndex });
+                    return res.json({ success:true, channelId: ch.id, index: newIndex });
+                } catch(e){ logger.warn('move channel failed', e); return res.status(500).json({ success:false, error:'move_channel_failed' }); }
+            }
+            case 'move_channel_to_category': {
+                const { channelId, parentId } = req.body || {};
+                if (!channelId) return res.status(400).json({ success:false, error:'missing_channelId' });
+                const ch = guild.channels.cache.get(channelId) || await guild.channels.fetch(channelId).catch(()=>null);
+                if (!ch) return res.status(404).json({ success:false, error:'channel_not_found' });
+                const me = guild.members.me || guild.members.cache.get(client.user.id);
+                const risks = [];
+                if (!me?.permissions?.has?.(PermissionFlagsBits.ManageChannels)) risks.push('Bot may lack Manage Channels permission.');
+                let parent = null;
+                if (parentId) {
+                    parent = guild.channels.cache.get(parentId) || await guild.channels.fetch(parentId).catch(()=>null);
+                    if (!parent) risks.push('Target category not found; channel will remain in place.');
+                    if (parent && parent.type !== 4) risks.push('Target is not a category; operation will fail.');
+                }
+                if (dryRun) return res.json({ success:true, dryRun:true, plan: { channelId, toCategory: parent?.id || null }, risks });
+                try {
+                    const updated = await ch.setParent(parent || null, { lockPermissions: false });
+                    await logAction('mod_dashboard_move_channel_to_category', `Moved channel ${ch.id} to category ${parent ? parent.id : 'none'}`, { channelId: ch.id, parentId: parent?.id||null });
+                    return res.json({ success:true, channelId: updated.id, parentId: parent?.id||null });
+                } catch(e){ logger.warn('move channel to category failed', e); return res.status(500).json({ success:false, error:'move_channel_to_category_failed' }); }
             }
             default:
                 return res.status(400).json({ success:false, error:'unsupported_action' });
