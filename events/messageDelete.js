@@ -33,6 +33,21 @@ module.exports = {
                     }
                 );
             }
+
+            // Persist mod log
+            try {
+                const storage = require('../utils/storage');
+                await storage.addLog({
+                    guild_id: message.guild.id,
+                    type: 'mod_message_delete',
+                    message: message.id,
+                    data: {
+                        channelId: message.channel.id,
+                        authorId: message.author?.id || null,
+                        hasAttachments: Array.isArray(message.attachments) ? message.attachments.size > 0 : false
+                    }
+                });
+            } catch {}
         } catch (error) {
             const logger = require('../utils/logger');
             logger.error('Erro ao processar mensagem deletada:', { error });
