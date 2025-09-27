@@ -280,13 +280,15 @@ class SqliteStorage {
       ...logData,
       timestamp: new Date().toISOString()
     };
-    await run(`INSERT INTO logs (guild_id, type, message, timestamp, data) VALUES (?, ?, ?, ?, ?)` , [
+    const result = await run(`INSERT INTO logs (guild_id, type, message, timestamp, data) VALUES (?, ?, ?, ?, ?)` , [
       log.guild_id || null,
       log.type || null,
       log.message || null,
       log.timestamp,
       log.data ? JSON.stringify(log.data) : null
     ]);
+    // Capture generated id (AUTOINCREMENT)
+    if (result && typeof result.lastID !== 'undefined') log.id = result.lastID;
     return log;
   }
 
@@ -300,6 +302,20 @@ class SqliteStorage {
       timestamp: r.timestamp,
       data: parseJSON(r.data, null)
     }));
+  }
+
+  // Fetch a single log by id (number or string) for a given guild
+  async getLogById(guildId, id) {
+    const row = await get(`SELECT * FROM logs WHERE guild_id = ? AND id = ?`, [guildId, Number(id)]);
+    if (!row) return null;
+    return {
+      id: row.id,
+      guild_id: row.guild_id,
+      type: row.type,
+      message: row.message,
+      timestamp: row.timestamp,
+      data: parseJSON(row.data, null)
+    };
   }
 
   // Prune logs by type older than N milliseconds
