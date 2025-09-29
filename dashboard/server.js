@@ -3176,8 +3176,22 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only')
         });
         // Expose a simple broadcaster for bot events
         global.socketManager = {
+            // Legacy moderation feed
             broadcastModeration: (guildId, payload) => {
                 try { io && io.to(`g:${guildId}`).emit('moderation_event', payload); } catch {}
+            },
+            // Generic event broadcast used by interaction handlers
+            // Usage: broadcast(eventName, payload[, guildId])
+            broadcast: (eventName, payload, guildId) => {
+                try {
+                    const data = { type: String(eventName||'event'), ...(payload||{}) };
+                    if (guildId) {
+                        io && io.to(`g:${guildId}`).emit('dashboard_event', data);
+                    } else {
+                        // If no guild provided, emit globally
+                        io && io.emit('dashboard_event', data);
+                    }
+                } catch {}
             }
         };
     } catch (e) { logger.warn('socket.io init failed:', e?.message||e); }
