@@ -153,6 +153,7 @@
     } catch(e){ console.error(e); }
   }
 
+  let currentLimit = 200;
   async function loadFeed(){
     if (!guildId) return notify('guildId em falta','error');
     els.feed.innerHTML = `<div class="loading"><span class="loading-spinner"></span> A carregar...</div>`;
@@ -160,7 +161,7 @@
       const u = new URL(`/api/guild/${guildId}/logs`, window.location.origin);
       u.searchParams.set('type', buildTypeParam());
       buildRange(u);
-      u.searchParams.set('limit', '200');
+      u.searchParams.set('limit', String(currentLimit));
       const r = await fetch(u, { credentials: 'same-origin' });
       const d = await r.json();
       if (!r.ok || !d.success) throw new Error(d.error || `HTTP ${r.status}`);
@@ -180,6 +181,19 @@
       if (t.startsWith('mod_role')) return 'fa-user-shield';
       return 'fa-list';
     };
+    const typePill = (t) => {
+      if (t.startsWith('mod_message')) return 'type-pill tp-msg';
+      if (t.startsWith('mod_member')) return 'type-pill tp-mem';
+      if (t.startsWith('mod_voice')) return 'type-pill tp-voice';
+      if (t.startsWith('mod_ban')) return 'type-pill tp-ban';
+      if (t.startsWith('mod_role')) return 'type-pill tp-role';
+      if (t.startsWith('mod_channel')) return 'type-pill tp-chan';
+      return 'type-pill';
+    };
+    const avatar = (id, avatar) => {
+      if (id && avatar) return `https://cdn.discordapp.com/avatars/${encodeURIComponent(id)}/${encodeURIComponent(avatar)}.png?size=64`;
+      return '/default-avatar.svg';
+    };
     els.feed.innerHTML = items.map(l => {
       const d = l.data || {};
       const r = l.resolved || {};
@@ -188,19 +202,50 @@
       const modLabel = r.executor ? `${escapeHtml(r.executor.username||'')}${r.executor.nick? ' ('+escapeHtml(r.executor.nick)+')':''} [${escapeHtml(r.executor.id)}]` : (d.executorId ? escapeHtml(d.executorId) : '');
       const chanLabel = r.channel ? `#${escapeHtml(r.channel.name||'')} [${escapeHtml(r.channel.id)}]` : (d.channelId ? escapeHtml(d.channelId) : '');
       const meta = [
-        userLabel ? `<span title="Usuário"><i class=\"fas fa-user\"></i> ${userLabel}</span>` : '',
-        modLabel ? `<span title="Moderador"><i class=\"fas fa-shield-alt\"></i> ${modLabel}</span>` : '',
-        chanLabel ? `<span title="Canal"><i class=\"fas fa-hashtag\"></i> ${chanLabel}</span>` : ''
-      ].filter(Boolean).join(' • ');
+        userLabel ? `<span class=\"badge-soft\" data-filter-user="${escapeHtml(d.userId||r.user?.id||'')}"><i class=\"fas fa-user\"></i> ${userLabel}</span>` : '',
+        modLabel ? `<span class=\"badge-soft\" data-filter-mod="${escapeHtml(d.executorId||r.executor?.id||'')}"><i class=\"fas fa-shield-alt\"></i> ${modLabel}</span>` : '',
+        chanLabel ? `<span class=\"badge-soft\" data-filter-channel="${escapeHtml(d.channelId||r.channel?.id||'')}"><i class=\"fas fa-hashtag\"></i> ${chanLabel}</span>` : ''
+      ].filter(Boolean).join(' ');
+      const quick = [];
+      if (l.type === 'mod_message_update') {
+        if (d.before) quick.push(`<div class=\"feed-meta\"><b>Antes:</b> ${escapeHtml(String(d.before).slice(0, 160))}${String(d.before).length>160?'…':''}</div>`);
+        if (d.after) quick.push(`<div class=\"feed-meta\"><b>Depois:</b> ${escapeHtml(String(d.after).slice(0, 160))}${String(d.after).length>160?'…':''}</div>`);
+      } else if (l.type === 'mod_message_delete' && d.content) {
+        quick.push(`<div class=\"feed-meta\"><b>Conteúdo:</b> ${escapeHtml(String(d.content).slice(0,200))}${String(d.content).length>200?'…':''}</div>`);
+      }
       return `
-      <button class="feed-item" data-log-id="${l.id}" aria-label="Abrir detalhes do evento">
-        <div class="feed-meta"><i class="fas ${iconFor(l.type||'')}"></i> <b>${escapeHtml(l.type||'log')}</b> • ${dt}</div>
-        ${meta ? `<div class="feed-meta" style="margin-top:6px">${meta}</div>`:''}
-        ${l.message ? `<div style="margin-top:6px">${escapeHtml(l.message)}</div>`:''}
-      </button>`;
+      <div class="feed-item" role="button" data-log-id="${l.id}" aria-expanded="false">
+        <div class="feed-row">
+          <img class="feed-avatar" src="${avatar(r.user?.id, r.user?.avatar)}" alt="avatar" />
+          <div class="feed-content">
+            <div class="feed-title">
+              <span class="${typePill(l.type||'')}"><i class="fas ${iconFor(l.type||'')}"></i> ${escapeHtml(l.type||'log')}</span>
+              <span class="feed-meta" style="margin-left:8px">${dt}</span>
+            </div>
+            ${meta ? `<div class="feed-meta" style="margin-top:6px">${meta}</div>`:''}
+            ${l.message ? `<div style="margin-top:6px">${escapeHtml(l.message)}</div>`:''}
+            ${quick.length? `<div class="expand">${quick.join('')}</div>`:''}
+          </div>
+        </div>
+      </div>`;
     }).join('');
     // Attach handlers
-    [...els.feed.querySelectorAll('[data-log-id]')].forEach(btn => btn.addEventListener('click', () => openEventModal(btn.getAttribute('data-log-id'))));
+    [...els.feed.querySelectorAll('[data-log-id]')].forEach(btn => btn.addEventListener('click', (e) => {
+      const el = e.currentTarget;
+      el.setAttribute('aria-expanded', el.getAttribute('aria-expanded')==='true' ? 'false' : 'true');
+      // Only open modal when double-clicking the item title area (optional) or meta-less
+      if (e.detail === 2) openEventModal(el.getAttribute('data-log-id'));
+    }));
+    // Filter chips
+    els.feed.querySelectorAll('[data-filter-user]')?.forEach(n=> n.addEventListener('click', (e)=>{ e.stopPropagation(); const id=n.getAttribute('data-filter-user'); if(id){ els.userId.value=id; loadFeed(); }}));
+    els.feed.querySelectorAll('[data-filter-mod]')?.forEach(n=> n.addEventListener('click', (e)=>{ e.stopPropagation(); const id=n.getAttribute('data-filter-mod'); if(id){ els.moderatorId.value=id; loadFeed(); }}));
+    els.feed.querySelectorAll('[data-filter-channel]')?.forEach(n=> n.addEventListener('click', (e)=>{ e.stopPropagation(); const id=n.getAttribute('data-filter-channel'); if(id){ els.channelId.value=id; loadFeed(); }}));
+    // Load more control
+    const more = document.createElement('div');
+    more.style.textAlign='center'; more.style.marginTop='8px';
+    more.innerHTML = `<button id="btnLoadMore" class="btn btn-glass"><i class="fas fa-angles-down"></i> Carregar mais</button>`;
+    els.feed.appendChild(more);
+    document.getElementById('btnLoadMore')?.addEventListener('click', async ()=>{ currentLimit = Math.min(1000, currentLimit + 200); await loadFeed(); });
   }
 
   function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c)); }
