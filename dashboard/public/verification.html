@@ -28,6 +28,11 @@
 		.actions button{margin-left:6px}
 		.max-w-180{max-width:180px}
 		.max-w-120{max-width:120px}
+		/* New styles */
+		.color-input{max-width:120px}
+		.color-picker{width:48px;height:40px;border:none;background:transparent}
+		.preview-embed{border-left:4px solid #7c3aed;padding:12px;border-radius:8px;background:var(--bg-card)}
+		.preview-title{font-weight:600}
 	</style>
 	</head>
 <body>
@@ -47,6 +52,13 @@
 				<div class="glass-card card-pad">
 					<div class="grid grid-2 gap-12">
 						<div>
+							<label for="template">Template</label>
+							<select id="template" class="input" title="Escolher layout do painel">
+								<option value="minimal">Minimal</option>
+								<option value="rich">Rich</option>
+							</select>
+						</div>
+						<div>
 							<label for="mode">Modo</label>
 							<select id="mode" class="input" title="Selecionar modo de dificuldade">
 								<option value="easy">Fácil</option>
@@ -63,11 +75,45 @@
 								<option value="form">Formulário</option>
 							</select>
 							<p id="methodHelp" class="text-secondary small mt-6" aria-live="polite"></p>
-						</div>
+						<div>
 						<div>
 							<label for="verifiedRole">Cargo verificado</label>
 							<select id="verifiedRole" class="input" title="Cargo atribuído após verificação"></select>
+						<div class="grid-col-2">
+							<label for="title">Título</label>
+							<input id="title" class="input" placeholder="Ex.: Verificação do Servidor" maxlength="100" />
+							<label for="description" class="mt-6">Descrição</label>
+							<textarea id="description" class="input" placeholder="Mensagem do painel" rows="3" maxlength="2000"></textarea>
 						</div>
+						<div class="grid-col-2">
+							<div class="grid grid-2 gap-12">
+								<div>
+									<label for="buttonLabel">Texto do botão</label>
+									<input id="buttonLabel" class="input" placeholder="Verificar" maxlength="80" />
+								</div>
+								<div>
+									<label for="color">Cor</label>
+										<div class="flex-row align-center">
+											<input id="color" class="input color-input" placeholder="#7C3AED" maxlength="7" />
+											<input id="colorPicker" type="color" value="#7c3aed" class="color-picker" title="Selecionar cor" />
+										</div>
+										<small class="text-secondary">Hex RGB, ex.: #7C3AED. Deixe em branco (e outros campos de painel) para usar os padrões guardados.</small>
+								</div>
+							</div>
+						</div>
+						</div>
+
+					<!-- Live Preview -->
+					<div class="glass-card card-pad mt-12" id="previewCard" aria-live="polite">
+						<h3 class="section-subtitle"><i class="fas fa-eye"></i> Pré-visualização</h3>
+						<div id="previewEmbed" class="mt-8 preview-embed">
+							<div id="previewTitle" class="preview-title">🔒 Verificação do Servidor</div>
+							<div id="previewDesc" class="text-secondary mt-6">Clica em Verificar para concluir e ganhar acesso aos canais.</div>
+							<div id="previewFooter" class="small mt-8">IGNIS COMMUNITY™ • Sistema de verificação</div>
+							<div id="previewButton" class="mt-8"><button class="btn btn-primary btn-sm"><i class="fas fa-check"></i> Verificar</button></div>
+							<div id="previewReaction" class="mt-8 hidden"><span class="badge">Reage com ✅</span></div>
+						</div>
+					</div>
 						<div>
 							<label for="unverifiedRole">Cargo não verificado</label>
 							<select id="unverifiedRole" class="input" title="Cargo atribuído enquanto não verificado"></select>
@@ -135,6 +181,8 @@
 					<div class="mt-12">
 						<div id="formError" class="text-danger hidden mb-8" role="alert"></div>
 						<button id="save" class="btn btn-primary" disabled><i class="fas fa-save"></i> Guardar</button>
+						<button id="saveDefaults" class="btn btn-secondary ml-8" title="Guardar como padrão para novos painéis"><i class="fas fa-bookmark"></i> Guardar Padrões do Painel</button>
+						<button id="resetDefaults" class="btn btn-glass ml-8" title="Limpar padrões guardados"><i class="fas fa-rotate-left"></i> Repor Padrões</button>
 						<button id="createPanel" class="btn btn-glass ml-8"><i class="fas fa-plus"></i> Criar Painel de Verificação</button>
 					</div>
 				</div>

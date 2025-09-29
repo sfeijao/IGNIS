@@ -137,7 +137,24 @@ async function createTicket(interaction, type) {
     return interaction.reply({ content: `❌ Já tens um ticket aberto: <#${t.channel_id}>`, flags: MessageFlags.Ephemeral });
   }
 
-  const cat = await ensureCategory(interaction.guild);
+  // Ler configuração de tickets
+  let cfg;
+  try { cfg = await storage.getGuildConfig(interaction.guild.id); } catch {}
+  let parentCategoryId = cfg?.tickets?.ticketsCategoryId || null;
+  let accessRoleIds = Array.isArray(cfg?.tickets?.accessRoleIds) ? cfg.tickets.accessRoleIds.filter(Boolean) : [];
+
+  // Resolva categoria alvo: usar configurada; senão, garantir uma por defeito
+  let cat = null;
+  if (parentCategoryId) {
+    cat = interaction.guild.channels.cache.get(parentCategoryId) || await interaction.client.channels.fetch(parentCategoryId).catch(() => null);
+    if (!cat || cat.type !== require('discord.js').ChannelType.GuildCategory) {
+      cat = await ensureCategory(interaction.guild);
+      parentCategoryId = cat.id;
+    }
+  } else {
+    cat = await ensureCategory(interaction.guild);
+    parentCategoryId = cat.id;
+  }
   const info = departmentInfo(type);
   const channelName = `${info.emoji}-${interaction.user.username}`.toLowerCase();
 
@@ -146,18 +163,26 @@ async function createTicket(interaction, type) {
     { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
   ];
 
-  // Permitir staff: usar config se existir, senão tentar detetar automaticamente
-  try {
-    const staffRole = await findStaffRole(interaction.guild);
-    if (staffRole) {
-      overwrites.push({ id: staffRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
+  // Permitir staff: usar accessRoleIds configurados; senão tentar detetar automaticamente
+  if (accessRoleIds.length > 0) {
+    for (const rid of accessRoleIds) {
+      if (interaction.guild.roles.cache.has(rid)) {
+        overwrites.push({ id: rid, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
+      }
     }
-  } catch {}
+  } else {
+    try {
+      const staffRole = await findStaffRole(interaction.guild);
+      if (staffRole) {
+        overwrites.push({ id: staffRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
+      }
+    } catch {}
+  }
 
   const channel = await interaction.guild.channels.create({
     name: channelName,
     type: ChannelType.GuildText,
-    parent: cat.id,
+    parent: parentCategoryId,
     permissionOverwrites: overwrites,
     topic: `Ticket • ${info.name} • ${interaction.user.tag}`
   });

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IGNIS Bot - Configurações do Bot</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="navbar-brand">
+        <i class="fas fa-robot"></i>
+        IGNIS Bot • Configurações
+      </div>
+      <div class="navbar-user">
+        <a href="/dashboard" class="btn btn-glass">
+          <i class="fas fa-arrow-left"></i>
+          Voltar ao Dashboard
+        </a>
+        <a href="/logout" class="btn btn-logout">
+          <i class="fas fa-sign-out-alt"></i>
+          Logout
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <div class="container">
+      <section class="dashboard-section fade-in">
+        <div class="section-header">
+          <h1 class="section-title"><i class="fas fa-robot"></i> Configurações do Bot</h1>
+          <p class="text-secondary">Ajuste preferências do bot para este servidor. Alterações de presença e apelido são aplicadas imediatamente quando possível.</p>
+        </div>
+
+        <div id="alert" class="hidden"></div>
+
+        <div class="glass-card">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="nickname"><i class="fas fa-id-card"></i> Apelido do Bot</label>
+              <input type="text" id="nickname" placeholder="Ex.: IGNIS" maxlength="32" />
+              <small class="text-secondary">Deixe vazio para usar o nome padrão do bot</small>
+            </div>
+
+            <div class="form-group">
+              <label for="statusType"><i class="fas fa-gamepad"></i> Tipo de Status</label>
+              <select id="statusType">
+                <option value="CUSTOM">Personalizado</option>
+                <option value="PLAYING">Jogando</option>
+                <option value="LISTENING">Ouvindo</option>
+                <option value="WATCHING">Assistindo</option>
+                <option value="COMPETING">Competindo</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="statusText"><i class="fas fa-comment-alt"></i> Texto do Status</label>
+              <input type="text" id="statusText" placeholder="Ex.: ajudando a comunidade" maxlength="128" />
+            </div>
+
+            <div class="form-group">
+              <label for="presenceStatus"><i class="fas fa-circle"></i> Presença</label>
+              <select id="presenceStatus">
+                <option value="online">Online</option>
+                <option value="idle">Ausente</option>
+                <option value="dnd">Não perturbar</option>
+                <option value="invisible">Invisível</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="defaultLanguage"><i class="fas fa-language"></i> Idioma Padrão</label>
+              <input type="text" id="defaultLanguage" placeholder="pt-PT ou pt-BR" maxlength="16" />
+            </div>
+
+            <div class="form-group">
+              <label for="timezone"><i class="fas fa-clock"></i> Fuso Horário</label>
+              <input type="text" id="timezone" placeholder="Ex.: Europe/Lisbon" maxlength="64" />
+            </div>
+
+            <div class="form-group">
+              <label for="prefix"><i class="fas fa-terminal"></i> Prefixo de Comandos (legado)</label>
+              <input type="text" id="prefix" placeholder="!" maxlength="5" />
+            </div>
+
+            <div class="form-group">
+              <label class="toggle">
+                <input type="checkbox" id="ephemeralByDefault" />
+                <span></span>
+                Responder com mensagens efémeras por padrão
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label class="toggle">
+                <input type="checkbox" id="enableModerationLogs" />
+                <span></span>
+                Ativar logs de moderação
+              </label>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <button id="btnSave" class="btn btn-primary">
+              <i class="fas fa-save"></i> Guardar Configurações
+            </button>
+            <button id="btnReload" class="btn btn-glass">
+              <i class="fas fa-sync"></i> Recarregar
+            </button>
+            <button id="btnTestPresence" class="btn btn-glass">
+              <i class="fas fa-vial"></i> Testar Presença
+            </button>
+            <button id="btnResetNick" class="btn btn-glass">
+              <i class="fas fa-undo"></i> Resetar Apelido
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="/js/bot-settings.js"></script>
+</body>
+</html>

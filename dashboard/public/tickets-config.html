@@ -35,6 +35,27 @@
         </div>
 
         <div class="grid grid-2 gap-12">
+          <!-- Painel e Acesso -->
+          <div class="glass-card card-pad">
+            <h3 class="mb-8"><i class="fas fa-door-open"></i> Painel & Acesso</h3>
+            <div class="grid grid-2 gap-12">
+              <div>
+                <label>Canal do painel</label>
+                <select id="panelChannel" class="input" title="Canal onde o painel será publicado"></select>
+                <p class="text-muted mt-6 text-sm">Escolhe o canal onde o painel principal de tickets será enviado.</p>
+              </div>
+              <div>
+                <label>Categoria para tickets</label>
+                <select id="ticketsCategory" class="input" title="Categoria onde os tickets serão criados (opcional)"></select>
+                <p class="text-muted mt-6 text-sm">Se selecionares, os canais de ticket serão organizados nesta categoria.</p>
+              </div>
+              <div class="full">
+                <label>Cargos com acesso inicial</label>
+                <select id="accessRoles" multiple class="input" title="Cargos que terão acesso por padrão aos tickets"></select>
+                <p class="text-muted mt-6 text-sm">Mantém CTRL/CMD pressionado para selecionar múltiplos cargos.</p>
+              </div>
+            </div>
+          </div>
           <!-- Categorias automáticas -->
           <div class="glass-card card-pad">
             <h3 class="mb-8"><i class="fas fa-folder-tree"></i> Categorias automáticas</h3>
@@ -125,6 +146,7 @@
     .mt-6{margin-top:6px}
     .text-sm{font-size:.9rem}
     .mt-12{margin-top:12px}
+    .full{grid-column: 1 / -1}
     .switch{display:flex;align-items:center;gap:8px}
     .switch input[type=checkbox]{appearance:none;width:42px;height:24px;border-radius:999px;background:rgba(255,255,255,0.1);position:relative;outline:none;cursor:pointer;transition:.2s}
     .switch input[type=checkbox]:checked{background:#22c55e}

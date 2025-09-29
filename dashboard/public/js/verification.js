@@ -2,6 +2,7 @@
 	const p=new URLSearchParams(window.location.search);
 	const guildId=p.get('guildId');
 	const els={
+		template:document.getElementById('template'),
 		mode:document.getElementById('mode'),
 		method:document.getElementById('method'),
 		cooldownSeconds:document.getElementById('cooldownSeconds'),
@@ -13,6 +14,11 @@
 		verifiedRole:document.getElementById('verifiedRole'),
 		unverifiedRole:document.getElementById('unverifiedRole'),
 		panelChannel:document.getElementById('panelChannel'),
+		title:document.getElementById('title'),
+		description:document.getElementById('description'),
+		buttonLabel:document.getElementById('buttonLabel'),
+		color:document.getElementById('color'),
+		colorPicker:document.getElementById('colorPicker'),
 		createPanel:document.getElementById('createPanel'),
 		// Metrics & logs
 		metricsWindow:document.getElementById('metricsWindow'),
@@ -64,6 +70,7 @@
 			els.formBuilder.setAttribute('aria-hidden', String(!isForm));
 		}
 		toggleOptionsEditor();
+		renderPreview();
 	}
 
 	function toggleOptionsEditor(){
@@ -144,6 +151,9 @@
 		const allowedModes=['easy','medium','hard']; const allowedMethods=['button','image','reaction','form'];
 		if(!allowedModes.includes(mode)) errors.push('Selecione um modo válido');
 		if(!allowedMethods.includes(method)) errors.push('Selecione um método válido');
+		// Basic checks for color format if provided
+		const color = (els.color?.value||'').trim();
+		if(color && !/^#?[0-9a-fA-F]{6}$/.test(color)) errors.push('Cor inválida (use #RRGGBB)');
 		if(method==='form'){
 			if(!questions.length) errors.push('Adicione pelo menos 1 pergunta para o formulário');
 			const tooMany = questions.length>20; if(tooMany) errors.push('Máximo 20 perguntas');
@@ -156,6 +166,7 @@
 		}
 		if(els.formError){ els.formError.style.display = errors.length? 'block':'none'; els.formError.textContent = errors.join(' • '); }
 		updateDirty(errors);
+		renderPreview();
 	}
 
 	function updateDirty(errors){
@@ -178,6 +189,14 @@
 			if(els.mode) els.mode.value=original.mode; if(els.method) els.method.value=original.method; if(els.logFails) els.logFails.checked=original.logFails;
 			if(els.logFailRetention){ els.logFailRetention.value = original.logFailRetention || 7; document.getElementById('retentionRow')?.classList.toggle('hidden', !original.logFails); }
 			if(els.cooldownSeconds){ els.cooldownSeconds.value = String(original.cooldownSeconds||0); }
+			// Load panel defaults
+			const pd = (c && c.panelDefaults) || {};
+			if(els.template) els.template.value = pd.template || 'minimal';
+			if(els.title) els.title.value = pd.title || '';
+			if(els.description) els.description.value = pd.description || '';
+			if(els.buttonLabel) els.buttonLabel.value = pd.buttonLabel || '';
+			if(els.color) els.color.value = pd.color || '#7C3AED';
+			if(els.colorPicker) els.colorPicker.value = (pd.color || '#7C3AED');
 			// Fill roles/channels if empty
 			await Promise.all([loadRoles(), loadChannels()]);
 			if(els.verifiedRole && original.verifiedRoleId) els.verifiedRole.value = original.verifiedRoleId;
@@ -228,6 +247,7 @@
 	}
 
 	// Events
+	els.template?.addEventListener('change', ()=>{ validate(); });
 	els.mode?.addEventListener('change', ()=>{ setHelp(); validate(); });
 	els.method?.addEventListener('change', ()=>{ setHelp(); validate(); });
 	els.cooldownSeconds?.addEventListener('input', ()=> validate());
@@ -235,7 +255,77 @@
 	els.logFailRetention?.addEventListener('input', ()=> validate());
 	els.verifiedRole?.addEventListener('change', ()=> validate());
 	els.unverifiedRole?.addEventListener('change', ()=> validate());
+	els.title?.addEventListener('input', ()=> validate());
+	els.description?.addEventListener('input', ()=> validate());
+	els.buttonLabel?.addEventListener('input', ()=> validate());
+	els.color?.addEventListener('input', ()=>{
+		const v=(els.color?.value||'').trim();
+		if(/^#?[0-9a-fA-F]{6}$/.test(v)){
+			const hex=v.startsWith('#')? v : ('#'+v);
+			if(els.colorPicker) els.colorPicker.value = hex;
+		}
+		validate();
+	});
+	els.colorPicker?.addEventListener('input', ()=>{
+		const v = els.colorPicker?.value||'';
+		if(els.color) els.color.value = v;
+		validate();
+	});
 	els.save?.addEventListener('click', save);
+
+	// Save panel defaults only
+	async function saveDefaults(){
+		try{
+			const tpl = els.template?.value || 'minimal';
+			let color = (els.color?.value||'').trim();
+			if(color && !color.startsWith('#')) color = '#'+color;
+			const body = { panelDefaults: {
+				template: ['minimal','rich'].includes(tpl) ? tpl : 'minimal',
+				title: (els.title?.value||'').trim() || '',
+				description: (els.description?.value||'').trim() || '',
+				buttonLabel: (els.buttonLabel?.value||'').trim() || '',
+				color: (/^#?[0-9a-fA-F]{6}$/.test((color||'').replace('#',''))) ? color : undefined
+			}}
+			const r = await fetch(`/api/guild/${guildId}/verification/config`, { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify(body)});
+			const d = await r.json(); if(!r.ok||!d.success) throw new Error(Array.isArray(d.details)? d.details.join(' • ') : (d.error||`HTTP ${r.status}`));
+			notify('Padrões do painel guardados','success');
+		}catch(e){ console.error(e); notify(e.message,'error'); }
+		finally{ validate(); }
+	}
+	const btnSaveDefaults = document.getElementById('saveDefaults');
+	btnSaveDefaults?.addEventListener('click', saveDefaults);
+
+	// Reset/clear saved panel defaults
+	async function resetDefaults(){
+		try{
+			const r = await fetch(`/api/guild/${guildId}/verification/config`, { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify({ panelDefaults: { clear: true } })});
+			const d = await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`);
+			notify('Padrões do painel limpos','success');
+		}catch(e){ console.error(e); notify(e.message,'error'); }
+		finally{ validate(); }
+	}
+	const btnResetDefaults = document.getElementById('resetDefaults');
+	btnResetDefaults?.addEventListener('click', resetDefaults);
+
+	// Add toggle to use saved defaults when creating a panel
+	let useSavedDefaults = true; // default ON for convenience
+	(function addUseDefaultsToggle(){
+		try{
+			const container = document.getElementById('previewCard');
+			if(!container) return;
+			const wrap = document.createElement('div');
+			wrap.className = 'mt-8';
+			wrap.innerHTML = `
+				<label class="switch" title="Usar padrões guardados para o próximo painel">
+					<input id="useSavedDefaults" type="checkbox" checked />
+					<span>Usar padrões guardados neste painel</span>
+				</label>`;
+			container.appendChild(wrap);
+			document.getElementById('useSavedDefaults')?.addEventListener('change', (e)=>{
+				useSavedDefaults = !!e.target.checked;
+			});
+		}catch{}
+	})();
 
 	els.newQuestionType?.addEventListener('change', ()=>{ toggleOptionsEditor(); });
 	els.addOption?.addEventListener('click', ()=>{
@@ -268,6 +358,17 @@
 			}
 			const ch = els.panelChannel?.value||''; if(!ch) { notify('Selecione um canal para publicar o painel','error'); return; }
 			const body = { type:'verification', channel_id: ch, theme: 'dark' };
+			// Attach template and options unless toggle is ON, in which case we omit to use saved defaults
+			if(!useSavedDefaults){
+				const tpl = (els.template?.value||'minimal');
+				body.template = tpl;
+				body.options = {
+					title: (els.title?.value||'').trim() || undefined,
+					description: (els.description?.value||'').trim() || undefined,
+					buttonLabel: (els.buttonLabel?.value||'').trim() || undefined,
+					color: (els.color?.value||'').trim() || undefined
+				};
+			}
 			// Include a simple idempotency key per click to help server de-dup (best-effort)
 			const idemKey = `ver:${guildId}:${ch}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`;
 			const r = await fetch(`/api/guild/${guildId}/panels/create`, { method:'POST', headers:{'Content-Type':'application/json','X-Idempotency-Key': idemKey}, credentials:'same-origin', body: JSON.stringify(body)});
@@ -360,6 +461,27 @@
 	}
 	els.exportLogs?.addEventListener('click', exportLogs);
 	els.pruneLogs?.addEventListener('click', pruneLogs);
+
+	function renderPreview(){
+		const method = els.method?.value || 'button';
+		const title = (els.title?.value||'').trim() || '🔒 Verificação do Servidor';
+		const desc = (els.description?.value||'').trim() || (method==='reaction' ? 'Reage com ✅ nesta mensagem para te verificares.' : 'Clica em Verificar para concluir e ganhar acesso aos canais.');
+		const btn = (els.buttonLabel?.value||'').trim() || 'Verificar';
+		let color = (els.color?.value||'#7C3AED').trim();
+		if(!/^#?[0-9a-fA-F]{6}$/.test(color)) color = '#7C3AED';
+		if(!color.startsWith('#')) color = '#'+color;
+		const pe = document.getElementById('previewEmbed');
+		const pt = document.getElementById('previewTitle');
+		const pd = document.getElementById('previewDesc');
+		const pb = document.getElementById('previewButton');
+		const pr = document.getElementById('previewReaction');
+		if(pe){ pe.style.borderLeftColor = color; }
+		if(pt) pt.textContent = title;
+		if(pd) pd.textContent = desc;
+		if(pb) pb.classList.toggle('hidden', method==='reaction');
+		if(pb) { const b = pb.querySelector('button'); if(b){ b.innerHTML = `<i class="fas fa-check"></i> ${btn}`; } }
+		if(pr) pr.classList.toggle('hidden', method!=='reaction');
+	}
 
 	load();
 })();

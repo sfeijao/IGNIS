@@ -15,6 +15,9 @@
     closeReason: document.getElementById('closeReason'),
     closeTranscript: document.getElementById('closeTranscript'),
     defaultTemplate: document.getElementById('defaultTemplate'),
+    panelChannel: document.getElementById('panelChannel'),
+    ticketsCategory: document.getElementById('ticketsCategory'),
+    accessRoles: document.getElementById('accessRoles'),
     save: document.getElementById('btnSave'),
   };
   
@@ -36,6 +39,24 @@
   async function load() {
     if (!guildId) return notify('guildId em falta', 'error');
     try {
+      // Load pickers in parallel
+      const [channelsRes, categoriesRes, rolesRes] = await Promise.allSettled([
+        api(`/api/guild/${guildId}/channels`),
+        api(`/api/guild/${guildId}/categories`),
+        api(`/api/guild/${guildId}/roles`)
+      ]);
+      const channels = channelsRes.status==='fulfilled' ? (channelsRes.value.channels||[]) : [];
+      const categories = categoriesRes.status==='fulfilled' ? (categoriesRes.value.categories||[]) : [];
+      const roles = rolesRes.status==='fulfilled' ? (rolesRes.value.roles||[]) : [];
+      if (els.panelChannel) {
+        els.panelChannel.innerHTML = `<option value="">— Selecionar canal —</option>` + channels.map(c=>`<option value="${c.id}">${(c.name||c.id)}</option>`).join('');
+      }
+      if (els.ticketsCategory) {
+        els.ticketsCategory.innerHTML = `<option value="">— Sem categoria —</option>` + categories.map(c=>`<option value="${c.id}">${(c.name||c.id)}</option>`).join('');
+      }
+      if (els.accessRoles) {
+        els.accessRoles.innerHTML = roles.map(r=>`<option value="${r.id}">${(r.name||r.id)}</option>`).join('');
+      }
       const d = await api(`/api/guild/${guildId}/tickets/config`);
       const cfg = (d.config || {});
       const t = (cfg.tickets || {});
@@ -54,6 +75,12 @@
       if (els.defaultTemplate) {
         const allowed = ['classic','compact','premium','minimal'];
         els.defaultTemplate.value = allowed.includes(t.defaultTemplate) ? t.defaultTemplate : 'classic';
+      }
+      // New fields
+      if (els.panelChannel) els.panelChannel.value = t.panelChannelId || '';
+      if (els.ticketsCategory) els.ticketsCategory.value = t.ticketsCategoryId || '';
+      if (els.accessRoles && Array.isArray(t.accessRoleIds)) {
+        for (const opt of els.accessRoles.options) { opt.selected = t.accessRoleIds.includes(opt.value); }
       }
     } catch (e) { console.error(e); notify(e.message, 'error'); }
   }
@@ -81,6 +108,12 @@
           defaultTemplate: (() => {
             const v = els.defaultTemplate?.value || 'classic';
             return ['classic','compact','premium','minimal'].includes(v) ? v : 'classic';
+          })(),
+          panelChannelId: els.panelChannel?.value || '',
+          ticketsCategoryId: els.ticketsCategory?.value || '',
+          accessRoleIds: (()=>{
+            if (!els.accessRoles) return [];
+            return Array.from(els.accessRoles.selectedOptions || []).map(o=>o.value);
           })()
         }
       };

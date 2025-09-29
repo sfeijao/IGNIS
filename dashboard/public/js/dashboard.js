@@ -1302,7 +1302,7 @@ function botSettings() {
     }
     
     const gid = encodeURIComponent(dashboard.currentGuild);
-    window.location.href = `/configs.html?guildId=${gid}`;
+    window.location.href = `/bot-settings.html?guildId=${gid}`;
 }
 
 function serverDiagnostics() {

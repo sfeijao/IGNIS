@@ -8,7 +8,7 @@ require('dotenv').config();
 
 const config = require('../utils/config');
 const logger = require('../utils/logger');
-const { PermissionFlagsBits } = require('discord.js');
+const { PermissionFlagsBits, ActivityType } = require('discord.js');
 
 const app = express();
 let io = null;
@@ -391,23 +391,38 @@ app.post('/api/guild/:guildId/members/:userId/roles', async (req, res) => {
         // Permission checks: the bot must be higher than target roles AND member's highest
         const me = guild.members.me || guild.members.cache.get(client.user.id);
         const myHighest = me?.roles?.highest?.position ?? 0;
-        // 1) Cannot manage roles at or above bot's highest
-        const blocked = [...toAdd, ...toRemove].some(rid => {
-            const r = guild.roles.cache.get(rid); return r && r.position >= myHighest;
-        });
-        if (blocked) return res.status(403).json({ success: false, error: 'insufficient_role_hierarchy' });
-        // 2) Cannot edit member whose highest role is >= bot's highest
+        // 1) Cannot edit member whose highest role is >= bot's highest
         const memberHighest = member?.roles?.highest?.position ?? 0;
         if (memberHighest >= myHighest) {
             return res.status(403).json({ success: false, error: 'insufficient_member_hierarchy' });
         }
-        if (toAdd.length) {
-            try { await member.roles.add(toAdd, 'Dashboard roles update'); } catch (e) { logger.warn('roles add failed', e); return res.status(500).json({ success:false, error:'add_failed' }); }
+        // 2) Split roles into manageable and blocked by hierarchy
+        const details = { added: [], removed: [], skipped: [], errors: [] };
+        const manageableAdd = [];
+        for (const rid of toAdd) {
+            const r = guild.roles.cache.get(rid);
+            if (!r) { details.skipped.push({ roleId: rid, reason: 'role_not_found' }); continue; }
+            if (r.position >= myHighest || r.managed) { details.skipped.push({ roleId: rid, reason: 'insufficient_role_hierarchy' }); continue; }
+            manageableAdd.push(rid);
         }
-        if (toRemove.length) {
-            try { await member.roles.remove(toRemove, 'Dashboard roles update'); } catch (e) { logger.warn('roles remove failed', e); return res.status(500).json({ success:false, error:'remove_failed' }); }
+        const manageableRemove = [];
+        for (const rid of toRemove) {
+            const r = guild.roles.cache.get(rid);
+            if (!r) { details.skipped.push({ roleId: rid, reason: 'role_not_found' }); continue; }
+            if (r.position >= myHighest || r.managed) { details.skipped.push({ roleId: rid, reason: 'insufficient_role_hierarchy' }); continue; }
+            manageableRemove.push(rid);
         }
-        return res.json({ success: true });
+        // 3) Apply manageable changes, capture partial errors without failing entire request
+        if (manageableAdd.length) {
+            try { await member.roles.add(manageableAdd, 'Dashboard roles update'); details.added.push(...manageableAdd); }
+            catch (e) { logger.warn('roles add failed', e); details.errors.push({ op: 'add', roles: manageableAdd, error: 'add_failed' }); }
+        }
+        if (manageableRemove.length) {
+            try { await member.roles.remove(manageableRemove, 'Dashboard roles update'); details.removed.push(...manageableRemove); }
+            catch (e) { logger.warn('roles remove failed', e); details.errors.push({ op: 'remove', roles: manageableRemove, error: 'remove_failed' }); }
+        }
+        const partial = (details.added.length || details.removed.length) && (details.skipped.length || details.errors.length);
+        return res.json({ success: true, partial, details });
     } catch (e) {
         logger.error('member roles update error', e);
         return res.status(500).json({ success: false, error: 'roles_update_failed' });
@@ -1174,6 +1189,25 @@ app.get('/api/guild/:guildId/channels', async (req, res) => {
     }
 });
 
+// Categories list (for UIs)
+app.get('/api/guild/:guildId/categories', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const categories = check.guild.channels.cache
+            .filter(c => c.type === 4) // category
+            .map(c => ({ id: c.id, name: c.name }))
+            .sort((a,b) => a.name.localeCompare(b.name));
+        res.json({ success: true, categories });
+    } catch (e) {
+        logger.error('Error listing categories:', e);
+        res.status(500).json({ success: false, error: 'Failed to list categories' });
+    }
+});
+
 // Roles list (for UIs)
 app.get('/api/guild/:guildId/roles', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -1306,6 +1340,80 @@ app.post('/api/guild/:guildId/config', async (req, res) => {
     } catch (e) {
         logger.error('Error updating guild config:', e);
         res.status(500).json({ success: false, error: 'Failed to update config' });
+    }
+});
+
+// Bot Settings API (simple guild-level preferences with optional live-apply)
+app.get('/api/guild/:guildId/bot-settings', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const cfg = await storage.getGuildConfig(req.params.guildId);
+        return res.json({ success: true, settings: (cfg && cfg.botSettings) || {} });
+    } catch (e) {
+        logger.error('Error fetching bot settings:', e);
+        return res.status(500).json({ success: false, error: 'Failed to fetch bot settings' });
+    }
+});
+
+app.post('/api/guild/:guildId/bot-settings', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        // Validate with Joi (best-effort; accept unknowns for forward compat)
+        const schema = Joi.object({
+            nickname: Joi.string().trim().max(32).allow(''),
+            statusText: Joi.string().trim().max(128).allow(''),
+            statusType: Joi.string().valid('PLAYING','LISTENING','WATCHING','COMPETING','CUSTOM').default('CUSTOM'),
+            presenceStatus: Joi.string().valid('online','idle','dnd','invisible').default('online'),
+            defaultLanguage: Joi.string().trim().max(16).allow(''),
+            timezone: Joi.string().trim().max(64).allow(''),
+            prefix: Joi.string().trim().max(5).allow(''),
+            ephemeralByDefault: Joi.boolean().default(false),
+            enableModerationLogs: Joi.boolean().default(true),
+            // allow arbitrary extra keys for future
+        }).unknown(true);
+        const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: false });
+        if (error) return res.status(400).json({ success: false, error: 'validation_failed', details: error.details.map(d => d.message) });
+
+        const storage = require('../utils/storage');
+        const current = await storage.getGuildConfig(req.params.guildId) || {};
+        const next = { ...current, botSettings: { ...(current.botSettings || {}), ...value } };
+        await storage.updateGuildConfig(req.params.guildId, next);
+
+        // Best-effort live apply: nickname and presence
+        try {
+            const guild = check.guild;
+            const me = guild.members.me || guild.members.cache.get(client.user.id) || await guild.members.fetch(client.user.id).catch(()=>null);
+            if (me && typeof value.nickname === 'string') {
+                const nick = value.nickname.trim();
+                if (nick || nick === '') {
+                    await me.setNickname(nick || null).catch(() => {});
+                }
+            }
+            if (client?.user && (typeof value.statusText === 'string' || typeof value.presenceStatus === 'string' || typeof value.statusType === 'string')) {
+                const name = (value.statusText || '').slice(0, 128);
+                const typeMap = { PLAYING: ActivityType.Playing, LISTENING: ActivityType.Listening, WATCHING: ActivityType.Watching, COMPETING: ActivityType.Competing, CUSTOM: ActivityType.Custom };
+                const type = typeMap[value.statusType] ?? ActivityType.Custom;
+                const status = value.presenceStatus || 'online';
+                try {
+                    client.user.setPresence({ activities: name ? [{ name, type }] : [], status });
+                } catch {}
+            }
+        } catch (e) { logger.warn('Live apply bot settings failed:', e?.message || e); }
+
+        return res.json({ success: true, settings: next.botSettings });
+    } catch (e) {
+        logger.error('Error updating bot settings:', e);
+        return res.status(500).json({ success: false, error: 'Failed to update bot settings' });
     }
 });
 
@@ -1898,6 +2006,38 @@ app.post('/api/guild/:guildId/verification/config', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
 
+        // If only panelDefaults are being updated, handle as a patch-only update to avoid overwriting other fields with defaults
+        const body = req.body || {};
+        if (body && typeof body.panelDefaults === 'object' && body.panelDefaults !== null && Object.keys(body).every(k => k === 'panelDefaults')) {
+            // Support clearing saved panel defaults
+            if (body.panelDefaults && body.panelDefaults.clear === true) {
+                const current = await storage.getGuildConfig(req.params.guildId) || {};
+                const nextVerification = { ...(current.verification || {}) };
+                if (nextVerification.panelDefaults) delete nextVerification.panelDefaults;
+                const next = { ...current, verification: nextVerification };
+                await storage.updateGuildConfig(req.params.guildId, next);
+                return res.json({ success: true, message: 'Verification panel defaults cleared', config: next.verification });
+            }
+            // Validate panelDefaults structure separately
+            const pdSchema = Joi.object({
+                template: Joi.string().valid('minimal','rich').optional(),
+                title: Joi.string().trim().max(100).allow('', null).optional(),
+                description: Joi.string().trim().max(2000).allow('', null).optional(),
+                buttonLabel: Joi.string().trim().max(80).allow('', null).optional(),
+                color: Joi.string().trim().pattern(/^#?[0-9a-fA-F]{6}$/).optional()
+            }).unknown(false);
+            const { error: pdError, value: pdValue } = pdSchema.validate(body.panelDefaults, { abortEarly: false, stripUnknown: true });
+            if (pdError) {
+                return res.status(400).json({ success: false, error: 'validation_failed', details: pdError.details.map(d => d.message) });
+            }
+            const current = await storage.getGuildConfig(req.params.guildId) || {};
+            const existingPd = (current?.verification?.panelDefaults) || {};
+            const nextPd = { ...existingPd, ...pdValue };
+            const next = { ...current, verification: { ...(current.verification || {}), panelDefaults: nextPd } };
+            await storage.updateGuildConfig(req.params.guildId, next);
+            return res.json({ success: true, message: 'Verification panel defaults updated', config: next.verification });
+        }
+
         // Validate payload using Joi
         const questionSchema = Joi.object({
             id: Joi.string().max(64).optional(),
@@ -1926,7 +2066,15 @@ app.post('/api/guild/:guildId/verification/config', async (req, res) => {
                 is: 'form',
                 then: Joi.object({ questions: Joi.array().min(1).items(questionSchema).max(20) }).required(),
                 otherwise: Joi.forbidden()
-            })
+            }),
+            // Allow full update to also carry panelDefaults inline
+            panelDefaults: Joi.object({
+                template: Joi.string().valid('minimal','rich').optional(),
+                title: Joi.string().trim().max(100).allow('', null).optional(),
+                description: Joi.string().trim().max(2000).allow('', null).optional(),
+                buttonLabel: Joi.string().trim().max(80).allow('', null).optional(),
+                color: Joi.string().trim().pattern(/^#?[0-9a-fA-F]{6}$/).optional()
+            }).optional()
         });
         const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: true });
         if (error) {
@@ -1955,7 +2103,12 @@ app.post('/api/guild/:guildId/verification/config', async (req, res) => {
         }
 
     const current = await storage.getGuildConfig(req.params.guildId) || {};
-    const next = { ...current, verification: { ...(current.verification || {}), ...value } };
+    // Merge panelDefaults separately to preserve existing subfields when omitted
+    const nextVerification = { ...(current.verification || {}), ...value };
+    if (value && typeof value.panelDefaults === 'object') {
+        nextVerification.panelDefaults = { ...(current?.verification?.panelDefaults || {}), ...(value.panelDefaults || {}) };
+    }
+    const next = { ...current, verification: nextVerification };
         await storage.updateGuildConfig(req.params.guildId, next);
     res.json({ success: true, message: 'Verification config updated', config: next.verification });
     } catch (e) { logger.error('Error set verification config:', e); res.status(500).json({ success: false, error: 'Failed to update verification config' }); }
@@ -2469,16 +2622,22 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
     const cfg = await storage.getGuildConfig(req.params.guildId).catch(() => ({}));
     // panel type: 'tickets' | 'verification'
     const type = (req.body?.type === 'verification') ? 'verification' : 'tickets';
-    const { channel_id, theme = 'dark' } = req.body || {};
-    // Template handling for tickets and verification
-    const cfgTemplate = type === 'tickets' ? (cfg?.tickets?.defaultTemplate) : 'minimal';
-    let template = (req.body && req.body.template) ? String(req.body.template) : (typeof cfgTemplate === 'string' ? cfgTemplate : 'classic');
+    let { channel_id, theme = 'dark' } = req.body || {};
+    const options = (req.body && typeof req.body.options === 'object') ? req.body.options : {};
+    // Fallback: if no channel_id provided and type is tickets, use configured panelChannelId
+    if (!channel_id && type === 'tickets') {
+        const fallback = cfg?.tickets?.panelChannelId;
+        if (fallback) channel_id = String(fallback);
+    }
+    // Template handling for tickets and verification (use saved defaults when available)
+    const cfgTemplate = type === 'tickets' ? (cfg?.tickets?.defaultTemplate) : (cfg?.verification?.panelDefaults?.template || 'minimal');
+    let template = (req.body && req.body.template) ? String(req.body.template) : (typeof cfgTemplate === 'string' ? cfgTemplate : (type === 'verification' ? 'minimal' : 'classic'));
     if (type === 'verification') {
         if (!['minimal','rich'].includes(template)) template = 'minimal';
     } else {
         if (!['classic','compact','premium','minimal'].includes(template)) template = 'classic';
     }
-        if (!channel_id) return res.status(400).json({ success: false, error: 'Missing channel_id' });
+    if (!channel_id) return res.status(400).json({ success: false, error: 'Missing channel_id' });
         // Idempotency/lock: avoid duplicate sends for same (guild, channel, type) within a short window
         const idemHeader = (req.get && req.get('X-Idempotency-Key')) || (req.headers && (req.headers['x-idempotency-key'] || req.headers['X-Idempotency-Key'])) || '';
         const guardKey = __makePanelKey(req.params.guildId, channel_id, type, idemHeader ? String(idemHeader) : '');
@@ -2494,7 +2653,22 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
         // Build payload like slash command
         const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
         const visualAssets = require('../assets/visual-assets');
-        let embed = new EmbedBuilder().setColor(theme === 'light' ? 0x60A5FA : 0x7C3AED);
+        // Resolve color: from options.color (#hex or int), else theme-based default
+        const parseColor = (c) => {
+            if (typeof c === 'number') return c;
+            if (typeof c === 'string') {
+                const s = c.trim();
+                if (/^#?[0-9a-fA-F]{6}$/.test(s)) {
+                    return parseInt(s.replace('#',''), 16);
+                }
+            }
+            return null;
+        };
+    // Pull in verification panelDefaults as baseline for options
+    const vPanelDefaults = (type === 'verification') ? (cfg?.verification?.panelDefaults || {}) : {};
+    const effOptions = { ...vPanelDefaults, ...(options || {}) };
+    const resolvedColor = parseColor(effOptions.color) ?? (theme === 'light' ? 0x60A5FA : 0x7C3AED);
+        let embed = new EmbedBuilder().setColor(resolvedColor);
         let rows = [];
         if (type === 'verification') {
             // Unified minimal verification panel
@@ -2502,9 +2676,8 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             const method = (vcfg.method || 'button');
             const isReaction = method === 'reaction';
                         const isImage = method === 'image';
-                        embed
-                                .setTitle('🔒 Verificação do Servidor')
-                                .setDescription(isReaction
+                        const defaultTitle = '🔒 Verificação do Servidor';
+                        const defaultDesc = isReaction
                   ? (template === 'rich'
                       ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, reage com ✅ nesta mensagem para concluir a verificação.`
                       : 'Reage com ✅ nesta mensagem para te verificares.'
@@ -2517,8 +2690,12 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
                                         : (template === 'rich'
                       ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, conclui a verificação clicando no botão abaixo.`
                       : 'Clica em Verificar para concluir e ganhar acesso aos canais.'
-                    )
-                )
+                    );
+                        const title = (typeof effOptions.title === 'string' && effOptions.title.trim()) ? effOptions.title.trim().slice(0, 100) : defaultTitle;
+                        const description = (typeof effOptions.description === 'string' && effOptions.description.trim()) ? effOptions.description.trim().slice(0, 2000) : defaultDesc;
+                        embed
+                                .setTitle(title)
+                                .setDescription(description)
                 .setThumbnail(guild.iconURL({ size: 256 }))
                 .setFooter({ text: 'IGNIS COMMUNITY™ • Sistema de verificação' })
                 .setTimestamp();
@@ -2527,7 +2704,7 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             }
             if (!isReaction) {
                 const row = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('verify_user').setLabel('Verificar').setEmoji('✅').setStyle(ButtonStyle.Primary)
+                    new ButtonBuilder().setCustomId('verify_user').setLabel((typeof effOptions.buttonLabel === 'string' && effOptions.buttonLabel.trim()) ? effOptions.buttonLabel.trim().slice(0, 80) : 'Verificar').setEmoji('✅').setStyle(ButtonStyle.Primary)
                 );
                 rows = [row];
             } else {
