@@ -42,6 +42,12 @@
     .expand{margin-top:8px;border-top:1px dashed var(--glass-border);padding-top:8px;display:none}
     .feed-item[aria-expanded="true"] .expand{display:block}
     .feed-actions{display:flex;gap:6px;flex-wrap:wrap}
+    .feed-date{margin:12px 0 6px 0;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;font-size:.78rem}
+    .feed-marker{margin:6px 0;padding:6px 10px;border-radius:999px;display:inline-block;background:rgba(124,58,237,.12);color:#c4b5fd;border:1px dashed #7C3AED}
+    .feed-toast{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);border-radius:10px;padding:6px 10px;margin-bottom:8px;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+  .feed-item.feed-flash{animation:flash-bg 1.1s ease 1}
+    @keyframes flash-bg{0%{box-shadow:0 0 0 rgba(124,58,237,0);background:rgba(124,58,237,.10)}30%{box-shadow:0 0 0 rgba(124,58,237,.35);background:rgba(124,58,237,.14)}100%{box-shadow:0 0 0 rgba(124,58,237,0);background:transparent}}
+  .align-center{align-self:center}
   </style>
   </head>
 <body>
@@ -113,6 +119,13 @@
             <button id="btnRefresh" class="btn btn-primary"><i class="fas fa-rotate"></i> Atualizar</button>
             <button id="btnAuto" class="btn btn-glass" aria-pressed="false"><i class="fas fa-play"></i> Auto</button>
             <div class="input-group">
+              <label for="longPauseMin">Pausa longa</label>
+              <div class="inline-group">
+                <input id="longPauseMin" type="number" class="input w-120" value="2" min="1" max="60" title="Minutos até marcar retoma"/>
+                <span class="text-secondary align-center">min</span>
+              </div>
+            </div>
+            <div class="input-group">
               <label for="exportFormat">Exportar</label>
               <div class="inline-group">
                 <select id="exportFormat" class="input" title="Formato de exportação">
@@ -135,7 +148,7 @@
 
         <div class="glass-card card-pad mt-16">
           <h3 class="section-title"><i class="fas fa-stream"></i> Feed</h3>
-          <div id="feed" class="mt-12"></div>
+          <div id="feed" class="mt-12" aria-live="polite"></div>
         </div>
 
         <div class="glass-card card-pad mt-16">
@@ -202,8 +215,11 @@
             window.__modRefreshPending = true;
             setTimeout(async () => {
               try {
-                if (window.ModerationPage && typeof window.ModerationPage.refresh === 'function') {
-                  await window.ModerationPage.refresh();
+                if (window.ModerationPage && typeof window.ModerationPage.handleLiveEvent === 'function') {
+                  const handled = await window.ModerationPage.handleLiveEvent(payload);
+                  if (!handled && typeof window.ModerationPage.refresh === 'function') {
+                    await window.ModerationPage.refresh();
+                  }
                 } else {
                   // Fallback: soft reload of key widgets
                   const ev = new CustomEvent('moderation:refresh');

@@ -29,6 +29,11 @@
 
   let autoTimer = null;
   let currentFamily = 'all';
+  let currentLimit = 200;
+  let lastTopId = null; // track latest rendered id for live-append
+  let lastTopTs = null; // track latest rendered timestamp for live-append
+  let lastLiveAppendTs = null; // track last time we auto-appended
+  let LONG_PAUSE_MS = 2 * 60 * 1000; // 2 minutes (configurable)
 
   function notify(msg, type='info'){
     const n = document.createElement('div');
@@ -152,8 +157,39 @@
       els.stats.voice && (els.stats.voice.textContent = (m.voiceJoins||0) + (m.voiceLeaves||0) + (m.voiceMoves||0));
     } catch(e){ console.error(e); }
   }
-
-  let currentLimit = 200;
+  // Preference helpers
+  function persistPrefs(){
+    try {
+      localStorage.setItem('mod-feed-filter', currentFamily);
+      localStorage.setItem('mod-limit', String(currentLimit));
+      localStorage.setItem('mod-auto', els.btnAuto.getAttribute('aria-pressed') === 'true' ? 'true' : 'false');
+    } catch {}
+  }
+  function restorePrefs(){
+    try {
+      const f = localStorage.getItem('mod-feed-filter');
+      if (f) currentFamily = f;
+      const lim = parseInt(localStorage.getItem('mod-limit')||'', 10);
+      if (!isNaN(lim) && lim>0) currentLimit = lim;
+      const auto = localStorage.getItem('mod-auto');
+      if (auto === 'true') {
+        els.btnAuto.setAttribute('aria-pressed','false'); // will toggle to true
+        toggleAuto();
+      }
+      const lp = parseInt(localStorage.getItem('mod-long-pause-minutes')||'2', 10);
+      if (!isNaN(lp) && lp>0) {
+        const input = document.getElementById('longPauseMin');
+        if (input) input.value = String(lp);
+        LONG_PAUSE_MS = lp * 60 * 1000;
+      }
+      // Apply active button state for filter
+      if (els.filterButtons?.length) {
+        els.filterButtons.forEach(b=> b.classList.remove('active'));
+        const btn = els.filterButtons.find(b=> (b.getAttribute('data-filter')||'all') === currentFamily);
+        btn?.classList.add('active');
+      }
+    } catch {}
+  }
   async function loadFeed(){
     if (!guildId) return notify('guildId em falta','error');
     els.feed.innerHTML = `<div class="loading"><span class="loading-spinner"></span> A carregar...</div>`;
@@ -166,57 +202,109 @@
       const d = await r.json();
       if (!r.ok || !d.success) throw new Error(d.error || `HTTP ${r.status}`);
       renderFeed(d.logs||[]);
+      // Track head for live-append
+      if (Array.isArray(d.logs) && d.logs.length) {
+        lastTopId = d.logs[0].id;
+        lastTopTs = d.logs[0].timestamp;
+      }
     } catch(e){ console.error(e); notify(e.message,'error'); els.feed.innerHTML = `<div class="no-tickets">Erro ao carregar feed</div>`; }
   }
 
-  function renderFeed(items){
-    if (!items.length){ els.feed.innerHTML = `<div class="no-tickets">Sem eventos</div>`; return; }
-    const iconFor = (t) => {
-      if (!t) return 'fa-list';
-      if (t.startsWith('mod_message')) return 'fa-comment-dots';
-      if (t.startsWith('mod_member')) return 'fa-user';
-      if (t.startsWith('mod_voice')) return 'fa-microphone';
-      if (t.startsWith('mod_ban')) return 'fa-ban';
-      if (t.startsWith('mod_channel')) return 'fa-hashtag';
-      if (t.startsWith('mod_role')) return 'fa-user-shield';
-      return 'fa-list';
-    };
-    const typePill = (t) => {
-      if (t.startsWith('mod_message')) return 'type-pill tp-msg';
-      if (t.startsWith('mod_member')) return 'type-pill tp-mem';
-      if (t.startsWith('mod_voice')) return 'type-pill tp-voice';
-      if (t.startsWith('mod_ban')) return 'type-pill tp-ban';
-      if (t.startsWith('mod_role')) return 'type-pill tp-role';
-      if (t.startsWith('mod_channel')) return 'type-pill tp-chan';
-      return 'type-pill';
-    };
-    const avatar = (id, avatar) => {
-      if (id && avatar) return `https://cdn.discordapp.com/avatars/${encodeURIComponent(id)}/${encodeURIComponent(avatar)}.png?size=64`;
-      return '/default-avatar.svg';
-    };
-    els.feed.innerHTML = items.map(l => {
-      const d = l.data || {};
-      const r = l.resolved || {};
-      const dt = new Date(l.timestamp).toLocaleString('pt-PT');
-      const userLabel = r.user ? `${escapeHtml(r.user.username||'')}${r.user.nick? ' ('+escapeHtml(r.user.nick)+')':''} [${escapeHtml(r.user.id)}]` : (d.userId ? escapeHtml(d.userId) : '');
-      const modLabel = r.executor ? `${escapeHtml(r.executor.username||'')}${r.executor.nick? ' ('+escapeHtml(r.executor.nick)+')':''} [${escapeHtml(r.executor.id)}]` : (d.executorId ? escapeHtml(d.executorId) : '');
-      const chanLabel = r.channel ? `#${escapeHtml(r.channel.name||'')} [${escapeHtml(r.channel.id)}]` : (d.channelId ? escapeHtml(d.channelId) : '');
-      const meta = [
-        userLabel ? `<span class=\"badge-soft\" data-filter-user="${escapeHtml(d.userId||r.user?.id||'')}"><i class=\"fas fa-user\"></i> ${userLabel}</span>` : '',
-        modLabel ? `<span class=\"badge-soft\" data-filter-mod="${escapeHtml(d.executorId||r.executor?.id||'')}"><i class=\"fas fa-shield-alt\"></i> ${modLabel}</span>` : '',
-        chanLabel ? `<span class=\"badge-soft\" data-filter-channel="${escapeHtml(d.channelId||r.channel?.id||'')}"><i class=\"fas fa-hashtag\"></i> ${chanLabel}</span>` : ''
-      ].filter(Boolean).join(' ');
-      const quick = [];
-      if (l.type === 'mod_message_update') {
-        if (d.before) quick.push(`<div class=\"feed-meta\"><b>Antes:</b> ${escapeHtml(String(d.before).slice(0, 160))}${String(d.before).length>160?'…':''}</div>`);
-        if (d.after) quick.push(`<div class=\"feed-meta\"><b>Depois:</b> ${escapeHtml(String(d.after).slice(0, 160))}${String(d.after).length>160?'…':''}</div>`);
-      } else if (l.type === 'mod_message_delete' && d.content) {
-        quick.push(`<div class=\"feed-meta\"><b>Conteúdo:</b> ${escapeHtml(String(d.content).slice(0,200))}${String(d.content).length>200?'…':''}</div>`);
+  function formatDateGroup(ts){
+    const d = new Date(ts);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const that = new Date(d); that.setHours(0,0,0,0);
+    const diff = (today - that) / 86400000; // days
+    if (diff === 0) return 'Hoje';
+    if (diff === 1) return 'Ontem';
+    try { return d.toLocaleDateString('pt-PT', { weekday:'long', day:'2-digit', month:'short', year:'numeric' }); } catch { return d.toDateString(); }
+  }
+
+  function iconFor(t){
+    if (!t) return 'fa-list';
+    if (t.startsWith('mod_message')) return 'fa-comment-dots';
+    if (t.startsWith('mod_member')) return 'fa-user';
+    if (t.startsWith('mod_voice')) return 'fa-microphone';
+    if (t.startsWith('mod_ban')) return 'fa-ban';
+    if (t.startsWith('mod_channel')) return 'fa-hashtag';
+    if (t.startsWith('mod_role')) return 'fa-user-shield';
+    return 'fa-list';
+  }
+  function typePill(t){
+    if (!t) return 'type-pill';
+    if (t.startsWith('mod_message')) return 'type-pill tp-msg';
+    if (t.startsWith('mod_member')) return 'type-pill tp-mem';
+    if (t.startsWith('mod_voice')) return 'type-pill tp-voice';
+    if (t.startsWith('mod_ban')) return 'type-pill tp-ban';
+    if (t.startsWith('mod_role')) return 'type-pill tp-role';
+    if (t.startsWith('mod_channel')) return 'type-pill tp-chan';
+    return 'type-pill';
+  }
+  function avatarUrl(id, avatar){
+    if (id && avatar) return `https://cdn.discordapp.com/avatars/${encodeURIComponent(id)}/${encodeURIComponent(avatar)}.png?size=64`;
+    return '/default-avatar.svg';
+  }
+
+  function buildQuickActions(l){
+    const d = l.data || {};
+    const acts = [];
+    if (l.type === 'mod_ban_add' && d.userId) {
+      acts.push({ key:'unban', label:'Remover ban', icon:'fa-unlock', payload:{ userId: d.userId } });
+    } else if (l.type === 'mod_ban_remove' && d.userId) {
+      acts.push({ key:'ban', label:'Banir', icon:'fa-ban', payload:{ userId: d.userId } });
+    } else if (l.type === 'mod_message_delete' && d.content && d.channelId) {
+      acts.push({ key:'restore_message', label:'Restaurar', icon:'fa-undo', payload:{ logId: l.id } });
+    } else if (l.type === 'mod_channel_delete') {
+      acts.push({ key:'recreate_channel', label:'Recriar canal', icon:'fa-plus-square', payload:{ logId: l.id } });
+    } else if (l.type === 'mod_channel_update') {
+      acts.push({ key:'rename_channel', label:'Reverter nome', icon:'fa-i-cursor', payload:{ logId: l.id } });
+    } else if (l.type === 'mod_role_delete') {
+      acts.push({ key:'restore_role', label:'Restaurar cargo', icon:'fa-user-shield', payload:{ logId: l.id } });
+    } else if (l.type === 'mod_role_update') {
+      acts.push({ key:'revert_role_props', label:'Reverter props', icon:'fa-undo', payload:{ logId: l.id } });
+    } else if (l.type === 'mod_member_update' && d.userId) {
+      // Member-related safe quick actions
+      acts.push({ key:'kick', label:'Expulsar', icon:'fa-person-running', payload:{ userId: d.userId } });
+      acts.push({ key:'timeout', label:'Timeout 10m', icon:'fa-hourglass-half', payload:{ userId: d.userId, durationSeconds: 600 } });
+      acts.push({ key:'remove_timeout', label:'Remover timeout', icon:'fa-clock', payload:{ userId: d.userId } });
+      if (d.nickname && Object.prototype.hasOwnProperty.call(d, 'nickname')) {
+        acts.push({ key:'revert_nickname', label:'Reverter apelido', icon:'fa-undo', payload:{ userId: d.userId } });
       }
-      return `
+      if (d.roles) {
+        acts.push({ key:'revert_roles', label:'Reverter cargos', icon:'fa-layer-group', payload:{ userId: d.userId } });
+      }
+    }
+    return acts;
+  }
+
+  function renderCard(l){
+    const d = l.data || {};
+    const r = l.resolved || {};
+    const dt = new Date(l.timestamp).toLocaleString('pt-PT');
+    const userLabel = r.user ? `${escapeHtml(r.user.username||'')}${r.user.nick? ' ('+escapeHtml(r.user.nick)+')':''} [${escapeHtml(r.user.id)}]` : (d.userId ? escapeHtml(d.userId) : '');
+    const modLabel = r.executor ? `${escapeHtml(r.executor.username||'')}${r.executor.nick? ' ('+escapeHtml(r.executor.nick)+')':''} [${escapeHtml(r.executor.id)}]` : (d.executorId ? escapeHtml(d.executorId) : '');
+    const chanLabel = r.channel ? `#${escapeHtml(r.channel.name||'')} [${escapeHtml(r.channel.id)}]` : (d.channelId ? escapeHtml(d.channelId) : '');
+    const meta = [
+      userLabel ? `<span class=\"badge-soft\" data-filter-user="${escapeHtml(d.userId||r.user?.id||'')}"><i class=\"fas fa-user\"></i> ${userLabel}</span>` : '',
+      modLabel ? `<span class=\"badge-soft\" data-filter-mod="${escapeHtml(d.executorId||r.executor?.id||'')}"><i class=\"fas fa-shield-alt\"></i> ${modLabel}</span>` : '',
+      chanLabel ? `<span class=\"badge-soft\" data-filter-channel="${escapeHtml(d.channelId||r.channel?.id||'')}"><i class=\"fas fa-hashtag\"></i> ${chanLabel}</span>` : ''
+    ].filter(Boolean).join(' ');
+    const quick = [];
+    if (l.type === 'mod_message_update') {
+      if (d.before) quick.push(`<div class=\"feed-meta\"><b>Antes:</b> ${escapeHtml(String(d.before).slice(0, 160))}${String(d.before).length>160?'…':''}</div>`);
+      if (d.after) quick.push(`<div class=\"feed-meta\"><b>Depois:</b> ${escapeHtml(String(d.after).slice(0, 160))}${String(d.after).length>160?'…':''}</div>`);
+    } else if (l.type === 'mod_message_delete' && d.content) {
+      quick.push(`<div class=\"feed-meta\"><b>Conteúdo:</b> ${escapeHtml(String(d.content).slice(0,200))}${String(d.content).length>200?'…':''}</div>`);
+    }
+    const acts = buildQuickActions(l);
+    const actionsRow = acts.length ? `<div class=\"feed-actions\" style=\"margin-top:8px\">${acts.map(a=>{
+      const extra = a.payload ? Object.entries(a.payload).map(([k,v])=>`data-${k.replace(/[A-Z]/g, m=>'-'+m.toLowerCase())}=\"${String(v)}\"`).join(' ') : '';
+      return `<button class=\"btn btn-sm btn-glass qa-btn\" data-action=\"${a.key}\" data-log-id=\"${l.id}\" ${extra}><i class=\"fas ${a.icon}\"></i> ${a.label}</button>`;
+    }).join(' ')}</div>` : '';
+    return `
       <div class="feed-item" role="button" data-log-id="${l.id}" aria-expanded="false">
         <div class="feed-row">
-          <img class="feed-avatar" src="${avatar(r.user?.id, r.user?.avatar)}" alt="avatar" />
+          <img class="feed-avatar" src="${avatarUrl(r.user?.id, r.user?.avatar)}" alt="avatar" />
           <div class="feed-content">
             <div class="feed-title">
               <span class="${typePill(l.type||'')}"><i class="fas ${iconFor(l.type||'')}"></i> ${escapeHtml(l.type||'log')}</span>
@@ -225,10 +313,25 @@
             ${meta ? `<div class="feed-meta" style="margin-top:6px">${meta}</div>`:''}
             ${l.message ? `<div style="margin-top:6px">${escapeHtml(l.message)}</div>`:''}
             ${quick.length? `<div class="expand">${quick.join('')}</div>`:''}
+            ${actionsRow}
           </div>
         </div>
       </div>`;
-    }).join('');
+  }
+
+  function renderFeed(items){
+    if (!items.length){ els.feed.innerHTML = `<div class="no-tickets">Sem eventos</div>`; return; }
+    const parts = [];
+    let lastGroup = null;
+    for (const l of items) {
+      const grp = formatDateGroup(l.timestamp);
+      if (grp !== lastGroup) {
+        parts.push(`<div class="feed-date" aria-label="${escapeHtml(grp)}">${escapeHtml(grp)}</div>`);
+        lastGroup = grp;
+      }
+      parts.push(renderCard(l));
+    }
+    els.feed.innerHTML = parts.join('');
     // Attach handlers
     [...els.feed.querySelectorAll('[data-log-id]')].forEach(btn => btn.addEventListener('click', (e) => {
       const el = e.currentTarget;
@@ -236,6 +339,31 @@
       // Only open modal when double-clicking the item title area (optional) or meta-less
       if (e.detail === 2) openEventModal(el.getAttribute('data-log-id'));
     }));
+    // Quick actions
+    els.feed.querySelectorAll('.qa-btn')?.forEach(btn=>{
+      btn.addEventListener('click', async (e)=>{
+        e.stopPropagation();
+        const action = btn.getAttribute('data-action');
+        const logId = btn.getAttribute('data-log-id');
+        try {
+          btn.disabled = true;
+          // Always do dry-run first for safety
+          const payload = { action, logId };
+          const userId = btn.getAttribute('data-user-id'); if (userId) payload.userId = userId;
+          const durStr = btn.getAttribute('data-duration-seconds'); const dur = durStr? parseInt(durStr,10):NaN; if (!isNaN(dur)) payload.durationSeconds = dur;
+          const dryResp = await postAction({ ...payload, dryRun: true });
+          const ok = await showConfirmModal(dryResp, 'Confirmar ação rápida');
+          if (!ok) { btn.disabled = false; return; }
+          const apply = await postAction(payload);
+          if (apply?.success) {
+            notify('Ação aplicada','success');
+            await loadSummary();
+            await loadFeed();
+          }
+        } catch(e){ console.error(e); notify(e.message,'error'); }
+        finally { btn.disabled = false; }
+      });
+    });
     // Filter chips
     els.feed.querySelectorAll('[data-filter-user]')?.forEach(n=> n.addEventListener('click', (e)=>{ e.stopPropagation(); const id=n.getAttribute('data-filter-user'); if(id){ els.userId.value=id; loadFeed(); }}));
     els.feed.querySelectorAll('[data-filter-mod]')?.forEach(n=> n.addEventListener('click', (e)=>{ e.stopPropagation(); const id=n.getAttribute('data-filter-mod'); if(id){ els.moderatorId.value=id; loadFeed(); }}));
@@ -245,7 +373,7 @@
     more.style.textAlign='center'; more.style.marginTop='8px';
     more.innerHTML = `<button id="btnLoadMore" class="btn btn-glass"><i class="fas fa-angles-down"></i> Carregar mais</button>`;
     els.feed.appendChild(more);
-    document.getElementById('btnLoadMore')?.addEventListener('click', async ()=>{ currentLimit = Math.min(1000, currentLimit + 200); await loadFeed(); });
+    document.getElementById('btnLoadMore')?.addEventListener('click', async ()=>{ currentLimit = Math.min(1000, currentLimit + 200); persistPrefs(); await loadFeed(); });
   }
 
   function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c)); }
@@ -259,6 +387,7 @@
     if (next) {
       autoTimer = setInterval(async ()=>{ await loadSummary(); await loadFeed(); }, 5000);
     }
+    persistPrefs();
   }
 
   function exportCsv(){
@@ -480,22 +609,138 @@
   attachAutocomplete(els.userId, 'members');
   attachAutocomplete(els.moderatorId, 'members');
   attachAutocomplete(els.channelId, 'channels');
+  // Persist long pause threshold changes
+  try {
+    const lpInput = document.getElementById('longPauseMin');
+    lpInput?.addEventListener('change', ()=>{
+      const raw = parseInt(lpInput.value||'2', 10);
+      const val = (!isNaN(raw) && raw>0) ? raw : 1;
+      lpInput.value = String(val);
+      localStorage.setItem('mod-long-pause-minutes', String(val));
+      LONG_PAUSE_MS = val * 60 * 1000;
+    });
+  } catch {}
   els.filterButtons.forEach(btn=> btn.addEventListener('click', ()=>{
     els.filterButtons.forEach(b=> b.classList.remove('active'));
     btn.classList.add('active');
     currentFamily = btn.getAttribute('data-filter') || 'all';
+    persistPrefs();
     loadFeed();
   }));
 
   // Public API for socket-driven refreshes
   window.ModerationPage = {
-    refresh: async () => { await loadSummary(); await loadFeed(); }
+    refresh: async () => { await loadSummary(); await loadFeed(); },
+    handleLiveEvent: async (_payload) => {
+      // If auto is ON, let existing debounced full refresh handle it
+      if (els.btnAuto.getAttribute('aria-pressed') === 'true') return false;
+      try {
+        const u = new URL(`/api/guild/${guildId}/logs`, window.location.origin);
+        u.searchParams.set('type', buildTypeParam());
+        buildRange(u);
+        u.searchParams.set('limit', '5');
+        const r = await fetch(u, { credentials:'same-origin' });
+        const d = await r.json();
+        if (!r.ok || !d.success) return false;
+        const list = Array.isArray(d.logs)? d.logs: [];
+        if (!list.length) return true;
+        const container = els.feed;
+        const prevFirst = container.firstElementChild;
+        // Find position after possible initial date header
+        let inserted = 0;
+        // Determine newest items not yet shown (by timestamp or id)
+        const newer = list.filter(it => !lastTopTs || (it.timestamp >= lastTopTs && it.id !== lastTopId));
+        if (!newer.length) return true;
+        // Build HTML for newest first (reverse chronological in API already)
+        // Insert from bottom of 'newer' to preserve order when prepending
+        for (let i = newer.length - 1; i >= 0; i--) {
+          const l = newer[i];
+          const grp = formatDateGroup(l.timestamp);
+          const firstChild = container.firstElementChild;
+          const firstGroup = firstChild && firstChild.classList.contains('feed-date') ? firstChild.textContent.trim() : null;
+          if (grp !== firstGroup) {
+            const header = document.createElement('div');
+            header.className = 'feed-date';
+            header.setAttribute('aria-label', grp);
+            header.textContent = grp;
+            container.insertBefore(header, container.firstElementChild);
+          }
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = renderCard(l);
+          const node = wrapper.firstElementChild;
+          container.insertBefore(node, container.firstElementChild.nextElementSibling?.classList.contains('feed-date') ? container.firstElementChild.nextElementSibling : container.firstElementChild.nextSibling);
+          inserted++;
+        }
+        // If long pause since last append, insert a resume marker before previous first element
+        const now = Date.now();
+        if (prevFirst && lastLiveAppendTs && (now - lastLiveAppendTs) > LONG_PAUSE_MS) {
+          const marker = document.createElement('div');
+          marker.className = 'feed-marker';
+          const t = new Date().toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' });
+          marker.innerHTML = `<span>Retomar a partir daqui • ${t}</span>`;
+          container.insertBefore(marker, prevFirst);
+        }
+        lastLiveAppendTs = now;
+        // Reattach listeners for newly inserted nodes
+        [...els.feed.querySelectorAll('[data-log-id]')].slice(0, inserted).forEach(btn => btn.addEventListener('click', (e) => {
+          const el = e.currentTarget; el.setAttribute('aria-expanded', el.getAttribute('aria-expanded')==='true' ? 'false' : 'true'); if (e.detail === 2) openEventModal(el.getAttribute('data-log-id'));
+        }));
+        els.feed.querySelectorAll('.qa-btn')?.forEach(btn=>{
+          if (btn.__qaBound) return; btn.__qaBound = true;
+          btn.addEventListener('click', async (e)=>{
+            e.stopPropagation();
+            const action = btn.getAttribute('data-action');
+            const logId = btn.getAttribute('data-log-id');
+            try {
+              btn.disabled = true;
+              const payload = { action, logId };
+              const userId = btn.getAttribute('data-user-id'); if (userId) payload.userId = userId;
+              const durStr = btn.getAttribute('data-duration-seconds'); const dur = durStr? parseInt(durStr,10):NaN; if(!isNaN(dur)) payload.durationSeconds = dur;
+              const dryResp = await postAction({ ...payload, dryRun:true });
+              const ok = await showConfirmModal(dryResp, 'Confirmar ação rápida');
+              if(!ok){ btn.disabled=false; return; }
+              const apply = await postAction(payload);
+              if (apply?.success){ notify('Ação aplicada','success'); await loadSummary(); }
+            } catch(e){ console.error(e); notify(e.message,'error'); } finally { btn.disabled=false; }
+          });
+        });
+        // Mild highlight on new cards
+        try {
+          const newNodes = [...els.feed.querySelectorAll('[data-log-id]')].slice(0, inserted);
+          newNodes.forEach(n => n.classList.add('feed-flash'));
+          setTimeout(()=> newNodes.forEach(n => n.classList.remove('feed-flash')), 1100);
+        } catch {}
+        // Subtle in-page toast for new events (click to jump to newest area)
+        try { showFeedToast(`${inserted} novo(s) evento(s)`, () => { try { els.feed?.scrollIntoView({ behavior:'smooth', block:'start' }); } catch {} }); } catch {}
+        // Update head trackers
+        lastTopId = list[0].id; lastTopTs = list[0].timestamp;
+        return true;
+      } catch { return false; }
+    }
   };
   window.addEventListener('moderation:refresh', () => { window.ModerationPage.refresh(); });
 
   // Initial load
+  restorePrefs();
   loadSummary();
   loadFeed();
+
+  // In-page subtle toast in feed area
+  function showFeedToast(msg, onClick){
+    try {
+      const host = els.feed;
+      if (!host) return;
+      const toast = document.createElement('div');
+      toast.className = 'feed-toast';
+      toast.innerHTML = `<i class="fas fa-bell"></i> <span>${escapeHtml(msg)}</span>`;
+      host.insertBefore(toast, host.firstChild);
+      if (typeof onClick === 'function') { toast.style.cursor='pointer'; toast.addEventListener('click', onClick); }
+      setTimeout(()=>{
+        toast.style.opacity = '0.0'; toast.style.transition = 'opacity .4s ease';
+        setTimeout(()=> toast.remove(), 450);
+      }, 2200);
+    } catch {}
+  }
   // UX: Close modal on ESC and overlay background click
   try {
     document.addEventListener('keydown', (e) => {
