@@ -240,6 +240,26 @@
     if (t.startsWith('mod_channel')) return 'type-pill tp-chan';
     return 'type-pill';
   }
+  function typeLabel(t){
+    if (!t) return 'Evento';
+    const m = {
+      'mod_message_delete': 'Mensagem apagada',
+      'mod_message_update': 'Mensagem editada',
+      'mod_member_join': 'Membro entrou',
+      'mod_member_leave': 'Membro saiu',
+      'mod_member_update': 'Membro atualizado',
+      'mod_voice_join': 'Entrou em canal de voz',
+      'mod_voice_leave': 'Saiu do canal de voz',
+      'mod_voice_move': 'Moveu-se de canal de voz',
+      'mod_ban_add': 'Banimento aplicado',
+      'mod_ban_remove': 'Banimento removido',
+      'mod_channel_update': 'Canal atualizado',
+      'mod_channel_delete': 'Canal apagado',
+      'mod_role_update': 'Cargo atualizado',
+      'mod_role_delete': 'Cargo apagado'
+    };
+    return m[t] || t.replace(/^mod_/,'').replace(/_/g,' ');
+  }
   function avatarUrl(id, avatar){
     if (id && avatar) return `https://cdn.discordapp.com/avatars/${encodeURIComponent(id)}/${encodeURIComponent(avatar)}.png?size=64`;
     return '/default-avatar.svg';
@@ -285,9 +305,9 @@
     const modLabel = r.executor ? `${escapeHtml(r.executor.username||'')}${r.executor.nick? ' ('+escapeHtml(r.executor.nick)+')':''} [${escapeHtml(r.executor.id)}]` : (d.executorId ? escapeHtml(d.executorId) : '');
     const chanLabel = r.channel ? `#${escapeHtml(r.channel.name||'')} [${escapeHtml(r.channel.id)}]` : (d.channelId ? escapeHtml(d.channelId) : '');
     const meta = [
-      userLabel ? `<span class=\"badge-soft\" data-filter-user="${escapeHtml(d.userId||r.user?.id||'')}"><i class=\"fas fa-user\"></i> ${userLabel}</span>` : '',
-      modLabel ? `<span class=\"badge-soft\" data-filter-mod="${escapeHtml(d.executorId||r.executor?.id||'')}"><i class=\"fas fa-shield-alt\"></i> ${modLabel}</span>` : '',
-      chanLabel ? `<span class=\"badge-soft\" data-filter-channel="${escapeHtml(d.channelId||r.channel?.id||'')}"><i class=\"fas fa-hashtag\"></i> ${chanLabel}</span>` : ''
+      userLabel ? `<span class=\"badge-soft\" title=\"Clique para filtrar • Shift+Clique copia o ID\" data-filter-user="${escapeHtml(d.userId||r.user?.id||'')}" data-copy-id="${escapeHtml(d.userId||r.user?.id||'')}"><i class=\"fas fa-user\"></i> ${userLabel}</span>` : '',
+      modLabel ? `<span class=\"badge-soft\" title=\"Clique para filtrar • Shift+Clique copia o ID\" data-filter-mod="${escapeHtml(d.executorId||r.executor?.id||'')}" data-copy-id="${escapeHtml(d.executorId||r.executor?.id||'')}"><i class=\"fas fa-shield-alt\"></i> ${modLabel}</span>` : '',
+      chanLabel ? `<span class=\"badge-soft\" title=\"Clique para filtrar • Shift+Clique copia o ID\" data-filter-channel="${escapeHtml(d.channelId||r.channel?.id||'')}" data-copy-id="${escapeHtml(d.channelId||r.channel?.id||'')}"><i class=\"fas fa-hashtag\"></i> ${chanLabel}</span>` : ''
     ].filter(Boolean).join(' ');
     const quick = [];
     if (l.type === 'mod_message_update') {
@@ -295,6 +315,32 @@
       if (d.after) quick.push(`<div class=\"feed-meta\"><b>Depois:</b> ${escapeHtml(String(d.after).slice(0, 160))}${String(d.after).length>160?'…':''}</div>`);
     } else if (l.type === 'mod_message_delete' && d.content) {
       quick.push(`<div class=\"feed-meta\"><b>Conteúdo:</b> ${escapeHtml(String(d.content).slice(0,200))}${String(d.content).length>200?'…':''}</div>`);
+    } else if (l.type === 'mod_voice_move') {
+      const from = r.fromChannel ? `#${escapeHtml(r.fromChannel.name)} (${escapeHtml(r.fromChannel.id)})` : (d.fromChannelId ? `#${escapeHtml(d.fromChannelId)}` : 'desconhecido');
+      const to = r.toChannel ? `#${escapeHtml(r.toChannel.name)} (${escapeHtml(r.toChannel.id)})` : (d.toChannelId ? `#${escapeHtml(d.toChannelId)}` : (r.channel ? `#${escapeHtml(r.channel.name)} (${escapeHtml(r.channel.id)})` : 'desconhecido'));
+      quick.push(`<div class=\"feed-meta\"><b>Move:</b> ${from} → ${to}</div>`);
+    } else if (l.type === 'mod_voice_join') {
+      const to = r.channel ? `#${escapeHtml(r.channel.name)} (${escapeHtml(r.channel.id)})` : (d.channelId ? `#${escapeHtml(d.channelId)}` : 'desconhecido');
+      quick.push(`<div class=\"feed-meta\"><b>Entrou:</b> ${to}</div>`);
+    } else if (l.type === 'mod_voice_leave') {
+      const from = r.channel ? `#${escapeHtml(r.channel.name)} (${escapeHtml(r.channel.id)})` : (d.channelId ? `#${escapeHtml(d.channelId)}` : 'desconhecido');
+      quick.push(`<div class=\"feed-meta\"><b>Saiu:</b> ${from}</div>`);
+    } else if (l.type === 'mod_member_update') {
+      if (d.nickname && (typeof d.nickname === 'object')) {
+        const nb = (typeof d.nickname.before !== 'undefined') ? String(d.nickname.before||'') : null;
+        const na = (typeof d.nickname.after !== 'undefined') ? String(d.nickname.after||'') : null;
+        if (nb !== null || na !== null) quick.push(`<div class=\"feed-meta\"><b>Apelido:</b> ${escapeHtml(nb??'—')} → ${escapeHtml(na??'—')}</div>`);
+      }
+      const rr = r.roles || {};
+      if (rr.added?.length || rr.removed?.length) {
+        const added = (rr.added||[]).slice(0,3).map(ro=>`@${escapeHtml(ro.name||ro.id)}`).join(', ');
+        const removed = (rr.removed||[]).slice(0,3).map(ro=>`@${escapeHtml(ro.name||ro.id)}`).join(', ');
+        if (added) quick.push(`<div class=\"feed-meta\"><b>Cargos adicionados:</b> ${added}${rr.added.length>3?'…':''}</div>`);
+        if (removed) quick.push(`<div class=\"feed-meta\"><b>Cargos removidos:</b> ${removed}${rr.removed.length>3?'…':''}</div>`);
+      }
+    } else if (l.type === 'mod_ban_add') {
+      const reason = l.message || d.reason || '';
+      if (reason) quick.push(`<div class=\"feed-meta\"><b>Motivo:</b> ${escapeHtml(String(reason).slice(0,200))}${String(reason).length>200?'…':''}</div>`);
     }
     const acts = buildQuickActions(l);
     const actionsRow = acts.length ? `<div class=\"feed-actions\" style=\"margin-top:8px\">${acts.map(a=>{
@@ -304,10 +350,13 @@
     return `
       <div class="feed-item" role="button" data-log-id="${l.id}" aria-expanded="false">
         <div class="feed-row">
-          <img class="feed-avatar" src="${avatarUrl(r.user?.id, r.user?.avatar)}" alt="avatar" />
+          <div class="avatar-wrap">
+            <img class="feed-avatar" src="${avatarUrl(r.user?.id, r.user?.avatar)}" alt="avatar" />
+            ${r.executor ? `<img class="exec-avatar" src="${avatarUrl(r.executor.id, r.executor.avatar)}" alt="moderador" title="Executor" />` : ''}
+          </div>
           <div class="feed-content">
             <div class="feed-title">
-              <span class="${typePill(l.type||'')}"><i class="fas ${iconFor(l.type||'')}"></i> ${escapeHtml(l.type||'log')}</span>
+              <span class="${typePill(l.type||'')}" title="${escapeHtml(typeLabel(l.type||''))}"><i class="fas ${iconFor(l.type||'')}"></i> ${escapeHtml(typeLabel(l.type||'log'))}</span>
               <span class="feed-meta" style="margin-left:8px">${dt}</span>
             </div>
             ${meta ? `<div class="feed-meta" style="margin-top:6px">${meta}</div>`:''}
@@ -364,10 +413,25 @@
         finally { btn.disabled = false; }
       });
     });
-    // Filter chips
-    els.feed.querySelectorAll('[data-filter-user]')?.forEach(n=> n.addEventListener('click', (e)=>{ e.stopPropagation(); const id=n.getAttribute('data-filter-user'); if(id){ els.userId.value=id; loadFeed(); }}));
-    els.feed.querySelectorAll('[data-filter-mod]')?.forEach(n=> n.addEventListener('click', (e)=>{ e.stopPropagation(); const id=n.getAttribute('data-filter-mod'); if(id){ els.moderatorId.value=id; loadFeed(); }}));
-    els.feed.querySelectorAll('[data-filter-channel]')?.forEach(n=> n.addEventListener('click', (e)=>{ e.stopPropagation(); const id=n.getAttribute('data-filter-channel'); if(id){ els.channelId.value=id; loadFeed(); }}));
+    // Filter chips with Shift+Click to copy ID
+    function chipHandler(kind){
+      return (e)=>{
+        e.stopPropagation();
+        const id = e.currentTarget.getAttribute(`data-filter-${kind}`);
+        if (!id) return;
+        if (e.shiftKey) {
+          try { if (navigator.clipboard?.writeText) navigator.clipboard.writeText(id); notify('ID copiado','success'); } catch {}
+          return;
+        }
+        if (kind==='user') els.userId.value = id;
+        if (kind==='mod') els.moderatorId.value = id;
+        if (kind==='channel') els.channelId.value = id;
+        loadFeed();
+      };
+    }
+    els.feed.querySelectorAll('[data-filter-user]')?.forEach(n=> n.addEventListener('click', chipHandler('user')));
+    els.feed.querySelectorAll('[data-filter-mod]')?.forEach(n=> n.addEventListener('click', chipHandler('mod')));
+    els.feed.querySelectorAll('[data-filter-channel]')?.forEach(n=> n.addEventListener('click', chipHandler('channel')));
     // Load more control
     const more = document.createElement('div');
     more.style.textAlign='center'; more.style.marginTop='8px';
@@ -656,19 +720,27 @@
         for (let i = newer.length - 1; i >= 0; i--) {
           const l = newer[i];
           const grp = formatDateGroup(l.timestamp);
-          const firstChild = container.firstElementChild;
-          const firstGroup = firstChild && firstChild.classList.contains('feed-date') ? firstChild.textContent.trim() : null;
-          if (grp !== firstGroup) {
+          let top = container.firstElementChild;
+          let topIsHeader = top && top.classList.contains('feed-date');
+          let topHeaderText = topIsHeader ? top.textContent.trim() : null;
+          // Insert header if needed
+          if (!topIsHeader || grp !== topHeaderText) {
             const header = document.createElement('div');
             header.className = 'feed-date';
             header.setAttribute('aria-label', grp);
             header.textContent = grp;
-            container.insertBefore(header, container.firstElementChild);
+            container.insertBefore(header, container.firstElementChild || null);
+            top = header; topIsHeader = true; topHeaderText = grp;
           }
           const wrapper = document.createElement('div');
           wrapper.innerHTML = renderCard(l);
           const node = wrapper.firstElementChild;
-          container.insertBefore(node, container.firstElementChild.nextElementSibling?.classList.contains('feed-date') ? container.firstElementChild.nextElementSibling : container.firstElementChild.nextSibling);
+          // Insert after header when present
+          if (topIsHeader) {
+            container.insertBefore(node, top.nextSibling);
+          } else {
+            container.insertBefore(node, container.firstElementChild || null);
+          }
           inserted++;
         }
         // If long pause since last append, insert a resume marker before previous first element

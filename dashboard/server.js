@@ -1509,6 +1509,28 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
                         if (c) out.resolved.channel = { id: c.id, name: c.name };
                     }
                 } catch {}
+                // Voice move: resolve from/to channels when present
+                try {
+                    if (d.fromChannelId) {
+                        const fc = guild.channels.cache.get(d.fromChannelId);
+                        if (fc) out.resolved.fromChannel = { id: fc.id, name: fc.name };
+                    }
+                } catch {}
+                try {
+                    if (d.toChannelId) {
+                        const tc = guild.channels.cache.get(d.toChannelId);
+                        if (tc) out.resolved.toChannel = { id: tc.id, name: tc.name };
+                    }
+                } catch {}
+                // Member role updates: resolve role names for added/removed
+                try {
+                    const roles = { added: [], removed: [] };
+                    const idsAdded = Array.isArray(d.rolesAdded) ? d.rolesAdded : (Array.isArray(d.roles?.added) ? d.roles.added : []);
+                    const idsRemoved = Array.isArray(d.rolesRemoved) ? d.rolesRemoved : (Array.isArray(d.roles?.removed) ? d.roles.removed : []);
+                    if (idsAdded.length) roles.added = idsAdded.map(id => ({ id, name: guild.roles.cache.get(id)?.name || id }));
+                    if (idsRemoved.length) roles.removed = idsRemoved.map(id => ({ id, name: guild.roles.cache.get(id)?.name || id }));
+                    if (roles.added.length || roles.removed.length) out.resolved.roles = roles;
+                } catch {}
                 return out;
             });
             return res.json({ success: true, logs: withResolved });
@@ -1616,6 +1638,18 @@ app.get('/api/guild/:guildId/moderation/event/:logId', async (req, res) => {
         try { if (data.userId) { const m = await guild.members.fetch(data.userId).catch(()=>null); out.resolved.user = m ? { id: m.id, username: m.user.username, nick: m.nickname||null, avatar: m.user.avatar } : { id: data.userId }; } } catch {}
         try { if (data.executorId) { const m = await guild.members.fetch(data.executorId).catch(()=>null); out.resolved.executor = m ? { id: m.id, username: m.user.username, nick: m.nickname||null, avatar: m.user.avatar } : { id: data.executorId }; } } catch {}
         try { if (data.channelId) { const c = guild.channels.cache.get(data.channelId) || await guild.channels.fetch(data.channelId).catch(()=>null); if (c) out.resolved.channel = { id:c.id, name:c.name }; } } catch {}
+        // Voice move: from/to channels
+        try { if (data.fromChannelId) { const fc = guild.channels.cache.get(data.fromChannelId) || await guild.channels.fetch(data.fromChannelId).catch(()=>null); if (fc) out.resolved.fromChannel = { id: fc.id, name: fc.name }; } } catch {}
+        try { if (data.toChannelId) { const tc = guild.channels.cache.get(data.toChannelId) || await guild.channels.fetch(data.toChannelId).catch(()=>null); if (tc) out.resolved.toChannel = { id: tc.id, name: tc.name }; } } catch {}
+        // Member role updates
+        try {
+            const roles = { added: [], removed: [] };
+            const idsAdded = Array.isArray(data.rolesAdded) ? data.rolesAdded : (Array.isArray(data.roles?.added) ? data.roles.added : []);
+            const idsRemoved = Array.isArray(data.rolesRemoved) ? data.rolesRemoved : (Array.isArray(data.roles?.removed) ? data.roles.removed : []);
+            if (idsAdded.length) roles.added = idsAdded.map(id => ({ id, name: guild.roles.cache.get(id)?.name || id }));
+            if (idsRemoved.length) roles.removed = idsRemoved.map(id => ({ id, name: guild.roles.cache.get(id)?.name || id }));
+            if (roles.added.length || roles.removed.length) out.resolved.roles = roles;
+        } catch {}
         return res.json({ success:true, event: out });
     } catch (e) { logger.error('Error moderation event detail:', e); return res.status(500).json({ success:false, error:'Failed to fetch event' }); }
 });
