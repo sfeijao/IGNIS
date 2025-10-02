@@ -218,29 +218,50 @@ app.get('/api/guilds', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
-    
+
     try {
+        // Ensure we have an access token
+        const accessToken = req.user && req.user.accessToken;
+        if (!accessToken) {
+            return res.status(401).json({ success: false, error: 'missing_oauth_token' });
+        }
+
         // Get user guilds from Discord API using access token
         const fetch = require('node-fetch');
         const response = await fetch('https://discord.com/api/v10/users/@me/guilds', {
-            headers: {
-                'Authorization': `Bearer ${req.user.accessToken}`
-            }
+            headers: { 'Authorization': `Bearer ${accessToken}` }
         });
-        
-        const userGuilds = await response.json();
-        
+
+        if (!response.ok) {
+            const txt = await response.text().catch(() => '');
+            logger.warn(`Discord /users/@me/guilds failed: ${response.status} ${response.statusText} ${txt}`);
+            // Likely expired/invalid OAuth token: ask client to re-auth
+            return res.status(401).json({ success: false, error: 'discord_oauth_failed', status: response.status });
+        }
+
+        let userGuilds = await response.json();
+        if (!Array.isArray(userGuilds)) {
+            logger.warn('Unexpected /users/@me/guilds payload (not array).');
+            userGuilds = [];
+        }
+
         // Get bot's guilds
         const client = global.discordClient;
         if (!client) {
             return res.json({ success: true, guilds: [] });
         }
-        
+
         const botGuilds = client.guilds.cache;
-        
+
         // Filter guilds where user has admin permissions and bot is present
         const managedGuilds = userGuilds.filter(guild => {
-            const hasAdmin = (guild.permissions & 0x8) === 0x8; // Administrator permission
+            const permStr = guild.permissions_new || guild.permissions; // both are strings in v10
+            let hasAdmin = false;
+            try {
+                if (permStr != null) hasAdmin = (BigInt(permStr) & 8n) === 8n;
+            } catch { // fallback to number coercion
+                try { hasAdmin = ((Number(permStr) | 0) & 0x8) === 0x8; } catch {}
+            }
             const botPresent = botGuilds.has(guild.id);
             return hasAdmin && botPresent;
         }).map(guild => ({
@@ -250,15 +271,12 @@ app.get('/api/guilds', async (req, res) => {
             memberCount: botGuilds.get(guild.id)?.memberCount || 0,
             botPresent: true
         }));
-        
-        res.json({
-            success: true,
-            guilds: managedGuilds
-        });
-        
+
+        return res.json({ success: true, guilds: managedGuilds });
+
     } catch (error) {
         logger.error('Error fetching guilds:', error);
-        res.status(500).json({ success: false, error: 'Failed to fetch guilds' });
+        return res.status(500).json({ success: false, error: 'guilds_fetch_failed' });
     }
 });
 

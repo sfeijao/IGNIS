@@ -54,17 +54,43 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
     async loadGuilds() {
         try {
             const response = await fetch('/api/guilds');
-            const data = await response.json();
-            
-            if (data.success) {
-                this.guilds = data.guilds || [];
-                this.displayGuilds();
-            } else {
-                throw new Error('Erro ao carregar servidores');
+            let data = null;
+            const ct = response.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+                try { data = await response.json(); } catch (_) { data = null; }
             }
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    this.showError('Sessão expirada. Redirecionando para login...');
+                    setTimeout(() => window.location.href = '/login', 800);
+                    return;
+                }
+                throw new Error(data?.error || `HTTP ${response.status}`);
+            }
+
+            if (!data?.success) {
+                throw new Error(data?.error || 'Erro ao carregar servidores');
+            }
+
+            this.guilds = data.guilds || [];
+            this.displayGuilds();
         } catch (error) {
             console.error('Erro ao carregar servidores:', error);
             this.showError('Erro ao carregar servidores');
+            const serverGrid = document.getElementById('serverGrid');
+            if (serverGrid) {
+                serverGrid.innerHTML = `
+                    <div class="no-servers glass-card">
+                        <div class="no-servers-content">
+                            <div class="no-servers-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                            <h3>Erro ao carregar servidores</h3>
+                            <p>Tente atualizar a página. Se o problema persistir, faça login novamente.</p>
+                            <a href="/login" class="btn btn-primary">Entrar novamente</a>
+                        </div>
+                    </div>
+                `;
+            }
         }
     }
     
