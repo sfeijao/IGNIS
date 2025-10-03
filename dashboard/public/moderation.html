@@ -259,6 +259,8 @@
             <span class="seg-spacer"></span>
             <button id="btnRefresh" class="btn btn-primary"><i class="fas fa-rotate"></i> Atualizar</button>
             <button id="btnAuto" class="btn btn-glass" aria-pressed="false"><i class="fas fa-play"></i> Auto</button>
+            <button id="btnStream" class="btn btn-glass" aria-pressed="false" title="Modo stream: anexar novos eventos em tempo real"><i class="fas fa-bolt"></i> Stream</button>
+            <button id="btnLatency" class="btn btn-glass" aria-pressed="false" title="Mostrar diferença de tempo entre eventos"><i class="fas fa-stopwatch"></i> Δ Tempo</button>
             <div class="input-group">
               <label for="densitySelect">Densidade</label>
               <select id="densitySelect" class="input" title="Densidade do feed">
@@ -295,6 +297,23 @@
           </div>
           <div id="activeFilters" class="chips-row mt-12" aria-live="polite"></div>
           <div id="recencyLegend" class="text-secondary mt-8 recency-legend"></div>
+          <div id="globalProgress" class="progress-global mt-8" aria-hidden="true" aria-label="Progresso de carregamento" role="progressbar" aria-valuemin="0" aria-valuemax="100"><span></span></div>
+          <div class="pagination-row mt-12" id="pagination" aria-label="Paginação">
+            <button id="pagePrev" class="btn btn-glass" title="Página anterior" disabled><i class="fas fa-chevron-left"></i></button>
+            <button id="pageNext" class="btn btn-glass" title="Próxima página" disabled><i class="fas fa-chevron-right"></i></button>
+            <label class="inline-group pagination-label">Pág:
+              <input id="pageInput" type="number" class="input w-120" min="1" value="1" title="Ir para página" />
+            </label>
+            <label class="inline-group pagination-label">Por página:
+              <select id="perPage" class="input w-120" title="Itens por página">
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="200">200</option>
+                <option value="400">400</option>
+              </select>
+            </label>
+            <span id="pageInfo" class="text-secondary page-info"></span>
+          </div>
         </div>
 
         <div class="grid-auto mt-16" id="statsGrid">
@@ -672,6 +691,14 @@
     kbd{display:inline-block;padding:2px 6px;border:1px solid var(--glass-border);border-radius:4px;font-size:.65rem;background:var(--bg-elev);font-weight:600;margin:0 2px}
     .recency-legend{font-size:.65rem;opacity:.8}
     .modal-wide{max-width:640px}
+    .progress-global{position:relative;height:6px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;opacity:0;transition:opacity .25s}
+    html[data-theme="light"] .progress-global{background:rgba(0,0,0,0.12)}
+    .progress-global[data-active="true"]{opacity:1}
+    .progress-global span{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,var(--accent-indigo),var(--accent-purple));transition:width .25s}
+    .pagination-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .pagination-label{display:flex;align-items:center;gap:4px;font-size:.7rem}
+    .page-info{font-size:.65rem}
+    .latency-delta{display:inline-block;margin-left:6px;font-size:.6rem;padding:2px 6px;background:var(--bg-tertiary);border-radius:12px;opacity:.75}
     </style>
 </body>
 </html>

@@ -31,6 +31,10 @@
 
   let autoTimer = null;
   let currentFamily = 'all';
+  let multiFamilies = new Set();
+  let page = 1; let perPage = 100; let totalLogs = 0;
+  let streamMode = false; const STREAM_MAX = 1200;
+  let showLatency = false; let lastRenderTs = null;
   let currentLimit = 200;
   let lastTopId = null; // track latest rendered id for live-append
   let lastTopTs = null; // track latest rendered timestamp for live-append
@@ -142,13 +146,16 @@
   }
 
   function buildTypeParam(){
-    switch(currentFamily){
-      case 'messages': return 'mod_message*';
-      case 'members': return 'mod_member*';
-      case 'voice': return 'mod_voice*';
-      case 'bans': return 'mod_ban*';
-      default: return 'mod_*';
-    }
+    const map = {
+      messages: 'mod_message*',
+      members: 'mod_member*',
+      voice: 'mod_voice*',
+      bans: 'mod_ban*'
+    };
+    const active = (multiFamilies && multiFamilies.size) ? [...multiFamilies] : [currentFamily];
+    if (active.includes('all')) return 'mod_*';
+    const patterns = active.map(f=> map[f]).filter(Boolean);
+    return patterns.length? patterns.join(',') : 'mod_*';
   }
 
   function buildRange(url){
@@ -237,6 +244,11 @@
       localStorage.setItem('mod-feed-filter', currentFamily);
       localStorage.setItem('mod-limit', String(currentLimit));
       localStorage.setItem('mod-auto', els.btnAuto.getAttribute('aria-pressed') === 'true' ? 'true' : 'false');
+      localStorage.setItem('mod-feed-multi', JSON.stringify([...multiFamilies]));
+      localStorage.setItem('mod-stream', streamMode?'true':'false');
+      localStorage.setItem('mod-latency', showLatency?'true':'false');
+      localStorage.setItem('mod-page', String(page));
+      localStorage.setItem('mod-perPage', String(perPage));
     } catch {}
   }
   (function restorePrefs(){
@@ -244,9 +256,18 @@
       const fam = localStorage.getItem('mod-feed-filter'); if(fam) currentFamily = fam;
       const lim = parseInt(localStorage.getItem('mod-limit')||'200',10); if(!isNaN(lim)) currentLimit = lim;
       const auto = localStorage.getItem('mod-auto')==='true';
+      try { const mf = JSON.parse(localStorage.getItem('mod-feed-multi')||'[]'); multiFamilies = new Set(mf); } catch {}
+      streamMode = localStorage.getItem('mod-stream')==='true';
+      showLatency = localStorage.getItem('mod-latency')==='true';
+      page = parseInt(localStorage.getItem('mod-page')||'1',10)||1;
+      perPage = parseInt(localStorage.getItem('mod-perPage')||'100',10)||100;
       // update UI for family
       els.filterButtons?.forEach(btn=>{ btn.classList.toggle('active', btn.getAttribute('data-filter')===currentFamily); });
       if(auto){ els.btnAuto.setAttribute('aria-pressed','true'); els.btnAuto.innerHTML = `<i class="fas fa-pause"></i> Auto`; }
+      if(streamMode) document.getElementById('btnStream')?.setAttribute('aria-pressed','true');
+      if(showLatency) document.getElementById('btnLatency')?.setAttribute('aria-pressed','true');
+      const pgIn = document.getElementById('pageInput'); if(pgIn) pgIn.value = String(page);
+      const pp = document.getElementById('perPage'); if(pp) pp.value = String(perPage);
     } catch {}
   })();
   function renderActiveFilters(){
@@ -436,6 +457,11 @@
     const d = l.data || {};
     const r = l.resolved || {};
     const dt = new Date(l.timestamp).toLocaleString('pt-PT');
+  let deltaHtml = '';
+  if(showLatency){
+    if(lastRenderTs!=null){ const diff = Math.max(0, l.timestamp - lastRenderTs); const sec = diff/1000; deltaHtml = `<span class=\"latency-delta\" title=\"Δ desde evento anterior\">+${sec>=60?( (sec/60).toFixed(1)+'m'): sec.toFixed(1)+'s'}</span>`; }
+    lastRenderTs = l.timestamp;
+  }
   const fallbackUserId = d.userId || (isSnowflake(l.message) ? l.message : null);
   const userLabel = r.user ? `${escapeHtml(r.user.username||'')}${r.user.nick? ' ('+escapeHtml(r.user.nick)+')':''}` : (fallbackUserId ? 'Desconhecido' : '');
   const modLabel = r.executor ? `${escapeHtml(r.executor.username||'')}${r.executor.nick? ' ('+escapeHtml(r.executor.nick)+')':''}` : (d.executorId ? 'Desconhecido' : '');
@@ -514,7 +540,7 @@
               <div class="feed-title-text" title="${escapeHtml(typeLabel(l.type||''))}">${escapeHtml(typeLabel(l.type||'log'))}</div>
               <div class="caret"><i class="fas fa-caret-right"></i></div>
             </div>
-            <div class="feed-timestamp">${dt}</div>
+            <div class="feed-timestamp">${dt} ${deltaHtml}</div>
           </div>
           <div class="recency-bar" data-ts="${Number(l.timestamp)}"><span></span></div>
           ${meta ? `<div class=\"feed-meta\" style=\"margin-top:4px\">${meta}</div>`:''}
@@ -814,6 +840,19 @@
       autoTimer = setInterval(async ()=>{ await loadSummary(); await loadFeed(); }, 5000);
     }
     persistPrefs();
+  }
+  function toggleStream(){
+    streamMode = !streamMode;
+    const btn = document.getElementById('btnStream');
+    btn?.setAttribute('aria-pressed', streamMode?'true':'false');
+    persistPrefs();
+  }
+  function toggleLatency(){
+    showLatency = !showLatency;
+    const btn = document.getElementById('btnLatency');
+    btn?.setAttribute('aria-pressed', showLatency?'true':'false');
+    persistPrefs();
+    if(window.__lastLogs) renderFeed(window.__lastLogs);
   }
 
   async function fetchAllForExport(){
@@ -1158,6 +1197,12 @@
   // Events
   els.btnRefresh?.addEventListener('click', async ()=>{ await loadSummary(); await loadFeed(); });
   els.btnAuto?.addEventListener('click', toggleAuto);
+  document.getElementById('btnStream')?.addEventListener('click', toggleStream);
+  document.getElementById('btnLatency')?.addEventListener('click', toggleLatency);
+  document.getElementById('pagePrev')?.addEventListener('click', ()=>{ if(page>1){ page--; persistPrefs(); loadPaged(); }});
+  document.getElementById('pageNext')?.addEventListener('click', ()=>{ page++; persistPrefs(); loadPaged(); });
+  document.getElementById('pageInput')?.addEventListener('change', (e)=>{ const v=parseInt(e.target.value,10); if(!isNaN(v)&&v>0){ page=v; persistPrefs(); loadPaged(); }});
+  document.getElementById('perPage')?.addEventListener('change', (e)=>{ perPage=parseInt(e.target.value,10)||100; page=1; persistPrefs(); loadPaged(); });
   els.btnExport?.addEventListener('click', exportCsv);
   els.btnExportSnapshot?.addEventListener('click', exportSnapshot);
   els.window?.addEventListener('change', ()=>{ loadSummary(); updateRecencyBars(); updateRecencyLegend(); });
