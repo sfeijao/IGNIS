@@ -297,6 +297,7 @@
                 <button id="btnExport" class="btn btn-glass" title="Exportar eventos no formato selecionado"><i class="fas fa-download"></i> Exportar</button>
                 <button id="btnExportSnapshot" class="btn btn-glass" title="Exportar feed como HTML estático"><i class="fas fa-camera"></i> Snapshot</button>
                 <button id="btnLoadAll" class="btn btn-glass" title="Carregar todos os eventos ignorando virtualização"><i class="fas fa-layer-group"></i> Carregar tudo</button>
+                <button id="btnExportGroups" class="btn btn-glass" style="display:none" title="Exportar estatísticas dos grupos (quando agrupado)"><i class="fas fa-table"></i> Export Grupos</button>
                 <div class="inline-group" style="align-items:flex-end; gap:4px;">
                   <label for="presetSelect" class="sr-only">Presets</label>
                   <select id="presetSelect" class="input" title="Presets de filtros" style="max-width:140px">
@@ -723,6 +724,8 @@
   .group-types{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 6px 34px}
   .group-types .gt-pill{background:rgba(255,255,255,.07);border:1px solid var(--glass-border);border-radius:10px;padding:2px 6px;font-size:.6rem;display:inline-flex;align-items:center;gap:4px}
   html.high-contrast .group-types .gt-pill{background:#000;border-color:#fff}
+  .group-mod.pinned{border-color:#f59e0b;box-shadow:0 0 0 1px rgba(245,158,11,.45)}
+  .group-head .pin-btn{margin-left:4px}
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);border:0}
     </style>
 </body>

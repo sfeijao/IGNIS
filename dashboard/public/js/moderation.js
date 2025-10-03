@@ -43,6 +43,7 @@
   let orderDesc = true; // true = newest first
   let groupByMod = false; // group by moderator executor
   let groupSortByVolume = false; // secondary grouping sort
+  let pinnedGroups = new Set(); // executorId values pinned
 
   function notify(msg, type='info'){
     const n = document.createElement('div');
@@ -214,11 +215,12 @@
         };
         els.filterButtons?.forEach(btn => {
           const key = btn.getAttribute('data-filter')||'all';
-          const info = map[key];
-          if (info) {
-            const label = btn.textContent.split(' ')[0];
-            btn.innerHTML = `${info.emoji} ${label} <span class="badge-soft" style="margin-left:4px">${info.count}</span>`;
-          }
+          const info = map[key]; if(!info) return;
+          // Use a data attribute guard so we don't stack emojis
+          const baseLabel = btn.getAttribute('data-base-label') || btn.textContent.trim();
+          if(!btn.getAttribute('data-base-label')) btn.setAttribute('data-base-label', baseLabel.replace(/^[^A-Za-zÀ-ú0-9]+/,'').trim());
+          const finalLabel = btn.getAttribute('data-base-label');
+          btn.innerHTML = `${info.emoji} ${finalLabel} <span class="badge-soft" style="margin-left:4px">${info.count}</span>`;
         });
       } catch {}
       // Update simple 7-day chart (approximation using current window metrics)
@@ -255,6 +257,7 @@
   localStorage.setItem('mod-order-desc', orderDesc?'true':'false');
   localStorage.setItem('mod-group-mod', groupByMod?'true':'false');
   localStorage.setItem('mod-group-sort-volume', groupSortByVolume?'true':'false');
+  localStorage.setItem('mod-group-pins', JSON.stringify([...pinnedGroups]));
     } catch {}
   }
   (function restorePrefs(){
@@ -270,6 +273,7 @@
   orderDesc = localStorage.getItem('mod-order-desc') !== 'false';
   groupByMod = localStorage.getItem('mod-group-mod') === 'true';
   groupSortByVolume = localStorage.getItem('mod-group-sort-volume') === 'true';
+  try { const pins = JSON.parse(localStorage.getItem('mod-group-pins')||'[]'); pinnedGroups = new Set(pins); } catch {}
       // update UI for family
       els.filterButtons?.forEach(btn=>{ btn.classList.toggle('active', btn.getAttribute('data-filter')===currentFamily); });
       if(auto){ els.btnAuto.setAttribute('aria-pressed','true'); els.btnAuto.innerHTML = `<i class="fas fa-pause"></i> Auto`; }
@@ -623,6 +627,7 @@
     if(groupByMod){
       return renderGroupedByModerator(items);
     }
+    const btnEG = document.getElementById('btnExportGroups'); if(btnEG) btnEG.style.display='none';
     if (items.length <= VIRTUAL_THRESHOLD){
       // Normal full render
       const parts = [];
@@ -820,6 +825,12 @@
     } else {
       arr.sort((a,b)=> orderDesc ? b.latest - a.latest : a.latest - b.latest);
     }
+    // Pinned first preserving relative order among pinned slice
+    if(pinnedGroups.size){
+      const pinned = arr.filter(g=> pinnedGroups.has(g.executorId));
+      const rest = arr.filter(g=> !pinnedGroups.has(g.executorId));
+      arr.length = 0; arr.push(...pinned, ...rest);
+    }
     const parts = [];
     for(const g of arr){
       const first = g.logs[0];
@@ -839,6 +850,7 @@
       parts.push(`<div class="group-mod" data-exec="${escapeHtml(g.executorId)}" aria-expanded="true">
         <div class="group-head"><button class="btn btn-sm btn-glass group-toggle" title="Expandir/recolher"><i class="fas fa-chevron-down"></i></button>
           <span class="group-title"><i class="fas ${iconClass}"></i> ${escapeHtml(label||'—')}</span>
+          <button class="btn btn-sm btn-glass pin-btn" data-pin="${escapeHtml(g.executorId)}" title="${pinnedGroups.has(g.executorId)?'Desafixar':'Fixar'} grupo"><i class="fas ${pinnedGroups.has(g.executorId)?'fa-thumbtack':'fa-thumbtack'}" style="transform:${pinnedGroups.has(g.executorId)?'rotate(45deg)':'none'}"></i></button>
           <span class="group-count">${g.logs.length} evento(s)</span>
         </div>
         ${buildGroupTypesPills(g.logs)}
@@ -850,6 +862,7 @@
     els.feed.innerHTML = parts.join('');
   window.__lastLogs = items;
   updateClearStreamBtn();
+    const btnEG = document.getElementById('btnExportGroups'); if(btnEG) btnEG.style.display='inline-flex';
     // Attach toggle
     els.feed.querySelectorAll('.group-mod .group-toggle')?.forEach(btn=>{
       btn.addEventListener('click', (e)=>{
@@ -875,6 +888,65 @@
         if(e.detail===2) openEventModal(el.getAttribute('data-log-id'));
       });
     });
+    // Pin handlers
+    els.feed.querySelectorAll('.group-mod .pin-btn')?.forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const id = btn.getAttribute('data-pin');
+        if(!id) return;
+        if(pinnedGroups.has(id)) pinnedGroups.delete(id); else pinnedGroups.add(id);
+        persistPrefs();
+        if(window.__lastLogs) renderFeed(window.__lastLogs);
+      });
+    });
+    // Pill click handlers for quick filtering
+    els.feed.querySelectorAll('.group-types .gt-pill')?.forEach(pill=>{
+      pill.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const raw = pill.getAttribute('data-group-type');
+        if(!raw) return;
+        // Map family root after 'mod_'
+        const fam = raw.replace(/^mod_/, '').split('_')[0]; // message/member/voice/ban/channel/role
+        const map = { message:'messages', member:'members', voice:'voice', ban:'bans', channel:'channels', role:'roles' };
+        const famKey = map[fam];
+        if(!famKey) return;
+        // multiFamilies support: toggle
+        if(multiFamilies.has(famKey)) multiFamilies.delete(famKey); else multiFamilies.add(famKey);
+        if(multiFamilies.size===0) currentFamily='all';
+        persistPrefs();
+        loadFeed();
+      });
+    });
+  }
+  function buildGroupStats(items){
+    const stats = {};
+    for(const it of items){
+      const execId = (it.data && it.data.executorId) || (it.resolved?.executor?.id) || (it.data?.userId) || '__system';
+      if(!stats[execId]) stats[execId] = { executorId: execId, total:0, types:{} };
+      stats[execId].total++;
+      const root = (it.type||'').split('_').slice(0,2).join('_');
+      stats[execId].types[root] = (stats[execId].types[root]||0)+1;
+    }
+    return Object.values(stats);
+  }
+  async function exportGroupStats(fmt){
+    if(!window.__lastLogs){ notify('Sem dados','error'); return; }
+    const stats = buildGroupStats(window.__lastLogs);
+    if(!stats.length){ notify('Sem dados','error'); return; }
+    if(fmt==='json'){
+      const blob = new Blob([JSON.stringify(stats,null,2)],{type:'application/json'});
+      const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupos-${Date.now()}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000); return;
+    }
+    // CSV: executorId,total,<type counts dynamic>
+    const allTypes = new Set(); stats.forEach(s=> Object.keys(s.types).forEach(t=> allTypes.add(t)));
+    const header = ['executorId','total',...allTypes];
+    const rows = [header.join(',')];
+    stats.forEach(s=>{
+      const line = [s.executorId,s.total, ...[...allTypes].map(t=> s.types[t]||0)];
+      rows.push(line.map(v=>`"${String(v).replace(/"/g,'"')}"`).join(','));
+    });
+    const blob = new Blob([rows.join('\n')],{type:'text/csv'});
+    const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupos-${Date.now()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
   }
   function buildGroupTypesPills(list){
     try {
@@ -891,9 +963,10 @@
         mod_channel: 'Canal',
         mod_role: 'Cargo'
       };
+      const total = list.length || 1;
       const pills = Object.entries(counts)
         .sort((a,b)=> b[1]-a[1])
-        .map(([k,v])=>`<span class="gt-pill" title="${v} eventos ${mapLabel[k]||k}"><b>${mapLabel[k]||k}</b> ${v}</span>`)
+        .map(([k,v])=>{ const pct = ((v/total)*100).toFixed(0); return `<span class="gt-pill" data-group-type="${k}" title="${v} eventos (${pct}%) ${mapLabel[k]||k}"><b>${mapLabel[k]||k}</b> ${v} <span style="opacity:.6">${pct}%</span></span>`; })
         .join('');
       if(!pills) return '';
       return `<div class="group-types">${pills}</div>`;
@@ -1398,6 +1471,7 @@
   document.getElementById('btnGroupMod')?.addEventListener('click', ()=>{ groupByMod = !groupByMod; document.getElementById('btnGroupMod')?.setAttribute('aria-pressed', groupByMod?'true':'false'); persistPrefs(); if(window.__lastLogs) renderFeed(window.__lastLogs); else loadFeed(); });
   document.getElementById('btnClearStream')?.addEventListener('click', clearStream);
   document.getElementById('btnGroupSortVol')?.addEventListener('click', ()=>{ groupSortByVolume = !groupSortByVolume; document.getElementById('btnGroupSortVol')?.setAttribute('aria-pressed', groupSortByVolume?'true':'false'); persistPrefs(); if(groupByMod && window.__lastLogs) renderFeed(window.__lastLogs); });
+  document.getElementById('btnExportGroups')?.addEventListener('click', ()=>{ const fmt = (els.exportFormat?.value||'csv'); exportGroupStats(fmt==='json'?'json':'csv'); });
   document.getElementById('btnGroupsToggle')?.addEventListener('click', ()=>{
     const btn = document.getElementById('btnGroupsToggle'); if(!btn) return;
     const state = btn.getAttribute('data-state')||'expanded';
