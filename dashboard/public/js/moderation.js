@@ -155,6 +155,46 @@
       els.stats.msgEdit && (els.stats.msgEdit.textContent = (m.messageUpdates||0));
       els.stats.jl && (els.stats.jl.textContent = (m.memberJoins||0) + (m.memberLeaves||0));
       els.stats.voice && (els.stats.voice.textContent = (m.voiceJoins||0) + (m.voiceLeaves||0) + (m.voiceMoves||0));
+      // Update filter buttons with counters
+      try {
+        const countMessages = (m.messageDeletes||0) + (m.messageBulkDeletes||0) + (m.messageUpdates||0);
+        const countMembers = (m.memberJoins||0) + (m.memberLeaves||0);
+        const countVoice = (m.voiceJoins||0) + (m.voiceLeaves||0) + (m.voiceMoves||0);
+        const countBans = (m.banAdds||0) + (m.banRemoves||0);
+        const map = {
+          all: { emoji: '📋', count: (countMessages + countMembers + countVoice + countBans) },
+          messages: { emoji: '💬', count: countMessages },
+          members: { emoji: '👤', count: countMembers },
+          voice: { emoji: '🎙️', count: countVoice },
+          bans: { emoji: '🚫', count: countBans }
+        };
+        els.filterButtons?.forEach(btn => {
+          const key = btn.getAttribute('data-filter')||'all';
+          const info = map[key];
+          if (info) {
+            const label = btn.textContent.split(' ')[0];
+            btn.innerHTML = `${info.emoji} ${label} <span class="badge-soft" style="margin-left:4px">${info.count}</span>`;
+          }
+        });
+      } catch {}
+      // Update simple 7-day chart (approximation using current window metrics)
+      try {
+        const canvas = document.getElementById('mod7Chart');
+        if (canvas && window.Chart){
+          const m = d.metrics || {};
+          const del = (m.messageDeletes||0)+(m.messageBulkDeletes||0);
+          const bans = (m.banAdds||0)+(m.banRemoves||0);
+          const data = {
+            labels: ['Mensagens apagadas','Banimentos'],
+            datasets: [{ data:[del, bans], backgroundColor:['rgba(59,130,246,.35)','rgba(239,68,68,.35)'], borderColor:['#3b82f6','#ef4444'] }]
+          };
+          if (!window.__modChart){
+            window.__modChart = new Chart(canvas.getContext('2d'), { type:'bar', data, options:{ responsive:true, plugins:{ legend:{ display:false }}, scales:{ y:{ beginAtZero:true } } } });
+          } else {
+            window.__modChart.data = data; window.__modChart.update();
+          }
+        }
+      } catch {}
     } catch(e){ console.error(e); }
   }
   // Preference helpers
@@ -397,8 +437,9 @@
   const msgOpen = (d.channelId && d.messageId) ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-message\" title=\"Abrir mensagem no Discord\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(d.channelId)}/${encodeURIComponent(d.messageId)}\">💬 Abrir mensagem</a>` : '';
   const linksRow = (userOpen || modOpen || chanOpen || msgOpen) ? `<div class=\"link-actions\" style=\"margin-top:6px\">${[userOpen, modOpen, chanOpen, msgOpen].filter(Boolean).join(' ')} </div>` : '';
 
-    // Copy summary button
-    const copyBtn = `<button class=\"btn btn-sm btn-glass copy-summary\" title=\"Copiar resumo\" data-log-id=\"${l.id}\"><i class=\"fas fa-copy\"></i> Copiar resumo</button>`;
+  // Inline actions: copy + dismiss
+  const copyBtn = `<button class=\"btn btn-sm btn-glass copy-summary\" title=\"Copiar resumo\" data-log-id=\"${l.id}\"><i class=\"fas fa-copy\"></i> Copiar resumo</button>`;
+  const dismissBtn = `<button class=\"btn btn-sm btn-glass dismiss-card\" title=\"Remover do feed (apenas visual)\" data-log-id=\"${l.id}\"><i class=\"fas fa-eye-slash\"></i> Ocultar</button>`;
     return `
       <div class="feed-item" role="button" data-log-id="${l.id}" aria-expanded="false" aria-label="${escapeHtml(typeLabel(l.type||''))} em ${dt}">
         <div class="feed-row">
@@ -415,7 +456,7 @@
             ${meta ? `<div class="feed-meta" style="margin-top:6px">${meta}</div>`:''}
             ${l.message ? `<div style="margin-top:6px">${escapeHtml(l.message)}</div>`:''}
             ${quick.length? `<div class="expand">${quick.join('')}</div>`:''}
-            <div class="feed-actions" style="margin-top:6px">${copyBtn}</div>
+            <div class="feed-actions" style="margin-top:6px">${copyBtn} ${dismissBtn}</div>
             ${actionsRow}
           </div>
         </div>
@@ -489,6 +530,14 @@
           }
           notify('Resumo copiado','success');
         } catch { notify('Não foi possível copiar','error'); }
+      });
+    });
+    // Dismiss card handlers (UI-only)
+    els.feed.querySelectorAll('.dismiss-card')?.forEach(btn => {
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const item = btn.closest('.feed-item');
+        if (item) item.remove();
       });
     });
     // Filter chips with Shift+Click to copy ID
@@ -730,10 +779,30 @@
       }
 
   els.modalTitle.textContent = 'Evento de moderação';
+  // Add copy details tool at the top
+  body.unshift(`<div class=\"actions-row\"><button id=\"btnCopyDetails\" class=\"btn btn-glass\" title=\"Copiar detalhes do evento\"><i class=\"fas fa-copy\"></i> Copiar detalhes</button></div>`);
   els.modalBody.innerHTML = body.join('');
   els.modal.classList.remove('modal-hidden');
   els.modal.classList.add('modal-visible');
   els.modal.setAttribute('aria-hidden','false');
+      // Copy details aggregate handler
+      try {
+        const btnCopyDetails = els.modalBody.querySelector('#btnCopyDetails');
+        btnCopyDetails?.addEventListener('click', async ()=>{
+          try {
+            const parts = [];
+            // Prefer readable key-value lines
+            els.modalBody.querySelectorAll('.kv')?.forEach(kv => parts.push(kv.textContent.trim()));
+            // Include any code blocks (before/after/content)
+            els.modalBody.querySelectorAll('.code-block')?.forEach(pre => parts.push(pre.textContent.trim()));
+            const text = parts.filter(Boolean).join('\n');
+            if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text); else {
+              const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+            }
+            notify('Detalhes copiados','success');
+          } catch { notify('Não foi possível copiar','error'); }
+        });
+      } catch {}
       // Wire copy buttons
       els.modalBody.querySelectorAll('[data-copy-id]')?.forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -931,6 +1000,15 @@
               const apply = await postAction(payload);
               if (apply?.success){ notify('Ação aplicada','success'); await loadSummary(); }
             } catch(e){ console.error(e); notify(e.message,'error'); } finally { btn.disabled=false; }
+          });
+        });
+        // Bind dismiss for newly inserted nodes as well
+        els.feed.querySelectorAll('.dismiss-card')?.forEach(btn=>{
+          if (btn.__dismissBound) return; btn.__dismissBound = true;
+          btn.addEventListener('click', (e)=>{
+            e.stopPropagation();
+            const item = btn.closest('.feed-item');
+            if (item) item.remove();
           });
         });
         // Mild highlight on new cards

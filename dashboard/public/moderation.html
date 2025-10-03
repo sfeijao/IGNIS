@@ -69,6 +69,22 @@
     .link-actions{gap:8px}
     .link-actions .link-btn{flex:1 1 calc(50% - 8px); text-align:center}
   }
+  /* Modal: two-column layout for key-value rows on wide screens */
+  .moderation-modal .modal-body #modModalBody{
+    display:block;
+  }
+  @media (min-width: 820px){
+    .moderation-modal .modal-body #modModalBody{
+      display:grid; grid-template-columns: 1fr 1fr; gap:12px;
+    }
+    .moderation-modal .modal-body #modModalBody .kv{ margin:0; }
+    /* Span full width elements */
+    .moderation-modal .modal-body #modModalBody .identity-row,
+    .moderation-modal .modal-body #modModalBody .code-block,
+    .moderation-modal .modal-body #modModalBody .actions-row{
+      grid-column: 1 / -1;
+    }
+  }
   </style>
   </head>
 <body>
@@ -76,6 +92,7 @@
     <div class="navbar-container">
       <div class="navbar-brand"><i class="fas fa-hammer"></i> Moderação</div>
       <div class="navbar-user">
+        <button id="themeToggle" class="btn btn-glass" title="Alternar tema"><i class="fas fa-moon"></i></button>
         <span id="healthBadge" class="badge health-badge" title="Estado do sistema">
           <span id="health-mongo" class="dot dot-gray" title="DB"></span>
           <span id="health-discord" class="dot dot-gray" title="Discord"></span>
@@ -169,6 +186,11 @@
         </div>
 
         <div class="glass-card card-pad mt-16">
+          <h3 class="section-title"><i class="fas fa-chart-line"></i> Últimos 7 dias</h3>
+          <canvas id="mod7Chart" height="120" aria-label="Tendência 7 dias" role="img"></canvas>
+        </div>
+
+        <div class="glass-card card-pad mt-16">
           <h3 class="section-title"><i class="fas fa-stream"></i> Feed</h3>
           <div id="feed" class="mt-12" aria-live="polite"></div>
         </div>
@@ -254,11 +276,40 @@
       } catch {}
     })();
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/js/moderation.js"></script>
   <script>
+    // Theme toggle (light/dark) persisted in localStorage
+    (function(){
+      try {
+        const key='ui-theme';
+        const apply=(t)=>{ document.documentElement.setAttribute('data-theme', t); };
+        const saved = localStorage.getItem(key) || 'dark';
+        apply(saved);
+        const btn = document.getElementById('themeToggle');
+        const setIcon = ()=>{ btn.innerHTML = (document.documentElement.getAttribute('data-theme')==='light')? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; };
+        setIcon();
+        btn?.addEventListener('click', ()=>{ const cur=document.documentElement.getAttribute('data-theme')||'dark'; const next = (cur==='dark')?'light':'dark'; apply(next); localStorage.setItem(key,next); setIcon(); });
+      } catch {}
+    })();
+    // Navbar user avatar/name & health
     // Navbar user avatar/name & health
     (async()=>{ try{ const r = await fetch('/api/user'); const d = await r.json(); if(d?.success){ const a=document.getElementById('userAvatar'); const n=document.getElementById('userName'); if(a&&d.user.avatar) a.src=d.user.avatar; if(n) n.textContent=d.user.username; } }catch{} })();
     (async()=>{ const setTip=(t)=>{const hb=document.getElementById('healthBadge'); if(hb) hb.title=t;}; const dot=(el, st)=>{ if(!el) return; el.classList.remove('dot-green','dot-red','dot-gray'); el.classList.add(st==='ok'?'dot-green': st==='bad'?'dot-red':'dot-gray');}; try{ const r=await fetch('/api/health',{credentials:'same-origin'}); const h=await r.json(); dot(document.getElementById('health-mongo'), h.mongo==='connected'?'ok': (h.mongo==='disabled'?'gray':'bad')); dot(document.getElementById('health-discord'), h.discord?'ok':'bad'); setTip(`${h.mongo==='connected'?'DB: ligado': h.mongo==='disabled'?'DB: desativado':'DB: desligado'} • ${h.discord?'Discord: online':'Discord: offline'}`);}catch{}})();
   </script>
+    <style>
+    /* Light theme overrides for this page using CSS variables */
+    html[data-theme="light"] {
+      --bg-primary: #F7F7FB;
+      --bg-secondary: #FFFFFF;
+      --bg-tertiary: #F1F5F9;
+      --bg-card: rgba(0,0,0,0.03);
+      --bg-glass: rgba(99,102,241,0.08);
+      --text-primary: #1F2937;
+      --text-secondary: #4B5563;
+      --text-muted: #6B7280;
+      --glass-border: rgba(0,0,0,0.12);
+    }
+    </style>
 </body>
 </html>
