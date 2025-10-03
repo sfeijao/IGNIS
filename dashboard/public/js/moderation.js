@@ -798,7 +798,11 @@
     // Build map executorId => logs
     const groups = new Map();
     for(const it of items){
-      const exec = (it.data && it.data.executorId) || (it.resolved && it.resolved.executor && it.resolved.executor.id) || 'desconhecido';
+      let exec = (it.data && it.data.executorId) || (it.resolved && it.resolved.executor && it.resolved.executor.id);
+      if(!exec){
+        // Fallback: actions sem executor explícito (ex: voice join/leave) — agrupar por próprio userId
+        exec = (it.data && it.data.userId) || (it.resolved && it.resolved.user && it.resolved.user.id) || '__system';
+      }
       if(!groups.has(exec)) groups.set(exec, []);
       groups.get(exec).push(it);
     }
@@ -810,10 +814,23 @@
     arr.sort((a,b)=> orderDesc ? b.latest - a.latest : a.latest - b.latest);
     const parts = [];
     for(const g of arr){
-      const label = g.logs[0]?.resolved?.executor ? `${g.logs[0].resolved.executor.username}${g.logs[0].resolved.executor.nick? ' ('+g.logs[0].resolved.executor.nick+')':''}` : g.executorId;
+      const first = g.logs[0];
+      let label;
+      let iconClass = 'fa-user-shield';
+      if(first?.resolved?.executor){
+        label = `${first.resolved.executor.username}${first.resolved.executor.nick? ' ('+first.resolved.executor.nick+')':''}`;
+      } else if (g.executorId === '__system') {
+        label = 'Sistema'; iconClass = 'fa-cog';
+      } else if (first?.resolved?.user){
+        label = `${first.resolved.user.username}${first.resolved.user.nick? ' ('+first.resolved.user.nick+')':''}`; iconClass='fa-user';
+      } else if (first?.data?.userId){
+        label = `Utilizador ${first.data.userId}`; iconClass='fa-user';
+      } else {
+        label = g.executorId || '—';
+      }
       parts.push(`<div class="group-mod" data-exec="${escapeHtml(g.executorId)}" aria-expanded="true">
         <div class="group-head"><button class="btn btn-sm btn-glass group-toggle" title="Expandir/recolher"><i class="fas fa-chevron-down"></i></button>
-          <span class="group-title"><i class="fas fa-user-shield"></i> ${escapeHtml(label||'Desconhecido')}</span>
+          <span class="group-title"><i class="fas ${iconClass}"></i> ${escapeHtml(label||'—')}</span>
           <span class="group-count">${g.logs.length} evento(s)</span>
         </div>
         <div class="group-body">
