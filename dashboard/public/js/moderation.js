@@ -176,7 +176,8 @@
     const to = (els.to?.value||'').trim(); if (to) chips.push({ k:'to', label:`Até: ${to}` });
     if (currentFamily && currentFamily !== 'all') chips.push({ k:'family', label:`Tipo: ${currentFamily}` });
     if (!chips.length) { row.innerHTML = ''; return; }
-    row.innerHTML = chips.map(c => `<span class="chip" data-k="${c.k}">${c.label} <i class="fas fa-times chip-clear" title="Limpar"></i></span>`).join('');
+    row.innerHTML = chips.map(c => `<span class="chip" data-k="${c.k}">${c.label} <i class="fas fa-times chip-clear" title="Limpar"></i></span>`).join('') +
+      ` <span class="chip chip-clear-all" data-clear-all="1" title="Limpar todos os filtros"><i class="fas fa-broom"></i> Limpar tudo</span>`;
     row.querySelectorAll('.chip')?.forEach(ch => ch.addEventListener('click', (e)=>{
       const k = ch.getAttribute('data-k'); const isClear = e.target?.classList?.contains('chip-clear');
       if (!k) return;
@@ -189,6 +190,20 @@
       else if (k==='family') { currentFamily = 'all'; els.filterButtons?.forEach(b=> b.classList.toggle('active', (b.getAttribute('data-filter')||'all')==='all')); }
       loadFeed();
     }));
+    // Clear all chip
+    row.querySelector('[data-clear-all]')?.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if (els.q) els.q.value = '';
+      if (els.userId) els.userId.value = '';
+      if (els.moderatorId) els.moderatorId.value = '';
+      if (els.channelId) els.channelId.value = '';
+      if (els.from) els.from.value = '';
+      if (els.to) els.to.value = '';
+      currentFamily = 'all';
+      els.filterButtons?.forEach(b=> b.classList.toggle('active', (b.getAttribute('data-filter')||'all')==='all'));
+      renderActiveFilters();
+      loadFeed();
+    });
   }
   function restorePrefs(){
     try {
@@ -628,6 +643,84 @@
       } else if (ev.type === 'mod_message_delete') {
         // If content available in message, show it
         if (data.content) body.push(`<pre class="code-block"><b>Conteúdo:</b>\n${escapeHtml(data.content)}</pre>`);
+      }
+
+      // Voice event rich details
+      if (ev.type === 'mod_voice_move' || ev.type === 'mod_voice_join' || ev.type === 'mod_voice_leave') {
+        try {
+          const rsv = resolved || {};
+          if (ev.type === 'mod_voice_move') {
+            const from = rsv.fromChannel ? `#${escapeHtml(rsv.fromChannel.name)} (${escapeHtml(rsv.fromChannel.id)})` : (data.fromChannelId ? `#${escapeHtml(data.fromChannelId)}` : 'desconhecido');
+            const to = rsv.toChannel ? `#${escapeHtml(rsv.toChannel.name)} (${escapeHtml(rsv.toChannel.id)})` : (data.toChannelId ? `#${escapeHtml(data.toChannelId)}` : (rsv.channel ? `#${escapeHtml(rsv.channel.name)} (${escapeHtml(rsv.channel.id)})` : 'desconhecido'));
+            body.push(`<div class="kv"><b>Moveu-se:</b> ${from} → ${to}</div>`);
+          } else if (ev.type === 'mod_voice_join') {
+            const to = rsv.channel ? `#${escapeHtml(rsv.channel.name)} (${escapeHtml(rsv.channel.id)})` : (data.channelId ? `#${escapeHtml(data.channelId)}` : 'desconhecido');
+            body.push(`<div class="kv"><b>Entrou em:</b> ${to}</div>`);
+          } else if (ev.type === 'mod_voice_leave') {
+            const from = rsv.channel ? `#${escapeHtml(rsv.channel.name)} (${escapeHtml(rsv.channel.id)})` : (data.channelId ? `#${escapeHtml(data.channelId)}` : 'desconhecido');
+            body.push(`<div class="kv"><b>Saiu de:</b> ${from}</div>`);
+          }
+        } catch {}
+      }
+
+      // Member update diffs (nickname, roles)
+      if (ev.type === 'mod_member_update') {
+        try {
+          if (data.nickname && typeof data.nickname === 'object') {
+            const nb = (typeof data.nickname.before !== 'undefined') ? String(data.nickname.before||'') : null;
+            const na = (typeof data.nickname.after !== 'undefined') ? String(data.nickname.after||'') : null;
+            if (nb !== null || na !== null) body.push(`<div class="kv"><b>Apelido:</b> ${escapeHtml(nb??'—')} → ${escapeHtml(na??'—')}</div>`);
+          }
+          const rr = (resolved && resolved.roles) ? resolved.roles : {};
+          if (rr.added?.length || rr.removed?.length) {
+            const added = (rr.added||[]).map(ro=>`@${escapeHtml(ro.name||ro.id)}`).join(', ');
+            const removed = (rr.removed||[]).map(ro=>`@${escapeHtml(ro.name||ro.id)}`).join(', ');
+            if (added) body.push(`<div class="kv"><b>Cargos adicionados:</b> ${added}</div>`);
+            if (removed) body.push(`<div class="kv"><b>Cargos removidos:</b> ${removed}</div>`);
+          }
+        } catch {}
+      }
+
+      // Channel update diffs (best-effort)
+      if (ev.type === 'mod_channel_update') {
+        const showDiff = (obj, label) => {
+          if (obj && typeof obj === 'object' && ('before' in obj || 'after' in obj)) {
+            const b = (obj.before!=null)? String(obj.before): '—';
+            const a = (obj.after!=null)? String(obj.after): '—';
+            body.push(`<div class="kv"><b>${escapeHtml(label)}:</b> ${escapeHtml(b)} → ${escapeHtml(a)}</div>`);
+          }
+        };
+        try {
+          showDiff(data.name, 'Nome');
+          showDiff(data.topic, 'Tópico');
+          showDiff(data.parentId, 'Categoria');
+          showDiff(data.position, 'Posição');
+          showDiff(data.nsfw, 'NSFW');
+          showDiff(data.rateLimitPerUser, 'Slowmode');
+        } catch {}
+      }
+
+      // Role update diffs (best-effort)
+      if (ev.type === 'mod_role_update') {
+        const showDiff = (obj, label) => {
+          if (obj && typeof obj === 'object' && ('before' in obj || 'after' in obj)) {
+            const b = (obj.before!=null)? String(obj.before): '—';
+            const a = (obj.after!=null)? String(obj.after): '—';
+            body.push(`<div class="kv"><b>${escapeHtml(label)}:</b> ${escapeHtml(b)} → ${escapeHtml(a)}</div>`);
+          }
+        };
+        try {
+          showDiff(data.name, 'Nome');
+          showDiff(data.color, 'Cor');
+          showDiff(data.hoist, 'Separado');
+          showDiff(data.mentionable, 'Mencionável');
+          if (data.permissions && typeof data.permissions === 'object') {
+            const add = Array.isArray(data.permissions.added)? data.permissions.added : [];
+            const rem = Array.isArray(data.permissions.removed)? data.permissions.removed : [];
+            if (add.length) body.push(`<div class="kv"><b>Permissões adicionadas:</b> ${add.map(p=>`<code>${escapeHtml(String(p))}</code>`).join(', ')}</div>`);
+            if (rem.length) body.push(`<div class="kv"><b>Permissões removidas:</b> ${rem.map(p=>`<code>${escapeHtml(String(p))}</code>`).join(', ')}</div>`);
+          }
+        } catch {}
       }
 
       if (actions.length) {
