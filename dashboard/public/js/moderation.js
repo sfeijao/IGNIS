@@ -342,29 +342,29 @@
     const d = l.data || {};
     const r = l.resolved || {};
     const dt = new Date(l.timestamp).toLocaleString('pt-PT');
-    const userLabel = r.user ? `${escapeHtml(r.user.username||'')}${r.user.nick? ' ('+escapeHtml(r.user.nick)+')':''} [${escapeHtml(r.user.id)}]` : (d.userId ? escapeHtml(d.userId) : '');
-    const modLabel = r.executor ? `${escapeHtml(r.executor.username||'')}${r.executor.nick? ' ('+escapeHtml(r.executor.nick)+')':''} [${escapeHtml(r.executor.id)}]` : (d.executorId ? escapeHtml(d.executorId) : '');
-    const chanLabel = r.channel ? `#${escapeHtml(r.channel.name||'')} [${escapeHtml(r.channel.id)}]` : (d.channelId ? escapeHtml(d.channelId) : '');
+  const userLabel = r.user ? `${escapeHtml(r.user.username||'')}${r.user.nick? ' ('+escapeHtml(r.user.nick)+')':''}` : (d.userId ? 'Usuário' : '');
+  const modLabel = r.executor ? `${escapeHtml(r.executor.username||'')}${r.executor.nick? ' ('+escapeHtml(r.executor.nick)+')':''}` : (d.executorId ? 'Moderador' : '');
+  const chanLabel = r.channel ? `#${escapeHtml(r.channel.name||'')}` : (d.channelId ? 'Canal' : '');
     const meta = [
       userLabel ? `<span class=\"badge-soft\" title=\"Clique para filtrar • Shift+Clique copia o ID\" data-filter-user="${escapeHtml(d.userId||r.user?.id||'')}" data-copy-id="${escapeHtml(d.userId||r.user?.id||'')}"><i class=\"fas fa-user\"></i> ${userLabel}</span>` : '',
       modLabel ? `<span class=\"badge-soft\" title=\"Clique para filtrar • Shift+Clique copia o ID\" data-filter-mod="${escapeHtml(d.executorId||r.executor?.id||'')}" data-copy-id="${escapeHtml(d.executorId||r.executor?.id||'')}"><i class=\"fas fa-shield-alt\"></i> ${modLabel}</span>` : '',
       chanLabel ? `<span class=\"badge-soft\" title=\"Clique para filtrar • Shift+Clique copia o ID\" data-filter-channel="${escapeHtml(d.channelId||r.channel?.id||'')}" data-copy-id="${escapeHtml(d.channelId||r.channel?.id||'')}"><i class=\"fas fa-hashtag\"></i> ${chanLabel}</span>` : ''
     ].filter(Boolean).join(' ');
     const quick = [];
-    if (l.type === 'mod_message_update') {
+  if (l.type === 'mod_message_update') {
       if (d.before) quick.push(`<div class=\"feed-meta\"><b>Antes:</b> ${escapeHtml(String(d.before).slice(0, 160))}${String(d.before).length>160?'…':''}</div>`);
       if (d.after) quick.push(`<div class=\"feed-meta\"><b>Depois:</b> ${escapeHtml(String(d.after).slice(0, 160))}${String(d.after).length>160?'…':''}</div>`);
     } else if (l.type === 'mod_message_delete' && d.content) {
       quick.push(`<div class=\"feed-meta\"><b>Conteúdo:</b> ${escapeHtml(String(d.content).slice(0,200))}${String(d.content).length>200?'…':''}</div>`);
     } else if (l.type === 'mod_voice_move') {
-      const from = r.fromChannel ? `#${escapeHtml(r.fromChannel.name)} (${escapeHtml(r.fromChannel.id)})` : (d.fromChannelId ? `#${escapeHtml(d.fromChannelId)}` : 'desconhecido');
-      const to = r.toChannel ? `#${escapeHtml(r.toChannel.name)} (${escapeHtml(r.toChannel.id)})` : (d.toChannelId ? `#${escapeHtml(d.toChannelId)}` : (r.channel ? `#${escapeHtml(r.channel.name)} (${escapeHtml(r.channel.id)})` : 'desconhecido'));
+      const from = r.fromChannel ? `#${escapeHtml(r.fromChannel.name)}` : 'desconhecido';
+      const to = r.toChannel ? `#${escapeHtml(r.toChannel.name)}` : (r.channel ? `#${escapeHtml(r.channel.name)}` : 'desconhecido');
       quick.push(`<div class=\"feed-meta\"><b>Move:</b> ${from} → ${to}</div>`);
     } else if (l.type === 'mod_voice_join') {
-      const to = r.channel ? `#${escapeHtml(r.channel.name)} (${escapeHtml(r.channel.id)})` : (d.channelId ? `#${escapeHtml(d.channelId)}` : 'desconhecido');
+      const to = r.channel ? `#${escapeHtml(r.channel.name)}` : 'desconhecido';
       quick.push(`<div class=\"feed-meta\"><b>Entrou:</b> ${to}</div>`);
     } else if (l.type === 'mod_voice_leave') {
-      const from = r.channel ? `#${escapeHtml(r.channel.name)} (${escapeHtml(r.channel.id)})` : (d.channelId ? `#${escapeHtml(d.channelId)}` : 'desconhecido');
+      const from = r.channel ? `#${escapeHtml(r.channel.name)}` : 'desconhecido';
       quick.push(`<div class=\"feed-meta\"><b>Saiu:</b> ${from}</div>`);
     } else if (l.type === 'mod_member_update') {
       if (d.nickname && (typeof d.nickname === 'object')) {
@@ -603,9 +603,9 @@
         if (id && avatar) return `https://cdn.discordapp.com/avatars/${encodeURIComponent(id)}/${encodeURIComponent(avatar)}.png?size=128`;
         return '/default-avatar.svg';
       };
-  const userText = resolved.user ? `${escapeHtml(resolved.user.username||'')}${resolved.user.nick? ' ('+escapeHtml(resolved.user.nick)+')':''} [${escapeHtml(resolved.user.id)}]` : (data.userId ? escapeHtml(data.userId) : '-');
-  const modText = resolved.executor ? `${escapeHtml(resolved.executor.username||'')}${resolved.executor.nick? ' ('+escapeHtml(resolved.executor.nick)+')':''} [${escapeHtml(resolved.executor.id)}]` : (data.executorId ? escapeHtml(data.executorId) : '-');
-  const chanText = resolved.channel ? `#${escapeHtml(resolved.channel.name||'')} [${escapeHtml(resolved.channel.id)}]` : (data.channelId ? escapeHtml(data.channelId) : '-');
+  const userText = resolved.user ? `${escapeHtml(resolved.user.username||'')}${resolved.user.nick? ' ('+escapeHtml(resolved.user.nick)+')':''}` : (data.userId ? 'Usuário' : '-');
+  const modText = resolved.executor ? `${escapeHtml(resolved.executor.username||'')}${resolved.executor.nick? ' ('+escapeHtml(resolved.executor.nick)+')':''}` : (data.executorId ? 'Moderador' : '-');
+  const chanText = resolved.channel ? `#${escapeHtml(resolved.channel.name||'')}` : (data.channelId ? 'Canal' : '-');
   const body = [];
   body.push(`<div class="kv"><b>Tipo:</b> ${escapeHtml(ev.type)}</div>`);
   body.push(`<div class="kv"><b>Quando:</b> ${new Date(ev.timestamp).toLocaleString('pt-PT')}</div>`);
@@ -634,8 +634,8 @@
       const modOpen = data.executorId ? `<a class=\"btn btn-sm btn-glass\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(data.executorId)}\"><i class=\"fas fa-external-link-alt\"></i> Abrir no Discord</a>` : '';
       const chanOpen = data.channelId ? `<a class=\"btn btn-sm btn-glass\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(data.channelId)}\"><i class=\"fas fa-external-link-alt\"></i> Abrir no Discord</a>` : '';
       const msgOpen = (data.channelId && data.messageId) ? `<a class=\"btn btn-sm btn-glass\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(data.channelId)}/${encodeURIComponent(data.messageId)}\"><i class=\"fas fa-external-link-alt\"></i> Abrir mensagem</a>` : '';
-      body.push(`<div class=\"kv\"><b>Abrir:</b> ${[userOpen, modOpen, chanOpen, msgOpen].filter(Boolean).join(' ')||'-'}</div>`);
-      body.push(`<div class=\"kv\"><b>Canal:</b> ${chanText} ${data.channelId? `<button class=\"btn btn-sm btn-glass\" data-copy-id=\"${escapeHtml(data.channelId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
+  body.push(`<div class=\"kv\"><b>Abrir:</b> ${[userOpen, modOpen, chanOpen, msgOpen].filter(Boolean).join(' ')||'-'}</div>`);
+  body.push(`<div class=\"kv\"><b>Canal:</b> ${chanText} ${data.channelId? `<button class=\"btn btn-sm btn-glass\" data-copy-id=\"${escapeHtml(data.channelId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
       if (ev.message) body.push(`<div class="kv"><b>Motivo:</b> ${escapeHtml(ev.message)}</div>`);
       if (ev.type === 'mod_message_update') {
         if (data.before) body.push(`<pre class="code-block"><b>Antes:</b>\n${escapeHtml(data.before)}</pre>`);
@@ -650,14 +650,14 @@
         try {
           const rsv = resolved || {};
           if (ev.type === 'mod_voice_move') {
-            const from = rsv.fromChannel ? `#${escapeHtml(rsv.fromChannel.name)} (${escapeHtml(rsv.fromChannel.id)})` : (data.fromChannelId ? `#${escapeHtml(data.fromChannelId)}` : 'desconhecido');
-            const to = rsv.toChannel ? `#${escapeHtml(rsv.toChannel.name)} (${escapeHtml(rsv.toChannel.id)})` : (data.toChannelId ? `#${escapeHtml(data.toChannelId)}` : (rsv.channel ? `#${escapeHtml(rsv.channel.name)} (${escapeHtml(rsv.channel.id)})` : 'desconhecido'));
+            const from = rsv.fromChannel ? `#${escapeHtml(rsv.fromChannel.name)}` : 'desconhecido';
+            const to = rsv.toChannel ? `#${escapeHtml(rsv.toChannel.name)}` : (rsv.channel ? `#${escapeHtml(rsv.channel.name)}` : 'desconhecido');
             body.push(`<div class="kv"><b>Moveu-se:</b> ${from} → ${to}</div>`);
           } else if (ev.type === 'mod_voice_join') {
-            const to = rsv.channel ? `#${escapeHtml(rsv.channel.name)} (${escapeHtml(rsv.channel.id)})` : (data.channelId ? `#${escapeHtml(data.channelId)}` : 'desconhecido');
+            const to = rsv.channel ? `#${escapeHtml(rsv.channel.name)}` : 'desconhecido';
             body.push(`<div class="kv"><b>Entrou em:</b> ${to}</div>`);
           } else if (ev.type === 'mod_voice_leave') {
-            const from = rsv.channel ? `#${escapeHtml(rsv.channel.name)} (${escapeHtml(rsv.channel.id)})` : (data.channelId ? `#${escapeHtml(data.channelId)}` : 'desconhecido');
+            const from = rsv.channel ? `#${escapeHtml(rsv.channel.name)}` : 'desconhecido';
             body.push(`<div class="kv"><b>Saiu de:</b> ${from}</div>`);
           }
         } catch {}
