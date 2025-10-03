@@ -10,6 +10,76 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
   <style>
+    /* === Visual Overhaul Tokens & Accents === */
+    :root {
+      --space-1:4px; --space-2:6px; --space-3:10px; --space-4:14px; --space-5:20px;
+      --radius-sm:6px; --radius-md:10px; --radius-lg:14px; --radius-xl:22px;
+      --elev-1:0 2px 4px -1px rgba(0,0,0,.25),0 1px 2px rgba(0,0,0,.15);
+      --elev-2:0 4px 14px -2px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.25);
+      --elev-glow:0 0 0 1px rgba(255,255,255,.05),0 0 0 4px rgba(124,58,237,.15);
+      --grad-card:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+      --grad-hover:linear-gradient(145deg,rgba(124,58,237,.18),rgba(124,58,237,.06));
+      --focus-ring:0 0 0 2px rgba(255,255,255,.8),0 0 0 4px var(--accent, #7C3AED);
+    }
+    .feed-item{--accent:var(--accent-base,#7C3AED);} /* default fallback */
+    .family-msg{--accent-base:#3b82f6}
+    .family-mem{--accent-base:#10b981}
+    .family-voice{--accent-base:#f59e0b}
+    .family-ban{--accent-base:#ef4444}
+    .family-chan{--accent-base:#6366f1}
+    .family-role{--accent-base:#9333ea}
+    /* Segmented control */
+    .segmented{display:inline-flex;background:rgba(255,255,255,.05);padding:4px;border-radius:999px;position:relative;gap:4px;border:1px solid var(--glass-border)}
+    .segmented .btn-toggle{position:relative;background:transparent;border:none;padding:6px 14px;font-size:.8rem;font-weight:500;color:var(--text-secondary);border-radius:999px;cursor:pointer;transition:color .25s}
+    .segmented .btn-toggle.active{color:#fff}
+    .segmented .seg-indicator{position:absolute;top:4px;bottom:4px;border-radius:999px;background:linear-gradient(90deg,var(--accent-base,#7C3AED),rgba(124,58,237,.6));box-shadow:0 4px 18px -4px rgba(0,0,0,.4);transition:transform .35s cubic-bezier(.4,.55,.1,1),width .35s;z-index:0}
+    .segmented .btn-toggle > span{position:relative;z-index:1;display:inline-flex;align-items:center;gap:6px}
+    .segmented .btn-toggle:not(.active):hover{color:var(--text-primary)}
+    /* New card look */
+  .feed-item{background:var(--grad-card);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.06);box-shadow:var(--elev-1);position:relative;overflow:hidden}
+    .feed-item:after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.12),transparent 60%);opacity:.0;transition:opacity .5s}
+    .feed-item:hover:after{opacity:.35}
+    .feed-item:hover{border-color:var(--accent-base);box-shadow:0 8px 28px -6px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04)}
+    .feed-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .head-left{display:flex;align-items:center;gap:12px;min-width:0}
+    .icon-badge{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:linear-gradient(135deg,var(--accent-base),rgba(255,255,255,.08));color:#fff;font-size:16px;box-shadow:0 4px 14px -2px var(--accent-base)}
+    .feed-title-text{font-weight:600;letter-spacing:.3px;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}
+    .feed-timestamp{font-family:ui-monospace,monospace;font-size:.68rem;color:var(--text-secondary);letter-spacing:.05em}
+    .caret{transition:transform .35s ease;font-size:.7rem;opacity:.7}
+    .feed-item[aria-expanded="true"] .caret{transform:rotate(90deg);opacity:1}
+    .expand{transition:height .4s ease, opacity .4s ease}
+    .expand[data-collapsed="true"]{height:0 !important;opacity:0;overflow:hidden}
+    .expand[data-collapsed="false"]{opacity:1}
+    .badge-soft{background:rgba(255,255,255,.07)}
+    /* Skeletons */
+    .skeleton-wave{--sk:rgba(255,255,255,.08);background:linear-gradient(100deg,rgba(255,255,255,.03),var(--sk),rgba(255,255,255,.03));background-size:200% 100%;animation:sk 1.2s linear infinite;border-radius:8px}
+    @keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    .feed-skel{padding:12px 10px;border:1px solid rgba(255,255,255,.05);border-radius:14px;margin-bottom:10px;background:rgba(255,255,255,.02)}
+    .feed-skel .bar{height:10px;margin-bottom:8px}
+    /* Role diff chips */
+    .role-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;font-size:.65rem;font-weight:600;letter-spacing:.5px}
+    .role-chip.add{background:rgba(16,185,129,.18);color:#34d399;border:1px solid #10b981}
+    .role-chip.rem{background:rgba(239,68,68,.18);color:#f87171;border:1px solid #ef4444}
+    /* Diff text highlights */
+    .diff-add{background:rgba(16,185,129,.15);color:#34d399;padding:2px 4px;border-radius:4px}
+    .diff-rem{background:rgba(239,68,68,.18);color:#f87171;padding:2px 4px;border-radius:4px;text-decoration:line-through}
+    /* Copy pulse */
+    .btn-pulse{position:relative}
+    .btn-pulse:after{content:'';position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 0 0 rgba(255,255,255,.4);opacity:0}
+    .btn-pulse.pulsing:after{animation:pulse 0.7s ease}
+    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.4);opacity:1}100%{box-shadow:0 0 0 18px rgba(255,255,255,0);opacity:0}}
+    /* Smooth density/theme transitions */
+    html, .feed-item, .segmented, .feed-item *{transition:background .45s, color .45s, border-color .45s, box-shadow .45s;}
+    /* Focus ring */
+    .btn:focus-visible, .btn-toggle:focus-visible, .qa-btn:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+    /* Modal improvements */
+  .moderation-modal .modal-header{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);background:linear-gradient(90deg,rgba(0,0,0,.55),rgba(0,0,0,.25));border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:5}
+    .kv + .code-block, .code-block + .code-block{margin-top:10px}
+    .code-block{background:linear-gradient(145deg,rgba(255,255,255,.04),rgba(0,0,0,.25));border:1px solid rgba(255,255,255,.08)!important;border-radius:10px;padding:10px;font-size:.72rem;line-height:1.25}
+    .confirm-block{background:linear-gradient(160deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px}
+    .confirm-block pre{max-height:320px;overflow:auto}
+    .plan-diff{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+    .seg-spacer{flex:1 1 auto}
     .card-pad{padding:16px}
     .gap-12{gap:12px}
     .mt-12{margin-top:12px}
@@ -167,13 +237,16 @@
               <input id="channelId" class="input" placeholder="ID do canal" title="Filtrar por canal" />
             </div>
           </div>
-          <div class="controls-row mt-12">
-            <button class="btn-toggle active" data-filter="all"><i class="fas fa-list"></i> Todos</button>
-            <button class="btn-toggle" data-filter="messages"><i class="fas fa-comment-dots"></i> Mensagens</button>
-            <button class="btn-toggle" data-filter="members"><i class="fas fa-user"></i> Membros</button>
-            <button class="btn-toggle" data-filter="voice"><i class="fas fa-microphone"></i> Voz</button>
-            <button class="btn-toggle" data-filter="bans"><i class="fas fa-ban"></i> Banimentos</button>
-            <span class="flex-1"></span>
+          <div class="controls-row mt-12" id="filterBar">
+            <div class="segmented" id="segFilters" role="tablist" aria-label="Filtros de família">
+              <div class="seg-indicator" id="segIndicator" aria-hidden="true"></div>
+              <button class="btn-toggle active" data-filter="all" role="tab"><span><i class="fas fa-list"></i> Todos</span></button>
+              <button class="btn-toggle" data-filter="messages" role="tab"><span><i class="fas fa-comment-dots"></i> Mensagens</span></button>
+              <button class="btn-toggle" data-filter="members" role="tab"><span><i class="fas fa-user"></i> Membros</span></button>
+              <button class="btn-toggle" data-filter="voice" role="tab"><span><i class="fas fa-microphone"></i> Voz</span></button>
+              <button class="btn-toggle" data-filter="bans" role="tab"><span><i class="fas fa-ban"></i> Banimentos</span></button>
+            </div>
+            <span class="seg-spacer"></span>
             <button id="btnRefresh" class="btn btn-primary"><i class="fas fa-rotate"></i> Atualizar</button>
             <button id="btnAuto" class="btn btn-glass" aria-pressed="false"><i class="fas fa-play"></i> Auto</button>
             <div class="input-group">
@@ -358,6 +431,48 @@
     // Navbar user avatar/name & health
     (async()=>{ try{ const r = await fetch('/api/user'); const d = await r.json(); if(d?.success){ const a=document.getElementById('userAvatar'); const n=document.getElementById('userName'); if(a&&d.user.avatar) a.src=d.user.avatar; if(n) n.textContent=d.user.username; } }catch{} })();
     (async()=>{ const setTip=(t)=>{const hb=document.getElementById('healthBadge'); if(hb) hb.title=t;}; const dot=(el, st)=>{ if(!el) return; el.classList.remove('dot-green','dot-red','dot-gray'); el.classList.add(st==='ok'?'dot-green': st==='bad'?'dot-red':'dot-gray');}; try{ const r=await fetch('/api/health',{credentials:'same-origin'}); const h=await r.json(); dot(document.getElementById('health-mongo'), h.mongo==='connected'?'ok': (h.mongo==='disabled'?'gray':'bad')); dot(document.getElementById('health-discord'), h.discord?'ok':'bad'); setTip(`${h.mongo==='connected'?'DB: ligado': h.mongo==='disabled'?'DB: desativado':'DB: desligado'} • ${h.discord?'Discord: online':'Discord: offline'}`);}catch{}})();
+    // Segmented control indicator logic
+    (function(){
+      const seg = document.getElementById('segFilters');
+      const ind = document.getElementById('segIndicator');
+      if(!seg || !ind) return;
+      function sync(){
+        const active = seg.querySelector('.btn-toggle.active');
+        if(!active) return;
+        const r = active.getBoundingClientRect();
+        const rs = seg.getBoundingClientRect();
+        const w = r.width;
+        const x = r.left - rs.left;
+        ind.style.width = w + 'px';
+        ind.style.transform = `translateX(${x}px)`;
+      }
+      const ro = new ResizeObserver(()=>sync()); ro.observe(seg);
+      new MutationObserver(()=>sync()).observe(seg,{attributes:true,subtree:true,attributeFilter:['class']});
+      window.addEventListener('load', ()=> setTimeout(sync,60));
+      window.addEventListener('resize', ()=> sync());
+    })();
+    // Enhance copy buttons with pulse feedback (delegated)
+    (function(){
+      document.addEventListener('click', (e)=>{
+        const btn = e.target.closest('.copy-summary, #btnCopyDetails');
+        if(!btn) return;
+        btn.classList.add('btn-pulse','pulsing');
+        setTimeout(()=> btn.classList.remove('pulsing'), 700);
+      });
+    })();
+    // Skeleton loader helper (if feed empty & loading class used by JS earlier)
+    (function(){
+      const feed = document.getElementById('feed');
+      if(!feed) return;
+      if(feed.children.length===0){
+        const frag = document.createDocumentFragment();
+        for(let i=0;i<4;i++){
+          const sk = document.createElement('div'); sk.className='feed-skel';
+          for(let b=0;b<3;b++){ const bar=document.createElement('div'); bar.className='bar skeleton-wave'; bar.style.width=(60+Math.random()*30)+'%'; sk.appendChild(bar);} frag.appendChild(sk);
+        }
+        feed.appendChild(frag);
+      }
+    })();
   </script>
     <style>
     /* Light theme overrides for this page using CSS variables */

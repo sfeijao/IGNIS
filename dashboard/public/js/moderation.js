@@ -64,13 +64,25 @@
   function buildConfirmBlock(plan){
     const risks = Array.isArray(plan?.risks) ? plan.risks : [];
     const planObj = plan?.plan ?? plan;
-    const pre = escapeHtml(JSON.stringify(planObj, null, 2));
+    const raw = escapeHtml(JSON.stringify(planObj, null, 2));
+    // Extract role diffs if structure matches revert_roles plan { add:[], remove:[] }
+    let roleDiffHtml = '';
+    try {
+      const add = planObj?.plan?.add || planObj?.add || [];
+      const rem = planObj?.plan?.remove || planObj?.remove || [];
+      const mk = (arr, cls, icon)=> arr.map(r=>`<span class=\"role-chip ${cls}\"><i class=\"fas ${icon}\"></i>@${escapeHtml(r.name||r.id)}</span>`).join('');
+      const addHtml = Array.isArray(add) && add.length ? mk(add,'add','fa-plus') : '';
+      const remHtml = Array.isArray(rem) && rem.length ? mk(rem,'rem','fa-minus') : '';
+      if (addHtml || remHtml) roleDiffHtml = `<div class=\"plan-diff\" style=\"margin-top:8px\">${addHtml}${remHtml}</div>`;
+    } catch {}
     return `
       <div class="confirm-block" style="margin-top:10px">
-        <div class="kv"><b>Pré-visualização</b> (sem aplicar alterações)</div>
-        ${risks.length ? `<div class="alert alert-warning" style="margin-top:8px"><b>Riscos potenciais</b><ul>${risks.map(r=>`<li>${escapeHtml(r)}</li>`).join('')}</ul></div>`:''}
-        <pre class="code-block" style="margin-top:8px" id="__confirmPlanPre">${pre}</pre>
-        <div class="actions-row" style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap">
+        <div class="kv"><b>Pré-visualização</b> <small>(dry-run)</small></div>
+        ${risks.length ? `<div class=\"alert alert-warning\" style=\"margin-top:8px\"><b>Riscos potenciais</b><ul>${risks.map(r=>`<li>${escapeHtml(r)}</li>`).join('')}</ul></div>`:''}
+        ${roleDiffHtml}
+        <div style="margin-top:8px"><button class="btn btn-glass btn-sm" data-toggle-raw><i class="fas fa-code"></i> Ver JSON</button></div>
+        <pre class="code-block" style="margin-top:8px;display:none" id="__confirmPlanPre">${raw}</pre>
+        <div class="actions-row" style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
           <button class="btn" data-confirm-cancel><i class="fas fa-times"></i> Cancelar</button>
           <button class="btn" data-copy-plan><i class="fas fa-copy"></i> Copiar</button>
           <button class="btn btn-primary" data-confirm-apply><i class="fas fa-check"></i> Confirmar</button>
@@ -81,6 +93,7 @@
     const btnCancel = container.querySelector('[data-confirm-cancel]');
     const btnCopy = container.querySelector('[data-copy-plan]');
     const btnApply = container.querySelector('[data-confirm-apply]');
+    const btnToggle = container.querySelector('[data-toggle-raw]');
     const getText = () => {
       const pre = container.querySelector('#__confirmPlanPre');
       return pre ? pre.textContent : '';
@@ -100,6 +113,12 @@
     btnCancel?.addEventListener('click', ()=>{ onCancel?.(); });
     btnCopy?.addEventListener('click', copyText);
     btnApply?.addEventListener('click', ()=>{ onConfirm?.(); });
+    btnToggle?.addEventListener('click', ()=>{
+      const pre = container.querySelector('#__confirmPlanPre');
+      if(!pre) return; const vis = pre.style.display !== 'none';
+      pre.style.display = vis ? 'none':'block';
+      btnToggle.innerHTML = vis ? '<i class="fas fa-code"></i> Ver JSON' : '<i class="fas fa-eye-slash"></i> Ocultar JSON';
+    });
   }
   // Show confirmation as a new modal replacing current content; returns Promise<boolean>
   function showConfirmModal(plan, title){
@@ -451,25 +470,33 @@
   // Inline actions: copy + dismiss
   const copyBtn = `<button class=\"btn btn-sm btn-glass copy-summary\" title=\"Copiar resumo\" data-log-id=\"${l.id}\"><i class=\"fas fa-copy\"></i> Copiar resumo</button>`;
   const dismissBtn = `<button class=\"btn btn-sm btn-glass dismiss-card\" title=\"Remover do feed (apenas visual)\" data-log-id=\"${l.id}\"><i class=\"fas fa-eye-slash\"></i> Ocultar</button>`;
+    // Build role diff chips for quick visual context in member updates
+    let roleChips = '';
+    try {
+      if (l.type === 'mod_member_update' && r.roles) {
+        const add = (r.roles.added||[]).slice(0,4).map(ro=>`<span class=\"role-chip add\"><i class=\"fas fa-plus\"></i>@${escapeHtml(ro.name||ro.id)}</span>`).join('');
+        const rem = (r.roles.removed||[]).slice(0,4).map(ro=>`<span class=\"role-chip rem\"><i class=\"fas fa-minus\"></i>@${escapeHtml(ro.name||ro.id)}</span>`).join('');
+        if (add || rem) roleChips = `<div class=\"plan-diff\" style=\"margin-top:6px\">${add}${rem}</div>`;
+      }
+    } catch {}
+    const expandBlock = (quick.length || roleChips) ? `<div class=\"expand\" data-collapsed=\"true\">${quick.join('')}${roleChips}</div>` : '';
     return `
       <div class="feed-item ${familyClass(l.type||'')}" role="button" data-log-id="${l.id}" aria-expanded="false" aria-label="${escapeHtml(typeLabel(l.type||''))} em ${dt}">
-        <div class="feed-row">
-          <div class="avatar-wrap">
-            <img class="feed-avatar" src="${avatarUrl(r.user?.id, r.user?.avatar)}" alt="avatar" />
-            ${r.executor ? `<img class="exec-avatar" src="${avatarUrl(r.executor.id, r.executor.avatar)}" alt="moderador" title="Executor" />` : ''}
-          </div>
-          <div class="feed-content">
-            <div class="feed-title">
-              <span class="${typePill(l.type||'')}" title="${escapeHtml(typeLabel(l.type||''))}"><i class="fas ${iconFor(l.type||'')}"></i> ${escapeHtml(typeLabel(l.type||'log'))}</span>
-              <span class="feed-meta" style="margin-left:8px">${dt}</span>
+        <div class="feed-content">
+          <div class="feed-head">
+            <div class="head-left">
+              <div class="icon-badge"><i class="fas ${iconFor(l.type||'')}"></i></div>
+              <div class="feed-title-text" title="${escapeHtml(typeLabel(l.type||''))}">${escapeHtml(typeLabel(l.type||'log'))}</div>
+              <div class="caret"><i class="fas fa-caret-right"></i></div>
             </div>
-            ${linksRow}
-            ${meta ? `<div class="feed-meta" style="margin-top:6px">${meta}</div>`:''}
-            ${l.message && !isSnowflake(l.message) ? `<div style="margin-top:6px">${escapeHtml(l.message)}</div>`:''}
-            ${quick.length? `<div class="expand">${quick.join('')}</div>`:''}
-            <div class="feed-actions" style="margin-top:6px">${copyBtn} ${dismissBtn}</div>
-            ${actionsRow}
+            <div class="feed-timestamp">${dt}</div>
           </div>
+          ${meta ? `<div class=\"feed-meta\" style=\"margin-top:4px\">${meta}</div>`:''}
+          ${linksRow ? `<div style=\"margin-top:6px\">${linksRow}</div>`:''}
+          ${l.message && !isSnowflake(l.message) ? `<div class=\"feed-meta\" style=\"margin-top:6px\">${escapeHtml(l.message)}</div>`:''}
+          ${expandBlock}
+          <div class="feed-actions" style="margin-top:8px">${copyBtn} ${dismissBtn}</div>
+          ${actionsRow}
         </div>
       </div>`;
   }
@@ -490,8 +517,20 @@
     // Attach handlers
     [...els.feed.querySelectorAll('[data-log-id]')].forEach(btn => btn.addEventListener('click', (e) => {
       const el = e.currentTarget;
-      el.setAttribute('aria-expanded', el.getAttribute('aria-expanded')==='true' ? 'false' : 'true');
-      // Only open modal when double-clicking the item title area (optional) or meta-less
+      const expanded = el.getAttribute('aria-expanded')==='true';
+      el.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      const exp = el.querySelector('.expand');
+      if (exp){
+        if (expanded){
+          exp.setAttribute('data-collapsed','true');
+        } else {
+          exp.setAttribute('data-collapsed','false');
+          // measure natural height then animate
+          exp.style.height='auto';
+          const h = exp.clientHeight; exp.style.height='0px';
+          requestAnimationFrame(()=>{ exp.style.height=h+'px'; exp.addEventListener('transitionend', function done(){ exp.style.height='auto'; exp.removeEventListener('transitionend', done); }); });
+        }
+      }
       if (e.detail === 2) openEventModal(el.getAttribute('data-log-id'));
     }));
     // Quick actions
