@@ -342,9 +342,9 @@
     const d = l.data || {};
     const r = l.resolved || {};
     const dt = new Date(l.timestamp).toLocaleString('pt-PT');
-  const userLabel = r.user ? `${escapeHtml(r.user.username||'')}${r.user.nick? ' ('+escapeHtml(r.user.nick)+')':''}` : (d.userId ? 'Usuário' : '');
-  const modLabel = r.executor ? `${escapeHtml(r.executor.username||'')}${r.executor.nick? ' ('+escapeHtml(r.executor.nick)+')':''}` : (d.executorId ? 'Moderador' : '');
-  const chanLabel = r.channel ? `#${escapeHtml(r.channel.name||'')}` : (d.channelId ? 'Canal' : '');
+  const userLabel = r.user ? `${escapeHtml(r.user.username||'')}${r.user.nick? ' ('+escapeHtml(r.user.nick)+')':''}` : (d.userId ? 'Desconhecido' : '');
+  const modLabel = r.executor ? `${escapeHtml(r.executor.username||'')}${r.executor.nick? ' ('+escapeHtml(r.executor.nick)+')':''}` : (d.executorId ? 'Desconhecido' : '');
+  const chanLabel = r.channel ? `#${escapeHtml(r.channel.name||'')}` : (d.channelId ? 'Desconhecido' : '');
     const meta = [
       userLabel ? `<span class=\"badge-soft\" title=\"Clique para filtrar • Shift+Clique copia o ID\" data-filter-user="${escapeHtml(d.userId||r.user?.id||'')}" data-copy-id="${escapeHtml(d.userId||r.user?.id||'')}"><i class=\"fas fa-user\"></i> ${userLabel}</span>` : '',
       modLabel ? `<span class=\"badge-soft\" title=\"Clique para filtrar • Shift+Clique copia o ID\" data-filter-mod="${escapeHtml(d.executorId||r.executor?.id||'')}" data-copy-id="${escapeHtml(d.executorId||r.executor?.id||'')}"><i class=\"fas fa-shield-alt\"></i> ${modLabel}</span>` : '',
@@ -603,9 +603,9 @@
         if (id && avatar) return `https://cdn.discordapp.com/avatars/${encodeURIComponent(id)}/${encodeURIComponent(avatar)}.png?size=128`;
         return '/default-avatar.svg';
       };
-  const userText = resolved.user ? `${escapeHtml(resolved.user.username||'')}${resolved.user.nick? ' ('+escapeHtml(resolved.user.nick)+')':''}` : (data.userId ? 'Usuário' : '-');
-  const modText = resolved.executor ? `${escapeHtml(resolved.executor.username||'')}${resolved.executor.nick? ' ('+escapeHtml(resolved.executor.nick)+')':''}` : (data.executorId ? 'Moderador' : '-');
-  const chanText = resolved.channel ? `#${escapeHtml(resolved.channel.name||'')}` : (data.channelId ? 'Canal' : '-');
+  const userText = resolved.user ? `${escapeHtml(resolved.user.username||'')}${resolved.user.nick? ' ('+escapeHtml(resolved.user.nick)+')':''}` : (data.userId ? 'Desconhecido' : '-');
+  const modText = resolved.executor ? `${escapeHtml(resolved.executor.username||'')}${resolved.executor.nick? ' ('+escapeHtml(resolved.executor.nick)+')':''}` : (data.executorId ? 'Desconhecido' : '-');
+  const chanText = resolved.channel ? `#${escapeHtml(resolved.channel.name||'')}` : (data.channelId ? 'Desconhecido' : '-');
   const body = [];
   body.push(`<div class="kv"><b>Tipo:</b> ${escapeHtml(ev.type)}</div>`);
   body.push(`<div class="kv"><b>Quando:</b> ${new Date(ev.timestamp).toLocaleString('pt-PT')}</div>`);
