@@ -13,6 +13,7 @@
     btnAuto: document.getElementById('btnAuto'),
     btnExport: document.getElementById('btnExport'),
   btnExportSnapshot: document.getElementById('btnExportSnapshot'),
+  btnLoadAll: document.getElementById('btnLoadAll'),
     exportFormat: document.getElementById('exportFormat'),
     stats: {
       bans: document.getElementById('countBans'),
@@ -238,6 +239,16 @@
       localStorage.setItem('mod-auto', els.btnAuto.getAttribute('aria-pressed') === 'true' ? 'true' : 'false');
     } catch {}
   }
+  (function restorePrefs(){
+    try {
+      const fam = localStorage.getItem('mod-feed-filter'); if(fam) currentFamily = fam;
+      const lim = parseInt(localStorage.getItem('mod-limit')||'200',10); if(!isNaN(lim)) currentLimit = lim;
+      const auto = localStorage.getItem('mod-auto')==='true';
+      // update UI for family
+      els.filterButtons?.forEach(btn=>{ btn.classList.toggle('active', btn.getAttribute('data-filter')===currentFamily); });
+      if(auto){ els.btnAuto.setAttribute('aria-pressed','true'); els.btnAuto.innerHTML = `<i class="fas fa-pause"></i> Auto`; }
+    } catch {}
+  })();
   function renderActiveFilters(){
     const row = document.getElementById('activeFilters'); if (!row) return;
     const chips = [];
@@ -779,6 +790,15 @@
       }
     });
   }
+  function updateRecencyLegend(){
+    const el = document.getElementById('recencyLegend');
+    if(!el) return;
+    const w = getRecencyWindowMs();
+    const hours = w / 3600000;
+    if(hours <= 1) el.textContent = 'Barra de recência: representa 1 hora completa.';
+    else if(hours < 30) el.textContent = `Barra de recência: encolhe ao longo de ${hours.toFixed(0)} horas.`;
+    else el.textContent = `Barra de recência: encolhe ao longo de ${(hours/24).toFixed(0)} dias.`;
+  }
   setInterval(updateRecencyBars, 60000); // update every minute
 
   function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c)); }
@@ -796,13 +816,30 @@
     persistPrefs();
   }
 
-  function exportCsv(){
-    const u = new URL(`/api/guild/${guildId}/logs/export`, window.location.origin);
+  async function fetchAllForExport(){
+    const u = new URL(`/api/guild/${guildId}/logs`, window.location.origin);
     u.searchParams.set('type', buildTypeParam());
     buildRange(u);
+    u.searchParams.set('limit','5000');
+    const r = await fetch(u, { credentials:'same-origin' }); const d = await r.json();
+    if(!r.ok || !d.success) throw new Error(d.error||'Falha ao obter logs');
+    return Array.isArray(d.logs)? d.logs: [];
+  }
+  async function exportCsv(){
     const fmt = (els.exportFormat?.value||'csv');
-    u.searchParams.set('format', fmt);
-    window.location.href = u.toString();
+    try {
+      const logs = await fetchAllForExport();
+      if(fmt==='json'){
+        const blob = new Blob([JSON.stringify(logs,null,2)], { type:'application/json' });
+        const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`logs-${Date.now()}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000); return;
+      }
+      // CSV
+      const headers=['id','timestamp','type','userId','executorId','channelId','message'];
+      const rows=[headers.join(',')];
+      logs.forEach(l=>{ const d=l.data||{}; const row=[l.id,l.timestamp,l.type,d.userId||'',d.executorId||'',d.channelId||'', (l.message||'').toString().replace(/\n/g,' ' )]; rows.push(row.map(v=>`"${String(v).replace(/"/g,'"')}"`).join(',')); });
+      const blob = new Blob([rows.join('\n')], { type:'text/csv' });
+      const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`logs-${Date.now()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
+    } catch(e){ notify(e.message||'Falha exportação','error'); }
   }
 
   // Name resolution helpers to avoid showing raw IDs in UI chips
@@ -1123,7 +1160,8 @@
   els.btnAuto?.addEventListener('click', toggleAuto);
   els.btnExport?.addEventListener('click', exportCsv);
   els.btnExportSnapshot?.addEventListener('click', exportSnapshot);
-  els.window?.addEventListener('change', ()=>{ loadSummary(); updateRecencyBars(); });
+  els.window?.addEventListener('change', ()=>{ loadSummary(); updateRecencyBars(); updateRecencyLegend(); });
+  updateRecencyLegend();
   els.q?.addEventListener('keyup', (e)=>{ if(e.key==='Enter') loadFeed(); else renderActiveFilters(); });
   els.from?.addEventListener('change', ()=>{ renderActiveFilters(); loadFeed(); });
   els.to?.addEventListener('change', ()=>{ renderActiveFilters(); loadFeed(); });
