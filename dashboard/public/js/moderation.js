@@ -518,19 +518,51 @@
 
   function renderFeed(items){
     if (!items.length){ els.feed.innerHTML = `<div class="no-tickets">Sem eventos</div>`; return; }
-    const parts = [];
-    let lastGroup = null;
-    for (const l of items) {
-      const grp = formatDateGroup(l.timestamp);
-      if (grp !== lastGroup) {
-        parts.push(`<div class="feed-date" aria-label="${escapeHtml(grp)}">${escapeHtml(grp)}</div>`);
-        lastGroup = grp;
+    const VIRTUAL_THRESHOLD = 600;
+    if (items.length <= VIRTUAL_THRESHOLD){
+      // Normal full render
+      const parts = [];
+      let lastGroup = null;
+      for (const l of items){
+        const grp = formatDateGroup(l.timestamp);
+        if (grp !== lastGroup){ parts.push(`<div class=\"feed-date\" aria-label=\"${escapeHtml(grp)}\">${escapeHtml(grp)}</div>`); lastGroup = grp; }
+        parts.push(renderCard(l));
       }
-      parts.push(renderCard(l));
+      els.feed.innerHTML = parts.join('');
+      updateRecencyBars();
+      scheduleBatchPrefetch(items);
+    } else {
+      // Virtualized incremental rendering
+      els.feed.innerHTML = '';
+      let lastGroup = null;
+      const CHUNK = 150;
+      let rendered = 0;
+      const total = items.length;
+      function appendChunk(){
+        if (rendered >= total) return;
+        const frag = document.createDocumentFragment();
+        const slice = items.slice(rendered, rendered+CHUNK);
+        for (const l of slice){
+          const grp = formatDateGroup(l.timestamp);
+          if (grp !== lastGroup){ const div=document.createElement('div'); div.className='feed-date'; div.textContent = grp; frag.appendChild(div); lastGroup = grp; }
+          const wrapper = document.createElement('div'); wrapper.innerHTML = renderCard(l); frag.appendChild(wrapper.firstElementChild);
+        }
+        els.feed.appendChild(frag);
+        rendered += slice.length;
+        updateRecencyBars();
+        if(rendered < total){ ensureSentinel(); }
+      }
+      function ensureSentinel(){
+        if (els.feed.querySelector('.virt-sentinel')) return;
+        const sent = document.createElement('div'); sent.className='virt-sentinel'; sent.style.height='1px'; sent.style.width='100%'; els.feed.appendChild(sent);
+        const io = new IntersectionObserver((entries)=>{
+          for(const en of entries){ if(en.isIntersecting){ io.disconnect(); sent.remove(); appendChunk(); break; } }
+        });
+        io.observe(sent);
+      }
+      appendChunk();
+      scheduleBatchPrefetch(items);
     }
-    els.feed.innerHTML = parts.join('');
-  updateRecencyBars();
-  scheduleBatchPrefetch(items);
     // Attach handlers
     [...els.feed.querySelectorAll('[data-log-id]')].forEach(btn => btn.addEventListener('click', (e) => {
       const el = e.currentTarget;
@@ -725,7 +757,12 @@
   }
 
   // Recency progress bar logic: shows how old an event is within a chosen window (default 24h)
-  const RECENCY_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
+  function getRecencyWindowMs(){
+    const sel = els.window?.value || '24h';
+    if (sel === '1h') return 60 * 60 * 1000;
+    if (sel === '7d') return 7 * 24 * 60 * 60 * 1000;
+    return 24 * 60 * 60 * 1000; // default 24h
+  }
   function updateRecencyBars(){
     const now = Date.now();
     const bars = els.feed?.querySelectorAll('.recency-bar');
@@ -734,7 +771,7 @@
       const ts = Number(bar.getAttribute('data-ts'));
       if(!ts) return;
       const age = now - ts;
-      const ratio = Math.max(0, Math.min(1, age / RECENCY_WINDOW_MS));
+  const ratio = Math.max(0, Math.min(1, age / getRecencyWindowMs()));
       const span = bar.querySelector('span');
       if(span){
         span.style.transform = `scaleX(${1 - ratio})`;
@@ -1086,7 +1123,7 @@
   els.btnAuto?.addEventListener('click', toggleAuto);
   els.btnExport?.addEventListener('click', exportCsv);
   els.btnExportSnapshot?.addEventListener('click', exportSnapshot);
-  els.window?.addEventListener('change', loadSummary);
+  els.window?.addEventListener('change', ()=>{ loadSummary(); updateRecencyBars(); });
   els.q?.addEventListener('keyup', (e)=>{ if(e.key==='Enter') loadFeed(); else renderActiveFilters(); });
   els.from?.addEventListener('change', ()=>{ renderActiveFilters(); loadFeed(); });
   els.to?.addEventListener('change', ()=>{ renderActiveFilters(); loadFeed(); });
