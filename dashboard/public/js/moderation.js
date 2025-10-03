@@ -40,6 +40,8 @@
   let lastTopTs = null; // track latest rendered timestamp for live-append
   let lastLiveAppendTs = null; // track last time we auto-appended
   let LONG_PAUSE_MS = 2 * 60 * 1000; // 2 minutes (configurable)
+  let orderDesc = true; // true = newest first
+  let groupByMod = false; // group by moderator executor
 
   function notify(msg, type='info'){
     const n = document.createElement('div');
@@ -249,6 +251,8 @@
       localStorage.setItem('mod-latency', showLatency?'true':'false');
       localStorage.setItem('mod-page', String(page));
       localStorage.setItem('mod-perPage', String(perPage));
+  localStorage.setItem('mod-order-desc', orderDesc?'true':'false');
+  localStorage.setItem('mod-group-mod', groupByMod?'true':'false');
     } catch {}
   }
   (function restorePrefs(){
@@ -261,6 +265,8 @@
       showLatency = localStorage.getItem('mod-latency')==='true';
       page = parseInt(localStorage.getItem('mod-page')||'1',10)||1;
       perPage = parseInt(localStorage.getItem('mod-perPage')||'100',10)||100;
+  orderDesc = localStorage.getItem('mod-order-desc') !== 'false';
+  groupByMod = localStorage.getItem('mod-group-mod') === 'true';
       // update UI for family
       els.filterButtons?.forEach(btn=>{ btn.classList.toggle('active', btn.getAttribute('data-filter')===currentFamily); });
       if(auto){ els.btnAuto.setAttribute('aria-pressed','true'); els.btnAuto.innerHTML = `<i class="fas fa-pause"></i> Auto`; }
@@ -268,6 +274,8 @@
       if(showLatency) document.getElementById('btnLatency')?.setAttribute('aria-pressed','true');
       const pgIn = document.getElementById('pageInput'); if(pgIn) pgIn.value = String(page);
       const pp = document.getElementById('perPage'); if(pp) pp.value = String(perPage);
+  const btnOrder = document.getElementById('btnOrder'); if(btnOrder) btnOrder.setAttribute('aria-pressed', orderDesc?'true':'false');
+  const btnGroup = document.getElementById('btnGroupMod'); if(btnGroup) btnGroup.setAttribute('aria-pressed', groupByMod?'true':'false');
     } catch {}
   })();
   function renderActiveFilters(){
@@ -309,6 +317,54 @@
       renderActiveFilters();
       loadFeed();
     });
+  }
+  // Presets
+  const PRESETS_KEY = 'mod-filter-presets-v1';
+  function loadPresets(){
+    try { return JSON.parse(localStorage.getItem(PRESETS_KEY)||'{}'); } catch { return {}; }
+  }
+  function savePresets(obj){
+    try { localStorage.setItem(PRESETS_KEY, JSON.stringify(obj)); } catch {}
+  }
+  function refreshPresetSelect(){
+    const sel = document.getElementById('presetSelect'); if(!sel) return;
+    const cur = sel.value;
+    const presets = loadPresets();
+    sel.innerHTML = `<option value="">Presets...</option>` + Object.keys(presets).sort().map(k=>`<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+    if(cur && presets[cur]) sel.value = cur; else sel.value = '';
+  }
+  function captureCurrentFilterState(){
+    return {
+      family: currentFamily,
+      multiFamilies: [...multiFamilies],
+      q: els.q?.value||'',
+      from: els.from?.value||'',
+      to: els.to?.value||'',
+      userId: els.userId?.value||'',
+      moderatorId: els.moderatorId?.value||'',
+      channelId: els.channelId?.value||'',
+      orderDesc, groupByMod
+    };
+  }
+  function applyFilterState(st){
+    try {
+      currentFamily = st.family || 'all';
+      multiFamilies = new Set(st.multiFamilies||[]);
+      if(els.q) els.q.value = st.q||'';
+      if(els.from) els.from.value = st.from||'';
+      if(els.to) els.to.value = st.to||'';
+      if(els.userId) els.userId.value = st.userId||'';
+      if(els.moderatorId) els.moderatorId.value = st.moderatorId||'';
+      if(els.channelId) els.channelId.value = st.channelId||'';
+      orderDesc = !!st.orderDesc; groupByMod = !!st.groupByMod;
+      // update buttons
+      const btnOrder = document.getElementById('btnOrder'); if(btnOrder) btnOrder.setAttribute('aria-pressed', orderDesc?'true':'false');
+      const btnGroup = document.getElementById('btnGroupMod'); if(btnGroup) btnGroup.setAttribute('aria-pressed', groupByMod?'true':'false');
+      els.filterButtons?.forEach(b=> b.classList.toggle('active', (b.getAttribute('data-filter')||'all')===currentFamily));
+      persistPrefs();
+      renderActiveFilters();
+      loadFeed();
+    } catch {}
   }
   function restorePrefs(){
     try {
@@ -555,7 +611,14 @@
 
   function renderFeed(items){
     if (!items.length){ els.feed.innerHTML = `<div class="no-tickets">Sem eventos</div>`; return; }
-    const VIRTUAL_THRESHOLD = 600;
+    const adaptiveBase = perPage || 100;
+    const VIRTUAL_THRESHOLD = Math.max(400, adaptiveBase * 6); // adaptive threshold
+    // Support ordering toggle
+    if(!orderDesc){ items = [...items].reverse(); }
+    // Grouping mode bypasses virtualization (handled separately)
+    if(groupByMod){
+      return renderGroupedByModerator(items);
+    }
     if (items.length <= VIRTUAL_THRESHOLD){
       // Normal full render
       const parts = [];
@@ -616,6 +679,9 @@
           const h = exp.clientHeight; exp.style.height='0px';
           requestAnimationFrame(()=>{ exp.style.height=h+'px'; exp.addEventListener('transitionend', function done(){ exp.style.height='auto'; exp.removeEventListener('transitionend', done); }); });
         }
+        // Expose last logs and maybe show clear stream button
+        window.__lastLogs = items;
+        updateClearStreamBtn();
       }
       if (e.detail === 2) openEventModal(el.getAttribute('data-log-id'));
     }));
@@ -725,6 +791,78 @@
         }
       });
     } catch {}
+  }
+
+  function renderGroupedByModerator(items){
+    if(!items.length){ els.feed.innerHTML = `<div class="no-tickets">Sem eventos</div>`; return; }
+    // Build map executorId => logs
+    const groups = new Map();
+    for(const it of items){
+      const exec = (it.data && it.data.executorId) || (it.resolved && it.resolved.executor && it.resolved.executor.id) || 'desconhecido';
+      if(!groups.has(exec)) groups.set(exec, []);
+      groups.get(exec).push(it);
+    }
+    // Sort groups by most recent event inside (respect orderDesc)
+    const arr = [...groups.entries()].map(([k, list])=>{
+      list.sort((a,b)=> orderDesc ? b.timestamp - a.timestamp : a.timestamp - b.timestamp);
+      return { executorId:k, logs:list, latest: list[0]?.timestamp || 0 };
+    });
+    arr.sort((a,b)=> orderDesc ? b.latest - a.latest : a.latest - b.latest);
+    const parts = [];
+    for(const g of arr){
+      const label = g.logs[0]?.resolved?.executor ? `${g.logs[0].resolved.executor.username}${g.logs[0].resolved.executor.nick? ' ('+g.logs[0].resolved.executor.nick+')':''}` : g.executorId;
+      parts.push(`<div class="group-mod" data-exec="${escapeHtml(g.executorId)}" aria-expanded="true">
+        <div class="group-head"><button class="btn btn-sm btn-glass group-toggle" title="Expandir/recolher"><i class="fas fa-chevron-down"></i></button>
+          <span class="group-title"><i class="fas fa-user-shield"></i> ${escapeHtml(label||'Desconhecido')}</span>
+          <span class="group-count">${g.logs.length} evento(s)</span>
+        </div>
+        <div class="group-body">
+          ${g.logs.map(l=> renderCard(l)).join('')}
+        </div>
+      </div>`);
+    }
+    els.feed.innerHTML = parts.join('');
+  window.__lastLogs = items;
+  updateClearStreamBtn();
+    // Attach toggle
+    els.feed.querySelectorAll('.group-mod .group-toggle')?.forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const wrap = btn.closest('.group-mod');
+        const expanded = wrap.getAttribute('aria-expanded')==='true';
+        wrap.setAttribute('aria-expanded', expanded?'false':'true');
+        const body = wrap.querySelector('.group-body');
+        if(body){ body.style.display = expanded? 'none':'block'; }
+        btn.innerHTML = expanded? '<i class="fas fa-chevron-right"></i>' : '<i class="fas fa-chevron-down"></i>';
+      });
+    });
+    // After insertion, attach feed item click as usual
+    els.feed.querySelectorAll('.feed-item[data-log-id]')?.forEach(el=>{
+      el.addEventListener('click', (e)=>{
+        const expanded = el.getAttribute('aria-expanded')==='true';
+        el.setAttribute('aria-expanded', expanded?'false':'true');
+        const exp = el.querySelector('.expand');
+        if (exp){
+          if (expanded){ exp.setAttribute('data-collapsed','true'); }
+          else { exp.setAttribute('data-collapsed','false'); exp.style.height='auto'; const h=exp.clientHeight; exp.style.height='0px'; requestAnimationFrame(()=>{ exp.style.height=h+'px'; exp.addEventListener('transitionend', function done(){ exp.style.height='auto'; exp.removeEventListener('transitionend', done); }); }); }
+        }
+        if(e.detail===2) openEventModal(el.getAttribute('data-log-id'));
+      });
+    });
+  }
+  function updateClearStreamBtn(){
+    try {
+      const btn = document.getElementById('btnClearStream');
+      if(!btn) return;
+      const show = streamMode && (window.__lastLogs?.length || 0) > 0;
+      btn.style.display = show ? 'inline-flex':'none';
+    } catch {}
+  }
+  function clearStream(){
+    if(!streamMode){ return; }
+    els.feed.innerHTML = '<div class="no-tickets">Stream limpo</div>';
+    window.__lastLogs = [];
+    updateClearStreamBtn();
   }
 
   // Batch prefetch unresolved names (members & channels) to minimize flicker
@@ -846,11 +984,19 @@
     const btn = document.getElementById('btnStream');
     btn?.setAttribute('aria-pressed', streamMode?'true':'false');
     persistPrefs();
+    updateClearStreamBtn();
   }
   function toggleLatency(){
     showLatency = !showLatency;
     const btn = document.getElementById('btnLatency');
     btn?.setAttribute('aria-pressed', showLatency?'true':'false');
+    persistPrefs();
+    if(window.__lastLogs) renderFeed(window.__lastLogs);
+  }
+  function toggleOrder(){
+    orderDesc = !orderDesc;
+    const btn = document.getElementById('btnOrder');
+    btn?.setAttribute('aria-pressed', orderDesc?'true':'false');
     persistPrefs();
     if(window.__lastLogs) renderFeed(window.__lastLogs);
   }
@@ -1199,6 +1345,9 @@
   els.btnAuto?.addEventListener('click', toggleAuto);
   document.getElementById('btnStream')?.addEventListener('click', toggleStream);
   document.getElementById('btnLatency')?.addEventListener('click', toggleLatency);
+  document.getElementById('btnOrder')?.addEventListener('click', toggleOrder);
+  document.getElementById('btnGroupMod')?.addEventListener('click', ()=>{ groupByMod = !groupByMod; document.getElementById('btnGroupMod')?.setAttribute('aria-pressed', groupByMod?'true':'false'); persistPrefs(); if(window.__lastLogs) renderFeed(window.__lastLogs); else loadFeed(); });
+  document.getElementById('btnClearStream')?.addEventListener('click', clearStream);
   document.getElementById('pagePrev')?.addEventListener('click', ()=>{ if(page>1){ page--; persistPrefs(); loadPaged(); }});
   document.getElementById('pageNext')?.addEventListener('click', ()=>{ page++; persistPrefs(); loadPaged(); });
   document.getElementById('pageInput')?.addEventListener('change', (e)=>{ const v=parseInt(e.target.value,10); if(!isNaN(v)&&v>0){ page=v; persistPrefs(); loadPaged(); }});
@@ -1287,17 +1436,21 @@
         if (!r.ok || !d.success) return false;
         const list = Array.isArray(d.logs)? d.logs: [];
         if (!list.length) return true;
+        if(!orderDesc){ list.reverse(); }
         const container = els.feed;
         const prevFirst = container.firstElementChild;
         // Find position after possible initial date header
         let inserted = 0;
         // Determine newest items not yet shown (by timestamp or id)
-        const newer = list.filter(it => !lastTopTs || (it.timestamp >= lastTopTs && it.id !== lastTopId));
+        const newer = orderDesc
+          ? list.filter(it => !lastTopTs || (it.timestamp >= lastTopTs && it.id !== lastTopId))
+          : list.filter(it => !lastTopTs || (it.timestamp <= lastTopTs && it.id !== lastTopId));
         if (!newer.length) return true;
         // Build HTML for newest first (reverse chronological in API already)
         // Insert from bottom of 'newer' to preserve order when prepending
-        for (let i = newer.length - 1; i >= 0; i--) {
-          const l = newer[i];
+        // Insert maintaining chosen order
+        const sequence = orderDesc ? [...newer].reverse() : [...newer];
+        for (const l of sequence){
           const grp = formatDateGroup(l.timestamp);
           let top = container.firstElementChild;
           let topIsHeader = top && top.classList.contains('feed-date');
@@ -1408,6 +1561,30 @@
   loadSummary();
   loadFeed();
   renderActiveFilters();
+  refreshPresetSelect();
+  document.getElementById('btnSavePreset')?.addEventListener('click', ()=>{
+    const name = prompt('Nome do preset:');
+    if(!name) return;
+    const presets = loadPresets();
+    presets[name] = captureCurrentFilterState();
+    savePresets(presets);
+    refreshPresetSelect();
+    notify('Preset guardado','success');
+  });
+  document.getElementById('btnDeletePreset')?.addEventListener('click', ()=>{
+    const sel = document.getElementById('presetSelect');
+    if(!sel || !sel.value) return;
+    const presets = loadPresets();
+    if(!presets[sel.value]) return;
+    if(!confirm('Apagar preset "'+sel.value+'"?')) return;
+    delete presets[sel.value];
+    savePresets(presets);
+    refreshPresetSelect();
+    notify('Preset removido','success');
+  });
+  document.getElementById('presetSelect')?.addEventListener('change', (e)=>{
+    const v = e.target.value; if(!v) return; const presets = loadPresets(); if(presets[v]) applyFilterState(presets[v]);
+  });
 
   // In-page subtle toast in feed area
   function showFeedToast(msg, onClick){
