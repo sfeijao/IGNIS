@@ -80,6 +80,9 @@
     .confirm-block pre{max-height:320px;overflow:auto}
     .plan-diff{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
     .seg-spacer{flex:1 1 auto}
+    /* Tooltip */
+    #globalTooltip{position:fixed;z-index:9999;padding:6px 10px;background:rgba(0,0,0,.78);color:#f8f8f8;font-size:.65rem;line-height:1.2;border:1px solid rgba(255,255,255,.15);border-radius:8px;pointer-events:none;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;transform:translateY(2px);transition:opacity .18s,transform .18s}
+    #globalTooltip[data-visible="true"]{opacity:1;transform:translateY(0)}
     .card-pad{padding:16px}
     .gap-12{gap:12px}
     .mt-12{margin-top:12px}
@@ -155,6 +158,10 @@
   html.feed-theme-type-colored .feed-item.family-chan:hover{background:linear-gradient(180deg, rgba(99,102,241,.16), rgba(99,102,241,.08));border-color:#6366f1;box-shadow:0 8px 28px rgba(99,102,241,.18)}
   html.feed-theme-type-colored .feed-item.family-role{background:linear-gradient(180deg, rgba(147,51,234,.10), rgba(147,51,234,.04));border-color:rgba(147,51,234,.35)}
   html.feed-theme-type-colored .feed-item.family-role:hover{background:linear-gradient(180deg, rgba(147,51,234,.16), rgba(147,51,234,.08));border-color:#9333ea;box-shadow:0 8px 28px rgba(147,51,234,.18)}
+  /* Recency progress bar */
+  .recency-bar{position:relative;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;margin-top:4px;margin-bottom:2px}
+  html[data-theme="light"] .recency-bar{background:rgba(0,0,0,0.12)}
+  .recency-bar span{position:absolute;left:0;top:0;bottom:0;width:100%;background:linear-gradient(90deg,var(--accent-indigo),var(--accent-purple));transform-origin:left center;transform:scaleX(1);transition:transform .6s ease, opacity .6s ease}
   @media (max-width: 560px){
     .link-actions{gap:8px}
     .link-actions .link-btn{flex:1 1 calc(50% - 8px); text-align:center}
@@ -182,7 +189,10 @@
     <div class="navbar-container">
       <div class="navbar-brand"><i class="fas fa-hammer"></i> Moderação</div>
       <div class="navbar-user">
-        <button id="themeToggle" class="btn btn-glass" title="Alternar tema"><i class="fas fa-moon"></i></button>
+        <div class="btn-group-inline">
+          <button id="themeToggle" class="btn btn-glass" title="Alternar tema"><i class="fas fa-moon"></i></button>
+          <button id="contrastToggle" class="btn btn-glass" title="Alto contraste"><i class="fas fa-low-vision"></i></button>
+        </div>
         <span id="healthBadge" class="badge health-badge" title="Estado do sistema">
           <span id="health-mongo" class="dot dot-gray" title="DB"></span>
           <span id="health-discord" class="dot dot-gray" title="Discord"></span>
@@ -277,7 +287,8 @@
                   <option value="csv" selected>CSV</option>
                   <option value="json">JSON</option>
                 </select>
-                <button id="btnExport" class="btn btn-glass"><i class="fas fa-download"></i> Exportar</button>
+                <button id="btnExport" class="btn btn-glass" title="Exportar eventos no formato selecionado"><i class="fas fa-download"></i> Exportar</button>
+                <button id="btnExportSnapshot" class="btn btn-glass" title="Exportar feed como HTML estático"><i class="fas fa-camera"></i> Snapshot</button>
               </div>
             </div>
           </div>
@@ -473,6 +484,91 @@
         feed.appendChild(frag);
       }
     })();
+    // High contrast toggle persistence
+    (function(){
+      try {
+        const key='ui-contrast';
+        const html=document.documentElement;
+        const btn=document.getElementById('contrastToggle');
+        const apply=(v)=>{ html.classList.toggle('high-contrast', v==='on'); };
+        const saved = localStorage.getItem(key)||'off';
+        apply(saved);
+        const setIcon=()=>{ btn.innerHTML = html.classList.contains('high-contrast')? '<i class="fas fa-eye"></i>' : '<i class="fas fa-low-vision"></i>'; };
+        setIcon();
+        btn?.addEventListener('click', ()=>{ const next = html.classList.contains('high-contrast')? 'off':'on'; apply(next); localStorage.setItem(key,next); setIcon(); });
+      } catch {}
+    })();
+    // Global custom tooltip system (replaces native title tooltips for richer styling)
+    (function(){
+      const TIP_ATTR = 'data-tip';
+      let tipEl = document.getElementById('globalTooltip');
+      if(!tipEl){
+        tipEl = document.createElement('div');
+        tipEl.id = 'globalTooltip';
+        document.body.appendChild(tipEl);
+      }
+      let currentTarget = null;
+      let hideTimeout = null;
+      const gap = 10;
+      function showTip(target){
+        if(!target) return;
+        const raw = target.getAttribute(TIP_ATTR) || target.getAttribute('title');
+        if(!raw) return;
+        // If still has title attr, move it to data-tip to prevent native tooltip
+        if(target.hasAttribute('title')){ target.setAttribute(TIP_ATTR, raw); target.removeAttribute('title'); }
+        tipEl.textContent = raw;
+        tipEl.setAttribute('data-visible','true');
+        position(target);
+      }
+      function hideTip(){
+        tipEl.removeAttribute('data-visible');
+        currentTarget = null;
+      }
+      function position(target, evt){
+        const rect = target.getBoundingClientRect();
+        const ttRect = tipEl.getBoundingClientRect();
+        const vw = window.innerWidth; const vh = window.innerHeight;
+        let x = rect.left + (rect.width/2) - (ttRect.width/2);
+        let y = rect.top - ttRect.height - gap;
+        if(y < 4){ y = rect.bottom + gap; }
+        if(x < 4) x = 4; if(x + ttRect.width > vw - 4) x = vw - ttRect.width - 4;
+        if(y + ttRect.height > vh - 4) y = vh - ttRect.height - 4;
+        tipEl.style.left = x + 'px';
+        tipEl.style.top = y + 'px';
+        if(evt){
+          // If triggered by mousemove and near edges adjust quickly
+        }
+      }
+      document.addEventListener('mouseover', (e)=>{
+        const t = e.target.closest('[data-tip], [title]');
+        if(!t){
+            if(currentTarget){ hideTip(); }
+            return;
+        }
+        if(t===currentTarget) return;
+        currentTarget = t;
+        clearTimeout(hideTimeout);
+        showTip(t);
+      });
+      document.addEventListener('mousemove', (e)=>{
+        if(!currentTarget) return;
+        // Slight throttling via requestAnimationFrame
+        if(!window.__tipRaf){
+          window.__tipRaf = requestAnimationFrame(()=>{
+            window.__tipRaf = null;
+            position(currentTarget, e);
+          });
+        }
+      });
+      document.addEventListener('mouseout', (e)=>{
+        if(!currentTarget) return;
+        if(!e.relatedTarget || !e.relatedTarget.closest('[data-tip], [title]')){
+          hideTimeout = setTimeout(hideTip, 120);
+        }
+      });
+      window.addEventListener('scroll', ()=>{ if(currentTarget) position(currentTarget); }, true);
+      window.addEventListener('resize', ()=>{ if(currentTarget) position(currentTarget); });
+    })();
   </script>
     <style>
     /* Light theme overrides for this page using CSS variables */
@@ -487,6 +583,35 @@
       --text-muted: #6B7280;
       --glass-border: rgba(0,0,0,0.12);
     }
+    /* High contrast accessibility mode */
+    html.high-contrast {
+      --bg-primary: #000000 !important;
+      --bg-secondary: #0B0B0B !important;
+      --bg-tertiary: #141414 !important;
+      --bg-card: #101010 !important;
+      --bg-glass: rgba(255,255,255,0.08) !important;
+      --text-primary: #FFFFFF !important;
+      --text-secondary: #E5E7EB !important;
+      --text-muted: #D1D5DB !important;
+      --border-color: #FFFFFF !important;
+      --accent-blue: #60A5FA !important;
+      --accent-green: #34D399 !important;
+      --accent-red: #F87171 !important;
+      --accent-yellow: #FBBF24 !important;
+      --accent-purple: #C084FC !important;
+      --accent-pink: #F472B6 !important;
+      --accent-indigo: #818CF8 !important;
+      --shadow-elev-1: 0 0 0 1px #ffffff, 0 0 0 2px #000000;
+      --shadow-elev-2: 0 0 0 1px #ffffff, 0 2px 4px rgba(0,0,0,.6);
+    }
+    html.high-contrast .feed-item { border:1px solid #FFFFFF; }
+    html.high-contrast .feed-card { border:1px solid #FFFFFF; }
+    html.high-contrast .btn { box-shadow:0 0 0 2px #fff inset; }
+    html.high-contrast .btn.btn-secondary { background:#2563EB; color:#fff; }
+    html.high-contrast .segmented { border:1px solid #fff; }
+    html.high-contrast #segIndicator { background:#fff; mix-blend-mode:normal; }
+    html.high-contrast .chip { border-color:#fff; }
+    html.high-contrast #globalTooltip { background:#111; border:1px solid #fff; color:#fff; }
     </style>
 </body>
 </html>

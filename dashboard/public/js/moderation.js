@@ -12,6 +12,7 @@
     btnRefresh: document.getElementById('btnRefresh'),
     btnAuto: document.getElementById('btnAuto'),
     btnExport: document.getElementById('btnExport'),
+  btnExportSnapshot: document.getElementById('btnExportSnapshot'),
     exportFormat: document.getElementById('exportFormat'),
     stats: {
       bans: document.getElementById('countBans'),
@@ -169,11 +170,24 @@
       const d = await r.json();
       if (!r.ok || !d.success) throw new Error(d.error || `HTTP ${r.status}`);
       const m = d.metrics || {};
-      els.stats.bans && (els.stats.bans.textContent = (m.banAdds||0) + (m.banRemoves||0));
-      els.stats.msgDel && (els.stats.msgDel.textContent = (m.messageDeletes||0) + (m.messageBulkDeletes||0));
-      els.stats.msgEdit && (els.stats.msgEdit.textContent = (m.messageUpdates||0));
-      els.stats.jl && (els.stats.jl.textContent = (m.memberJoins||0) + (m.memberLeaves||0));
-      els.stats.voice && (els.stats.voice.textContent = (m.voiceJoins||0) + (m.voiceLeaves||0) + (m.voiceMoves||0));
+      if (!window.__animateNumber) {
+        window.__animateNumber = function(el, to){
+          if(!el) return; const from = parseInt(el.dataset.val || el.textContent || '0',10) || 0;
+          if(from === to){ el.textContent = to; el.dataset.val = to; return; }
+          const dur = 600; const start = performance.now();
+          const ease = p => 1 - Math.pow(1-p,3);
+          function frame(ts){
+            const prog = Math.min(1,(ts-start)/dur); const cur = Math.round(from + (to-from)*ease(prog));
+            el.textContent = cur; if(prog < 1) requestAnimationFrame(frame); else el.dataset.val = to;
+          }
+          requestAnimationFrame(frame);
+        };
+      }
+      window.__animateNumber(els.stats.bans, (m.banAdds||0) + (m.banRemoves||0));
+      window.__animateNumber(els.stats.msgDel, (m.messageDeletes||0) + (m.messageBulkDeletes||0));
+      window.__animateNumber(els.stats.msgEdit, (m.messageUpdates||0));
+      window.__animateNumber(els.stats.jl, (m.memberJoins||0) + (m.memberLeaves||0));
+      window.__animateNumber(els.stats.voice, (m.voiceJoins||0) + (m.voiceLeaves||0) + (m.voiceMoves||0));
       // Update filter buttons with counters
       try {
         const countMessages = (m.messageDeletes||0) + (m.messageBulkDeletes||0) + (m.messageUpdates||0);
@@ -491,6 +505,7 @@
             </div>
             <div class="feed-timestamp">${dt}</div>
           </div>
+          <div class="recency-bar" data-ts="${Number(l.timestamp)}"><span></span></div>
           ${meta ? `<div class=\"feed-meta\" style=\"margin-top:4px\">${meta}</div>`:''}
           ${linksRow ? `<div style=\"margin-top:6px\">${linksRow}</div>`:''}
           ${l.message && !isSnowflake(l.message) ? `<div class=\"feed-meta\" style=\"margin-top:6px\">${escapeHtml(l.message)}</div>`:''}
@@ -514,6 +529,8 @@
       parts.push(renderCard(l));
     }
     els.feed.innerHTML = parts.join('');
+  updateRecencyBars();
+  scheduleBatchPrefetch(items);
     // Attach handlers
     [...els.feed.querySelectorAll('[data-log-id]')].forEach(btn => btn.addEventListener('click', (e) => {
       const el = e.currentTarget;
@@ -640,6 +657,92 @@
       });
     } catch {}
   }
+
+  // Batch prefetch unresolved names (members & channels) to minimize flicker
+  function scheduleBatchPrefetch(items){
+    try {
+      const memberIds = new Set();
+      const channelIds = new Set();
+      for (const l of items){
+        const d = l.data||{}; const r = l.resolved||{};
+        if(d.userId && !(__nameCache.member.has(d.userId) || (r.user && r.user.username))) memberIds.add(String(d.userId));
+        if(d.executorId && !(__nameCache.member.has(d.executorId) || (r.executor && r.executor.username))) memberIds.add(String(d.executorId));
+        if(d.channelId && !(__nameCache.channel.has(d.channelId) || (r.channel && r.channel.name))) channelIds.add(String(d.channelId));
+      }
+      if(!memberIds.size && !channelIds.size) return;
+      // Simple debounce
+      clearTimeout(window.__batchPrefetchTimer);
+      window.__batchPrefetchTimer = setTimeout(async () => {
+        try {
+          if(memberIds.size) await batchFetchMembers([...memberIds].slice(0,50));
+          if(channelIds.size) await batchFetchChannels([...channelIds].slice(0,50));
+          // Re-render only labels needing update
+          hydrateLabelsFromCache();
+        } catch {}
+      }, 250);
+    } catch {}
+  }
+
+  async function batchFetchMembers(ids){
+    try {
+      const u = new URL(`/api/guild/${guildId}/search/members`, window.location.origin);
+      u.searchParams.set('q', ids.join(','));
+      const d = await fetchJson(u);
+      const list = Array.isArray(d.results)? d.results: [];
+      for(const m of list){
+        const label = m.nick ? `${m.username} (${m.nick})` : `${m.username}`;
+        __nameCache.member.set(String(m.id), label);
+      }
+    } catch {}
+  }
+  async function batchFetchChannels(ids){
+    try {
+      const u = new URL(`/api/guild/${guildId}/search/channels`, window.location.origin);
+      u.searchParams.set('q', ids.join(','));
+      const d = await fetchJson(u);
+      const list = Array.isArray(d.results)? d.results: [];
+      for(const c of list){
+        const label = `#${c.name||c.id}`;
+        __nameCache.channel.set(String(c.id), label);
+      }
+    } catch {}
+  }
+  function hydrateLabelsFromCache(){
+    try {
+      els.feed?.querySelectorAll('[data-filter-user],[data-filter-mod],[data-filter-channel]')?.forEach(el => {
+        if(el.hasAttribute('data-filter-user')){
+          const id = el.getAttribute('data-filter-user');
+          if(id && __nameCache.member.has(id)) el.innerHTML = `<i class="fas fa-user"></i> ${escapeHtml(__nameCache.member.get(id))}`;
+        } else if(el.hasAttribute('data-filter-mod')) {
+          const id = el.getAttribute('data-filter-mod');
+          if(id && __nameCache.member.has(id)) el.innerHTML = `<i class="fas fa-shield-alt"></i> ${escapeHtml(__nameCache.member.get(id))}`;
+        } else if(el.hasAttribute('data-filter-channel')) {
+          const id = el.getAttribute('data-filter-channel');
+          if(id && __nameCache.channel.has(id)) el.innerHTML = `<i class=\"fas fa-hashtag\"></i> ${escapeHtml(__nameCache.channel.get(id))}`;
+        }
+      });
+    } catch {}
+  }
+
+  // Recency progress bar logic: shows how old an event is within a chosen window (default 24h)
+  const RECENCY_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
+  function updateRecencyBars(){
+    const now = Date.now();
+    const bars = els.feed?.querySelectorAll('.recency-bar');
+    if(!bars) return;
+    bars.forEach(bar => {
+      const ts = Number(bar.getAttribute('data-ts'));
+      if(!ts) return;
+      const age = now - ts;
+      const ratio = Math.max(0, Math.min(1, age / RECENCY_WINDOW_MS));
+      const span = bar.querySelector('span');
+      if(span){
+        span.style.transform = `scaleX(${1 - ratio})`;
+        span.style.opacity = (ratio < 1) ? '1' : '0.2';
+      }
+    });
+  }
+  setInterval(updateRecencyBars, 60000); // update every minute
 
   function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c)); }
   function isSnowflake(s){ return /^[0-9]{10,20}$/.test(String(s||'')); }
@@ -887,7 +990,7 @@
 
   els.modalTitle.textContent = 'Evento de moderação';
   // Add copy details tool at the top
-  body.unshift(`<div class=\"actions-row\"><button id=\"btnCopyDetails\" class=\"btn btn-glass\" title=\"Copiar detalhes do evento\"><i class=\"fas fa-copy\"></i> Copiar detalhes</button></div>`);
+  body.unshift(`<div class=\"actions-row\">\n    <button id=\"btnCopyDetails\" class=\"btn btn-glass\" title=\"Copiar detalhes do evento\"><i class=\"fas fa-copy\"></i> Copiar detalhes</button>\n    <button id=\"btnExportJson\" class=\"btn btn-glass\" title=\"Exportar JSON bruto do evento\"><i class=\"fas fa-file-code\"></i> Exportar JSON</button>\n  </div>`);
   els.modalBody.innerHTML = body.join('');
   els.modal.classList.remove('modal-hidden');
   els.modal.classList.add('modal-visible');
@@ -895,6 +998,7 @@
       // Copy details aggregate handler
       try {
         const btnCopyDetails = els.modalBody.querySelector('#btnCopyDetails');
+        const btnExportJson = els.modalBody.querySelector('#btnExportJson');
         btnCopyDetails?.addEventListener('click', async ()=>{
           try {
             const parts = [];
@@ -908,6 +1012,16 @@
             }
             notify('Detalhes copiados','success');
           } catch { notify('Não foi possível copiar','error'); }
+        });
+        btnExportJson?.addEventListener('click', ()=>{
+          try {
+            const blob = new Blob([JSON.stringify(ev, null, 2)], { type:'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `evento-${ev.id}.json`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            setTimeout(()=> URL.revokeObjectURL(url), 5000);
+          } catch { notify('Falha ao exportar JSON','error'); }
         });
       } catch {}
       // Wire copy buttons
@@ -971,6 +1085,7 @@
   els.btnRefresh?.addEventListener('click', async ()=>{ await loadSummary(); await loadFeed(); });
   els.btnAuto?.addEventListener('click', toggleAuto);
   els.btnExport?.addEventListener('click', exportCsv);
+  els.btnExportSnapshot?.addEventListener('click', exportSnapshot);
   els.window?.addEventListener('change', loadSummary);
   els.q?.addEventListener('keyup', (e)=>{ if(e.key==='Enter') loadFeed(); else renderActiveFilters(); });
   els.from?.addEventListener('change', ()=>{ renderActiveFilters(); loadFeed(); });
@@ -1001,6 +1116,17 @@
       } catch(e){ hide(); }
     });
     inputEl.addEventListener('blur', ()=> setTimeout(hide, 200));
+  }
+
+  function exportSnapshot(){
+    try {
+      const feedHtml = els.feed ? els.feed.innerHTML : '';
+      const doc = `<!DOCTYPE html><html lang=\"pt-PT\"><head><meta charset=\"utf-8\"/><title>Snapshot Feed Moderação</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;background:#111;color:#eee;padding:24px}h1{font-size:1.2rem;margin:0 0 16px} .feed{max-width:1100px;margin:0 auto} .feed-item{border:1px solid #333;border-radius:10px;padding:12px 14px;margin:8px 0;background:#1b1b1f} .feed-date{margin-top:28px;font-weight:600;opacity:.8} .badge-soft{display:inline-block;background:#222;padding:2px 6px;border-radius:14px;font-size:.65rem;margin:2px 4px 2px 0} .feed-meta{font-size:.72rem;line-height:1.25;margin-top:4px} code{background:#222;padding:2px 4px;border-radius:4px}</style></head><body><h1>Snapshot Feed de Moderação</h1><div class=\"feed\">${feedHtml}</div></body></html>`;
+      const blob = new Blob([doc], { type:'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `feed-snapshot-${Date.now()}.html`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
+      notify('Snapshot exportado','success');
+    } catch(e){ console.error(e); notify('Falha ao exportar snapshot','error'); }
   }
   attachAutocomplete(els.userId, 'members');
   attachAutocomplete(els.moderatorId, 'members');
