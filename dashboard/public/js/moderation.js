@@ -165,6 +165,31 @@
       localStorage.setItem('mod-auto', els.btnAuto.getAttribute('aria-pressed') === 'true' ? 'true' : 'false');
     } catch {}
   }
+  function renderActiveFilters(){
+    const row = document.getElementById('activeFilters'); if (!row) return;
+    const chips = [];
+    const f = (els.q?.value||'').trim(); if (f) chips.push({ k:'q', label:`Texto: ${f}` });
+    const uf = (els.userId?.value||'').trim(); if (uf) chips.push({ k:'userId', label:`Usuário: ${uf}` });
+    const mf = (els.moderatorId?.value||'').trim(); if (mf) chips.push({ k:'moderatorId', label:`Moderador: ${mf}` });
+    const cf = (els.channelId?.value||'').trim(); if (cf) chips.push({ k:'channelId', label:`Canal: ${cf}` });
+    const from = (els.from?.value||'').trim(); if (from) chips.push({ k:'from', label:`De: ${from}` });
+    const to = (els.to?.value||'').trim(); if (to) chips.push({ k:'to', label:`Até: ${to}` });
+    if (currentFamily && currentFamily !== 'all') chips.push({ k:'family', label:`Tipo: ${currentFamily}` });
+    if (!chips.length) { row.innerHTML = ''; return; }
+    row.innerHTML = chips.map(c => `<span class="chip" data-k="${c.k}">${c.label} <i class="fas fa-times chip-clear" title="Limpar"></i></span>`).join('');
+    row.querySelectorAll('.chip')?.forEach(ch => ch.addEventListener('click', (e)=>{
+      const k = ch.getAttribute('data-k'); const isClear = e.target?.classList?.contains('chip-clear');
+      if (!k) return;
+      if (k==='q') els.q.value = '';
+      else if (k==='userId') els.userId.value = '';
+      else if (k==='moderatorId') els.moderatorId.value = '';
+      else if (k==='channelId') els.channelId.value = '';
+      else if (k==='from') els.from.value = '';
+      else if (k==='to') els.to.value = '';
+      else if (k==='family') { currentFamily = 'all'; els.filterButtons?.forEach(b=> b.classList.toggle('active', (b.getAttribute('data-filter')||'all')==='all')); }
+      loadFeed();
+    }));
+  }
   function restorePrefs(){
     try {
       const f = localStorage.getItem('mod-feed-filter');
@@ -202,6 +227,7 @@
       const d = await r.json();
       if (!r.ok || !d.success) throw new Error(d.error || `HTTP ${r.status}`);
       renderFeed(d.logs||[]);
+      renderActiveFilters();
       // Track head for live-append
       if (Array.isArray(d.logs) && d.logs.length) {
         lastTopId = d.logs[0].id;
@@ -677,12 +703,12 @@
   els.btnAuto?.addEventListener('click', toggleAuto);
   els.btnExport?.addEventListener('click', exportCsv);
   els.window?.addEventListener('change', loadSummary);
-  els.q?.addEventListener('keyup', (e)=>{ if(e.key==='Enter') loadFeed(); });
-  els.from?.addEventListener('change', loadFeed);
-  els.to?.addEventListener('change', loadFeed);
-  els.userId?.addEventListener('keyup', (e)=>{ if(e.key==='Enter') loadFeed(); });
-  els.moderatorId?.addEventListener('keyup', (e)=>{ if(e.key==='Enter') loadFeed(); });
-  els.channelId?.addEventListener('keyup', (e)=>{ if(e.key==='Enter') loadFeed(); });
+  els.q?.addEventListener('keyup', (e)=>{ if(e.key==='Enter') loadFeed(); else renderActiveFilters(); });
+  els.from?.addEventListener('change', ()=>{ renderActiveFilters(); loadFeed(); });
+  els.to?.addEventListener('change', ()=>{ renderActiveFilters(); loadFeed(); });
+  els.userId?.addEventListener('keyup', (e)=>{ if(e.key==='Enter') loadFeed(); else renderActiveFilters(); });
+  els.moderatorId?.addEventListener('keyup', (e)=>{ if(e.key==='Enter') loadFeed(); else renderActiveFilters(); });
+  els.channelId?.addEventListener('keyup', (e)=>{ if(e.key==='Enter') loadFeed(); else renderActiveFilters(); });
   // Simple autocomplete for user/mod/channel fields
   function attachAutocomplete(inputEl, endpoint){
     if (!inputEl) return;
@@ -726,6 +752,7 @@
     btn.classList.add('active');
     currentFamily = btn.getAttribute('data-filter') || 'all';
     persistPrefs();
+    renderActiveFilters();
     loadFeed();
   }));
 
@@ -833,6 +860,7 @@
   restorePrefs();
   loadSummary();
   loadFeed();
+  renderActiveFilters();
 
   // In-page subtle toast in feed area
   function showFeedToast(msg, onClick){
