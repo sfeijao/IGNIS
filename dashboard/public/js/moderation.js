@@ -42,6 +42,7 @@
   let LONG_PAUSE_MS = 2 * 60 * 1000; // 2 minutes (configurable)
   let orderDesc = true; // true = newest first
   let groupByMod = false; // group by moderator executor
+  let groupSortByVolume = false; // secondary grouping sort
 
   function notify(msg, type='info'){
     const n = document.createElement('div');
@@ -253,6 +254,7 @@
       localStorage.setItem('mod-perPage', String(perPage));
   localStorage.setItem('mod-order-desc', orderDesc?'true':'false');
   localStorage.setItem('mod-group-mod', groupByMod?'true':'false');
+  localStorage.setItem('mod-group-sort-volume', groupSortByVolume?'true':'false');
     } catch {}
   }
   (function restorePrefs(){
@@ -267,6 +269,7 @@
       perPage = parseInt(localStorage.getItem('mod-perPage')||'100',10)||100;
   orderDesc = localStorage.getItem('mod-order-desc') !== 'false';
   groupByMod = localStorage.getItem('mod-group-mod') === 'true';
+  groupSortByVolume = localStorage.getItem('mod-group-sort-volume') === 'true';
       // update UI for family
       els.filterButtons?.forEach(btn=>{ btn.classList.toggle('active', btn.getAttribute('data-filter')===currentFamily); });
       if(auto){ els.btnAuto.setAttribute('aria-pressed','true'); els.btnAuto.innerHTML = `<i class="fas fa-pause"></i> Auto`; }
@@ -360,6 +363,7 @@
       // update buttons
       const btnOrder = document.getElementById('btnOrder'); if(btnOrder) btnOrder.setAttribute('aria-pressed', orderDesc?'true':'false');
       const btnGroup = document.getElementById('btnGroupMod'); if(btnGroup) btnGroup.setAttribute('aria-pressed', groupByMod?'true':'false');
+  const btnSortVol = document.getElementById('btnGroupSortVol'); if(btnSortVol) btnSortVol.setAttribute('aria-pressed', groupSortByVolume?'true':'false');
       els.filterButtons?.forEach(b=> b.classList.toggle('active', (b.getAttribute('data-filter')||'all')===currentFamily));
       persistPrefs();
       renderActiveFilters();
@@ -811,7 +815,11 @@
       list.sort((a,b)=> orderDesc ? b.timestamp - a.timestamp : a.timestamp - b.timestamp);
       return { executorId:k, logs:list, latest: list[0]?.timestamp || 0 };
     });
-    arr.sort((a,b)=> orderDesc ? b.latest - a.latest : a.latest - b.latest);
+    if(groupSortByVolume){
+      arr.sort((a,b)=> b.logs.length - a.logs.length || (orderDesc ? b.latest - a.latest : a.latest - b.latest));
+    } else {
+      arr.sort((a,b)=> orderDesc ? b.latest - a.latest : a.latest - b.latest);
+    }
     const parts = [];
     for(const g of arr){
       const first = g.logs[0];
@@ -833,6 +841,7 @@
           <span class="group-title"><i class="fas ${iconClass}"></i> ${escapeHtml(label||'—')}</span>
           <span class="group-count">${g.logs.length} evento(s)</span>
         </div>
+        ${buildGroupTypesPills(g.logs)}
         <div class="group-body">
           ${g.logs.map(l=> renderCard(l)).join('')}
         </div>
@@ -866,6 +875,29 @@
         if(e.detail===2) openEventModal(el.getAttribute('data-log-id'));
       });
     });
+  }
+  function buildGroupTypesPills(list){
+    try {
+      const counts = {};
+      for(const l of list){
+        const fam = (l.type||'').split('_').slice(0,2).join('_');
+        counts[fam] = (counts[fam]||0)+1;
+      }
+      const mapLabel = {
+        mod_message: 'Msg',
+        mod_member: 'Membro',
+        mod_voice: 'Voz',
+        mod_ban: 'Ban',
+        mod_channel: 'Canal',
+        mod_role: 'Cargo'
+      };
+      const pills = Object.entries(counts)
+        .sort((a,b)=> b[1]-a[1])
+        .map(([k,v])=>`<span class="gt-pill" title="${v} eventos ${mapLabel[k]||k}"><b>${mapLabel[k]||k}</b> ${v}</span>`)
+        .join('');
+      if(!pills) return '';
+      return `<div class="group-types">${pills}</div>`;
+    } catch { return '';} 
   }
   function updateClearStreamBtn(){
     try {
@@ -1365,6 +1397,20 @@
   document.getElementById('btnOrder')?.addEventListener('click', toggleOrder);
   document.getElementById('btnGroupMod')?.addEventListener('click', ()=>{ groupByMod = !groupByMod; document.getElementById('btnGroupMod')?.setAttribute('aria-pressed', groupByMod?'true':'false'); persistPrefs(); if(window.__lastLogs) renderFeed(window.__lastLogs); else loadFeed(); });
   document.getElementById('btnClearStream')?.addEventListener('click', clearStream);
+  document.getElementById('btnGroupSortVol')?.addEventListener('click', ()=>{ groupSortByVolume = !groupSortByVolume; document.getElementById('btnGroupSortVol')?.setAttribute('aria-pressed', groupSortByVolume?'true':'false'); persistPrefs(); if(groupByMod && window.__lastLogs) renderFeed(window.__lastLogs); });
+  document.getElementById('btnGroupsToggle')?.addEventListener('click', ()=>{
+    const btn = document.getElementById('btnGroupsToggle'); if(!btn) return;
+    const state = btn.getAttribute('data-state')||'expanded';
+    const next = state==='expanded' ? 'collapsed' : 'expanded';
+    btn.setAttribute('data-state', next);
+    btn.innerHTML = next==='collapsed' ? '<i class="fas fa-expand-alt"></i> Expandir' : '<i class="fas fa-compress-alt"></i> Colapsar';
+    const wrap = document.querySelectorAll('.group-mod');
+    wrap.forEach(g=>{
+      g.setAttribute('aria-expanded', next==='collapsed' ? 'false':'true');
+      const body = g.querySelector('.group-body'); if(body) body.style.display = next==='collapsed' ? 'none':'block';
+      const toggle = g.querySelector('.group-toggle'); if(toggle) toggle.innerHTML = next==='collapsed' ? '<i class="fas fa-chevron-right"></i>' : '<i class="fas fa-chevron-down"></i>';
+    });
+  });
   document.getElementById('pagePrev')?.addEventListener('click', ()=>{ if(page>1){ page--; persistPrefs(); loadPaged(); }});
   document.getElementById('pageNext')?.addEventListener('click', ()=>{ page++; persistPrefs(); loadPaged(); });
   document.getElementById('pageInput')?.addEventListener('change', (e)=>{ const v=parseInt(e.target.value,10); if(!isNaN(v)&&v>0){ page=v; persistPrefs(); loadPaged(); }});

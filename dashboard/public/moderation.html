@@ -264,6 +264,8 @@
             <button id="btnOrder" class="btn btn-glass" aria-pressed="true" title="Ordenação: mais recente em cima (clique para alternar)"><i class="fas fa-sort-amount-down-alt"></i> Ordem</button>
             <button id="btnGroupMod" class="btn btn-glass" aria-pressed="false" title="Agrupar por moderador (colapsa eventos do mesmo executor)"><i class="fas fa-user-shield"></i> Agrupar Mods</button>
             <button id="btnClearStream" class="btn btn-glass" style="display:none" title="Limpar eventos mostrados (modo stream)"><i class="fas fa-broom"></i> Limpar stream</button>
+            <button id="btnGroupSortVol" class="btn btn-glass" aria-pressed="false" title="Ordenar grupos por volume (secundário: tempo)"><i class="fas fa-layer-group"></i> Volume</button>
+            <button id="btnGroupsToggle" class="btn btn-glass" data-state="expanded" title="Colapsar todos os grupos"><i class="fas fa-compress-alt"></i> Colapsar</button>
             <div class="input-group">
               <label for="densitySelect">Densidade</label>
               <select id="densitySelect" class="input" title="Densidade do feed">
@@ -718,6 +720,9 @@
   .group-head{display:flex;align-items:center;gap:10px;font-size:.8rem;font-weight:600}
   .group-title{flex:1}
   .group-count{font-size:.65rem;opacity:.7}
+  .group-types{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 6px 34px}
+  .group-types .gt-pill{background:rgba(255,255,255,.07);border:1px solid var(--glass-border);border-radius:10px;padding:2px 6px;font-size:.6rem;display:inline-flex;align-items:center;gap:4px}
+  html.high-contrast .group-types .gt-pill{background:#000;border-color:#fff}
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);border:0}
     </style>
 </body>
