@@ -321,6 +321,16 @@
     if (t.startsWith('mod_channel')) return 'type-pill tp-chan';
     return 'type-pill';
   }
+  function familyClass(t){
+    if (!t) return '';
+    if (t.startsWith('mod_message')) return 'family-msg';
+    if (t.startsWith('mod_member')) return 'family-mem';
+    if (t.startsWith('mod_voice')) return 'family-voice';
+    if (t.startsWith('mod_ban')) return 'family-ban';
+    if (t.startsWith('mod_channel')) return 'family-chan';
+    if (t.startsWith('mod_role')) return 'family-role';
+    return '';
+  }
   function typeLabel(t){
     if (!t) return 'Evento';
     const m = {
@@ -382,11 +392,12 @@
     const d = l.data || {};
     const r = l.resolved || {};
     const dt = new Date(l.timestamp).toLocaleString('pt-PT');
-  const userLabel = r.user ? `${escapeHtml(r.user.username||'')}${r.user.nick? ' ('+escapeHtml(r.user.nick)+')':''}` : (d.userId ? 'Desconhecido' : '');
+  const fallbackUserId = d.userId || (isSnowflake(l.message) ? l.message : null);
+  const userLabel = r.user ? `${escapeHtml(r.user.username||'')}${r.user.nick? ' ('+escapeHtml(r.user.nick)+')':''}` : (fallbackUserId ? 'Desconhecido' : '');
   const modLabel = r.executor ? `${escapeHtml(r.executor.username||'')}${r.executor.nick? ' ('+escapeHtml(r.executor.nick)+')':''}` : (d.executorId ? 'Desconhecido' : '');
   const chanLabel = r.channel ? `#${escapeHtml(r.channel.name||'')}` : (d.channelId ? 'Desconhecido' : '');
     const meta = [
-      userLabel ? `<span class=\"badge-soft\" title=\"Clique para filtrar • Shift+Clique copia o ID\" data-filter-user="${escapeHtml(d.userId||r.user?.id||'')}" data-copy-id="${escapeHtml(d.userId||r.user?.id||'')}"><i class=\"fas fa-user\"></i> ${userLabel}</span>` : '',
+  userLabel ? `<span class=\"badge-soft\" title=\"Clique para filtrar • Shift+Clique copia o ID\" data-filter-user="${escapeHtml(fallbackUserId||r.user?.id||'')}" data-copy-id="${escapeHtml(fallbackUserId||r.user?.id||'')}"><i class=\"fas fa-user\"></i> ${userLabel}</span>` : '',
       modLabel ? `<span class=\"badge-soft\" title=\"Clique para filtrar • Shift+Clique copia o ID\" data-filter-mod="${escapeHtml(d.executorId||r.executor?.id||'')}" data-copy-id="${escapeHtml(d.executorId||r.executor?.id||'')}"><i class=\"fas fa-shield-alt\"></i> ${modLabel}</span>` : '',
       chanLabel ? `<span class=\"badge-soft\" title=\"Clique para filtrar • Shift+Clique copia o ID\" data-filter-channel="${escapeHtml(d.channelId||r.channel?.id||'')}" data-copy-id="${escapeHtml(d.channelId||r.channel?.id||'')}"><i class=\"fas fa-hashtag\"></i> ${chanLabel}</span>` : ''
     ].filter(Boolean).join(' ');
@@ -441,7 +452,7 @@
   const copyBtn = `<button class=\"btn btn-sm btn-glass copy-summary\" title=\"Copiar resumo\" data-log-id=\"${l.id}\"><i class=\"fas fa-copy\"></i> Copiar resumo</button>`;
   const dismissBtn = `<button class=\"btn btn-sm btn-glass dismiss-card\" title=\"Remover do feed (apenas visual)\" data-log-id=\"${l.id}\"><i class=\"fas fa-eye-slash\"></i> Ocultar</button>`;
     return `
-      <div class="feed-item" role="button" data-log-id="${l.id}" aria-expanded="false" aria-label="${escapeHtml(typeLabel(l.type||''))} em ${dt}">
+      <div class="feed-item ${familyClass(l.type||'')}" role="button" data-log-id="${l.id}" aria-expanded="false" aria-label="${escapeHtml(typeLabel(l.type||''))} em ${dt}">
         <div class="feed-row">
           <div class="avatar-wrap">
             <img class="feed-avatar" src="${avatarUrl(r.user?.id, r.user?.avatar)}" alt="avatar" />
@@ -454,7 +465,7 @@
             </div>
             ${linksRow}
             ${meta ? `<div class="feed-meta" style="margin-top:6px">${meta}</div>`:''}
-            ${l.message ? `<div style="margin-top:6px">${escapeHtml(l.message)}</div>`:''}
+            ${l.message && !isSnowflake(l.message) ? `<div style="margin-top:6px">${escapeHtml(l.message)}</div>`:''}
             ${quick.length? `<div class="expand">${quick.join('')}</div>`:''}
             <div class="feed-actions" style="margin-top:6px">${copyBtn} ${dismissBtn}</div>
             ${actionsRow}
@@ -566,28 +577,33 @@
     els.feed.appendChild(more);
     document.getElementById('btnLoadMore')?.addEventListener('click', async ()=>{ currentLimit = Math.min(1000, currentLimit + 200); persistPrefs(); await loadFeed(); });
 
-    // After render: resolve raw IDs in chips into human-readable labels if needed
+    // After render: resolve chips to human-readable labels using their data attributes (avoid showing raw IDs)
     try {
-      const maybeNumeric = (s)=> /^[0-9]{10,20}$/.test(String(s||''));
       const chipNodes = els.feed.querySelectorAll('[data-filter-user],[data-filter-mod],[data-filter-channel]');
       chipNodes.forEach(async chip => {
-        const txt = chip.textContent.trim();
-        // If content still looks like an ID, try resolving
-        if (!maybeNumeric(txt)) return;
+        if (chip.dataset.resolved === '1') return;
         if (chip.hasAttribute('data-filter-user') || chip.hasAttribute('data-filter-mod')){
           const id = chip.getAttribute('data-filter-user') || chip.getAttribute('data-filter-mod');
           const label = await resolveMemberLabel(id);
-          if (label) chip.innerHTML = chip.innerHTML.replace(txt, escapeHtml(label));
+          if (label) {
+            const icon = chip.hasAttribute('data-filter-user') ? 'fa-user' : 'fa-shield-alt';
+            chip.innerHTML = `<i class="fas ${icon}"></i> ${escapeHtml(label)}`;
+            chip.dataset.resolved = '1';
+          }
         } else if (chip.hasAttribute('data-filter-channel')){
           const id = chip.getAttribute('data-filter-channel');
           const label = await resolveChannelLabel(id);
-          if (label) chip.innerHTML = chip.innerHTML.replace(txt, escapeHtml(label));
+          if (label) {
+            chip.innerHTML = `<i class="fas fa-hashtag"></i> ${escapeHtml(label)}`;
+            chip.dataset.resolved = '1';
+          }
         }
       });
     } catch {}
   }
 
   function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c)); }
+  function isSnowflake(s){ return /^[0-9]{10,20}$/.test(String(s||'')); }
 
   function toggleAuto(){
     const pressed = els.btnAuto.getAttribute('aria-pressed') === 'true';
@@ -1069,18 +1085,26 @@
           newNodes.forEach(n => n.classList.add('feed-flash'));
           setTimeout(()=> newNodes.forEach(n => n.classList.remove('feed-flash')), 1100);
         } catch {}
-        // Resolve raw IDs to names for new chips
+        // Resolve chips to human-readable labels for newly inserted nodes
         try {
-          const maybeNumeric = (s)=> /^[0-9]{10,20}$/.test(String(s||''));
           const chips = [...els.feed.querySelectorAll('[data-filter-user],[data-filter-mod],[data-filter-channel]')].slice(0, inserted*3);
           chips.forEach(async chip => {
-            const txt = chip.textContent.trim(); if (!maybeNumeric(txt)) return;
+            if (chip.dataset.resolved === '1') return;
             if (chip.hasAttribute('data-filter-user') || chip.hasAttribute('data-filter-mod')){
               const id = chip.getAttribute('data-filter-user') || chip.getAttribute('data-filter-mod');
-              const label = await resolveMemberLabel(id); if (label) chip.innerHTML = chip.innerHTML.replace(txt, escapeHtml(label));
+              const label = await resolveMemberLabel(id);
+              if (label) {
+                const icon = chip.hasAttribute('data-filter-user') ? 'fa-user' : 'fa-shield-alt';
+                chip.innerHTML = `<i class="fas ${icon}"></i> ${escapeHtml(label)}`;
+                chip.dataset.resolved = '1';
+              }
             } else if (chip.hasAttribute('data-filter-channel')){
               const id = chip.getAttribute('data-filter-channel');
-              const label = await resolveChannelLabel(id); if (label) chip.innerHTML = chip.innerHTML.replace(txt, escapeHtml(label));
+              const label = await resolveChannelLabel(id);
+              if (label) {
+                chip.innerHTML = `<i class=\"fas fa-hashtag\"></i> ${escapeHtml(label)}`;
+                chip.dataset.resolved = '1';
+              }
             }
           });
         } catch {}

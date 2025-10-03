@@ -65,6 +65,26 @@
   .btn-link-mod{background:rgba(147,51,234,.12);color:#d8b4fe;border-color:#9333ea}
   .btn-link-channel{background:rgba(99,102,241,.12);color:#c7d2fe;border-color:#6366f1}
   .btn-link-message{background:rgba(59,130,246,.12);color:#93c5fd;border-color:#3b82f6}
+  /* Density: compact option */
+  html.feed-density-compact .feed-item{padding:8px 8px;margin-bottom:8px}
+  html.feed-density-compact .feed-title{font-size:.95rem}
+  html.feed-density-compact .feed-meta{font-size:.82rem}
+  html.feed-density-compact .badge-soft{font-size:.72rem;padding:2px 6px}
+  html.feed-density-compact .type-pill{font-size:.72rem;padding:2px 8px}
+  html.feed-density-compact .link-actions .link-btn{padding:4px 6px}
+  /* Theme: per-type coloring for feed cards (subtle) */
+  html.feed-theme-type-colored .feed-item.family-msg{background:linear-gradient(180deg, rgba(59,130,246,.08), rgba(59,130,246,.03));border-color:rgba(59,130,246,.30)}
+  html.feed-theme-type-colored .feed-item.family-msg:hover{background:linear-gradient(180deg, rgba(59,130,246,.13), rgba(59,130,246,.07));border-color:#3b82f6;box-shadow:0 8px 28px rgba(59,130,246,.15)}
+  html.feed-theme-type-colored .feed-item.family-mem{background:linear-gradient(180deg, rgba(16,185,129,.08), rgba(16,185,129,.03));border-color:rgba(16,185,129,.30)}
+  html.feed-theme-type-colored .feed-item.family-mem:hover{background:linear-gradient(180deg, rgba(16,185,129,.13), rgba(16,185,129,.07));border-color:#10b981;box-shadow:0 8px 28px rgba(16,185,129,.15)}
+  html.feed-theme-type-colored .feed-item.family-voice{background:linear-gradient(180deg, rgba(245,158,11,.10), rgba(245,158,11,.04));border-color:rgba(245,158,11,.35)}
+  html.feed-theme-type-colored .feed-item.family-voice:hover{background:linear-gradient(180deg, rgba(245,158,11,.16), rgba(245,158,11,.08));border-color:#f59e0b;box-shadow:0 8px 28px rgba(245,158,11,.18)}
+  html.feed-theme-type-colored .feed-item.family-ban{background:linear-gradient(180deg, rgba(239,68,68,.10), rgba(239,68,68,.04));border-color:rgba(239,68,68,.35)}
+  html.feed-theme-type-colored .feed-item.family-ban:hover{background:linear-gradient(180deg, rgba(239,68,68,.16), rgba(239,68,68,.08));border-color:#ef4444;box-shadow:0 8px 28px rgba(239,68,68,.18)}
+  html.feed-theme-type-colored .feed-item.family-chan{background:linear-gradient(180deg, rgba(99,102,241,.10), rgba(99,102,241,.04));border-color:rgba(99,102,241,.35)}
+  html.feed-theme-type-colored .feed-item.family-chan:hover{background:linear-gradient(180deg, rgba(99,102,241,.16), rgba(99,102,241,.08));border-color:#6366f1;box-shadow:0 8px 28px rgba(99,102,241,.18)}
+  html.feed-theme-type-colored .feed-item.family-role{background:linear-gradient(180deg, rgba(147,51,234,.10), rgba(147,51,234,.04));border-color:rgba(147,51,234,.35)}
+  html.feed-theme-type-colored .feed-item.family-role:hover{background:linear-gradient(180deg, rgba(147,51,234,.16), rgba(147,51,234,.08));border-color:#9333ea;box-shadow:0 8px 28px rgba(147,51,234,.18)}
   @media (max-width: 560px){
     .link-actions{gap:8px}
     .link-actions .link-btn{flex:1 1 calc(50% - 8px); text-align:center}
@@ -156,6 +176,20 @@
             <span class="flex-1"></span>
             <button id="btnRefresh" class="btn btn-primary"><i class="fas fa-rotate"></i> Atualizar</button>
             <button id="btnAuto" class="btn btn-glass" aria-pressed="false"><i class="fas fa-play"></i> Auto</button>
+            <div class="input-group">
+              <label for="densitySelect">Densidade</label>
+              <select id="densitySelect" class="input" title="Densidade do feed">
+                <option value="comfortable">Confortável</option>
+                <option value="compact">Compacto</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="themeSelect">Tema</label>
+              <select id="themeSelect" class="input" title="Tema de cor do feed">
+                <option value="subtle">Subtil</option>
+                <option value="type-colored">Por tipo</option>
+              </select>
+            </div>
             <div class="input-group">
               <label for="longPauseMin">Pausa longa</label>
               <div class="inline-group">
@@ -290,6 +324,34 @@
         const setIcon = ()=>{ btn.innerHTML = (document.documentElement.getAttribute('data-theme')==='light')? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; };
         setIcon();
         btn?.addEventListener('click', ()=>{ const cur=document.documentElement.getAttribute('data-theme')||'dark'; const next = (cur==='dark')?'light':'dark'; apply(next); localStorage.setItem(key,next); setIcon(); });
+      } catch {}
+    })();
+    // Density/Theme selectors persisted and applied as html classes
+    (function(){
+      try {
+        const densKey = 'mod-feed-density';
+        const themeKey = 'mod-feed-theme';
+        const html = document.documentElement;
+        const applyDensity = (v)=>{
+          html.classList.toggle('feed-density-compact', v==='compact');
+        };
+        const applyTheme = (v)=>{
+          html.classList.toggle('feed-theme-type-colored', v==='type-colored');
+        };
+        const dSel = document.getElementById('densitySelect');
+        const tSel = document.getElementById('themeSelect');
+  let savedD = localStorage.getItem(densKey);
+  let savedT = localStorage.getItem(themeKey);
+  const validDensity = new Set(['comfortable','compact']);
+  const validTheme = new Set(['subtle','type-colored']);
+  if (!validDensity.has(savedD)) savedD = 'compact';
+  if (!validTheme.has(savedT)) savedT = 'type-colored';
+  applyDensity(savedD);
+  applyTheme(savedT);
+  if (dSel) dSel.value = savedD;
+  if (tSel) tSel.value = savedT;
+        dSel?.addEventListener('change', ()=>{ const v=dSel.value; localStorage.setItem(densKey, v); applyDensity(v); });
+        tSel?.addEventListener('change', ()=>{ const v=tSel.value; localStorage.setItem(themeKey, v); applyTheme(v); });
       } catch {}
     })();
     // Navbar user avatar/name & health
