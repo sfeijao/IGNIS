@@ -1714,6 +1714,9 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
         const logAction = async (type, message, extra) => {
             try { await storage.addLog({ guild_id: guild.id, type, message, actor_id: req.user.id, data: { via:'dashboard', ...(extra||{}) } }); } catch {}
         };
+        // Helpers
+        const briefUser = (m) => (m && m.user) ? { id:m.id, username:m.user.username, nick:m.nickname||null } : (m ? { id:m.id } : null);
+        const roleName = (rid) => guild.roles.cache.get(rid)?.name || rid;
         // Resolve member when needed
         const getMember = async (id) => {
             try { return await guild.members.fetch(id); } catch { return null; }
@@ -1745,9 +1748,9 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                 const m = await getMember(userId); if (!m) return res.status(404).json({ success:false, error:'member_not_found' });
                 const memberHighest = m?.roles?.highest?.position ?? 0; if (memberHighest >= myHighest) return res.status(403).json({ success:false, error:'insufficient_member_hierarchy' });
                 if (dryRun) {
-                    return res.json({ success:true, dryRun:true, plan:{ action:'kick', userId:m.id, member:{ id:m.id, tag:`${m.user.username}#${m.user.discriminator}` } }, risks:[] });
+                    return res.json({ success:true, dryRun:true, plan:{ action:'kick', user: briefUser(m) }, risks:[] });
                 }
-                try { await m.kick(reason||'Dashboard kick'); await logAction('mod_dashboard_kick', `Kicked ${m.id}`, { userId:m.id, reason, logId: log?.id||null }); return res.json({ success:true, details:{ userId:m.id } }); } catch(e){ logger.warn('kick failed', e); return res.status(500).json({ success:false, error:'kick_failed' }); }
+                try { await m.kick(reason||'Dashboard kick'); await logAction('mod_dashboard_kick', `Kicked ${m.id}`, { userId:m.id, reason, logId: log?.id||null }); return res.json({ success:true, details:{ user: briefUser(m) } }); } catch(e){ logger.warn('kick failed', e); return res.status(500).json({ success:false, error:'kick_failed' }); }
             }
             case 'timeout': {
                 if (!userId) return res.status(400).json({ success:false, error:'missing_userId' });
@@ -1757,18 +1760,18 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                 const memberHighest = m?.roles?.highest?.position ?? 0; if (memberHighest >= myHighest) return res.status(403).json({ success:false, error:'insufficient_member_hierarchy' });
                 const until = new Date(Date.now() + seconds*1000);
                 if (dryRun) {
-                    return res.json({ success:true, dryRun:true, plan:{ action:'timeout', userId:m.id, seconds }, risks:[] });
+                    return res.json({ success:true, dryRun:true, plan:{ action:'timeout', user: briefUser(m), seconds }, risks:[] });
                 }
-                try { await m.timeout(until, reason||'Dashboard timeout'); await logAction('mod_dashboard_timeout', `Timeout ${m.id} for ${seconds}s`, { userId:m.id, reason, seconds, logId: log?.id||null }); return res.json({ success:true, details:{ userId:m.id, seconds } }); } catch(e){ logger.warn('timeout failed', e); return res.status(500).json({ success:false, error:'timeout_failed' }); }
+                try { await m.timeout(until, reason||'Dashboard timeout'); await logAction('mod_dashboard_timeout', `Timeout ${m.id} for ${seconds}s`, { userId:m.id, reason, seconds, logId: log?.id||null }); return res.json({ success:true, details:{ user: briefUser(m), seconds } }); } catch(e){ logger.warn('timeout failed', e); return res.status(500).json({ success:false, error:'timeout_failed' }); }
             }
             case 'remove_timeout': {
                 if (!userId) return res.status(400).json({ success:false, error:'missing_userId' });
                 const m = await getMember(userId); if (!m) return res.status(404).json({ success:false, error:'member_not_found' });
                 const memberHighest = m?.roles?.highest?.position ?? 0; if (memberHighest >= myHighest) return res.status(403).json({ success:false, error:'insufficient_member_hierarchy' });
                 if (dryRun) {
-                    return res.json({ success:true, dryRun:true, plan:{ action:'remove_timeout', userId:m.id }, risks:[] });
+                    return res.json({ success:true, dryRun:true, plan:{ action:'remove_timeout', user: briefUser(m) }, risks:[] });
                 }
-                try { await m.timeout(null, reason||'Dashboard remove timeout'); await logAction('mod_dashboard_remove_timeout', `Removed timeout for ${m.id}`, { userId:m.id, reason, logId: log?.id||null }); return res.json({ success:true, details:{ userId:m.id } }); } catch(e){ logger.warn('remove timeout failed', e); return res.status(500).json({ success:false, error:'remove_timeout_failed' }); }
+                try { await m.timeout(null, reason||'Dashboard remove timeout'); await logAction('mod_dashboard_remove_timeout', `Removed timeout for ${m.id}`, { userId:m.id, reason, logId: log?.id||null }); return res.json({ success:true, details:{ user: briefUser(m) } }); } catch(e){ logger.warn('remove timeout failed', e); return res.status(500).json({ success:false, error:'remove_timeout_failed' }); }
             }
             case 'revert_nickname': {
                 // Requires log with data.nickname.before
@@ -1777,9 +1780,9 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                 const m = await getMember(uid); if (!m) return res.status(404).json({ success:false, error:'member_not_found' });
                 const memberHighest = m?.roles?.highest?.position ?? 0; if (memberHighest >= myHighest) return res.status(403).json({ success:false, error:'insufficient_member_hierarchy' });
                 if (dryRun) {
-                    return res.json({ success:true, dryRun:true, plan:{ action:'revert_nickname', userId:m.id, to: log.data.nickname.before||null }, risks:[] });
+                    return res.json({ success:true, dryRun:true, plan:{ action:'revert_nickname', user: briefUser(m), to: log.data.nickname.before||null }, risks:[] });
                 }
-                try { await m.setNickname(log.data.nickname.before || null, reason||'Dashboard revert nickname'); await logAction('mod_dashboard_revert_nick', `Reverted nick of ${m.id}`, { userId:m.id, before: log.data.nickname.before||null, after: log.data.nickname.after||null, logId: log?.id||null }); return res.json({ success:true, details:{ userId:m.id, to: log.data.nickname.before||null } }); } catch(e){ logger.warn('revert nickname failed', e); return res.status(500).json({ success:false, error:'revert_nickname_failed' }); }
+                try { await m.setNickname(log.data.nickname.before || null, reason||'Dashboard revert nickname'); await logAction('mod_dashboard_revert_nick', `Reverted nick of ${m.id}`, { userId:m.id, before: log.data.nickname.before||null, after: log.data.nickname.after||null, logId: log?.id||null }); return res.json({ success:true, details:{ user: briefUser(m), to: log.data.nickname.before||null } }); } catch(e){ logger.warn('revert nickname failed', e); return res.status(500).json({ success:false, error:'revert_nickname_failed' }); }
             }
             case 'revert_roles': {
                 if (!log || !log.data || !('roles' in log.data)) return res.status(400).json({ success:false, error:'no_roles_change' });
@@ -1793,19 +1796,19 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                 const toAdd = removed.filter(rid => filterRole(rid) && !currentIds.has(rid));
                 // Only remove roles that were added (and are currently present)
                 const toRemove = added.filter(rid => filterRole(rid) && currentIds.has(rid));
-                const addNames = toAdd.map(id => guild.roles.cache.get(id)?.name || id);
-                const removeNames = toRemove.map(id => guild.roles.cache.get(id)?.name || id);
+                const addObjs = toAdd.map(id => ({ id, name: roleName(id) }));
+                const removeObjs = toRemove.map(id => ({ id, name: roleName(id) }));
                 if (dryRun) {
                     const risks = [];
                     const skippedHigher = [...added, ...removed].filter(rid => { const r=guild.roles.cache.get(rid); return r && r.position >= myHighest; }).length;
                     if (skippedHigher) risks.push(`${skippedHigher} roles skipped due to hierarchy limits.`);
-                    return res.json({ success:true, dryRun:true, plan:{ action:'revert_roles', userId:m.id, add: addNames, remove: removeNames }, risks });
+                    return res.json({ success:true, dryRun:true, plan:{ action:'revert_roles', user: briefUser(m), add: addObjs, remove: removeObjs }, risks });
                 }
                 try {
                     if (toAdd.length) await m.roles.add(toAdd, 'Dashboard revert roles (add removed)');
                     if (toRemove.length) await m.roles.remove(toRemove, 'Dashboard revert roles (remove added)');
-                    await logAction('mod_dashboard_revert_roles', `Reverted roles of ${m.id}`, { userId:m.id, add: toAdd, remove: toRemove, addNames, removeNames, logId: log?.id||null });
-                    return res.json({ success:true, details:{ userId:m.id, add: addNames, remove: removeNames } });
+                    await logAction('mod_dashboard_revert_roles', `Reverted roles of ${m.id}`, { userId:m.id, add: toAdd, remove: toRemove, logId: log?.id||null });
+                    return res.json({ success:true, details:{ user: briefUser(m), add: addObjs, remove: removeObjs } });
                 } catch(e){ logger.warn('revert roles failed', e); return res.status(500).json({ success:false, error:'revert_roles_failed' }); }
             }
             case 'mute':
@@ -1819,14 +1822,14 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                     const vs = m.voice;
                     if (!vs) return res.status(400).json({ success:false, error:'no_voice_state' });
                     if (dryRun) {
-                        return res.json({ success:true, dryRun:true, plan:{ action, userId:m.id }, risks:[] });
+                        return res.json({ success:true, dryRun:true, plan:{ action, user: briefUser(m) }, risks:[] });
                     }
                     if (action === 'mute') await vs.setMute(true, reason||'Dashboard mute');
                     if (action === 'unmute') await vs.setMute(false, reason||'Dashboard unmute');
                     if (action === 'deafen') await vs.setDeaf(true, reason||'Dashboard deafen');
                     if (action === 'undeafen') await vs.setDeaf(false, reason||'Dashboard undeafen');
                     await logAction(`mod_dashboard_${action}`, `${action} ${m.id}`, { userId:m.id, reason, logId: log?.id||null });
-                    return res.json({ success:true, details:{ userId:m.id, action } });
+                    return res.json({ success:true, details:{ user: briefUser(m), action } });
                 } catch(e){ logger.warn('voice action failed', e); return res.status(500).json({ success:false, error:'voice_action_failed' }); }
             }
             case 'restore_message': {
