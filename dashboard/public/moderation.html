@@ -578,7 +578,9 @@
         currentTarget = null;
       }
       function position(target, evt){
-        const rect = target.getBoundingClientRect();
+        if(!target || !document.documentElement.contains(target)) { hideTip(); return; }
+        let rect;
+        try { rect = target.getBoundingClientRect(); } catch { hideTip(); return; }
         const ttRect = tipEl.getBoundingClientRect();
         const vw = window.innerWidth; const vh = window.innerHeight;
         let x = rect.left + (rect.width/2) - (ttRect.width/2);
@@ -609,6 +611,7 @@
         if(!window.__tipRaf){
           window.__tipRaf = requestAnimationFrame(()=>{
             window.__tipRaf = null;
+            if(!currentTarget || !document.documentElement.contains(currentTarget)) { hideTip(); return; }
             position(currentTarget, e);
           });
         }
