@@ -391,11 +391,11 @@
     }).join(' ')}</div>` : '';
 
   // In-card deep links (open in Discord) with glyph icons and more prominent placement
-  const userOpen = d.userId ? `<a class=\"btn btn-sm btn-glass\" title=\"Abrir usuário no Discord\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(d.userId)}\">@ Abrir usuário</a>` : '';
-  const modOpen = d.executorId ? `<a class=\"btn btn-sm btn-glass\" title=\"Abrir moderador no Discord\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(d.executorId)}\">🛡️ Abrir moderador</a>` : '';
-  const chanOpen = d.channelId ? `<a class=\"btn btn-sm btn-glass\" title=\"Abrir canal no Discord\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(d.channelId)}\"># Abrir canal</a>` : '';
-  const msgOpen = (d.channelId && d.messageId) ? `<a class=\"btn btn-sm btn-glass\" title=\"Abrir mensagem no Discord\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(d.channelId)}/${encodeURIComponent(d.messageId)}\">💬 Abrir mensagem</a>` : '';
-  const linksRow = (userOpen || modOpen || chanOpen || msgOpen) ? `<div class=\"feed-actions\" style=\"margin-top:6px\">${[userOpen, modOpen, chanOpen, msgOpen].filter(Boolean).join(' ')} </div>` : '';
+  const userOpen = d.userId ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-user\" title=\"Abrir usuário no Discord\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(d.userId)}\">@ Abrir usuário</a>` : '';
+  const modOpen = d.executorId ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-mod\" title=\"Abrir moderador no Discord\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(d.executorId)}\">🛡️ Abrir moderador</a>` : '';
+  const chanOpen = d.channelId ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-channel\" title=\"Abrir canal no Discord\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(d.channelId)}\"># Abrir canal</a>` : '';
+  const msgOpen = (d.channelId && d.messageId) ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-message\" title=\"Abrir mensagem no Discord\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(d.channelId)}/${encodeURIComponent(d.messageId)}\">💬 Abrir mensagem</a>` : '';
+  const linksRow = (userOpen || modOpen || chanOpen || msgOpen) ? `<div class=\"link-actions\" style=\"margin-top:6px\">${[userOpen, modOpen, chanOpen, msgOpen].filter(Boolean).join(' ')} </div>` : '';
 
     // Copy summary button
     const copyBtn = `<button class=\"btn btn-sm btn-glass copy-summary\" title=\"Copiar resumo\" data-log-id=\"${l.id}\"><i class=\"fas fa-copy\"></i> Copiar resumo</button>`;
@@ -630,10 +630,10 @@
       `);
   body.push(`<div class=\"kv\"><b>Usuário:</b> ${userText} ${data.userId? `<button class=\"btn btn-sm btn-glass\" title=\"Copiar ID do usuário\" data-copy-id=\"${escapeHtml(data.userId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
     body.push(`<div class=\"kv\"><b>Moderador:</b> ${modText} ${data.executorId? `<button class=\"btn btn-sm btn-glass\" title=\"Copiar ID do moderador\" data-copy-id=\"${escapeHtml(data.executorId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
-  const userOpen = data.userId ? `<a class=\"btn btn-sm btn-glass\" title=\"Abrir usuário no Discord\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(data.userId)}\">@ Abrir usuário</a>` : '';
-  const modOpen = data.executorId ? `<a class=\"btn btn-sm btn-glass\" title=\"Abrir moderador no Discord\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(data.executorId)}\">🛡️ Abrir moderador</a>` : '';
-  const chanOpen = data.channelId ? `<a class=\"btn btn-sm btn-glass\" title=\"Abrir canal no Discord\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(data.channelId)}\"># Abrir canal</a>` : '';
-  const msgOpen = (data.channelId && data.messageId) ? `<a class=\"btn btn-sm btn-glass\" title=\"Abrir mensagem no Discord\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(data.channelId)}/${encodeURIComponent(data.messageId)}\">💬 Abrir mensagem</a>` : '';
+  const userOpen = data.userId ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-user\" title=\"Abrir usuário no Discord\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(data.userId)}\">@ Abrir usuário</a>` : '';
+  const modOpen = data.executorId ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-mod\" title=\"Abrir moderador no Discord\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(data.executorId)}\">🛡️ Abrir moderador</a>` : '';
+  const chanOpen = data.channelId ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-channel\" title=\"Abrir canal no Discord\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(data.channelId)}\"># Abrir canal</a>` : '';
+  const msgOpen = (data.channelId && data.messageId) ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-message\" title=\"Abrir mensagem no Discord\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(data.channelId)}/${encodeURIComponent(data.messageId)}\">💬 Abrir mensagem</a>` : '';
   body.push(`<div class=\"kv\"><b>Abrir:</b> ${[userOpen, modOpen, chanOpen, msgOpen].filter(Boolean).join(' ')||'-'}</div>`);
   body.push(`<div class=\"kv\"><b>Canal:</b> ${chanText} ${data.channelId? `<button class=\"btn btn-sm btn-glass\" title=\"Copiar ID do canal\" data-copy-id=\"${escapeHtml(data.channelId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
       if (ev.message) body.push(`<div class="kv"><b>Motivo:</b> ${escapeHtml(ev.message)}</div>`);
