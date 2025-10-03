@@ -345,10 +345,21 @@
     const acts = buildQuickActions(l);
     const actionsRow = acts.length ? `<div class=\"feed-actions\" style=\"margin-top:8px\">${acts.map(a=>{
       const extra = a.payload ? Object.entries(a.payload).map(([k,v])=>`data-${k.replace(/[A-Z]/g, m=>'-'+m.toLowerCase())}=\"${String(v)}\"`).join(' ') : '';
-      return `<button class=\"btn btn-sm btn-glass qa-btn\" data-action=\"${a.key}\" data-log-id=\"${l.id}\" ${extra}><i class=\"fas ${a.icon}\"></i> ${a.label}</button>`;
+      const title = `title=\"${escapeHtml(a.label)}\"`;
+      return `<button class=\"btn btn-sm btn-glass qa-btn\" ${title} data-action=\"${a.key}\" data-log-id=\"${l.id}\" ${extra}><i class=\"fas ${a.icon}\"></i> ${a.label}</button>`;
     }).join(' ')}</div>` : '';
+
+    // In-card deep links (open in Discord)
+    const userOpen = d.userId ? `<a class=\"btn btn-sm btn-glass\" title=\"Abrir utilizador no Discord\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(d.userId)}\"><i class=\"fas fa-external-link-alt\"></i> Utilizador</a>` : '';
+    const modOpen = d.executorId ? `<a class=\"btn btn-sm btn-glass\" title=\"Abrir moderador no Discord\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(d.executorId)}\"><i class=\"fas fa-external-link-alt\"></i> Moderador</a>` : '';
+    const chanOpen = d.channelId ? `<a class=\"btn btn-sm btn-glass\" title=\"Abrir canal no Discord\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(d.channelId)}\"><i class=\"fas fa-external-link-alt\"></i> Canal</a>` : '';
+    const msgOpen = (d.channelId && d.messageId) ? `<a class=\"btn btn-sm btn-glass\" title=\"Abrir mensagem no Discord\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(d.channelId)}/${encodeURIComponent(d.messageId)}\"><i class=\"fas fa-external-link-alt\"></i> Mensagem</a>` : '';
+    const linksRow = (userOpen || modOpen || chanOpen || msgOpen) ? `<div class=\"feed-actions\" style=\"margin-top:6px\">${[userOpen, modOpen, chanOpen, msgOpen].filter(Boolean).join(' ')}</div>` : '';
+
+    // Copy summary button
+    const copyBtn = `<button class=\"btn btn-sm btn-glass copy-summary\" title=\"Copiar resumo\" data-log-id=\"${l.id}\"><i class=\"fas fa-copy\"></i> Copiar resumo</button>`;
     return `
-      <div class="feed-item" role="button" data-log-id="${l.id}" aria-expanded="false">
+      <div class="feed-item" role="button" data-log-id="${l.id}" aria-expanded="false" aria-label="${escapeHtml(typeLabel(l.type||''))} em ${dt}">
         <div class="feed-row">
           <div class="avatar-wrap">
             <img class="feed-avatar" src="${avatarUrl(r.user?.id, r.user?.avatar)}" alt="avatar" />
@@ -362,6 +373,8 @@
             ${meta ? `<div class="feed-meta" style="margin-top:6px">${meta}</div>`:''}
             ${l.message ? `<div style="margin-top:6px">${escapeHtml(l.message)}</div>`:''}
             ${quick.length? `<div class="expand">${quick.join('')}</div>`:''}
+            ${linksRow}
+            <div class="feed-actions" style="margin-top:6px">${copyBtn}</div>
             ${actionsRow}
           </div>
         </div>
@@ -411,6 +424,30 @@
           }
         } catch(e){ console.error(e); notify(e.message,'error'); }
         finally { btn.disabled = false; }
+      });
+    });
+    // Copy summary handlers
+    els.feed.querySelectorAll('.copy-summary')?.forEach(btn => {
+      btn.addEventListener('click', async (e)=>{
+        e.stopPropagation();
+        const id = btn.getAttribute('data-log-id');
+        try {
+          // Compose a compact summary from the DOM and item data
+          const title = btn.closest('.feed-item')?.querySelector('.feed-title .type-pill')?.textContent?.trim() || 'Evento';
+          const when = btn.closest('.feed-item')?.querySelector('.feed-title .feed-meta')?.textContent?.trim() || '';
+          const chips = Array.from(btn.closest('.feed-item')?.querySelectorAll('[data-filter-user],[data-filter-mod],[data-filter-channel]')||[]).map(n=>n.textContent.trim()).join(' | ');
+          const extra = Array.from(btn.closest('.feed-item')?.querySelectorAll('.expand .feed-meta')||[]).map(n=>n.textContent.trim()).join('\n');
+          const reason = Array.from(btn.closest('.feed-item')?.querySelectorAll(':scope > .feed-content > div'))
+            .map(n=>n.textContent.trim()).find(t=>t && !t.startsWith('Copiar resumo') && !t.includes('Abrir') && !t.includes('Carregar mais')) || '';
+          const lines = [title, when, chips].filter(Boolean);
+          if (reason) lines.push(reason);
+          if (extra) lines.push(extra);
+          const text = lines.join('\n');
+          if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text); else {
+            const ta = document.createElement('textarea'); ta.value = text; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+          }
+          notify('Resumo copiado','success');
+        } catch { notify('Não foi possível copiar','error'); }
       });
     });
     // Filter chips with Shift+Click to copy ID
