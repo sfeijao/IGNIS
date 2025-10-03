@@ -565,6 +565,26 @@
     more.innerHTML = `<button id="btnLoadMore" class="btn btn-glass"><i class="fas fa-angles-down"></i> Carregar mais</button>`;
     els.feed.appendChild(more);
     document.getElementById('btnLoadMore')?.addEventListener('click', async ()=>{ currentLimit = Math.min(1000, currentLimit + 200); persistPrefs(); await loadFeed(); });
+
+    // After render: resolve raw IDs in chips into human-readable labels if needed
+    try {
+      const maybeNumeric = (s)=> /^[0-9]{10,20}$/.test(String(s||''));
+      const chipNodes = els.feed.querySelectorAll('[data-filter-user],[data-filter-mod],[data-filter-channel]');
+      chipNodes.forEach(async chip => {
+        const txt = chip.textContent.trim();
+        // If content still looks like an ID, try resolving
+        if (!maybeNumeric(txt)) return;
+        if (chip.hasAttribute('data-filter-user') || chip.hasAttribute('data-filter-mod')){
+          const id = chip.getAttribute('data-filter-user') || chip.getAttribute('data-filter-mod');
+          const label = await resolveMemberLabel(id);
+          if (label) chip.innerHTML = chip.innerHTML.replace(txt, escapeHtml(label));
+        } else if (chip.hasAttribute('data-filter-channel')){
+          const id = chip.getAttribute('data-filter-channel');
+          const label = await resolveChannelLabel(id);
+          if (label) chip.innerHTML = chip.innerHTML.replace(txt, escapeHtml(label));
+        }
+      });
+    } catch {}
   }
 
   function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c)); }
@@ -588,6 +608,38 @@
     const fmt = (els.exportFormat?.value||'csv');
     u.searchParams.set('format', fmt);
     window.location.href = u.toString();
+  }
+
+  // Name resolution helpers to avoid showing raw IDs in UI chips
+  const __nameCache = { member: new Map(), channel: new Map() };
+  async function fetchJson(url){ const r = await fetch(url, { credentials:'same-origin' }); const d = await r.json(); if(!r.ok || !d.success) throw new Error(d.error||`HTTP ${r.status}`); return d; }
+  async function resolveMemberLabel(id){
+    if (!id) return null;
+    if (__nameCache.member.has(id)) return __nameCache.member.get(id);
+    try {
+      const u = new URL(`/api/guild/${guildId}/search/members`, window.location.origin); u.searchParams.set('q', id);
+      const d = await fetchJson(u);
+      const list = Array.isArray(d.results)? d.results: [];
+      const m = list.find(x=> String(x.id)===String(id)) || list[0];
+      if (!m) return null;
+      const label = m.nick ? `${m.username} (${m.nick})` : `${m.username}`;
+      __nameCache.member.set(id, label);
+      return label;
+    } catch { return null; }
+  }
+  async function resolveChannelLabel(id){
+    if (!id) return null;
+    if (__nameCache.channel.has(id)) return __nameCache.channel.get(id);
+    try {
+      const u = new URL(`/api/guild/${guildId}/search/channels`, window.location.origin); u.searchParams.set('q', id);
+      const d = await fetchJson(u);
+      const list = Array.isArray(d.results)? d.results: [];
+      const c = list.find(x=> String(x.id)===String(id)) || list[0];
+      if (!c) return null;
+      const label = `#${c.name||id}`;
+      __nameCache.channel.set(id, label);
+      return label;
+    } catch { return null; }
   }
 
   async function openEventModal(logId){
@@ -1016,6 +1068,21 @@
           const newNodes = [...els.feed.querySelectorAll('[data-log-id]')].slice(0, inserted);
           newNodes.forEach(n => n.classList.add('feed-flash'));
           setTimeout(()=> newNodes.forEach(n => n.classList.remove('feed-flash')), 1100);
+        } catch {}
+        // Resolve raw IDs to names for new chips
+        try {
+          const maybeNumeric = (s)=> /^[0-9]{10,20}$/.test(String(s||''));
+          const chips = [...els.feed.querySelectorAll('[data-filter-user],[data-filter-mod],[data-filter-channel]')].slice(0, inserted*3);
+          chips.forEach(async chip => {
+            const txt = chip.textContent.trim(); if (!maybeNumeric(txt)) return;
+            if (chip.hasAttribute('data-filter-user') || chip.hasAttribute('data-filter-mod')){
+              const id = chip.getAttribute('data-filter-user') || chip.getAttribute('data-filter-mod');
+              const label = await resolveMemberLabel(id); if (label) chip.innerHTML = chip.innerHTML.replace(txt, escapeHtml(label));
+            } else if (chip.hasAttribute('data-filter-channel')){
+              const id = chip.getAttribute('data-filter-channel');
+              const label = await resolveChannelLabel(id); if (label) chip.innerHTML = chip.innerHTML.replace(txt, escapeHtml(label));
+            }
+          });
         } catch {}
         // Subtle in-page toast for new events (click to jump to newest area)
         try { showFeedToast(`${inserted} novo(s) evento(s)`, () => { try { els.feed?.scrollIntoView({ behavior:'smooth', block:'start' }); } catch {} }); } catch {}

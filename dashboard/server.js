@@ -1484,44 +1484,53 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
         });
         filtered.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
         const limited = filtered.slice(0, limit);
-        // Enrich with resolved names from caches (best-effort, no network fetch here)
+        // Enrich with resolved names; prefer cache, fall back to one-off fetches (bounded by 'limit')
         try {
             const guild = check.guild;
-            const withResolved = limited.map(l => {
+            const withResolved = await Promise.all(limited.map(async (l) => {
                 const d = l.data || {};
-                const out = { ...l };
-                out.resolved = {};
-                try {
-                    if (d.userId) {
-                        const m = guild.members.cache.get(d.userId);
+                const out = { ...l, resolved: {} };
+                // Resolve user: prefer data.userId, fall back to authorId (message logs)
+                const userId = d.userId || d.authorId || null;
+                if (userId) {
+                    try {
+                        let m = guild.members.cache.get(userId);
+                        if (!m) m = await guild.members.fetch(userId).catch(()=>null);
                         if (m && m.user) out.resolved.user = { id: m.id, username: m.user.username, nick: m.nickname||null, avatar: m.user.avatar };
-                    }
-                } catch {}
-                try {
-                    if (d.executorId) {
-                        const m = guild.members.cache.get(d.executorId);
+                    } catch {}
+                }
+                // Resolve executor: prefer data.executorId, else actor_id from log
+                const execId = d.executorId || l.actor_id || null;
+                if (execId) {
+                    try {
+                        let m = guild.members.cache.get(execId);
+                        if (!m) m = await guild.members.fetch(execId).catch(()=>null);
                         if (m && m.user) out.resolved.executor = { id: m.id, username: m.user.username, nick: m.nickname||null, avatar: m.user.avatar };
-                    }
-                } catch {}
-                try {
-                    if (d.channelId) {
-                        const c = guild.channels.cache.get(d.channelId);
+                    } catch {}
+                }
+                // Resolve channel
+                if (d.channelId) {
+                    try {
+                        let c = guild.channels.cache.get(d.channelId);
+                        if (!c) c = await guild.channels.fetch(d.channelId).catch(()=>null);
                         if (c) out.resolved.channel = { id: c.id, name: c.name };
-                    }
-                } catch {}
-                // Voice move: resolve from/to channels when present
-                try {
-                    if (d.fromChannelId) {
-                        const fc = guild.channels.cache.get(d.fromChannelId);
+                    } catch {}
+                }
+                // Voice move: from/to channels
+                if (d.fromChannelId) {
+                    try {
+                        let fc = guild.channels.cache.get(d.fromChannelId);
+                        if (!fc) fc = await guild.channels.fetch(d.fromChannelId).catch(()=>null);
                         if (fc) out.resolved.fromChannel = { id: fc.id, name: fc.name };
-                    }
-                } catch {}
-                try {
-                    if (d.toChannelId) {
-                        const tc = guild.channels.cache.get(d.toChannelId);
+                    } catch {}
+                }
+                if (d.toChannelId) {
+                    try {
+                        let tc = guild.channels.cache.get(d.toChannelId);
+                        if (!tc) tc = await guild.channels.fetch(d.toChannelId).catch(()=>null);
                         if (tc) out.resolved.toChannel = { id: tc.id, name: tc.name };
-                    }
-                } catch {}
+                    } catch {}
+                }
                 // Member role updates: resolve role names for added/removed
                 try {
                     const roles = { added: [], removed: [] };
@@ -1532,9 +1541,10 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
                     if (roles.added.length || roles.removed.length) out.resolved.roles = roles;
                 } catch {}
                 return out;
-            });
+            }));
             return res.json({ success: true, logs: withResolved });
-        } catch {
+        } catch (e) {
+            logger.warn('logs enrichment failed', e?.message||e);
             return res.json({ success: true, logs: limited });
         }
     } catch (e) {
