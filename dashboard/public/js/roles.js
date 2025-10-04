@@ -35,3 +35,85 @@
 	els.bulkRemove?.addEventListener('click', ()=>bulkUpdate('remove'));
 	Promise.resolve().then(loadRoles).then(()=>loadMembers(true)).catch(e=>{ console.error(e); notify(e.message,'error'); });
 })();
+// Add role management logic + event bindings for new toolbar
+(function(){
+  const apiBase = window.apiBase || '/api';
+  function getGuildId(){
+    // Try to reuse existing logic if defined globally
+    if(window.currentGuildId) return window.currentGuildId;
+    const el = document.querySelector('[data-guild-id]');
+    return el ? el.getAttribute('data-guild-id') : (window.guildId || '');
+  }
+  async function createRoleStandalone(){
+    const nameEl = document.getElementById('rmNewRoleName2');
+    const colorEl = document.getElementById('rmNewRoleColor2');
+    if(!nameEl || !colorEl) return;
+    const name = nameEl.value.trim();
+    let color = colorEl.value.trim();
+    if(!name){
+      alert('Nome do cargo é obrigatório');
+      return;
+    }
+    if(color){
+      if(!/^#?[0-9a-fA-F]{6}$/.test(color)){ alert('Cor inválida (use #RRGGBB)'); return; }
+      if(color[0] !== '#') color = '#' + color;
+    }
+    const guildId = getGuildId();
+    try {
+      const res = await fetch(`${apiBase}/guild/${guildId}/roles`, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name, color })
+      });
+      const data = await res.json();
+      if(!res.ok){ throw new Error(data.error || 'Falha ao criar cargo'); }
+      nameEl.value=''; colorEl.value='';
+      toast('Cargo criado');
+      if(window.refreshRoles) window.refreshRoles();
+      else document.getElementById('refresh')?.click();
+    } catch(e){ console.error(e); alert(e.message); }
+  }
+  async function moveRoleStandalone(direction){
+    const idEl = document.getElementById('rmMoveRoleId');
+    const stepsEl = document.getElementById('rmMoveSteps');
+    if(!idEl || !stepsEl) return;
+    const roleId = idEl.value.trim();
+    const steps = parseInt(stepsEl.value,10)||1;
+    if(!roleId){ alert('ID do cargo necessário'); return; }
+    const guildId = getGuildId();
+    try {
+      const res = await fetch(`${apiBase}/guild/${guildId}/roles/${roleId}/move`, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ direction, steps })
+      });
+      const data = await res.json();
+      if(!res.ok){ throw new Error(data.error || 'Falha ao mover cargo'); }
+      toast('Cargo movido');
+      if(window.refreshRoles) window.refreshRoles(); else document.getElementById('refresh')?.click();
+    } catch(e){ console.error(e); alert(e.message); }
+  }
+  async function deleteRoleStandalone(){
+    const idEl = document.getElementById('rmDeleteRoleId');
+    if(!idEl) return;
+    const roleId = idEl.value.trim();
+    if(!roleId){ alert('ID do cargo necessário'); return; }
+    if(!confirm('Tem certeza que deseja apagar este cargo?')) return;
+    const guildId = getGuildId();
+    try {
+      const res = await fetch(`${apiBase}/guild/${guildId}/roles/${roleId}`, { method:'DELETE' });
+      const data = await res.json();
+      if(!res.ok){ throw new Error(data.error || 'Falha ao apagar cargo'); }
+      idEl.value='';
+      toast('Cargo apagado');
+      if(window.refreshRoles) window.refreshRoles(); else document.getElementById('refresh')?.click();
+    } catch(e){ console.error(e); alert(e.message); }
+  }
+  function toast(msg){
+    if(window.showToast) return window.showToast(msg,'success');
+    console.log('[toast]', msg);
+  }
+  function bindBtn(id, handler){ const el = document.getElementById(id); if(el) el.addEventListener('click', handler); }
+  document.addEventListener('DOMContentLoaded', ()=>{
+    bindBtn('rmBtnCreateRole2', createRoleStandalone);
+    bindBtn('rmBtnMoveUp', ()=>moveRoleStandalone('up'));
+    bindBtn('rmBtnMoveDown', ()=>moveRoleStandalone('down'));
+    bindBtn('rmBtnDeleteRole', deleteRoleStandalone);
+  });
+})();
