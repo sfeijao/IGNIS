@@ -845,32 +845,39 @@
       groups.get(exec).push(it);
     }
     // Sort groups by most recent event inside (respect orderDesc)
-    const arr = [...groups.entries()].map(([k, list])=>{
+    const baseArr = [...groups.entries()].map(([k, list])=>{
       list.sort((a,b)=> orderDesc ? b.timestamp - a.timestamp : a.timestamp - b.timestamp);
       return { executorId:k, logs:list, latest: list[0]?.timestamp || 0 };
     });
+    // Search filter
+    const term = (groupSearchTerm||'').toLowerCase().trim();
+    let arr = term ? baseArr.filter(g=>{
+      const f = g.logs[0];
+      const ex = f?.resolved?.executor || f?.resolved?.user || {};
+      const name = ((ex.username||'')+' '+(ex.nick||'')+' '+g.executorId).toLowerCase();
+      return name.includes(term);
+    }) : baseArr;
     if(groupSortByVolume){
       arr.sort((a,b)=> b.logs.length - a.logs.length || (orderDesc ? b.latest - a.latest : a.latest - b.latest));
     } else {
       arr.sort((a,b)=> orderDesc ? b.latest - a.latest : a.latest - b.latest);
     }
-    // Pinned first preserving relative order among pinned slice
     if(pinnedGroups.size){
-        const pinned = arr.filter(g=> pinnedGroups.has(g.executorId));
-        // Apply custom order if present
-        if(pinCustomOrder.length){
-          pinned.sort((a,b)=>{
-            const ia = pinCustomOrder.indexOf(a.executorId);
-            const ib = pinCustomOrder.indexOf(b.executorId);
+      const pinned = arr.filter(g=> pinnedGroups.has(g.executorId));
+      if(pinCustomOrder.length){
+        pinned.sort((a,b)=>{
+          const ia = pinCustomOrder.indexOf(a.executorId);
+          const ib = pinCustomOrder.indexOf(b.executorId);
             if(ia===-1 && ib===-1) return 0;
             if(ia===-1) return 1;
             if(ib===-1) return -1;
             return ia-ib;
-          });
-        }
-        const rest = arr.filter(g=> !pinnedGroups.has(g.executorId));
-        arr.length = 0; arr.push(...pinned, ...rest);
+        });
+      }
+      const rest = arr.filter(g=> !pinnedGroups.has(g.executorId));
+      arr = [...pinned, ...rest];
     }
+    const totalLogsAll = arr.reduce((s,g)=> s+g.logs.length,0) || 1;
     const parts = [];
     for(const g of arr){
       const first = g.logs[0];
@@ -887,12 +894,14 @@
       } else {
         label = g.executorId || '—';
       }
-      parts.push(`<div class="group-mod" data-exec="${escapeHtml(g.executorId)}" aria-expanded="true" draggable="${pinnedGroups.has(g.executorId)?'true':'false'}">
+      const sharePct = ((g.logs.length/totalLogsAll)*100).toFixed(1);
+      const dimAttr = (focusedGroup && focusedGroup!==g.executorId)?'data-dim="true"':'';
+      parts.push(`<div class="group-mod" data-exec="${escapeHtml(g.executorId)}" aria-expanded="true" ${dimAttr} draggable="${pinnedGroups.has(g.executorId)?'true':'false'}">
         <div class="group-head"><span class="group-drag-handle" ${pinnedGroups.has(g.executorId)?'':'style="display:none"'} data-tip="Arraste para reordenar grupos fixados"><i class="fas fa-grip-vertical"></i></span><button class="btn btn-sm btn-glass group-toggle" title="Expandir/recolher"><i class="fas fa-chevron-down"></i></button>
           <span class="group-title"><i class="fas ${iconClass}"></i> ${escapeHtml(label||'—')}</span>
           <button class="btn btn-sm btn-glass pin-btn" data-pin="${escapeHtml(g.executorId)}" title="${pinnedGroups.has(g.executorId)?'Desafixar':'Fixar'} grupo" data-tip="${pinnedGroups.has(g.executorId)?'Desafixar':'Fixar'}"><i class="fas fa-thumbtack" style="transform:${pinnedGroups.has(g.executorId)?'rotate(45deg)':'none'}"></i></button>
           <button class="btn btn-sm btn-glass export-group-btn" data-export-group="${escapeHtml(g.executorId)}" data-tip="Exportar apenas este grupo"><i class="fas fa-download"></i></button>
-          <span class="group-count">${g.logs.length} evento(s)</span>
+          <span class="group-count" data-tip="${sharePct}% do total">${g.logs.length} evento(s) • ${sharePct}%</span>
         </div>
         ${buildGroupTypesPills(g.logs)}
         <div class="group-body">
@@ -904,6 +913,16 @@
   window.__lastLogs = items;
   updateClearStreamBtn();
     const btnEG = document.getElementById('btnExportGroups'); if(btnEG) btnEG.style.display='inline-flex';
+    // Focus dblclick
+    els.feed.querySelectorAll('.group-mod .group-head')?.forEach(h=>{
+      h.addEventListener('dblclick', ()=>{
+        const wrap = h.closest('.group-mod'); if(!wrap) return;
+        const id = wrap.getAttribute('data-exec');
+        focusedGroup = (focusedGroup === id) ? null : id;
+        persistPrefs();
+        if(window.__lastLogs) renderFeed(window.__lastLogs);
+      });
+    });
     // Attach toggle
     els.feed.querySelectorAll('.group-mod .group-toggle')?.forEach(btn=>{
       btn.addEventListener('click', (e)=>{
@@ -951,8 +970,12 @@
         const map = { message:'messages', member:'members', voice:'voice', ban:'bans', channel:'channels', role:'roles' };
         const famKey = map[fam];
         if(!famKey) return;
-        // multiFamilies support: toggle
-        if(multiFamilies.has(famKey)) multiFamilies.delete(famKey); else multiFamilies.add(famKey);
+        if(e.shiftKey){
+          multiFamilies.clear(); pillAddedFamilies.clear(); multiFamilies.add(famKey); pillAddedFamilies.add(famKey);
+        } else {
+          if(multiFamilies.has(famKey)) { multiFamilies.delete(famKey); pillAddedFamilies.delete(famKey); }
+          else { multiFamilies.add(famKey); pillAddedFamilies.add(famKey); }
+        }
         if(multiFamilies.size===0) currentFamily='all';
         persistPrefs();
         loadFeed();
