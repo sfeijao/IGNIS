@@ -54,6 +54,11 @@
     st.id = 'focusDimStyle';
     st.textContent = `.group-mod[data-dim="true"]{opacity:.45;filter:saturate(.6);} .group-mod[data-dim="true"] .group-head{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,0));}
     .badge-focus{display:inline-flex;align-items:center;gap:4px;background:#2563eb;color:#fff;font-size:.65rem;padding:2px 6px;border-radius:999px;margin-left:6px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
+    .badge-focus-click{cursor:pointer;}
+    .groups-meta{font-size:.7rem;opacity:.65;margin:4px 4px 6px 4px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
+    .mini-stats-focus{margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;font-size:.65rem;opacity:.85;}
+    .mini-stats-focus span{display:inline-flex;align-items:center;gap:2px;background:rgba(255,255,255,.06);padding:2px 6px;border-radius:6px;}
+    .mini-stats-focus .sep{background:none;padding:0;border-radius:0;opacity:.5;}
     .group-head .unfocus-btn{color:#f87171;}
     .group-head .unfocus-btn:hover{color:#dc2626;}
     `;
@@ -915,7 +920,7 @@
       const sharePct = ((g.logs.length/totalLogsAll)*100).toFixed(1);
       const dimAttr = (focusedGroup && focusedGroup!==g.executorId)?'data-dim="true"':'';
       const isFocused = focusedGroup === g.executorId;
-      const focusBadge = isFocused ? `<span class=\"badge-focus\" data-tip=\"Este grupo está focado. Clique no botão para desfocar.\"><i class=\"fas fa-bullseye\"></i> Focado</span>` : '';
+  const focusBadge = isFocused ? `<span class=\"badge-focus badge-focus-click\" data-unfocus=\"${escapeHtml(g.executorId)}\" data-tip=\"Clique para desfocar (ESC também)\"><i class=\"fas fa-bullseye\"></i> Focado</span>` : '';
       const unfocusBtn = isFocused ? `<button class=\"btn btn-sm btn-glass unfocus-btn\" data-unfocus=\"${escapeHtml(g.executorId)}\" data-tip=\"Sair do foco\"><i class=\"fas fa-eye-slash\"></i></button>` : '';
       const pinTipBase = pinnedGroups.has(g.executorId)?'Desafixar':'Fixar';
       const pinTip = `${pinTipBase} • ${sharePct}% do total`;
@@ -933,7 +938,35 @@
         </div>
       </div>`);
     }
-    els.feed.innerHTML = parts.join('');
+    // Visible groups count element
+    const visibleCount = arr.length;
+    const headerInfo = `<div class=\"groups-meta\" data-groups-count=\"${visibleCount}\">${visibleCount} grupo(s) visíveis${focusedGroup? ' • modo focado':''}</div>`;
+    els.feed.innerHTML = headerInfo + parts.join('');
+    // If focused, inject mini stats bar inside that group head (after count)
+    if(focusedGroup){
+      const target = els.feed.querySelector(`.group-mod[data-exec=\"${CSS.escape(focusedGroup)}\"] .group-head`);
+      if(target){
+        try {
+          const grp = arr.find(g=> g.executorId===focusedGroup);
+          if(grp){
+            const counts = { messages:0, members:0, voice:0, bans:0, channels:0, roles:0 };
+            grp.logs.forEach(l=>{
+              const t = l.type||'';
+              if(t.startsWith('mod_message')) counts.messages++;
+              else if(t.startsWith('mod_member')) counts.members++;
+              else if(t.startsWith('mod_voice')) counts.voice++;
+              else if(t.startsWith('mod_ban')) counts.bans++;
+              else if(t.startsWith('mod_channel')) counts.channels++;
+              else if(t.startsWith('mod_role')) counts.roles++;
+            });
+            const mini = document.createElement('div');
+            mini.className = 'mini-stats-focus';
+            mini.innerHTML = Object.entries(counts).filter(([k,v])=>v>0).map(([k,v])=>`<span><b>${v}</b> ${k}</span>`).join('<span class=\"sep\">•</span>') || '<span>Nenhum evento</span>';
+            target.appendChild(mini);
+          }
+        } catch(e){ console.warn('mini stats focus err', e); }
+      }
+    }
   window.__lastLogs = items;
   updateClearStreamBtn();
     const btnEG = document.getElementById('btnExportGroups'); if(btnEG) btnEG.style.display='inline-flex';
@@ -953,6 +986,10 @@
         e.stopPropagation();
         focusedGroup = null; persistPrefs(); if(window.__lastLogs) renderFeed(window.__lastLogs);
       });
+    });
+    // Clickable badge unfocus
+    els.feed.querySelectorAll('.badge-focus-click')?.forEach(b=>{
+      b.addEventListener('click', (e)=>{ e.stopPropagation(); focusedGroup=null; persistPrefs(); if(window.__lastLogs) renderFeed(window.__lastLogs); });
     });
     // Attach toggle
     els.feed.querySelectorAll('.group-mod .group-toggle')?.forEach(btn=>{
@@ -1043,6 +1080,13 @@
     const blob = new Blob([rows.join('\n')],{type:'text/csv'});
     const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupos-${Date.now()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
   }
+
+  // Global ESC listener to unfocus group
+  window.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && focusedGroup){
+      focusedGroup = null; persistPrefs(); if(window.__lastLogs) renderFeed(window.__lastLogs);
+    }
+  });
   function buildGroupTypesPills(list){
     try {
       const counts = {};
