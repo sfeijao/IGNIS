@@ -324,22 +324,36 @@
 })();
 //# sourceMappingURL=roles.js.map
 (function(){
-  // Bulk delete logic replacing single deleteRole
-  const delBtn=document.getElementById('rmBtnDeleteRole');
+  // Bulk delete logic replacing any previous single-delete handler
+  let delBtn=document.getElementById('rmBtnDeleteRole');
   const delSel=document.getElementById('rmDeleteRoleSelect');
+  if(delBtn){
+    // Remove previously bound listeners by cloning (in case old single delete handler was attached)
+    const clone=delBtn.cloneNode(true);
+    delBtn.parentNode.replaceChild(clone, delBtn);
+    delBtn=clone;
+  }
   function toast(msg,type='success'){ if(window.showToast) return window.showToast(msg,type); console.log('[toast]',type,msg); }
   async function apiDel(guildId, roleId){
-    const res=await fetch(`/api/guild/${guildId}/roles/${roleId}`,{method:'DELETE'}); let data=null; try{ data=await res.json(); }catch{}; if(!res.ok || (data && data.success===false)) throw new Error((data&&data.error)||`HTTP ${res.status}`); }
+    const res=await fetch(`/api/guild/${guildId}/roles/${roleId}`,{method:'DELETE'});
+    // Treat 404 (already deleted) as success and just return silently
+    if(res.status===404) return;
+    let data=null; try{ data=await res.json(); }catch{};
+    if(!res.ok || (data && data.success===false)) throw new Error((data&&data.error)||`HTTP ${res.status}`);
+  }
   function guildId(){ const p=new URLSearchParams(window.location.search); return p.get('guildId')||window.guildId||window.currentGuildId||''; }
   async function bulkDelete(){
     if(!delSel) return; const ids=[...delSel.selectedOptions].map(o=>o.value).filter(Boolean);
     if(ids.length===0){ toast('Selecione pelo menos um cargo','error'); return; }
     if(!confirm(`Apagar ${ids.length} cargo(s)?`)) return;
     delBtn.disabled=true; delBtn.classList.add('loading');
-    let ok=0, fail=0; for(const id of ids){ try{ await apiDel(guildId(), id); ok++; } catch(e){ console.error('del role', id, e); fail++; } }
+    let ok=0, fail=0; for(const id of ids){
+      try{ await apiDel(guildId(), id); ok++; }
+      catch(e){ console.error('del role', id, e); fail++; }
+    }
     delBtn.disabled=false; delBtn.classList.remove('loading');
-    toast(`Remoção concluída: ${ok} ok, ${fail} falha(s)`, fail? 'error':'success');
-    // Trigger refresh
+    const msgBase = ids.length>1? 'Remoção de múltiplos cargos concluída':'Remoção de cargo concluída';
+    toast(`${msgBase}: ${ok} sucesso(s), ${fail} falha(s)`, fail? 'error':'success');
     document.getElementById('refresh')?.click();
   }
   delBtn?.addEventListener('click', bulkDelete);
