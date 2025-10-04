@@ -906,7 +906,8 @@
     }
     const totalLogsAll = arr.reduce((s,g)=> s+g.logs.length,0) || 1;
     const parts = [];
-    for(const g of arr){
+    for(let idx=0; idx<arr.length; idx++){
+      const g = arr[idx];
       const first = g.logs[0];
       let label;
       let iconClass = 'fa-user-shield';
@@ -932,7 +933,7 @@
           <span class=\"group-title\"><i class=\"fas ${iconClass}\"></i> ${escapeHtml(label||'—')} ${focusBadge}</span>
           <button class=\"btn btn-sm btn-glass pin-btn\" data-pin=\"${escapeHtml(g.executorId)}\" title=\"${pinTip}\" data-tip=\"${pinTip}\"><i class=\"fas fa-thumbtack\" style=\"transform:${pinnedGroups.has(g.executorId)?'rotate(45deg)':'none'}\"></i></button>
           <button class=\"btn btn-sm btn-glass export-group-btn\" data-export-group=\"${escapeHtml(g.executorId)}\" data-tip=\"Exportar apenas este grupo\"><i class=\"fas fa-download\"></i></button>
-          <span class=\"group-count\" data-tip=\"${showGroupShare? sharePct+'% do total':'Eventos neste grupo'}\">${g.logs.length} evento(s)${showGroupShare? ' • '+sharePct+'%':''}</span>
+          <span class=\"group-count\" data-tip=\"${showGroupShare? sharePct+'% do total': 'Eventos neste grupo'}\">${g.logs.length} evento(s)${showGroupShare? ' • '+sharePct+'%': ` • #${idx+1} em volume`}</span>
         </div>
         ${buildGroupTypesPills(g.logs)}
         <div class="group-body">
@@ -964,8 +965,8 @@
             const mini = document.createElement('div');
             mini.className = 'mini-stats-focus';
             const statsHtml = Object.entries(counts).filter(([k,v])=>v>0).map(([k,v])=>`<span><b>${v}</b> ${k}</span>`).join('<span class=\"sep\">•</span>') || '<span>Nenhum evento</span>';
-            const exportBtn = `<button class=\"btn btn-xs btn-glass focus-export-btn\" data-export-focused=\"${focusedGroup}\" data-tip=\"Exportar apenas este grupo focado\"><i class=\"fas fa-download\"></i></button>`;
-            mini.innerHTML = statsHtml + exportBtn;
+            const exportBtns = `<span class=\"focus-export-wrap\"><button class=\"btn btn-xs btn-glass focus-export-btn\" data-format=\"json\" data-export-focused=\"${focusedGroup}\" data-tip=\"Exportar grupo (JSON)\"><i class=\"fas fa-file-code\"></i></button><button class=\"btn btn-xs btn-glass focus-export-btn\" data-format=\"csv\" data-export-focused=\"${focusedGroup}\" data-tip=\"Exportar grupo (CSV)\"><i class=\"fas fa-file-csv\"></i></button></span>`;
+            mini.innerHTML = statsHtml + exportBtns;
             target.appendChild(mini);
           }
         } catch(e){ console.warn('mini stats focus err', e); }
@@ -979,9 +980,21 @@
       h.addEventListener('dblclick', ()=>{
         const wrap = h.closest('.group-mod'); if(!wrap) return;
         const id = wrap.getAttribute('data-exec');
+        const prevY = window.scrollY; const prevFocused = focusedGroup;
         focusedGroup = (focusedGroup === id) ? null : id;
         persistPrefs();
-        if(window.__lastLogs) renderFeed(window.__lastLogs);
+        if(window.__lastLogs){
+          renderFeed(window.__lastLogs);
+          // Attempt to restore approximate scroll position
+          requestAnimationFrame(()=>{
+            if(prevFocused && !focusedGroup){ // leaving focus: try to return to previous Y
+              window.scrollTo({ top: prevY, behavior:'instant' });
+            } else if(focusedGroup){ // entering focus: try to keep header aligned
+              const el = document.querySelector(`.group-mod[data-exec="${CSS.escape(focusedGroup)}"]`);
+              if(el){ const r = el.getBoundingClientRect(); const offset = window.scrollY + r.top - 80; window.scrollTo({ top: offset<0?0:offset, behavior:'smooth' }); }
+            }
+          });
+        }
       });
     });
     // Clickable badge unfocus
@@ -993,6 +1006,7 @@
       btn.addEventListener('click', (e)=>{
         e.stopPropagation();
         const id = btn.getAttribute('data-export-focused');
+        const fmt = btn.getAttribute('data-format')||'json';
         if(!id) return;
         // find logs for that group in current view
         if(!window.__lastLogs) return;
@@ -1002,9 +1016,21 @@
         });
         if(!subset.length){ notify('Sem eventos no grupo focado','error'); return; }
         try {
-          const blob = new Blob([JSON.stringify(subset,null,2)], {type:'application/json'});
-          const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupo-${id}-${Date.now()}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
-          notify('Exportado grupo focado','success');
+          if(fmt==='csv'){
+            const keys = new Set(); subset.forEach(o=> Object.keys(o).forEach(k=> keys.add(k)));
+            const header = [...keys];
+            const lines = [header.join(',')];
+            subset.forEach(o=>{
+              lines.push(header.map(k=>`"${String(o[k]??'').replace(/"/g,'"')}"`).join(','));
+            });
+            const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+            const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupo-${id}-${Date.now()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
+            notify('Export CSV ok','success');
+          } else {
+            const blob = new Blob([JSON.stringify(subset,null,2)], {type:'application/json'});
+            const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupo-${id}-${Date.now()}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
+            notify('Export JSON ok','success');
+          }
         } catch(err){ notify('Falha na exportação','error'); }
       });
     });
@@ -1102,6 +1128,9 @@
   window.addEventListener('keydown', (e)=>{
     if(e.key === 'Escape' && focusedGroup){
       focusedGroup = null; persistPrefs(); if(window.__lastLogs) renderFeed(window.__lastLogs);
+    }
+    if((e.key === 'P' || e.key === 'p') && e.shiftKey){
+      showGroupShare = !showGroupShare; persistPrefs(); const btn=document.getElementById('btnToggleShare'); if(btn) btn.setAttribute('aria-pressed', showGroupShare?'true':'false'); if(window.__lastLogs) renderFeed(window.__lastLogs); notify(showGroupShare? 'Percentagens visíveis':'Percentagens ocultas','info');
     }
   });
   // Share percentage toggle button setup
