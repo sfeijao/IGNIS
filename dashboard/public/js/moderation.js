@@ -48,20 +48,22 @@
   let pillAddedFamilies = new Set(); // families added via group pills (for quick clear)
   let focusedGroup = null; // currently focused executorId (group isolation)
   let groupSearchTerm = ''; // search term for grouped moderators
+  let showGroupShare = true; // toggle for showing percentage shares
   // Inject dim style for focus mode (once)
   if(!document.getElementById('focusDimStyle')){
     const st = document.createElement('style');
     st.id = 'focusDimStyle';
-    st.textContent = `.group-mod[data-dim="true"]{opacity:.45;filter:saturate(.6);} .group-mod[data-dim="true"] .group-head{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,0));}
-    .badge-focus{display:inline-flex;align-items:center;gap:4px;background:#2563eb;color:#fff;font-size:.65rem;padding:2px 6px;border-radius:999px;margin-left:6px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
-    .badge-focus-click{cursor:pointer;}
-    .groups-meta{font-size:.7rem;opacity:.65;margin:4px 4px 6px 4px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
-    .mini-stats-focus{margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;font-size:.65rem;opacity:.85;}
-    .mini-stats-focus span{display:inline-flex;align-items:center;gap:2px;background:rgba(255,255,255,.06);padding:2px 6px;border-radius:6px;}
-    .mini-stats-focus .sep{background:none;padding:0;border-radius:0;opacity:.5;}
-    .group-head .unfocus-btn{color:#f87171;}
-    .group-head .unfocus-btn:hover{color:#dc2626;}
-    `;
+  st.textContent = `.group-mod{transition:opacity .25s ease, transform .25s ease;will-change:opacity,transform;}
+  .group-mod[data-dim="true"]{opacity:.35;filter:saturate(.55);transform:scale(.985);} .group-mod[data-dim="true"] .group-head{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,0));}
+  .badge-focus{display:inline-flex;align-items:center;gap:4px;background:#2563eb;color:#fff;font-size:.65rem;padding:2px 6px;border-radius:999px;margin-left:6px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;box-shadow:0 0 0 0 rgba(37,99,235,.6);animation:focusPulse 2.2s ease-in-out 1;}
+  .badge-focus-click{cursor:pointer;}
+  .badge-focus-click:hover{background:#1d4ed8;}
+  @keyframes focusPulse{0%{box-shadow:0 0 0 0 rgba(37,99,235,.6);}70%{box-shadow:0 0 0 6px rgba(37,99,235,0);}100%{box-shadow:0 0 0 0 rgba(37,99,235,0);}}
+  .groups-meta{font-size:.7rem;opacity:.65;margin:4px 4px 6px 4px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
+  .mini-stats-focus{margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;font-size:.65rem;opacity:.88;}
+  .mini-stats-focus span{display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,.07);padding:2px 7px;border-radius:6px;line-height:1.1;}
+  .mini-stats-focus .sep{background:none;padding:0;border-radius:0;opacity:.45;}
+  `;
     document.head.appendChild(st);
   }
 
@@ -282,6 +284,7 @@
   localStorage.setItem('mod-pill-added-fams', JSON.stringify([...pillAddedFamilies]));
   localStorage.setItem('mod-focused-group', focusedGroup||'');
   localStorage.setItem('mod-group-search', groupSearchTerm||'');
+  localStorage.setItem('mod-show-group-share', showGroupShare?'true':'false');
     } catch {}
   }
   (function restorePrefs(){
@@ -451,6 +454,7 @@
   }
     try { const fg = localStorage.getItem('mod-focused-group'); if(fg) focusedGroup = fg||null; } catch {}
     try { const gs = localStorage.getItem('mod-group-search'); if(gs) groupSearchTerm = gs; } catch {}
+    try { showGroupShare = localStorage.getItem('mod-show-group-share') !== 'false'; } catch {}
   async function loadFeed(){
     if (!guildId) return notify('guildId em falta','error');
     els.feed.innerHTML = `<div class="loading"><span class="loading-spinner"></span> A carregar...</div>`;
@@ -921,16 +925,14 @@
       const dimAttr = (focusedGroup && focusedGroup!==g.executorId)?'data-dim="true"':'';
       const isFocused = focusedGroup === g.executorId;
   const focusBadge = isFocused ? `<span class=\"badge-focus badge-focus-click\" data-unfocus=\"${escapeHtml(g.executorId)}\" data-tip=\"Clique para desfocar (ESC também)\"><i class=\"fas fa-bullseye\"></i> Focado</span>` : '';
-      const unfocusBtn = isFocused ? `<button class=\"btn btn-sm btn-glass unfocus-btn\" data-unfocus=\"${escapeHtml(g.executorId)}\" data-tip=\"Sair do foco\"><i class=\"fas fa-eye-slash\"></i></button>` : '';
       const pinTipBase = pinnedGroups.has(g.executorId)?'Desafixar':'Fixar';
-      const pinTip = `${pinTipBase} • ${sharePct}% do total`;
+  const pinTip = showGroupShare ? `${pinTipBase} • ${sharePct}% do total` : pinTipBase;
       parts.push(`<div class=\"group-mod\" data-exec=\"${escapeHtml(g.executorId)}\" aria-expanded=\"true\" ${dimAttr} draggable=\"${pinnedGroups.has(g.executorId)?'true':'false'}\">
         <div class=\"group-head\"><span class=\"group-drag-handle\" ${pinnedGroups.has(g.executorId)?'':'style=\"display:none\"'} data-tip=\"Arraste para reordenar grupos fixados\"><i class=\"fas fa-grip-vertical\"></i></span><button class=\"btn btn-sm btn-glass group-toggle\" title=\"Expandir/recolher\"><i class=\"fas fa-chevron-down\"></i></button>
           <span class=\"group-title\"><i class=\"fas ${iconClass}\"></i> ${escapeHtml(label||'—')} ${focusBadge}</span>
           <button class=\"btn btn-sm btn-glass pin-btn\" data-pin=\"${escapeHtml(g.executorId)}\" title=\"${pinTip}\" data-tip=\"${pinTip}\"><i class=\"fas fa-thumbtack\" style=\"transform:${pinnedGroups.has(g.executorId)?'rotate(45deg)':'none'}\"></i></button>
           <button class=\"btn btn-sm btn-glass export-group-btn\" data-export-group=\"${escapeHtml(g.executorId)}\" data-tip=\"Exportar apenas este grupo\"><i class=\"fas fa-download\"></i></button>
-          ${unfocusBtn}
-          <span class=\"group-count\" data-tip=\"${sharePct}% do total\">${g.logs.length} evento(s) • ${sharePct}%</span>
+          <span class=\"group-count\" data-tip=\"${showGroupShare? sharePct+'% do total':'Eventos neste grupo'}\">${g.logs.length} evento(s)${showGroupShare? ' • '+sharePct+'%':''}</span>
         </div>
         ${buildGroupTypesPills(g.logs)}
         <div class="group-body">
@@ -961,7 +963,9 @@
             });
             const mini = document.createElement('div');
             mini.className = 'mini-stats-focus';
-            mini.innerHTML = Object.entries(counts).filter(([k,v])=>v>0).map(([k,v])=>`<span><b>${v}</b> ${k}</span>`).join('<span class=\"sep\">•</span>') || '<span>Nenhum evento</span>';
+            const statsHtml = Object.entries(counts).filter(([k,v])=>v>0).map(([k,v])=>`<span><b>${v}</b> ${k}</span>`).join('<span class=\"sep\">•</span>') || '<span>Nenhum evento</span>';
+            const exportBtn = `<button class=\"btn btn-xs btn-glass focus-export-btn\" data-export-focused=\"${focusedGroup}\" data-tip=\"Exportar apenas este grupo focado\"><i class=\"fas fa-download\"></i></button>`;
+            mini.innerHTML = statsHtml + exportBtn;
             target.appendChild(mini);
           }
         } catch(e){ console.warn('mini stats focus err', e); }
@@ -980,16 +984,29 @@
         if(window.__lastLogs) renderFeed(window.__lastLogs);
       });
     });
-    // Unfocus buttons
-    els.feed.querySelectorAll('.unfocus-btn')?.forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        focusedGroup = null; persistPrefs(); if(window.__lastLogs) renderFeed(window.__lastLogs);
-      });
-    });
     // Clickable badge unfocus
     els.feed.querySelectorAll('.badge-focus-click')?.forEach(b=>{
       b.addEventListener('click', (e)=>{ e.stopPropagation(); focusedGroup=null; persistPrefs(); if(window.__lastLogs) renderFeed(window.__lastLogs); });
+    });
+    // Export focused group quick button
+    els.feed.querySelectorAll('.focus-export-btn')?.forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const id = btn.getAttribute('data-export-focused');
+        if(!id) return;
+        // find logs for that group in current view
+        if(!window.__lastLogs) return;
+        const subset = window.__lastLogs.filter(l=>{
+          const exec = (l.data && l.data.executorId) || (l.resolved?.executor?.id) || (l.data?.userId) || '__system';
+          return exec === id;
+        });
+        if(!subset.length){ notify('Sem eventos no grupo focado','error'); return; }
+        try {
+          const blob = new Blob([JSON.stringify(subset,null,2)], {type:'application/json'});
+          const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupo-${id}-${Date.now()}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
+          notify('Exportado grupo focado','success');
+        } catch(err){ notify('Falha na exportação','error'); }
+      });
     });
     // Attach toggle
     els.feed.querySelectorAll('.group-mod .group-toggle')?.forEach(btn=>{
@@ -1087,6 +1104,19 @@
       focusedGroup = null; persistPrefs(); if(window.__lastLogs) renderFeed(window.__lastLogs);
     }
   });
+  // Share percentage toggle button setup
+  (function(){
+    const btn = document.getElementById('btnToggleShare');
+    if(!btn) return;
+    // reflect initial
+    btn.setAttribute('aria-pressed', showGroupShare?'true':'false');
+    btn.addEventListener('click', ()=>{
+      showGroupShare = !showGroupShare;
+      btn.setAttribute('aria-pressed', showGroupShare?'true':'false');
+      persistPrefs();
+      if(window.__lastLogs) renderFeed(window.__lastLogs);
+    });
+  })();
   function buildGroupTypesPills(list){
     try {
       const counts = {};
