@@ -44,7 +44,8 @@
   let groupByMod = false; // group by moderator executor
   let groupSortByVolume = false; // secondary grouping sort
   let pinnedGroups = new Set(); // executorId values pinned
-  let pinnedOrder = []; // explicit ordering of pinned executorIds
+  let pinCustomOrder = []; // explicit ordering of pinned groups
+  let pillAddedFamilies = new Set(); // families added via group pills (for quick clear)
 
   function notify(msg, type='info'){
     const n = document.createElement('div');
@@ -259,7 +260,8 @@
   localStorage.setItem('mod-group-mod', groupByMod?'true':'false');
   localStorage.setItem('mod-group-sort-volume', groupSortByVolume?'true':'false');
   localStorage.setItem('mod-group-pins', JSON.stringify([...pinnedGroups]));
-  localStorage.setItem('mod-group-pins-order', JSON.stringify(pinnedOrder));
+  localStorage.setItem('mod-group-pin-order', JSON.stringify(pinCustomOrder));
+  localStorage.setItem('mod-pill-added-fams', JSON.stringify([...pillAddedFamilies]));
     } catch {}
   }
   (function restorePrefs(){
@@ -276,7 +278,8 @@
   groupByMod = localStorage.getItem('mod-group-mod') === 'true';
   groupSortByVolume = localStorage.getItem('mod-group-sort-volume') === 'true';
   try { const pins = JSON.parse(localStorage.getItem('mod-group-pins')||'[]'); pinnedGroups = new Set(pins); } catch {}
-  try { pinnedOrder = JSON.parse(localStorage.getItem('mod-group-pins-order')||'[]'); if(!Array.isArray(pinnedOrder)) pinnedOrder = []; } catch { pinnedOrder = []; }
+  try { const ord = JSON.parse(localStorage.getItem('mod-group-pin-order')||'[]'); if(Array.isArray(ord)) pinCustomOrder = ord; } catch {}
+  try { const pa = JSON.parse(localStorage.getItem('mod-pill-added-fams')||'[]'); pillAddedFamilies = new Set(pa); } catch {}
       // update UI for family
       els.filterButtons?.forEach(btn=>{ btn.classList.toggle('active', btn.getAttribute('data-filter')===currentFamily); });
       if(auto){ els.btnAuto.setAttribute('aria-pressed','true'); els.btnAuto.innerHTML = `<i class="fas fa-pause"></i> Auto`; }
@@ -298,14 +301,19 @@
     const from = (els.from?.value||'').trim(); if (from) chips.push({ k:'from', label:`De: ${from}` });
     const to = (els.to?.value||'').trim(); if (to) chips.push({ k:'to', label:`Até: ${to}` });
     if (currentFamily && currentFamily !== 'all') chips.push({ k:'family', label:`Tipo: ${currentFamily}` });
-    // Quick pill multi-family filters indicator (doesn't list each; single clear chip)
-    if (multiFamilies && multiFamilies.size){
-      chips.push({ k:'multiFamilies', label:`${multiFamilies.size} filtro(s) rápido(s)` });
+    const quickClear = row.querySelector('#quickClearPills');
+    if(quickClear){
+      const hasPillFilters = pillAddedFamilies.size>0;
+      quickClear.setAttribute('data-visible', hasPillFilters?'true':'false');
     }
-    if (!chips.length) { row.innerHTML = ''; return; }
-    row.innerHTML = chips.map(c => `<span class="chip" data-k="${c.k}">${c.label} <i class="fas fa-times chip-clear" title="Limpar"></i></span>`).join('') +
-      ` <span class="chip chip-clear-all" data-clear-all="1" title="Limpar todos os filtros"><i class="fas fa-broom"></i> Limpar tudo</span>` +
-      (multiFamilies && multiFamilies.size ? ` <span class="chip chip-clear-multi" data-clear-multi="1" title="Limpar filtros rápidos (pills)"><i class="fas fa-eraser"></i> Limpar filtros rápidos</span>` : '');
+    const baseChips = chips.map(c => `<span class="chip" data-k="${c.k}">${c.label} <i class="fas fa-times chip-clear" title="Limpar"></i></span>`).join('');
+    const clearAll = ` <span class="chip chip-clear-all" data-clear-all="1" title="Limpar todos os filtros"><i class="fas fa-broom"></i> Limpar tudo</span>`;
+    if (!chips.length) { row.querySelectorAll('.chip:not(#quickClearPills)')?.forEach(c=>{ if(c.id!=='quickClearPills') c.remove(); }); return; }
+    // Only replace dynamic part, keep quick clear node
+    // Remove existing dynamic chips (excluding quick clear)
+    row.querySelectorAll('.chip[data-k]')?.forEach(n=> n.remove());
+    row.querySelectorAll('.chip-clear-all')?.forEach(n=> n.remove());
+    row.insertAdjacentHTML('beforeend', baseChips + clearAll);
     row.querySelectorAll('.chip')?.forEach(ch => ch.addEventListener('click', (e)=>{
       const k = ch.getAttribute('data-k'); const isClear = e.target?.classList?.contains('chip-clear');
       if (!k) return;
@@ -316,7 +324,6 @@
       else if (k==='from') els.from.value = '';
       else if (k==='to') els.to.value = '';
       else if (k==='family') { currentFamily = 'all'; els.filterButtons?.forEach(b=> b.classList.toggle('active', (b.getAttribute('data-filter')||'all')==='all')); }
-      else if (k==='multiFamilies') { multiFamilies = new Set(); currentFamily = 'all'; els.filterButtons?.forEach(b=> b.classList.toggle('active', (b.getAttribute('data-filter')||'all')==='all')); }
       loadFeed();
     }));
     // Clear all chip
@@ -330,18 +337,21 @@
       if (els.to) els.to.value = '';
       currentFamily = 'all';
       els.filterButtons?.forEach(b=> b.classList.toggle('active', (b.getAttribute('data-filter')||'all')==='all'));
-      multiFamilies = new Set();
-      renderActiveFilters();
-      loadFeed();
-    });
-    // Clear only quick multi filters chip
-    row.querySelector('[data-clear-multi]')?.addEventListener('click', (e)=>{
-      e.stopPropagation();
-      multiFamilies = new Set();
-      if(currentFamily==='all'){ /* no change */ } else { /* keep family filter separate */ }
+      multiFamilies.clear(); pillAddedFamilies.clear();
       persistPrefs();
       renderActiveFilters();
       loadFeed();
+    });
+    // Quick clear only pill-added filters
+    row.querySelector('#quickClearPills')?.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      let changed=false;
+      pillAddedFamilies.forEach(f=>{ if(multiFamilies.has(f)){ multiFamilies.delete(f); changed=true; } });
+      pillAddedFamilies.clear();
+      if(multiFamilies.size===0) currentFamily='all';
+      persistPrefs();
+      renderActiveFilters();
+      if(changed) loadFeed();
     });
   }
   // Presets
@@ -846,22 +856,20 @@
     }
     // Pinned first preserving relative order among pinned slice
     if(pinnedGroups.size){
-      // Build pinned list honoring pinnedOrder sequence, then any newly pinned not yet in order
-      const pinnedList = [];
-      const seen = new Set();
-      for(const id of pinnedOrder){
-        if(pinnedGroups.has(id)){
-          const g = arr.find(x=> x.executorId===id);
-          if(g){ pinnedList.push(g); seen.add(id); }
+        const pinned = arr.filter(g=> pinnedGroups.has(g.executorId));
+        // Apply custom order if present
+        if(pinCustomOrder.length){
+          pinned.sort((a,b)=>{
+            const ia = pinCustomOrder.indexOf(a.executorId);
+            const ib = pinCustomOrder.indexOf(b.executorId);
+            if(ia===-1 && ib===-1) return 0;
+            if(ia===-1) return 1;
+            if(ib===-1) return -1;
+            return ia-ib;
+          });
         }
-      }
-      for(const g of arr){
-        if(pinnedGroups.has(g.executorId) && !seen.has(g.executorId)){
-          pinnedList.push(g); seen.add(g.executorId);
-        }
-      }
-      const rest = arr.filter(g=> !pinnedGroups.has(g.executorId));
-      arr.length = 0; arr.push(...pinnedList, ...rest);
+        const rest = arr.filter(g=> !pinnedGroups.has(g.executorId));
+        arr.length = 0; arr.push(...pinned, ...rest);
     }
     const parts = [];
     for(const g of arr){
@@ -879,12 +887,11 @@
       } else {
         label = g.executorId || '—';
       }
-      parts.push(`<div class="group-mod" data-exec="${escapeHtml(g.executorId)}" aria-expanded="true">
-        <div class="group-head"><button class="btn btn-sm btn-glass group-toggle" title="Expandir/recolher"><i class="fas fa-chevron-down"></i></button>
+      parts.push(`<div class="group-mod" data-exec="${escapeHtml(g.executorId)}" aria-expanded="true" draggable="${pinnedGroups.has(g.executorId)?'true':'false'}">
+        <div class="group-head"><span class="group-drag-handle" ${pinnedGroups.has(g.executorId)?'':'style="display:none"'} data-tip="Arraste para reordenar grupos fixados"><i class="fas fa-grip-vertical"></i></span><button class="btn btn-sm btn-glass group-toggle" title="Expandir/recolher"><i class="fas fa-chevron-down"></i></button>
           <span class="group-title"><i class="fas ${iconClass}"></i> ${escapeHtml(label||'—')}</span>
-          <button class="btn btn-sm btn-glass pin-btn" data-pin="${escapeHtml(g.executorId)}" title="${pinnedGroups.has(g.executorId)?'Desafixar':'Fixar'} grupo"><i class="fas ${pinnedGroups.has(g.executorId)?'fa-thumbtack':'fa-thumbtack'}" style="transform:${pinnedGroups.has(g.executorId)?'rotate(45deg)':'none'}"></i></button>
-          <button class="btn btn-sm btn-glass export-group-btn" data-export-group="${escapeHtml(g.executorId)}" title="Exportar eventos deste grupo"><i class="fas fa-download"></i></button>
-          ${pinnedGroups.has(g.executorId)?'<span class="drag-handle" title="Arrastar para reordenar" aria-label="Reordenar">⋮⋮</span>':''}
+          <button class="btn btn-sm btn-glass pin-btn" data-pin="${escapeHtml(g.executorId)}" title="${pinnedGroups.has(g.executorId)?'Desafixar':'Fixar'} grupo" data-tip="${pinnedGroups.has(g.executorId)?'Desafixar':'Fixar'}"><i class="fas fa-thumbtack" style="transform:${pinnedGroups.has(g.executorId)?'rotate(45deg)':'none'}"></i></button>
+          <button class="btn btn-sm btn-glass export-group-btn" data-export-group="${escapeHtml(g.executorId)}" data-tip="Exportar apenas este grupo"><i class="fas fa-download"></i></button>
           <span class="group-count">${g.logs.length} evento(s)</span>
         </div>
         ${buildGroupTypesPills(g.logs)}
@@ -928,64 +935,10 @@
         e.stopPropagation();
         const id = btn.getAttribute('data-pin');
         if(!id) return;
-        if(pinnedGroups.has(id)) {
-          pinnedGroups.delete(id);
-          pinnedOrder = pinnedOrder.filter(x=> x!==id);
-        } else {
-          pinnedGroups.add(id);
-          if(!pinnedOrder.includes(id)) pinnedOrder.push(id);
-        }
+        if(pinnedGroups.has(id)) pinnedGroups.delete(id); else pinnedGroups.add(id);
         persistPrefs();
         if(window.__lastLogs) renderFeed(window.__lastLogs);
       });
-    });
-    // Drag & drop ordering for pinned groups
-    const draggables = els.feed.querySelectorAll('.group-mod');
-    draggables.forEach(gEl=>{
-      const exec = gEl.getAttribute('data-exec');
-      if(exec && pinnedGroups.has(exec)){
-        gEl.setAttribute('draggable','true');
-        gEl.classList.add('draggable-pinned');
-        const handle = gEl.querySelector('.drag-handle');
-        if(handle){ handle.style.cursor='grab'; }
-        gEl.addEventListener('dragstart', (ev)=>{
-          if(handle){ handle.style.cursor='grabbing'; }
-          ev.dataTransfer.effectAllowed = 'move';
-          ev.dataTransfer.setData('text/plain', exec);
-          gEl.classList.add('dragging');
-        });
-        gEl.addEventListener('dragend', ()=>{
-          if(handle){ handle.style.cursor='grab'; }
-          gEl.classList.remove('dragging');
-        });
-        gEl.addEventListener('dragover', (ev)=>{
-          ev.preventDefault();
-          const dragging = els.feed.querySelector('.group-mod.dragging');
-          if(!dragging) return;
-          if(dragging===gEl) return;
-          // Only reorder within pinned zone: both must be pinned
-          const dragExec = dragging.getAttribute('data-exec');
-          if(!pinnedGroups.has(dragExec)) return;
-          // Determine position
-          const rect = gEl.getBoundingClientRect();
-            const before = (ev.clientY - rect.top) < rect.height / 2;
-          if(before){
-            els.feed.insertBefore(dragging, gEl);
-          } else {
-            els.feed.insertBefore(dragging, gEl.nextSibling);
-          }
-        });
-        gEl.addEventListener('drop', ()=>{
-          // Recompute pinnedOrder based on DOM order of pinned at top until first non-pinned
-          const newOrder = [];
-          els.feed.querySelectorAll('.group-mod').forEach(elm=>{
-            const ex = elm.getAttribute('data-exec');
-            if(ex && pinnedGroups.has(ex)) newOrder.push(ex);
-          });
-          pinnedOrder = newOrder;
-          persistPrefs();
-        });
-      }
     });
     // Pill click handlers for quick filtering
     els.feed.querySelectorAll('.group-types .gt-pill')?.forEach(pill=>{
@@ -1003,19 +956,6 @@
         if(multiFamilies.size===0) currentFamily='all';
         persistPrefs();
         loadFeed();
-      });
-    });
-    // Per-group export handlers (after pills to ensure arr is in scope)
-    els.feed.querySelectorAll('.group-mod .export-group-btn')?.forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        const id = btn.getAttribute('data-export-group');
-        if(!id) return;
-        const group = arr.find(g=> g.executorId===id);
-        if(!group){ notify('Grupo não encontrado','error'); return; }
-        const fmtSel = document.getElementById('exportFormat');
-        const fmt = fmtSel ? fmtSel.value : 'csv';
-        exportSingleGroup(group.logs, id, fmt);
       });
     });
   }
@@ -1049,31 +989,6 @@
     const blob = new Blob([rows.join('\n')],{type:'text/csv'});
     const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupos-${Date.now()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
   }
-  function exportSingleGroup(logs, execId, fmt){
-    try {
-      if(!logs || !logs.length){ notify('Grupo vazio','warn'); return; }
-      if(fmt==='json'){
-        const blob = new Blob([JSON.stringify(logs,null,2)],{type:'application/json'});
-        const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupo-${execId}-${Date.now()}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000); return;
-      }
-      // CSV minimal: timestamp,type,executorId,userId,channelId,extra(json)
-      const header = ['timestamp','type','executorId','userId','channelId','data'];
-      const rows = [header.join(',')];
-      for(const l of logs){
-        const row = [
-          l.timestamp,
-          l.type||'',
-          (l.data&&l.data.executorId)||(l.resolved?.executor?.id)||'',
-          (l.data&&l.data.userId)||(l.resolved?.user?.id)||'',
-          (l.data&&l.data.channelId)||(l.resolved?.channel?.id)||'',
-          JSON.stringify(l.data||{})
-        ].map(v=>`"${String(v).replace(/"/g,'"')}"`).join(',');
-        rows.push(row);
-      }
-      const blob = new Blob([rows.join('\n')],{type:'text/csv'});
-      const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupo-${execId}-${Date.now()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
-    } catch(e){ console.error(e); notify('Falha export','error'); }
-  }
   function buildGroupTypesPills(list){
     try {
       const counts = {};
@@ -1092,7 +1007,7 @@
       const total = list.length || 1;
       const pills = Object.entries(counts)
         .sort((a,b)=> b[1]-a[1])
-        .map(([k,v])=>{ const pct = ((v/total)*100).toFixed(0); const fullTip = `${v} eventos • ${pct}% deste grupo`; return `<span class="gt-pill" data-group-type="${k}" title="${fullTip}"><b>${mapLabel[k]||k}</b> ${v} <span style=\"opacity:.6\">${pct}%</span></span>`; })
+        .map(([k,v])=>{ const pct = ((v/total)*100).toFixed(0); return `<span class="gt-pill" data-group-type="${k}" title="${v} eventos (${pct}%) ${mapLabel[k]||k}"><b>${mapLabel[k]||k}</b> ${v} <span style="opacity:.6">${pct}%</span></span>`; })
         .join('');
       if(!pills) return '';
       return `<div class="group-types">${pills}</div>`;
@@ -1599,6 +1514,49 @@
   document.getElementById('btnGroupSortVol')?.addEventListener('click', ()=>{ groupSortByVolume = !groupSortByVolume; document.getElementById('btnGroupSortVol')?.setAttribute('aria-pressed', groupSortByVolume?'true':'false'); persistPrefs(); if(groupByMod && window.__lastLogs) renderFeed(window.__lastLogs); });
   document.getElementById('btnExportGroups')?.addEventListener('click', ()=>{ const fmt = (els.exportFormat?.value||'csv'); exportGroupStats(fmt==='json'?'json':'csv'); });
   document.getElementById('btnGroupsToggle')?.addEventListener('click', ()=>{
+    // Drag & drop ordering for pinned groups
+    let dragId = null;
+    els.feed.querySelectorAll('.group-mod[draggable="true"]')?.forEach(g=>{
+      g.addEventListener('dragstart', (e)=>{ dragId = g.getAttribute('data-exec'); g.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
+      g.addEventListener('dragend', ()=>{ dragId=null; g.classList.remove('dragging'); });
+      g.addEventListener('dragover', (e)=>{
+        if(!dragId) return; e.preventDefault();
+        const overId = g.getAttribute('data-exec'); if(overId===dragId) return;
+        const list = [...els.feed.querySelectorAll('.group-mod[draggable="true"]')];
+        const dragEl = list.find(n=> n.getAttribute('data-exec')===dragId);
+        const overIndex = list.indexOf(g); const dragIndex = list.indexOf(dragEl);
+        if(dragIndex < overIndex){ g.after(dragEl); } else { g.before(dragEl); }
+      });
+    });
+    els.feed.addEventListener('drop', ()=>{
+      if(!pinnedGroups.size) return;
+      const ordered = [...els.feed.querySelectorAll('.group-mod[draggable="true"]')].map(n=> n.getAttribute('data-exec')).filter(Boolean);
+      pinCustomOrder = ordered;
+      persistPrefs();
+    }, { once:true });
+    // Per-group export button
+    els.feed.querySelectorAll('.export-group-btn')?.forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const id = btn.getAttribute('data-export-group'); if(!id) return;
+        const fmt = (els.exportFormat?.value||'csv');
+        const logs = (window.__lastLogs||[]).filter(l=>{
+          let exec = (l.data && l.data.executorId) || (l.resolved && l.resolved.executor && l.resolved.executor.id);
+          if(!exec){ exec = (l.data && l.data.userId) || (l.resolved && l.resolved.user && l.resolved.user.id) || '__system'; }
+          return exec === id;
+        });
+        if(!logs.length){ notify('Sem eventos neste grupo','error'); return; }
+        if(fmt==='json'){
+          const blob = new Blob([JSON.stringify(logs,null,2)],{type:'application/json'});
+          const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupo-${id}-${Date.now()}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000); return;
+        }
+        const headers=['id','timestamp','type','userId','executorId','channelId','message'];
+        const rows=[headers.join(',')];
+        logs.forEach(l=>{ const d=l.data||{}; const row=[l.id,l.timestamp,l.type,d.userId||'',d.executorId||'',d.channelId||'', (l.message||'').toString().replace(/\n/g,' ')]; rows.push(row.map(v=>`"${String(v).replace(/"/g,'"')}"`).join(',')); });
+        const blob = new Blob([rows.join('\n')],{type:'text/csv'});
+        const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupo-${id}-${Date.now()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
+      });
+    });
     const btn = document.getElementById('btnGroupsToggle'); if(!btn) return;
     const state = btn.getAttribute('data-state')||'expanded';
     const next = state==='expanded' ? 'collapsed' : 'expanded';
@@ -1612,6 +1570,7 @@
     });
   });
   document.getElementById('pagePrev')?.addEventListener('click', ()=>{ if(page>1){ page--; persistPrefs(); loadPaged(); }});
+        if(!pillAddedFamilies.has(famKey)) pillAddedFamilies.add(famKey);
   document.getElementById('pageNext')?.addEventListener('click', ()=>{ page++; persistPrefs(); loadPaged(); });
   document.getElementById('pageInput')?.addEventListener('change', (e)=>{ const v=parseInt(e.target.value,10); if(!isNaN(v)&&v>0){ page=v; persistPrefs(); loadPaged(); }});
   document.getElementById('perPage')?.addEventListener('change', (e)=>{ perPage=parseInt(e.target.value,10)||100; page=1; persistPrefs(); loadPaged(); });

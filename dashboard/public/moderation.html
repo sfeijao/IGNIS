@@ -130,10 +130,15 @@
   .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--glass-border);background:rgba(255,255,255,.06);color:var(--text-primary);font-size:.85rem}
   .chip .chip-clear{cursor:pointer;opacity:.8}
   .chip .chip-clear:hover{opacity:1}
-  /* Drag handle for pinned groups */
-  .drag-handle{display:inline-flex;align-items:center;font-size:.85rem;padding:2px 6px;opacity:.55}
-  .group-mod.draggable-pinned{border:1px solid rgba(124,58,237,.35);border-radius:10px;margin-bottom:10px;background:rgba(124,58,237,.08)}
-  .group-mod.dragging{opacity:.5}
+  .chip-quick-clear{background:rgba(239,68,68,.15);border-color:#ef4444;color:#fca5a5;cursor:pointer;display:none}
+  .chip-quick-clear i{margin-right:4px}
+  .chip-quick-clear[data-visible="true"]{display:inline-flex}
+  .group-mod.dragging{opacity:.6}
+  .group-drag-handle{cursor:grab;padding:2px 6px;border:1px solid var(--glass-border);border-radius:6px;background:rgba(255,255,255,.05);display:inline-flex;align-items:center;gap:4px;font-size:.6rem;margin-right:4px}
+  .group-drag-handle:active{cursor:grabbing}
+  .hide-initial{display:none}
+  .inline-group.bottom-align{align-items:flex-end;gap:4px}
+  .max-w-140{max-width:140px}
   /* Copy-ID buttons are visible by default for clarity */
   /* Link actions: responsive and type-colored */
   .link-actions{display:flex;gap:6px;flex-wrap:wrap}
@@ -267,7 +272,7 @@
             <button id="btnLatency" class="btn btn-glass" aria-pressed="false" title="Mostrar diferença de tempo entre eventos"><i class="fas fa-stopwatch"></i> Δ Tempo</button>
             <button id="btnOrder" class="btn btn-glass" aria-pressed="true" title="Ordenação: mais recente em cima (clique para alternar)"><i class="fas fa-sort-amount-down-alt"></i> Ordem</button>
             <button id="btnGroupMod" class="btn btn-glass" aria-pressed="false" title="Agrupar por moderador (colapsa eventos do mesmo executor)"><i class="fas fa-user-shield"></i> Agrupar Mods</button>
-            <button id="btnClearStream" class="btn btn-glass" style="display:none" title="Limpar eventos mostrados (modo stream)"><i class="fas fa-broom"></i> Limpar stream</button>
+            <button id="btnClearStream" class="btn btn-glass hide-initial" title="Limpar eventos mostrados (modo stream)"><i class="fas fa-broom"></i> Limpar stream</button>
             <button id="btnGroupSortVol" class="btn btn-glass" aria-pressed="false" title="Ordenar grupos por volume (secundário: tempo)"><i class="fas fa-layer-group"></i> Volume</button>
             <button id="btnGroupsToggle" class="btn btn-glass" data-state="expanded" title="Colapsar todos os grupos"><i class="fas fa-compress-alt"></i> Colapsar</button>
             <div class="input-group">
@@ -301,10 +306,10 @@
                 <button id="btnExport" class="btn btn-glass" title="Exportar eventos no formato selecionado"><i class="fas fa-download"></i> Exportar</button>
                 <button id="btnExportSnapshot" class="btn btn-glass" title="Exportar feed como HTML estático"><i class="fas fa-camera"></i> Snapshot</button>
                 <button id="btnLoadAll" class="btn btn-glass" title="Carregar todos os eventos ignorando virtualização"><i class="fas fa-layer-group"></i> Carregar tudo</button>
-                <button id="btnExportGroups" class="btn btn-glass" style="display:none" title="Exportar estatísticas dos grupos (quando agrupado)"><i class="fas fa-table"></i> Export Grupos</button>
-                <div class="inline-group" style="align-items:flex-end; gap:4px;">
+                <button id="btnExportGroups" class="btn btn-glass hide-initial" title="Exportar estatísticas dos grupos (quando agrupado)"><i class="fas fa-table"></i> Export Grupos</button>
+                <div class="inline-group bottom-align">
                   <label for="presetSelect" class="sr-only">Presets</label>
-                  <select id="presetSelect" class="input" title="Presets de filtros" style="max-width:140px">
+                  <select id="presetSelect" class="input max-w-140" title="Presets de filtros">
                     <option value="">Presets...</option>
                   </select>
                   <button id="btnSavePreset" class="btn btn-glass" title="Guardar preset atual"><i class="fas fa-save"></i></button>
@@ -313,7 +318,9 @@
               </div>
             </div>
           </div>
-          <div id="activeFilters" class="chips-row mt-12" aria-live="polite"></div>
+          <div id="activeFilters" class="chips-row mt-12" aria-live="polite">
+            <span id="quickClearPills" class="chip chip-quick-clear" data-visible="false" data-tip="Limpar apenas filtros rápidos (pills)"><i class="fas fa-eraser"></i> Limpar filtros rápidos</span>
+          </div>
           <div id="recencyLegend" class="text-secondary mt-8 recency-legend"></div>
           <div id="globalProgress" class="progress-global mt-8" aria-hidden="true" aria-label="Progresso de carregamento" role="progressbar" aria-valuemin="0" aria-valuemax="100"><span></span></div>
           <div class="pagination-row mt-12" id="pagination" aria-label="Paginação">
