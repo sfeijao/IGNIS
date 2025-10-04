@@ -3,6 +3,7 @@ const session = require('express-session');
 const passport = require('passport');
 const DiscordStrategy = require('passport-discord').Strategy;
 const path = require('path');
+const fs = require('fs');
 const Joi = require('joi');
 require('dotenv').config();
 
@@ -27,6 +28,24 @@ if ((process.env.NODE_ENV || 'production') === 'production') {
 // Prefer SQLite if explicitly selected or when Mongo isn't configured
 const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
 const preferSqlite = isSqlite || !hasMongoEnv;
+
+// ===== Moderation Export Presets (File persistence) =====
+const PRESETS_FILE = path.join(__dirname, '..', 'data', 'mod-presets.json');
+function loadModPresetsSafe(){
+    try {
+        if(!fs.existsSync(PRESETS_FILE)) return {};
+        const raw = fs.readFileSync(PRESETS_FILE,'utf8');
+        const obj = JSON.parse(raw);
+        return (obj && typeof obj === 'object') ? obj : {};
+    } catch { return {}; }
+}
+function saveModPresetsSafe(presets){
+    try {
+        fs.mkdirSync(path.dirname(PRESETS_FILE), { recursive:true });
+        fs.writeFileSync(PRESETS_FILE, JSON.stringify(presets,null,2),'utf8');
+        return true;
+    } catch(e){ logger.error('Failed to save mod presets', e); return false; }
+}
 
 // In-memory performance history (lightweight)
 const perfHistory = {
@@ -347,6 +366,118 @@ app.get('/api/guild/:guildId/roles', async (req, res) => {
         logger.error('roles list error', e);
         return res.status(500).json({ success: false, error: 'roles_failed' });
     }
+});
+
+// Create role
+app.post('/api/guild/:guildId/roles', async (req,res)=>{
+    if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
+    try {
+        const guildId = req.params.guildId;
+        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        const guild = client.guilds.cache.get(guildId); if(!guild) return res.status(404).json({ success:false, error:'Guild not found' });
+        const me = guild.members.me || guild.members.cache.get(client.user.id);
+        const myHighest = me?.roles?.highest?.position ?? 0;
+        const name = (req.body && req.body.name) ? String(req.body.name).trim() : 'novo-cargo';
+        const color = (req.body && req.body.color) ? String(req.body.color) : undefined;
+        const hoist = !!(req.body && req.body.hoist);
+        const mentionable = !!(req.body && req.body.mentionable);
+        const role = await guild.roles.create({ name, color, hoist, mentionable, reason:'Dashboard create role' });
+        if(role.position >= myHighest){
+            // Immediately lower it if above bot (rare, but safety)
+            try { await role.setPosition(Math.max(0, myHighest-1)); } catch {}
+        }
+        return res.json({ success:true, role:{ id:role.id, name:role.name, color:role.hexColor, position:role.position, managed:role.managed, hoist:role.hoist, mentionable:role.mentionable } });
+    } catch(e){ logger.error('role create error', e); return res.status(500).json({ success:false, error:'role_create_failed' }); }
+});
+
+// Delete role
+app.delete('/api/guild/:guildId/roles/:roleId', async (req,res)=>{
+    if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
+    try {
+        const guildId = req.params.guildId; const roleId = req.params.roleId;
+        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        const guild = client.guilds.cache.get(guildId); if(!guild) return res.status(404).json({ success:false, error:'Guild not found' });
+        const role = guild.roles.cache.get(roleId); if(!role) return res.status(404).json({ success:false, error:'Role not found' });
+        if(role.managed) return res.status(400).json({ success:false, error:'role_managed' });
+        const me = guild.members.me || guild.members.cache.get(client.user.id);
+        const myHighest = me?.roles?.highest?.position ?? 0;
+        if(role.position >= myHighest) return res.status(403).json({ success:false, error:'insufficient_role_hierarchy' });
+        await role.delete('Dashboard delete role');
+        return res.json({ success:true });
+    } catch(e){ logger.error('role delete error', e); return res.status(500).json({ success:false, error:'role_delete_failed' }); }
+});
+
+// Reorder / move role (set new position or relative move)
+app.post('/api/guild/:guildId/roles/:roleId/move', async (req,res)=>{
+    if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
+    try {
+        const guildId = req.params.guildId; const roleId = req.params.roleId;
+        const { position, direction, delta } = req.body || {};
+        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        const guild = client.guilds.cache.get(guildId); if(!guild) return res.status(404).json({ success:false, error:'Guild not found' });
+        const role = guild.roles.cache.get(roleId); if(!role) return res.status(404).json({ success:false, error:'Role not found' });
+        if(role.managed) return res.status(400).json({ success:false, error:'role_managed' });
+        const me = guild.members.me || guild.members.cache.get(client.user.id);
+        const myHighest = me?.roles?.highest?.position ?? 0;
+        if(role.position >= myHighest) return res.status(403).json({ success:false, error:'insufficient_role_hierarchy' });
+        let newPos;
+        if(typeof position === 'number' && Number.isFinite(position)) newPos = position;
+        else if(direction){
+            const d = (direction === 'up') ? 1 : -1;
+            const step = (typeof delta === 'number' && Number.isFinite(delta)) ? delta : 1;
+            newPos = role.position + d*step;
+        } else { return res.status(400).json({ success:false, error:'invalid_move_params' }); }
+        newPos = Math.max(0, Math.min(newPos, myHighest-1));
+        await role.setPosition(newPos, { reason:'Dashboard move role' });
+        return res.json({ success:true, position: role.position });
+    } catch(e){ logger.error('role move error', e); return res.status(500).json({ success:false, error:'role_move_failed' }); }
+});
+
+// ===== Mod Export Presets Sync Endpoints =====
+app.get('/api/guild/:guildId/mod-presets', (req,res)=>{
+    if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
+    try {
+        const guildId = req.params.guildId;
+        // Basic membership check (bot in guild) – deeper permission could be added later
+        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        if(!client.guilds.cache.get(guildId)) return res.status(404).json({ success:false, error:'Guild not found' });
+        return res.json({ success:true, presets: loadModPresetsSafe() });
+    } catch(e){ logger.error('mod-presets get error', e); return res.status(500).json({ success:false, error:'mod_presets_failed' }); }
+});
+
+// Upsert multiple or single
+app.post('/api/guild/:guildId/mod-presets', (req,res)=>{
+    if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
+    try {
+        const guildId = req.params.guildId;
+        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        if(!client.guilds.cache.get(guildId)) return res.status(404).json({ success:false, error:'Guild not found' });
+        const body = req.body || {};
+        let presets = loadModPresetsSafe();
+        if(body && body.presets && typeof body.presets === 'object'){
+            presets = body.presets; // replace all
+        } else if(body && body.name && body.preset){
+            presets[body.name] = body.preset;
+        } else {
+            return res.status(400).json({ success:false, error:'invalid_body' });
+        }
+        if(!saveModPresetsSafe(presets)) return res.status(500).json({ success:false, error:'save_failed' });
+        return res.json({ success:true, presets });
+    } catch(e){ logger.error('mod-presets post error', e); return res.status(500).json({ success:false, error:'mod_presets_failed' }); }
+});
+
+app.delete('/api/guild/:guildId/mod-presets/:name', (req,res)=>{
+    if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
+    try {
+        const guildId = req.params.guildId; const name = req.params.name;
+        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        if(!client.guilds.cache.get(guildId)) return res.status(404).json({ success:false, error:'Guild not found' });
+        const presets = loadModPresetsSafe();
+        if(!(name in presets)) return res.status(404).json({ success:false, error:'preset_not_found' });
+        delete presets[name];
+        if(!saveModPresetsSafe(presets)) return res.status(500).json({ success:false, error:'save_failed' });
+        return res.json({ success:true, presets });
+    } catch(e){ logger.error('mod-presets delete error', e); return res.status(500).json({ success:false, error:'mod_presets_failed' }); }
 });
 
 app.get('/api/guild/:guildId/members', async (req, res) => {

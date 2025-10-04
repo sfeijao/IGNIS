@@ -81,7 +81,30 @@
     .plan-diff{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
     .seg-spacer{flex:1 1 auto}
     /* Tooltip */
-    #globalTooltip{position:fixed;z-index:9999;padding:6px 10px;background:rgba(0,0,0,.78);color:#f8f8f8;font-size:.65rem;line-height:1.2;border:1px solid rgba(255,255,255,.15);border-radius:8px;pointer-events:none;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;transform:translateY(2px);transition:opacity .18s,transform .18s}
+  #globalTooltip{position:fixed;z-index:9999;padding:6px 10px;background:rgba(0,0,0,.78);color:#f8f8f8;font-size:.65rem;line-height:1.2;border:1px solid rgba(255,255,255,.15);border-radius:8px;pointer-events:none;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;transform:translateY(2px);transition:opacity .18s,transform .18s}
+  /* Export config panel styles */
+  .export-config-panel{padding:14px;border:1px solid var(--glass-border);border-radius:12px;background:rgba(0,0,0,.25)}
+  .export-config-head{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+  .export-config-title{margin:0;font-size:.95rem;display:flex;align-items:center;gap:6px}
+  .export-config-actions{display:flex;gap:6px;flex-wrap:wrap}
+  .export-config-grid{--grid-min:240px}
+  .cfg-txt{min-height:120px;font-family:monospace;font-size:.7rem}
+  .export-config-errors{margin-top:12px;background:rgba(239,68,68,.15);border:1px solid #ef4444;padding:10px;border-radius:8px;font-size:.7rem;line-height:1.3}
+  .export-config-errors ul{margin:6px 0 0 18px;padding:0}
+  .export-config-preview{border:1px solid var(--glass-border);background:rgba(255,255,255,.04);padding:10px;border-radius:10px}
+  .export-config-preview .preview-title{margin:0 0 8px;font-size:.75rem;letter-spacing:.5px;text-transform:uppercase;opacity:.8;display:flex;align-items:center;gap:6px}
+  .preview-scroll{max-width:100%;overflow:auto;border:1px solid var(--glass-border);border-radius:6px}
+  .preview-table{border-collapse:collapse;width:100%;font-size:.65rem}
+  .preview-table th,.preview-table td{border:1px solid var(--glass-border);padding:4px 6px;text-align:left;white-space:nowrap}
+  .preview-table thead{background:rgba(255,255,255,.06)}
+  .field-error{outline:1px solid #ef4444}
+  .export-preset-row{align-items:flex-end;gap:6px;flex-wrap:wrap}
+  .export-preset-select{min-width:180px}
+  .export-preview-row{align-items:flex-end;gap:6px;flex-wrap:wrap}
+  .groups-enable-list{display:flex;flex-direction:column;gap:4px;max-height:140px;overflow:auto;padding:6px;border:1px solid var(--glass-border);border-radius:6px;background:rgba(255,255,255,.02)}
+  .groups-enable-list label{display:flex;align-items:center;gap:6px;font-size:.7rem;background:rgba(255,255,255,.03);padding:4px 6px;border-radius:4px}
+  .inline-flex-gap{display:flex;align-items:center;gap:6px}
+  .groups-enable-actions{gap:6px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px}
     #globalTooltip[data-visible="true"]{opacity:1;transform:translateY(0)}
     .card-pad{padding:16px}
     .gap-12{gap:12px}
@@ -312,6 +335,7 @@
                 <button id="btnExportSnapshot" class="btn btn-glass" title="Exportar feed como HTML estático"><i class="fas fa-camera"></i> Snapshot</button>
                 <button id="btnLoadAll" class="btn btn-glass" title="Carregar todos os eventos ignorando virtualização"><i class="fas fa-layer-group"></i> Carregar tudo</button>
                 <button id="btnExportGroups" class="btn btn-glass hide-initial" title="Exportar estatísticas dos grupos (quando agrupado)"><i class="fas fa-table"></i> Export Grupos</button>
+                <button id="btnExportConfig" class="btn btn-glass" title="Configuração avançada de exportação"><i class="fas fa-sliders-h"></i></button>
                 <div class="inline-group bottom-align">
                   <label for="presetSelect" class="sr-only">Presets</label>
                   <select id="presetSelect" class="input max-w-140" title="Presets de filtros">
@@ -320,6 +344,112 @@
                   <button id="btnSavePreset" class="btn btn-glass" title="Guardar preset atual"><i class="fas fa-save"></i></button>
                   <button id="btnDeletePreset" class="btn btn-glass" title="Apagar preset selecionado"><i class="fas fa-trash"></i></button>
                 </div>
+              </div>
+            </div>
+          </div>
+          <!-- Painel de configuração de exportação -->
+          <div id="exportConfigPanel" class="glass-card mt-12 export-config-panel" hidden>
+            <div class="export-config-head">
+              <h4 class="export-config-title"><i class="fas fa-sliders-h"></i> Configuração de Exportação</h4>
+              <div class="export-config-actions">
+                <button id="btnExportConfigClose" class="btn btn-glass" title="Fechar painel"><i class="fas fa-times"></i></button>
+                <button id="btnExportConfigReset" class="btn btn-glass" title="Repor padrão"><i class="fas fa-undo"></i> Reset</button>
+                <button id="btnExportConfigPreview" class="btn btn-glass" title="Pré-visualizar cabeçalhos"><i class="fas fa-eye"></i> Preview</button>
+                <button id="btnExportConfigSave" class="btn btn-primary" title="Guardar alterações"><i class="fas fa-check"></i> Guardar</button>
+              </div>
+            </div>
+            <div class="grid-auto mt-12 export-config-grid">
+              <div>
+                <label class="lbl">Chaves whitelist (uma por linha)</label>
+                <textarea id="cfgWhitelist" class="input cfg-txt" placeholder="id\ntimestamp\nresolved.executor.id"></textarea>
+                <small class="text-secondary">Se preenchido, apenas estas chaves serão exportadas.</small>
+              </div>
+              <div>
+                <label class="lbl">Prefixes (uma por linha)</label>
+                <textarea id="cfgPrefixes" class="input cfg-txt" placeholder="resolved.executor.\nresolved.target."></textarea>
+                <small class="text-secondary">Usado somente se whitelist vazio.</small>
+              </div>
+              <div>
+                <label class="lbl">Mapeamento de cabeçalhos (raw=Bonito)</label>
+                <textarea id="cfgHeaderMap" class="input cfg-txt" placeholder="id=Log ID\nresolved.executor.id=Executor ID"></textarea>
+                <small class="text-secondary">Um por linha.</small>
+              </div>
+              <div>
+                <label class="lbl">Modo ordenação</label>
+                <select id="cfgOrderMode" class="input">
+                  <option value="whitelist">Whitelist</option>
+                  <option value="alphabetical">Alfabética</option>
+                  <option value="grouped">Agrupada</option>
+                </select>
+                <label class="lbl mt-8"><input type="checkbox" id="cfgGroupedSections"/> Inserir linhas de separação</label>
+              </div>
+              <div>
+                <label class="lbl">Formato Data/Hora</label>
+                <select id="cfgDateFormat" class="input">
+                  <option value="iso">ISO</option>
+                  <option value="locale">Locale</option>
+                  <option value="epoch">Epoch (ms)</option>
+                </select>
+                <label class="lbl mt-8"><input type="checkbox" id="cfgIncludeArrays" checked/> Incluir arrays</label>
+                <label class="lbl mt-4">Profundidade máxima<br><input type="number" id="cfgMaxDepth" class="input w-120" min="1" value="10"/></label>
+              </div>
+              <div>
+                <label class="lbl">Grupos (regex=label)</label>
+                <textarea id="cfgGroups" class="input cfg-txt" placeholder="^(id|timestamp|type)$=Identificação\n^resolved\.executor\.=Executor\n^resolved\.target\.=Alvo\n^(action|reason)$=Ação"></textarea>
+                <small class="text-secondary">Usado quando modo=agrupada.</small>
+              </div>
+              <div>
+                <label class="lbl">Pré-visualização</label>
+                <div class="inline-group export-preview-row">
+                  <select id="cfgPreviewLimit" class="input w-120" title="Linhas de pré-visualização">
+                    <option value="3">3</option>
+                    <option value="5" selected>5</option>
+                    <option value="10">10</option>
+                  </select>
+                  <label class="lbl inline-flex-gap"><input type="checkbox" id="cfgIncludeRaw"/> Incluir objeto original (JSON export)</label>
+                </div>
+                <small class="text-secondary">Objetos originais apenas no JSON.</small>
+              </div>
+              <div>
+                <label class="lbl">Ativar/Desativar Grupos</label>
+                <div class="inline-group groups-enable-actions">
+                  <input id="cfgGroupsSearch" class="input w-120" placeholder="Procurar..." title="Filtrar grupos" />
+                  <button id="btnGroupsEnableAll" class="btn btn-glass" title="Ativar todos"><i class="fas fa-check-double"></i></button>
+                  <button id="btnGroupsDisableAll" class="btn btn-glass" title="Desativar todos"><i class="fas fa-ban"></i></button>
+                </div>
+                <div id="cfgGroupsEnable" class="groups-enable-list"></div>
+                <small class="text-secondary">Desmarcar para excluir colunas desse grupo.</small>
+              </div>
+              <div>
+                <label class="lbl">Presets de Exportação</label>
+                <div class="inline-group export-preset-row">
+                  <select id="cfgPresetSelect" class="input export-preset-select">
+                    <option value="">Selecionar preset...</option>
+                  </select>
+                  <button id="btnCfgApplyPreset" class="btn btn-glass" title="Aplicar preset"><i class="fas fa-play"></i> Aplicar</button>
+                  <button id="btnCfgSavePreset" class="btn btn-glass" title="Guardar como preset"><i class="fas fa-save"></i> Guardar</button>
+                  <button id="btnCfgDeletePreset" class="btn btn-glass" title="Apagar preset"><i class="fas fa-trash"></i></button>
+                  <button id="btnCfgExportPresets" class="btn btn-glass" title="Exportar presets (ficheiro)"><i class="fas fa-file-export"></i></button>
+                  <button id="btnCfgImportPresets" class="btn btn-glass" title="Importar presets (ficheiro)"><i class="fas fa-file-import"></i></button>
+                  <button id="btnCfgSyncPull" class="btn btn-glass" title="Obter presets do servidor"><i class="fas fa-cloud-download-alt"></i></button>
+                  <button id="btnCfgSyncPush" class="btn btn-glass" title="Enviar presets para o servidor"><i class="fas fa-cloud-upload-alt"></i></button>
+                  <button id="btnCfgSyncDelete" class="btn btn-glass" title="Apagar preset remoto selecionado"><i class="fas fa-cloud-minus"></i></button>
+                  <input id="cfgImportFile" type="file" accept="application/json" hidden />
+                </div>
+                <small class="text-secondary">Presets armazenados localmente.</small>
+              </div>
+              <div>
+                <label class="lbl">Opções CSV</label>
+                <label class="lbl inline-flex-gap"><input type="checkbox" id="cfgIncludeRawCSV"/> Incluir objeto original (coluna)</label>
+                <label class="lbl mt-4">Nome da coluna RAW<br><input id="cfgRawCSVName" class="input w-120" value="__raw"/></label>
+                <small class="text-secondary">JSON do log original escapeado.</small>
+              </div>
+            </div>
+            <div id="exportConfigErrors" class="export-config-errors" aria-live="polite" hidden></div>
+            <div id="exportConfigPreview" class="export-config-preview mt-12" hidden>
+              <h5 class="preview-title"><i class="fas fa-table"></i> Pré-visualização</h5>
+              <div class="preview-scroll">
+                <table class="preview-table" aria-label="Pré-visualização de exportação"><thead></thead><tbody></tbody></table>
               </div>
             </div>
           </div>
@@ -333,11 +463,6 @@
             <button id="pageNext" class="btn btn-glass" title="Próxima página" disabled><i class="fas fa-chevron-right"></i></button>
             <label class="inline-group pagination-label">Pág:
               <input id="pageInput" type="number" class="input w-120" min="1" value="1" title="Ir para página" />
-            </label>
-            <label class="inline-group pagination-label">Por página:
-              <select id="perPage" class="input w-120" title="Itens por página">
-                <option value="50">50</option>
-                <option value="100" selected>100</option>
                 <option value="200">200</option>
                 <option value="400">400</option>
               </select>
@@ -349,6 +474,17 @@
         <div class="grid-auto mt-16" id="statsGrid">
           <div class="mini-stat"><div class="icon"><i class="fas fa-ban"></i></div><div><div class="label">Banimentos</div><div class="value" id="countBans">-</div></div></div>
           <div class="mini-stat"><div class="icon"><i class="fas fa-comment-slash"></i></div><div><div class="label">Mensagens apagadas</div><div class="value" id="countMsgDel">-</div></div></div>
+            <div class="mt-12 inline-flex-gap export-preset-row">
+              <select id="cfgPresetSelectQuick" class="input export-preset-select" title="Preset de exportação (rápido)"></select>
+              <button id="cfgPresetApplyQuick" class="btn btn-glass" title="Aplicar preset selecionado"><i class="fas fa-play"></i></button>
+              <button id="cfgPresetSaveQuick" class="btn btn-glass" title="Guardar configuração atual como preset"><i class="fas fa-save"></i></button>
+              <button id="cfgPresetDeleteQuick" class="btn btn-glass" title="Apagar preset selecionado"><i class="fas fa-trash"></i></button>
+              <button id="cfgPresetExportFileQuick" class="btn btn-glass" title="Exportar presets"><i class="fas fa-file-export"></i></button>
+              <label class="btn btn-glass" title="Importar presets"><i class="fas fa-file-import"></i><input id="cfgPresetImportFileQuick" type="file" accept="application/json" hidden/></label>
+              <button id="cfgPresetSyncPullQuick" class="btn btn-glass" title="Obter presets do servidor"><i class="fas fa-cloud-download-alt"></i></button>
+              <button id="cfgPresetSyncPushQuick" class="btn btn-glass" title="Enviar presets para o servidor"><i class="fas fa-cloud-upload-alt"></i></button>
+              <button id="cfgPresetSyncDeleteQuick" class="btn btn-glass" title="Apagar preset remoto selecionado"><i class="fas fa-cloud-minus"></i></button>
+            </div>
           <div class="mini-stat"><div class="icon"><i class="fas fa-pen"></i></div><div><div class="label">Mensagens editadas</div><div class="value" id="countMsgEdit">-</div></div></div>
           <div class="mini-stat"><div class="icon"><i class="fas fa-users"></i></div><div><div class="label">Entradas/Saídas</div><div class="value" id="countJoinsLeaves">-</div></div></div>
           <div class="mini-stat"><div class="icon"><i class="fas fa-microphone"></i></div><div><div class="label">Eventos de voz</div><div class="value" id="countVoice">-</div></div></div>
@@ -364,9 +500,30 @@
           <div id="feed" class="mt-12" aria-live="polite"></div>
         </div>
 
-        <div class="glass-card card-pad mt-16">
+        <div class="glass-card card-pad mt-16" id="hierTools">
           <h3 class="section-title"><i class="fas fa-sitemap"></i> Hierarquia rápida</h3>
           <p class="text-secondary">Mover rapidamente cargos e canais. Use com cuidado.</p>
+          <div id="roleManagerPanel" class="mt-12">
+            <h4 class="section-subtitle"><i class="fas fa-user-shield"></i> Gestão de Cargos</h4>
+            <div class="controls-row mt-8">
+              <input id="rmNewRoleName" class="input" placeholder="Novo cargo" maxlength="80" />
+              <input id="rmNewRoleColor" class="input w-120" placeholder="#hex" maxlength="7" />
+              <button id="rmBtnCreateRole" class="btn btn-glass" title="Criar cargo"><i class="fas fa-plus"></i></button>
+              <input id="rmSearchRole" class="input max-w-140" placeholder="Pesquisar..." />
+              <button id="rmBtnRefreshRoles" class="btn btn-glass" title="Atualizar lista"><i class="fas fa-rotate"></i></button>
+            </div>
+            <div id="rmRolesList" class="roles-list mt-8" aria-label="Lista de cargos"></div>
+            <template id="tplRoleItem">
+              <div class="role-item" data-role-id="" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);padding:6px 8px;border:1px solid var(--glass-border);border-radius:8px">
+                <span class="ri-color" style="width:14px;height:14px;border-radius:4px;background:#666"></span>
+                <span class="ri-name" style="flex:1;min-width:0;font-size:.8rem;font-weight:500;letter-spacing:.3px"></span>
+                <span class="ri-pos badge-soft" style="font-size:.6rem"></span>
+                <button class="btn btn-xs btn-glass ri-up" title="Subir"><i class="fas fa-arrow-up"></i></button>
+                <button class="btn btn-xs btn-glass ri-down" title="Descer"><i class="fas fa-arrow-down"></i></button>
+                <button class="btn btn-xs btn-danger ri-del" title="Apagar"><i class="fas fa-trash"></i></button>
+              </div>
+            </template>
+          </div>
           <div class="grid-auto mt-12">
             <div>
               <h4 class="section-subtitle"><i class="fas fa-user-tag"></i> Cargos</h4>
@@ -447,6 +604,25 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/js/moderation.js"></script>
+  <!-- Modal Diff Presets -->
+  <div id="presetDiffModal" class="modal-overlay modal-hidden" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal-content preset-diff-modal-size">
+      <div class="modal-header">
+        <h2 id="presetDiffTitle">Diferenças de Presets</h2>
+        <button class="modal-close" aria-label="Fechar" id="presetDiffClose">&times;</button>
+      </div>
+      <div class="modal-body" id="presetDiffBody">
+        <p class="text-secondary" id="presetDiffIntro">Pré-visualização das alterações antes de aplicar.</p>
+  <div id="presetDiffSummary" class="preset-diff-summary"></div>
+  <div id="presetDiffDetails" class="preset-diff-details"></div>
+  <div class="mt-12 preset-diff-actions">
+          <button id="presetDiffMerge" class="btn btn-primary"><i class="fas fa-check"></i> Aplicar / Merge</button>
+          <button id="presetDiffReplace" class="btn btn-glass"><i class="fas fa-exchange-alt"></i> Substituir Tudo</button>
+          <button id="presetDiffCancel" class="btn btn-danger"><i class="fas fa-times"></i> Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <!-- Shortcut Help Overlay -->
   <div id="shortcutOverlay" class="modal-overlay modal-hidden" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="modal-content modal-wide">
@@ -743,6 +919,15 @@
   .group-mod.pinned{border-color:#f59e0b;box-shadow:0 0 0 1px rgba(245,158,11,.45)}
   .group-head .pin-btn{margin-left:4px}
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);border:0}
+  /* Roles list extracted style */
+  #rmRolesList{max-height:260px;overflow:auto;border:1px solid var(--glass-border);border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px}
+  #presetDiffModal .diff-add{background:rgba(16,185,129,.15);color:#34d399;padding:2px 4px;border-radius:4px}
+  #presetDiffModal .diff-rem{background:rgba(239,68,68,.18);color:#f87171;padding:2px 4px;border-radius:4px;text-decoration:line-through}
+  #presetDiffModal .diff-changed{background:rgba(245,158,11,.18);color:#fbbf24;padding:2px 4px;border-radius:4px}
+  .preset-diff-modal-size{max-width:760px}
+  .preset-diff-summary{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+  .preset-diff-details{max-height:300px;overflow:auto;border:1px solid var(--glass-border);border-radius:8px;padding:8px;font-size:.7rem;line-height:1.3}
+  .preset-diff-actions{display:flex;flex-wrap:wrap;gap:8px}
     </style>
 </body>
 </html>

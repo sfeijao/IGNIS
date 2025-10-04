@@ -49,28 +49,75 @@
   let focusedGroup = null; // currently focused executorId (group isolation)
   let groupSearchTerm = ''; // search term for grouped moderators
   let showGroupShare = true; // toggle for showing percentage shares
+  // Focused export configuration allowing whitelist, ordering, header prettification
+  const focusedExportConfig = {
+    // If whitelist not empty, ONLY these keys are exported (order preserved)
+    whitelist: [
+      'id','timestamp','type','data.executorId','resolved.executor.id','resolved.executor.username','resolved.target.id','resolved.target.username','action','reason'
+    ],
+    // If whitelist empty, optionally restrict to prefixes; empty => all
+    includePrefixes: [],
+    // Header label mapping (raw -> pretty)
+    headerMap: {
+      'id':'Log ID',
+      'timestamp':'Data/Hora',
+      'type':'Tipo',
+      'data.executorId':'Executor ID (data)',
+      'resolved.executor.id':'Executor ID',
+      'resolved.executor.username':'Executor Nome',
+      'resolved.target.id':'Alvo ID',
+      'resolved.target.username':'Alvo Nome',
+      'action':'Ação',
+      'reason':'Motivo'
+    },
+    // Ordering mode: 'whitelist' | 'alphabetical' | 'grouped'
+    orderMode: 'whitelist',
+    groups: [
+      { name:'Identificação', match:/^(id|timestamp|type)$/ },
+      { name:'Executor', match:/^resolved\.executor\.|data\.executorId$/ },
+      { name:'Alvo', match:/^resolved\.target\./ },
+      { name:'Ação', match:/^(action|reason)$/ }
+    ],
+    groupedSectionRows: false, // potential future feature
+    includeArrays: true,
+    maxDepth: 10,
+    dateFormat: 'iso',
+    includeRawOriginal: false,
+    previewRowLimit: 5,
+      groupsDisabled: [],
+      includeRawOriginalCSV: false,
+      rawCSVColumnName: '__raw'
+  };
+
+  // Load persisted export config overrides
+  try {
+    const rawCfg = localStorage.getItem('mod-focused-export-config');
+    if(rawCfg){
+      const parsed = JSON.parse(rawCfg);
+      Object.assign(focusedExportConfig, parsed || {});
+    }
+  } catch(e){ console.warn('Failed to load export config', e); }
   // Inject dim style for focus mode (once)
   if(!document.getElementById('focusDimStyle')){
     const st = document.createElement('style');
     st.id = 'focusDimStyle';
-  st.textContent = `.group-mod{transition:opacity .25s ease, transform .25s ease;will-change:opacity,transform;}
-  .group-mod[data-dim="true"]{opacity:.35;filter:saturate(.55);transform:scale(.985);} .group-mod[data-dim="true"] .group-head{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,0));}
-  .badge-focus{display:inline-flex;align-items:center;gap:4px;background:#2563eb;color:#fff;font-size:.65rem;padding:2px 6px;border-radius:999px;margin-left:6px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;box-shadow:0 0 0 0 rgba(37,99,235,.6);animation:focusPulse 2.2s ease-in-out 1;}
-  .badge-focus-click{cursor:pointer;}
-  .badge-focus-click:hover{background:#1d4ed8;}
-  @keyframes focusPulse{0%{box-shadow:0 0 0 0 rgba(37,99,235,.6);}70%{box-shadow:0 0 0 6px rgba(37,99,235,0);}100%{box-shadow:0 0 0 0 rgba(37,99,235,0);}}
-  .groups-meta{font-size:.7rem;opacity:.65;margin:4px 4px 6px 4px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
-  .mini-stats-focus{margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;font-size:.65rem;opacity:.88;}
-  .mini-stats-focus span{display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,.07);padding:2px 7px;border-radius:6px;line-height:1.1;}
-  .mini-stats-focus .sep{background:none;padding:0;border-radius:0;opacity:.45;}
-  `;
+  st.textContent = '.group-mod{transition:opacity .25s ease, transform .25s ease;will-change:opacity,transform;}' +
+  '.group-mod[data-dim="true"]{opacity:.35;filter:saturate(.55);transform:scale(.985);} .group-mod[data-dim="true"] .group-head{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,0));}' +
+  '.badge-focus{display:inline-flex;align-items:center;gap:4px;background:#2563eb;color:#fff;font-size:.65rem;padding:2px 6px;border-radius:999px;margin-left:6px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;box-shadow:0 0 0 0 rgba(37,99,235,.6);animation:focusPulse 2.2s ease-in-out 1;}' +
+  '.badge-focus-click{cursor:pointer;}' +
+  '.badge-focus-click:hover{background:#1d4ed8;}' +
+  '@keyframes focusPulse{0%{box-shadow:0 0 0 0 rgba(37,99,235,.6);}70%{box-shadow:0 0 0 6px rgba(37,99,235,0);}100%{box-shadow:0 0 0 0 rgba(37,99,235,0);}}' +
+  '.groups-meta{font-size:.7rem;opacity:.65;margin:4px 4px 6px 4px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}' +
+  '.mini-stats-focus{margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;font-size:.65rem;opacity:.88;}' +
+  '.mini-stats-focus span{display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,.07);padding:2px 7px;border-radius:6px;line-height:1.1;}' +
+  '.mini-stats-focus .sep{background:none;padding:0;border-radius:0;opacity:.45;}';
     document.head.appendChild(st);
   }
 
   function notify(msg, type='info'){
     const n = document.createElement('div');
-    n.className = `notification notification-${type} slide-up`;
-    n.innerHTML = `<i class="fas ${type==='error'?'fa-exclamation-circle': type==='success'?'fa-check-circle':'fa-info-circle'}"></i><span>${msg}</span>`;
+  n.className = 'notification notification-' + type + ' slide-up';
+  n.innerHTML = '<i class="fas ' + (type==='error'?'fa-exclamation-circle': type==='success'?'fa-check-circle':'fa-info-circle') + '"></i><span>' + msg + '</span>';
     document.body.appendChild(n);
     setTimeout(()=>{n.style.animation='slideDown 0.3s ease-in'; setTimeout(()=>n.remove(),300);},2500);
   }
@@ -202,7 +249,7 @@
       u.searchParams.set('window', w);
       const r = await fetch(u, { credentials: 'same-origin' });
       const d = await r.json();
-      if (!r.ok || !d.success) throw new Error(d.error || `HTTP ${r.status}`);
+    if (!r.ok || !d.success) throw new Error(d.error || ('HTTP ' + r.status));
       const m = d.metrics || {};
       if (!window.__animateNumber) {
         window.__animateNumber = function(el, to){
@@ -391,7 +438,7 @@
     const sel = document.getElementById('presetSelect'); if(!sel) return;
     const cur = sel.value;
     const presets = loadPresets();
-    sel.innerHTML = `<option value="">Presets...</option>` + Object.keys(presets).sort().map(k=>`<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+  sel.innerHTML = '<option value="">Presets...</option>' + Object.keys(presets).sort().map(function(k){ return '<option value="' + escapeHtml(k) + '">' + escapeHtml(k) + '</option>'; }).join('');
     if(cur && presets[cur]) sel.value = cur; else sel.value = '';
   }
   function captureCurrentFilterState(){
@@ -537,7 +584,7 @@
     return m[t] || t.replace(/^mod_/,'').replace(/_/g,' ');
   }
   function avatarUrl(id, avatar){
-    if (id && avatar) return `https://cdn.discordapp.com/avatars/${encodeURIComponent(id)}/${encodeURIComponent(avatar)}.png?size=64`;
+  if (id && avatar) return 'https://cdn.discordapp.com/avatars/' + encodeURIComponent(id) + '/' + encodeURIComponent(avatar) + '.png?size=64';
     return '/default-avatar.svg';
   }
 
@@ -577,100 +624,98 @@
     const d = l.data || {};
     const r = l.resolved || {};
     const dt = new Date(l.timestamp).toLocaleString('pt-PT');
-  let deltaHtml = '';
-  if(showLatency){
-    if(lastRenderTs!=null){ const diff = Math.max(0, l.timestamp - lastRenderTs); const sec = diff/1000; deltaHtml = `<span class=\"latency-delta\" title=\"Δ desde evento anterior\">+${sec>=60?( (sec/60).toFixed(1)+'m'): sec.toFixed(1)+'s'}</span>`; }
-    lastRenderTs = l.timestamp;
-  }
-  const fallbackUserId = d.userId || (isSnowflake(l.message) ? l.message : null);
-  const userLabel = r.user ? `${escapeHtml(r.user.username||'')}${r.user.nick? ' ('+escapeHtml(r.user.nick)+')':''}` : (fallbackUserId ? 'Desconhecido' : '');
-  const modLabel = r.executor ? `${escapeHtml(r.executor.username||'')}${r.executor.nick? ' ('+escapeHtml(r.executor.nick)+')':''}` : (d.executorId ? 'Desconhecido' : '');
-  const chanLabel = r.channel ? `#${escapeHtml(r.channel.name||'')}` : (d.channelId ? 'Desconhecido' : '');
+    let deltaHtml = '';
+    if(showLatency){
+      if(lastRenderTs!=null){
+        const diff = Math.max(0, l.timestamp - lastRenderTs);
+        const sec = diff/1000;
+        deltaHtml = '<span class="latency-delta" title="Δ desde evento anterior">+' + (sec>=60? ((sec/60).toFixed(1)+'m') : sec.toFixed(1)+'s') + '</span>';
+      }
+      lastRenderTs = l.timestamp;
+    }
+    const fallbackUserId = d.userId || (isSnowflake(l.message) ? l.message : null);
+    const userLabel = r.user ? (escapeHtml(r.user.username||'') + (r.user.nick? ' ('+escapeHtml(r.user.nick)+')':'')) : (fallbackUserId ? 'Desconhecido' : '');
+    const modLabel = r.executor ? (escapeHtml(r.executor.username||'') + (r.executor.nick? ' ('+escapeHtml(r.executor.nick)+')':'')) : (d.executorId ? 'Desconhecido' : '');
+    const chanLabel = r.channel ? ('#' + escapeHtml(r.channel.name||'')) : (d.channelId ? 'Desconhecido' : '');
     const meta = [
-  userLabel ? `<span class=\"badge-soft\" title=\"Clique para filtrar • Shift+Clique copia o ID\" data-filter-user="${escapeHtml(fallbackUserId||r.user?.id||'')}" data-copy-id="${escapeHtml(fallbackUserId||r.user?.id||'')}"><i class=\"fas fa-user\"></i> ${userLabel}</span>` : '',
-      modLabel ? `<span class=\"badge-soft\" title=\"Clique para filtrar • Shift+Clique copia o ID\" data-filter-mod="${escapeHtml(d.executorId||r.executor?.id||'')}" data-copy-id="${escapeHtml(d.executorId||r.executor?.id||'')}"><i class=\"fas fa-shield-alt\"></i> ${modLabel}</span>` : '',
-      chanLabel ? `<span class=\"badge-soft\" title=\"Clique para filtrar • Shift+Clique copia o ID\" data-filter-channel="${escapeHtml(d.channelId||r.channel?.id||'')}" data-copy-id="${escapeHtml(d.channelId||r.channel?.id||'')}"><i class=\"fas fa-hashtag\"></i> ${chanLabel}</span>` : ''
+      userLabel ? '<span class="badge-soft" title="Clique para filtrar • Shift+Clique copia o ID" data-filter-user="' + escapeHtml(fallbackUserId||r.user?.id||'') + '" data-copy-id="' + escapeHtml(fallbackUserId||r.user?.id||'') + '"><i class="fas fa-user"></i> ' + userLabel + '</span>' : '',
+      modLabel ? '<span class="badge-soft" title="Clique para filtrar • Shift+Clique copia o ID" data-filter-mod="' + escapeHtml(d.executorId||r.executor?.id||'') + '" data-copy-id="' + escapeHtml(d.executorId||r.executor?.id||'') + '"><i class="fas fa-shield-alt"></i> ' + modLabel + '</span>' : '',
+      chanLabel ? '<span class="badge-soft" title="Clique para filtrar • Shift+Clique copia o ID" data-filter-channel="' + escapeHtml(d.channelId||r.channel?.id||'') + '" data-copy-id="' + escapeHtml(d.channelId||r.channel?.id||'') + '"><i class="fas fa-hashtag"></i> ' + chanLabel + '</span>' : ''
     ].filter(Boolean).join(' ');
     const quick = [];
-  if (l.type === 'mod_message_update') {
-      if (d.before) quick.push(`<div class=\"feed-meta\"><b>Antes:</b> ${escapeHtml(String(d.before).slice(0, 160))}${String(d.before).length>160?'…':''}</div>`);
-      if (d.after) quick.push(`<div class=\"feed-meta\"><b>Depois:</b> ${escapeHtml(String(d.after).slice(0, 160))}${String(d.after).length>160?'…':''}</div>`);
+    if (l.type === 'mod_message_update') {
+      if (d.before) quick.push('<div class="feed-meta"><b>Antes:</b> ' + escapeHtml(String(d.before).slice(0,160)) + (String(d.before).length>160?'…':'') + '</div>');
+      if (d.after) quick.push('<div class="feed-meta"><b>Depois:</b> ' + escapeHtml(String(d.after).slice(0,160)) + (String(d.after).length>160?'…':'') + '</div>');
     } else if (l.type === 'mod_message_delete' && d.content) {
-      quick.push(`<div class=\"feed-meta\"><b>Conteúdo:</b> ${escapeHtml(String(d.content).slice(0,200))}${String(d.content).length>200?'…':''}</div>`);
+      quick.push('<div class="feed-meta"><b>Conteúdo:</b> ' + escapeHtml(String(d.content).slice(0,200)) + (String(d.content).length>200?'…':'') + '</div>');
     } else if (l.type === 'mod_voice_move') {
-      const from = r.fromChannel ? `#${escapeHtml(r.fromChannel.name)}` : 'desconhecido';
-      const to = r.toChannel ? `#${escapeHtml(r.toChannel.name)}` : (r.channel ? `#${escapeHtml(r.channel.name)}` : 'desconhecido');
-      quick.push(`<div class=\"feed-meta\"><b>Move:</b> ${from} → ${to}</div>`);
+      const from = r.fromChannel ? ('#' + escapeHtml(r.fromChannel.name)) : 'desconhecido';
+      const to = r.toChannel ? ('#' + escapeHtml(r.toChannel.name)) : (r.channel ? ('#' + escapeHtml(r.channel.name)) : 'desconhecido');
+      quick.push('<div class="feed-meta"><b>Move:</b> ' + from + ' → ' + to + '</div>');
     } else if (l.type === 'mod_voice_join') {
-      const to = r.channel ? `#${escapeHtml(r.channel.name)}` : 'desconhecido';
-      quick.push(`<div class=\"feed-meta\"><b>Entrou:</b> ${to}</div>`);
+      const to = r.channel ? ('#' + escapeHtml(r.channel.name)) : 'desconhecido';
+      quick.push('<div class="feed-meta"><b>Entrou:</b> ' + to + '</div>');
     } else if (l.type === 'mod_voice_leave') {
-      const from = r.channel ? `#${escapeHtml(r.channel.name)}` : 'desconhecido';
-      quick.push(`<div class=\"feed-meta\"><b>Saiu:</b> ${from}</div>`);
+      const from = r.channel ? ('#' + escapeHtml(r.channel.name)) : 'desconhecido';
+      quick.push('<div class="feed-meta"><b>Saiu:</b> ' + from + '</div>');
     } else if (l.type === 'mod_member_update') {
       if (d.nickname && (typeof d.nickname === 'object')) {
         const nb = (typeof d.nickname.before !== 'undefined') ? String(d.nickname.before||'') : null;
         const na = (typeof d.nickname.after !== 'undefined') ? String(d.nickname.after||'') : null;
-        if (nb !== null || na !== null) quick.push(`<div class=\"feed-meta\"><b>Apelido:</b> ${escapeHtml(nb??'—')} → ${escapeHtml(na??'—')}</div>`);
+        if (nb !== null || na !== null) quick.push('<div class="feed-meta"><b>Apelido:</b> ' + escapeHtml(nb??'—') + ' → ' + escapeHtml(na??'—') + '</div>');
       }
       const rr = r.roles || {};
-      if (rr.added?.length || rr.removed?.length) {
-        const added = (rr.added||[]).slice(0,3).map(ro=>`@${escapeHtml(ro.name||ro.id)}`).join(', ');
-        const removed = (rr.removed||[]).slice(0,3).map(ro=>`@${escapeHtml(ro.name||ro.id)}`).join(', ');
-        if (added) quick.push(`<div class=\"feed-meta\"><b>Cargos adicionados:</b> ${added}${rr.added.length>3?'…':''}</div>`);
-        if (removed) quick.push(`<div class=\"feed-meta\"><b>Cargos removidos:</b> ${removed}${rr.removed.length>3?'…':''}</div>`);
+      if ((rr.added&&rr.added.length) || (rr.removed&&rr.removed.length)) {
+        const added = (rr.added||[]).slice(0,3).map(function(ro){ return '@' + escapeHtml(ro.name||ro.id); }).join(', ');
+        const removed = (rr.removed||[]).slice(0,3).map(function(ro){ return '@' + escapeHtml(ro.name||ro.id); }).join(', ');
+        if (added) quick.push('<div class="feed-meta"><b>Cargos adicionados:</b> ' + added + (rr.added.length>3?'…':'') + '</div>');
+        if (removed) quick.push('<div class="feed-meta"><b>Cargos removidos:</b> ' + removed + (rr.removed.length>3?'…':'') + '</div>');
       }
     } else if (l.type === 'mod_ban_add') {
       const reason = l.message || d.reason || '';
-      if (reason) quick.push(`<div class=\"feed-meta\"><b>Motivo:</b> ${escapeHtml(String(reason).slice(0,200))}${String(reason).length>200?'…':''}</div>`);
+      if (reason) quick.push('<div class="feed-meta"><b>Motivo:</b> ' + escapeHtml(String(reason).slice(0,200)) + (String(reason).length>200?'…':'') + '</div>');
     }
     const acts = buildQuickActions(l);
-    const actionsRow = acts.length ? `<div class=\"feed-actions\" style=\"margin-top:8px\">${acts.map(a=>{
-      const extra = a.payload ? Object.entries(a.payload).map(([k,v])=>`data-${k.replace(/[A-Z]/g, m=>'-'+m.toLowerCase())}=\"${String(v)}\"`).join(' ') : '';
-      const title = `title=\"${escapeHtml(a.label)}\"`;
-      return `<button class=\"btn btn-sm btn-glass qa-btn\" ${title} data-action=\"${a.key}\" data-log-id=\"${l.id}\" ${extra}><i class=\"fas ${a.icon}\"></i> ${a.label}</button>`;
-    }).join(' ')}</div>` : '';
-
-  // In-card deep links (open in Discord) with glyph icons and more prominent placement
-  const userOpen = d.userId ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-user\" title=\"Abrir usuário no Discord\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(d.userId)}\">@ Abrir usuário</a>` : '';
-  const modOpen = d.executorId ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-mod\" title=\"Abrir moderador no Discord\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(d.executorId)}\">🛡️ Abrir moderador</a>` : '';
-  const chanOpen = d.channelId ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-channel\" title=\"Abrir canal no Discord\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(d.channelId)}\"># Abrir canal</a>` : '';
-  const msgOpen = (d.channelId && d.messageId) ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-message\" title=\"Abrir mensagem no Discord\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(d.channelId)}/${encodeURIComponent(d.messageId)}\">💬 Abrir mensagem</a>` : '';
-  const linksRow = (userOpen || modOpen || chanOpen || msgOpen) ? `<div class=\"link-actions\" style=\"margin-top:6px\">${[userOpen, modOpen, chanOpen, msgOpen].filter(Boolean).join(' ')} </div>` : '';
-
-  // Inline actions: copy + dismiss
-  const copyBtn = `<button class=\"btn btn-sm btn-glass copy-summary\" title=\"Copiar resumo\" data-log-id=\"${l.id}\"><i class=\"fas fa-copy\"></i> Copiar resumo</button>`;
-  const dismissBtn = `<button class=\"btn btn-sm btn-glass dismiss-card\" title=\"Remover do feed (apenas visual)\" data-log-id=\"${l.id}\"><i class=\"fas fa-eye-slash\"></i> Ocultar</button>`;
-    // Build role diff chips for quick visual context in member updates
+    const actionsRow = acts.length ? ('<div class="feed-actions" style="margin-top:8px">' + acts.map(function(a){
+      const extra = a.payload ? Object.entries(a.payload).map(function(pair){ var k=pair[0]; var v=pair[1]; return 'data-' + k.replace(/[A-Z]/g,function(m){return '-' + m.toLowerCase();}) + '="' + String(v) + '"'; }).join(' ') : '';
+      const title = 'title="' + escapeHtml(a.label) + '"';
+      return '<button class="btn btn-sm btn-glass qa-btn" ' + title + ' data-action="' + a.key + '" data-log-id="' + l.id + '" ' + extra + '><i class="fas ' + a.icon + '"></i> ' + a.label + '</button>';
+    }).join(' ') + '</div>') : '';
+    const userOpen = d.userId ? ('<a class="btn btn-sm btn-glass link-btn btn-link-user" title="Abrir usuário no Discord" target="_blank" href="https://discord.com/users/' + encodeURIComponent(d.userId) + '">@ Abrir usuário</a>') : '';
+    const modOpen = d.executorId ? ('<a class="btn btn-sm btn-glass link-btn btn-link-mod" title="Abrir moderador no Discord" target="_blank" href="https://discord.com/users/' + encodeURIComponent(d.executorId) + '">🛡️ Abrir moderador</a>') : '';
+    const chanOpen = d.channelId ? ('<a class="btn btn-sm btn-glass link-btn btn-link-channel" title="Abrir canal no Discord" target="_blank" href="https://discord.com/channels/' + encodeURIComponent(guildId) + '/' + encodeURIComponent(d.channelId) + '"># Abrir canal</a>') : '';
+    const msgOpen = (d.channelId && d.messageId) ? ('<a class="btn btn-sm btn-glass link-btn btn-link-message" title="Abrir mensagem no Discord" target="_blank" href="https://discord.com/channels/' + encodeURIComponent(guildId) + '/' + encodeURIComponent(d.channelId) + '/' + encodeURIComponent(d.messageId) + '">💬 Abrir mensagem</a>') : '';
+    const linksRow = (userOpen || modOpen || chanOpen || msgOpen) ? ('<div class="link-actions" style="margin-top:6px">' + [userOpen, modOpen, chanOpen, msgOpen].filter(Boolean).join(' ') + ' </div>') : '';
+    const copyBtn = '<button class="btn btn-sm btn-glass copy-summary" title="Copiar resumo" data-log-id="' + l.id + '"><i class="fas fa-copy"></i> Copiar resumo</button>';
+    const dismissBtn = '<button class="btn btn-sm btn-glass dismiss-card" title="Remover do feed (apenas visual)" data-log-id="' + l.id + '"><i class="fas fa-eye-slash"></i> Ocultar</button>';
     let roleChips = '';
     try {
       if (l.type === 'mod_member_update' && r.roles) {
-        const add = (r.roles.added||[]).slice(0,4).map(ro=>`<span class=\"role-chip add\"><i class=\"fas fa-plus\"></i>@${escapeHtml(ro.name||ro.id)}</span>`).join('');
-        const rem = (r.roles.removed||[]).slice(0,4).map(ro=>`<span class=\"role-chip rem\"><i class=\"fas fa-minus\"></i>@${escapeHtml(ro.name||ro.id)}</span>`).join('');
-        if (add || rem) roleChips = `<div class=\"plan-diff\" style=\"margin-top:6px\">${add}${rem}</div>`;
+        const add = (r.roles.added||[]).slice(0,4).map(function(ro){ return '<span class="role-chip add"><i class="fas fa-plus"></i>@' + escapeHtml(ro.name||ro.id) + '</span>'; }).join('');
+        const rem = (r.roles.removed||[]).slice(0,4).map(function(ro){ return '<span class="role-chip rem"><i class="fas fa-minus"></i>@' + escapeHtml(ro.name||ro.id) + '</span>'; }).join('');
+        if (add || rem) roleChips = '<div class="plan-diff" style="margin-top:6px">' + add + rem + '</div>';
       }
     } catch {}
-    const expandBlock = (quick.length || roleChips) ? `<div class=\"expand\" data-collapsed=\"true\">${quick.join('')}${roleChips}</div>` : '';
-    return `
-      <div class="feed-item ${familyClass(l.type||'')}" role="button" data-log-id="${l.id}" aria-expanded="false" aria-label="${escapeHtml(typeLabel(l.type||''))} em ${dt}">
-        <div class="feed-content">
-          <div class="feed-head">
-            <div class="head-left">
-              <div class="icon-badge"><i class="fas ${iconFor(l.type||'')}"></i></div>
-              <div class="feed-title-text" title="${escapeHtml(typeLabel(l.type||''))}">${escapeHtml(typeLabel(l.type||'log'))}</div>
-              <div class="caret"><i class="fas fa-caret-right"></i></div>
-            </div>
-            <div class="feed-timestamp">${dt} ${deltaHtml}</div>
-          </div>
-          <div class="recency-bar" data-ts="${Number(l.timestamp)}"><span></span></div>
-          ${meta ? `<div class=\"feed-meta\" style=\"margin-top:4px\">${meta}</div>`:''}
-          ${linksRow ? `<div style=\"margin-top:6px\">${linksRow}</div>`:''}
-          ${l.message && !isSnowflake(l.message) ? `<div class=\"feed-meta\" style=\"margin-top:6px\">${escapeHtml(l.message)}</div>`:''}
-          ${expandBlock}
-          <div class="feed-actions" style="margin-top:8px">${copyBtn} ${dismissBtn}</div>
-          ${actionsRow}
-        </div>
-      </div>`;
+    const expandBlock = (quick.length || roleChips) ? ('<div class="expand" data-collapsed="true">' + quick.join('') + roleChips + '</div>') : '';
+    return '<div class="feed-item ' + familyClass(l.type||'') + '" role="button" data-log-id="' + l.id + '" aria-expanded="false" aria-label="' + escapeHtml(typeLabel(l.type||'')) + ' em ' + dt + '">' +
+      '<div class="feed-content">' +
+        '<div class="feed-head">' +
+          '<div class="head-left">' +
+            '<div class="icon-badge"><i class="fas ' + iconFor(l.type||'') + '"></i></div>' +
+            '<div class="feed-title-text" title="' + escapeHtml(typeLabel(l.type||'')) + '">' + escapeHtml(typeLabel(l.type||'log')) + '</div>' +
+            '<div class="caret"><i class="fas fa-caret-right"></i></div>' +
+          '</div>' +
+          '<div class="feed-timestamp">' + dt + ' ' + deltaHtml + '</div>' +
+        '</div>' +
+        '<div class="recency-bar" data-ts="' + Number(l.timestamp) + '"><span></span></div>' +
+        (meta ? ('<div class="feed-meta" style="margin-top:4px">' + meta + '</div>') : '') +
+        (linksRow ? ('<div style="margin-top:6px">' + linksRow + '</div>') : '') +
+        (l.message && !isSnowflake(l.message) ? ('<div class="feed-meta" style="margin-top:6px">' + escapeHtml(l.message) + '</div>') : '') +
+        expandBlock +
+        '<div class="feed-actions" style="margin-top:8px">' + copyBtn + ' ' + dismissBtn + '</div>' +
+        actionsRow +
+      '</div>' +
+    '</div>';
   }
 
   function renderFeed(items){
@@ -744,10 +789,12 @@
           const h = exp.clientHeight; exp.style.height='0px';
           requestAnimationFrame(()=>{ exp.style.height=h+'px'; exp.addEventListener('transitionend', function done(){ exp.style.height='auto'; exp.removeEventListener('transitionend', done); }); });
         }
-        // Expose last logs and maybe show clear stream button
-        window.__lastLogs = items;
-        updateClearStreamBtn();
       }
+      // Ensure dynamic group style (previous stray template literal fixed)
+      st.textContent = '.group-mod{transition:opacity .25s ease, transform .25s ease;will-change:opacity,transform;}';
+      // Expose last logs and maybe show clear stream button
+      window.__lastLogs = items;
+      updateClearStreamBtn();
       if (e.detail === 2) openEventModal(el.getAttribute('data-log-id'));
     }));
     // Quick actions
@@ -811,7 +858,7 @@
     function chipHandler(kind){
       return (e)=>{
         e.stopPropagation();
-        const id = e.currentTarget.getAttribute(`data-filter-${kind}`);
+  const id = e.currentTarget.getAttribute('data-filter-' + kind);
         if (!id) return;
         if (e.shiftKey) {
           try { if (navigator.clipboard?.writeText) navigator.clipboard.writeText(id); notify('ID copiado','success'); } catch {}
@@ -829,7 +876,7 @@
     // Load more control
     const more = document.createElement('div');
     more.style.textAlign='center'; more.style.marginTop='8px';
-    more.innerHTML = `<button id="btnLoadMore" class="btn btn-glass"><i class="fas fa-angles-down"></i> Carregar mais</button>`;
+  more.innerHTML = '<button id="btnLoadMore" class="btn btn-glass"><i class="fas fa-angles-down"></i> Carregar mais</button>';
     els.feed.appendChild(more);
     document.getElementById('btnLoadMore')?.addEventListener('click', async ()=>{ currentLimit = Math.min(1000, currentLimit + 200); persistPrefs(); await loadFeed(); });
 
@@ -843,14 +890,14 @@
           const label = await resolveMemberLabel(id);
           if (label) {
             const icon = chip.hasAttribute('data-filter-user') ? 'fa-user' : 'fa-shield-alt';
-            chip.innerHTML = `<i class="fas ${icon}"></i> ${escapeHtml(label)}`;
+            chip.innerHTML = '<i class="fas ' + icon + '"></i> ' + escapeHtml(label);
             chip.dataset.resolved = '1';
           }
         } else if (chip.hasAttribute('data-filter-channel')){
           const id = chip.getAttribute('data-filter-channel');
           const label = await resolveChannelLabel(id);
           if (label) {
-            chip.innerHTML = `<i class="fas fa-hashtag"></i> ${escapeHtml(label)}`;
+            chip.innerHTML = '<i class="fas fa-hashtag"></i> ' + escapeHtml(label);
             chip.dataset.resolved = '1';
           }
         }
@@ -859,7 +906,7 @@
   }
 
   function renderGroupedByModerator(items){
-    if(!items.length){ els.feed.innerHTML = `<div class="no-tickets">Sem eventos</div>`; return; }
+  if(!items.length){ els.feed.innerHTML = '<div class="no-tickets">Sem eventos</div>'; return; }
     // Build map executorId => logs
     const groups = new Map();
     for(const it of items){
@@ -904,7 +951,8 @@
       const rest = arr.filter(g=> !pinnedGroups.has(g.executorId));
       arr = [...pinned, ...rest];
     }
-    const totalLogsAll = arr.reduce((s,g)=> s+g.logs.length,0) || 1;
+  const totalLogsAll = arr.reduce((s,g)=> s+g.logs.length,0) || 1;
+  const topCount = arr[0]?.logs.length || 0;
     const parts = [];
     for(let idx=0; idx<arr.length; idx++){
       const g = arr[idx];
@@ -912,42 +960,54 @@
       let label;
       let iconClass = 'fa-user-shield';
       if(first?.resolved?.executor){
-        label = `${first.resolved.executor.username}${first.resolved.executor.nick? ' ('+first.resolved.executor.nick+')':''}`;
+        label = first.resolved.executor.username + (first.resolved.executor.nick ? ' (' + first.resolved.executor.nick + ')' : '');
       } else if (g.executorId === '__system') {
         label = 'Sistema'; iconClass = 'fa-cog';
       } else if (first?.resolved?.user){
-        label = `${first.resolved.user.username}${first.resolved.user.nick? ' ('+first.resolved.user.nick+')':''}`; iconClass='fa-user';
+        label = first.resolved.user.username + (first.resolved.user.nick ? ' (' + first.resolved.user.nick + ')' : ''); iconClass='fa-user';
       } else if (first?.data?.userId){
-        label = `Utilizador ${first.data.userId}`; iconClass='fa-user';
+        label = 'Utilizador ' + first.data.userId; iconClass='fa-user';
       } else {
         label = g.executorId || '—';
       }
       const sharePct = ((g.logs.length/totalLogsAll)*100).toFixed(1);
       const dimAttr = (focusedGroup && focusedGroup!==g.executorId)?'data-dim="true"':'';
       const isFocused = focusedGroup === g.executorId;
-  const focusBadge = isFocused ? `<span class=\"badge-focus badge-focus-click\" data-unfocus=\"${escapeHtml(g.executorId)}\" data-tip=\"Clique para desfocar (ESC também)\"><i class=\"fas fa-bullseye\"></i> Focado</span>` : '';
+      const focusBadge = isFocused ? ('<span class="badge-focus badge-focus-click" data-unfocus="' + escapeHtml(g.executorId) + '" data-tip="Clique para desfocar (ESC também)"><i class="fas fa-bullseye"></i> Focado</span>') : '';
       const pinTipBase = pinnedGroups.has(g.executorId)?'Desafixar':'Fixar';
-  const pinTip = showGroupShare ? `${pinTipBase} • ${sharePct}% do total` : pinTipBase;
-      parts.push(`<div class=\"group-mod\" data-exec=\"${escapeHtml(g.executorId)}\" aria-expanded=\"true\" ${dimAttr} draggable=\"${pinnedGroups.has(g.executorId)?'true':'false'}\">
-        <div class=\"group-head\"><span class=\"group-drag-handle\" ${pinnedGroups.has(g.executorId)?'':'style=\"display:none\"'} data-tip=\"Arraste para reordenar grupos fixados\"><i class=\"fas fa-grip-vertical\"></i></span><button class=\"btn btn-sm btn-glass group-toggle\" title=\"Expandir/recolher\"><i class=\"fas fa-chevron-down\"></i></button>
-          <span class=\"group-title\"><i class=\"fas ${iconClass}\"></i> ${escapeHtml(label||'—')} ${focusBadge}</span>
-          <button class=\"btn btn-sm btn-glass pin-btn\" data-pin=\"${escapeHtml(g.executorId)}\" title=\"${pinTip}\" data-tip=\"${pinTip}\"><i class=\"fas fa-thumbtack\" style=\"transform:${pinnedGroups.has(g.executorId)?'rotate(45deg)':'none'}\"></i></button>
-          <button class=\"btn btn-sm btn-glass export-group-btn\" data-export-group=\"${escapeHtml(g.executorId)}\" data-tip=\"Exportar apenas este grupo\"><i class=\"fas fa-download\"></i></button>
-          <span class=\"group-count\" data-tip=\"${showGroupShare? sharePct+'% do total': 'Eventos neste grupo'}\">${g.logs.length} evento(s)${showGroupShare? ' • '+sharePct+'%': ` • #${idx+1} em volume`}</span>
-        </div>
-        ${buildGroupTypesPills(g.logs)}
-        <div class="group-body">
-          ${g.logs.map(l=> renderCard(l)).join('')}
-        </div>
-      </div>`);
+      const pinTip = showGroupShare ? (pinTipBase + ' • ' + sharePct + '% do total') : pinTipBase;
+      const dragHiddenAttr = pinnedGroups.has(g.executorId) ? '' : ' style="display:none"';
+      let volumeSuffix = '';
+      if(!showGroupShare){
+        volumeSuffix = ' • #' + (idx+1) + ' em volume';
+        if(topCount && idx>0){ volumeSuffix += ' (−' + (topCount - g.logs.length) + ' do topo)'; }
+      } else {
+        volumeSuffix = ' • ' + sharePct + '%';
+      }
+      parts.push(
+        '<div class="group-mod" data-exec="' + escapeHtml(g.executorId) + '" aria-expanded="true" ' + dimAttr + ' draggable="' + (pinnedGroups.has(g.executorId)?'true':'false') + '">' +
+          '<div class="group-head">' +
+            '<span class="group-drag-handle"' + dragHiddenAttr + ' data-tip="Arraste para reordenar grupos fixados"><i class="fas fa-grip-vertical"></i></span>' +
+            '<button class="btn btn-sm btn-glass group-toggle" title="Expandir/recolher"><i class="fas fa-chevron-down"></i></button>' +
+            '<span class="group-title"><i class="fas ' + iconClass + '"></i> ' + escapeHtml(label||'—') + ' ' + focusBadge + '</span>' +
+            '<button class="btn btn-sm btn-glass pin-btn" data-pin="' + escapeHtml(g.executorId) + '" title="' + pinTip + '" data-tip="' + pinTip + '"><i class="fas fa-thumbtack" style="transform:' + (pinnedGroups.has(g.executorId)?'rotate(45deg)':'none') + '"></i></button>' +
+            '<button class="btn btn-sm btn-glass export-group-btn" data-export-group="' + escapeHtml(g.executorId) + '" data-tip="Exportar apenas este grupo"><i class="fas fa-download"></i></button>' +
+            '<span class="group-count" data-tip="' + (showGroupShare? (sharePct + '% do total') : 'Eventos neste grupo') + '">' + g.logs.length + ' evento(s)' + volumeSuffix + '</span>' +
+          '</div>' +
+          buildGroupTypesPills(g.logs) +
+          '<div class="group-body">' +
+            g.logs.map(l=> renderCard(l)).join('') +
+          '</div>' +
+        '</div>'
+      );
     }
     // Visible groups count element
     const visibleCount = arr.length;
-    const headerInfo = `<div class=\"groups-meta\" data-groups-count=\"${visibleCount}\">${visibleCount} grupo(s) visíveis${focusedGroup? ' • modo focado':''}</div>`;
+  const headerInfo = '<div class="groups-meta" data-groups-count="' + visibleCount + '">' + visibleCount + ' grupo(s) visíveis' + (focusedGroup ? ' • modo focado' : '') + '</div>';
     els.feed.innerHTML = headerInfo + parts.join('');
     // If focused, inject mini stats bar inside that group head (after count)
     if(focusedGroup){
-      const target = els.feed.querySelector(`.group-mod[data-exec=\"${CSS.escape(focusedGroup)}\"] .group-head`);
+  const target = els.feed.querySelector('.group-mod[data-exec="' + CSS.escape(focusedGroup) + '"] .group-head');
       if(target){
         try {
           const grp = arr.find(g=> g.executorId===focusedGroup);
@@ -964,8 +1024,14 @@
             });
             const mini = document.createElement('div');
             mini.className = 'mini-stats-focus';
-            const statsHtml = Object.entries(counts).filter(([k,v])=>v>0).map(([k,v])=>`<span><b>${v}</b> ${k}</span>`).join('<span class=\"sep\">•</span>') || '<span>Nenhum evento</span>';
-            const exportBtns = `<span class=\"focus-export-wrap\"><button class=\"btn btn-xs btn-glass focus-export-btn\" data-format=\"json\" data-export-focused=\"${focusedGroup}\" data-tip=\"Exportar grupo (JSON)\"><i class=\"fas fa-file-code\"></i></button><button class=\"btn btn-xs btn-glass focus-export-btn\" data-format=\"csv\" data-export-focused=\"${focusedGroup}\" data-tip=\"Exportar grupo (CSV)\"><i class=\"fas fa-file-csv\"></i></button></span>`;
+            const statsHtml = Object.entries(counts)
+              .filter(function(entry){ return entry[1] > 0; })
+              .map(function(entry){ return '<span><b>' + entry[1] + '</b> ' + entry[0] + '</span>'; })
+              .join('<span class="sep">•</span>') || '<span>Nenhum evento</span>';
+            const exportBtns = '<span class="focus-export-wrap">'
+              + '<button class="btn btn-xs btn-glass focus-export-btn" data-format="json" data-export-focused="' + focusedGroup + '" data-tip="Exportar grupo (JSON)"><i class="fas fa-file-code"></i></button>'
+              + '<button class="btn btn-xs btn-glass focus-export-btn" data-format="csv" data-export-focused="' + focusedGroup + '" data-tip="Exportar grupo (CSV)"><i class="fas fa-file-csv"></i></button>'
+              + '</span>';
             mini.innerHTML = statsHtml + exportBtns;
             target.appendChild(mini);
           }
@@ -980,17 +1046,17 @@
       h.addEventListener('dblclick', ()=>{
         const wrap = h.closest('.group-mod'); if(!wrap) return;
         const id = wrap.getAttribute('data-exec');
-        const prevY = window.scrollY; const prevFocused = focusedGroup;
+  const prevY = window.scrollY; const prevX = window.scrollX; const prevFocused = focusedGroup;
         focusedGroup = (focusedGroup === id) ? null : id;
         persistPrefs();
         if(window.__lastLogs){
           renderFeed(window.__lastLogs);
           // Attempt to restore approximate scroll position
           requestAnimationFrame(()=>{
-            if(prevFocused && !focusedGroup){ // leaving focus: try to return to previous Y
-              window.scrollTo({ top: prevY, behavior:'instant' });
+            if(prevFocused && !focusedGroup){ // leaving focus: restore both axes
+              window.scrollTo({ top: prevY, left: prevX, behavior:'instant' });
             } else if(focusedGroup){ // entering focus: try to keep header aligned
-              const el = document.querySelector(`.group-mod[data-exec="${CSS.escape(focusedGroup)}"]`);
+              const el = document.querySelector('.group-mod[data-exec="' + CSS.escape(focusedGroup) + '"]');
               if(el){ const r = el.getBoundingClientRect(); const offset = window.scrollY + r.top - 80; window.scrollTo({ top: offset<0?0:offset, behavior:'smooth' }); }
             }
           });
@@ -1010,35 +1076,126 @@
         if(!id) return;
         // find logs for that group in current view
         if(!window.__lastLogs) return;
-        const subset = window.__lastLogs.filter(l=>{
-          const exec = (l.data && l.data.executorId) || (l.resolved?.executor?.id) || (l.data?.userId) || '__system';
-          return exec === id;
-        });
-        if(!subset.length){ notify('Sem eventos no grupo focado','error'); return; }
-        try {
-          if(fmt==='csv'){
-            const keys = new Set(); subset.forEach(o=> Object.keys(o).forEach(k=> keys.add(k)));
-            const header = [...keys];
-            const lines = [header.join(',')];
-            subset.forEach(o=>{
-              lines.push(header.map(k=>`"${String(o[k]??'').replace(/"/g,'"')}"`).join(','));
-            });
-            const blob = new Blob([lines.join('\n')], {type:'text/csv'});
-            const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupo-${id}-${Date.now()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
-            notify('Export CSV ok','success');
-          } else {
-            const blob = new Blob([JSON.stringify(subset,null,2)], {type:'application/json'});
-            const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupo-${id}-${Date.now()}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
-            notify('Export JSON ok','success');
+        const logs = grp.logs;
+        if(format==='json'){
+           try {
+             const { headers, rows } = computeHeadersAndRows(logs);
+             // Reconstruct objects with filtered keys only (using original flattened values)
+             const flatAll = logs.map(l=> flattenForExport(l));
+             const transformed = flatAll.map((f,idx)=>{
+               const o={}; headers.forEach(k=>{ if(f.hasOwnProperty(k)) o[k]=f[k]; });
+               if(focusedExportConfig.includeRawOriginal){ o.__raw = logs[idx]; }
+               return o; });
+             const blob = new Blob([JSON.stringify({ meta:{ filtered:true, fieldCount: headers.length, includeRaw: !!focusedExportConfig.includeRawOriginal }, data: transformed },null,2)],{type:'application/json'});
+             const a = document.createElement('a');
+             a.href = URL.createObjectURL(blob);
+             a.download = 'focused-' + focusedGroup + '.json';
+             a.click();
+           } catch(err){
+             console.error('JSON export transform failed', err);
+             const blob = new Blob([JSON.stringify(logs,null,2)],{type:'application/json'});
+             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='focused-' + focusedGroup + '.json'; a.click();
+           }
+           return;
+        }
+        // Deep flatten helper
+        function formatDateVal(v){
+          if(!(v instanceof Date)) return v;
+          switch(focusedExportConfig.dateFormat){
+            case 'epoch': return v.getTime();
+            case 'locale': return v.toLocaleString('pt-PT');
+            case 'iso':
+            default: return v.toISOString();
           }
-        } catch(err){ notify('Falha na exportação','error'); }
-      });
-    });
-    // Attach toggle
-    els.feed.querySelectorAll('.group-mod .group-toggle')?.forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        e.stopPropagation();
-        const wrap = btn.closest('.group-mod');
+        }
+        function flatten(obj,prefix,res,depth){
+           res = res || {}; depth = depth || 0;
+           if(obj==null){ if(prefix) res[prefix] = ''; return res; }
+           if(depth >= focusedExportConfig.maxDepth){
+             if(prefix) res[prefix] = (typeof obj === 'object') ? JSON.stringify(obj) : obj;
+             return res;
+           }
+           if(typeof obj !== 'object' || obj instanceof Date){
+             if(prefix) res[prefix] = formatDateVal(obj);
+             return res;
+           }
+           if(Array.isArray(obj)){
+             if(!focusedExportConfig.includeArrays){
+               if(prefix) res[prefix] = JSON.stringify(obj);
+               return res;
+             }
+             obj.forEach(function(v,i){ flatten(v, prefix ? (prefix + '[' + i + ']') : ('[' + i + ']'), res, depth+1); });
+             return res;
+           }
+           const keys = Object.keys(obj);
+           if(!keys.length && prefix){ res[prefix] = ''; return res; }
+           keys.forEach(k=>{
+             const newKey = prefix ? (prefix + '.' + k) : k;
+             flatten(obj[k], newKey, res, depth+1);
+           });
+           return res;
+        }
+        const flattenedLogs = logs.map(l=> flatten(l,'',{}));
+        // Collect all keys
+        let keys = new Set();
+        flattenedLogs.forEach(fl => Object.keys(fl).forEach(k=> keys.add(k)));
+        // Apply whitelist / prefix filters
+        if(Array.isArray(focusedExportConfig.whitelist) && focusedExportConfig.whitelist.length){
+          keys = new Set(focusedExportConfig.whitelist.filter(k=> [...keys].includes(k)));
+        } else if(Array.isArray(focusedExportConfig.includePrefixes) && focusedExportConfig.includePrefixes.length){
+          keys = new Set([...keys].filter(k=> focusedExportConfig.includePrefixes.some(p=> k.startsWith(p))));
+        }
+        // Determine ordering
+        let headers = [...keys];
+        if(focusedExportConfig.orderMode === 'alphabetical'){
+          headers.sort((a,b)=> a.localeCompare(b));
+        } else if(focusedExportConfig.orderMode === 'whitelist' && focusedExportConfig.whitelist.length){
+          const wl = focusedExportConfig.whitelist;
+          headers = wl.filter(k=> keys.has(k));
+        } else if(focusedExportConfig.orderMode === 'grouped'){
+          const grouped = [];
+            const used = new Set();
+            focusedExportConfig.groups.forEach(g=>{
+              const matchers = headers.filter(h=> g.match.test(h));
+              matchers.forEach(m=>{ if(!used.has(m)){ grouped.push(m); used.add(m);} });
+            });
+            headers.forEach(h=>{ if(!used.has(h)) grouped.push(h); });
+            headers = grouped;
+        }
+        const pretty = h=> focusedExportConfig.headerMap[h] || h;
+        const rows = [headers.map(pretty).join(',')];
+        // Optional grouped section rows
+        if(focusedExportConfig.orderMode==='grouped' && focusedExportConfig.groupedSectionRows){
+          const groupMeta = [];
+          focusedExportConfig.groups.forEach(g=>{
+            const matched = headers.filter(h=> g.match.test(h));
+            if(matched.length){
+              groupMeta.push({name:g.name, headers:matched});
+            }
+          });
+          if(groupMeta.length){
+            // Insert after header: one line per group with marker
+            groupMeta.forEach(g=>{
+              const marker = headers.map(function(h){ return g.headers.includes(h) ? '"<< ' + g.name + ' >>"' : ''; }).join(',');
+              rows.push(marker);
+            });
+          }
+        }
+        flattenedLogs.forEach(fl => {
+          const row = headers.map(h=>{
+            let val = fl[h];
+            if(val==null) return '';
+            if(typeof val === 'object') val = JSON.stringify(val);
+            const s = String(val).replace(/"/g,'""');
+            return '"'+s+'"';
+          }).join(',');
+          rows.push(row);
+        });
+        const blob = new Blob([rows.join('\n')],{type:'text/csv'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+  a.download = 'focused-' + focusedGroup + '.csv';
+        a.click();
         const expanded = wrap.getAttribute('aria-expanded')==='true';
         wrap.setAttribute('aria-expanded', expanded?'false':'true');
         const body = wrap.querySelector('.group-body');
@@ -1110,7 +1267,7 @@
     if(!stats.length){ notify('Sem dados','error'); return; }
     if(fmt==='json'){
       const blob = new Blob([JSON.stringify(stats,null,2)],{type:'application/json'});
-      const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupos-${Date.now()}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000); return;
+  const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='grupos-' + Date.now() + '.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){ URL.revokeObjectURL(url); },4000); return;
     }
     // CSV: executorId,total,<type counts dynamic>
     const allTypes = new Set(); stats.forEach(s=> Object.keys(s.types).forEach(t=> allTypes.add(t)));
@@ -1118,10 +1275,10 @@
     const rows = [header.join(',')];
     stats.forEach(s=>{
       const line = [s.executorId,s.total, ...[...allTypes].map(t=> s.types[t]||0)];
-      rows.push(line.map(v=>`"${String(v).replace(/"/g,'"')}"`).join(','));
+  rows.push(line.map(function(v){ return '"' + String(v).replace(/"/g,'"') + '"'; }).join(','));
     });
     const blob = new Blob([rows.join('\n')],{type:'text/csv'});
-    const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupos-${Date.now()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
+  const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='grupos-' + Date.now() + '.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){ URL.revokeObjectURL(url); },4000);
   }
 
   // Global ESC listener to unfocus group
@@ -1130,7 +1287,14 @@
       focusedGroup = null; persistPrefs(); if(window.__lastLogs) renderFeed(window.__lastLogs);
     }
     if((e.key === 'P' || e.key === 'p') && e.shiftKey){
-      showGroupShare = !showGroupShare; persistPrefs(); const btn=document.getElementById('btnToggleShare'); if(btn) btn.setAttribute('aria-pressed', showGroupShare?'true':'false'); if(window.__lastLogs) renderFeed(window.__lastLogs); notify(showGroupShare? 'Percentagens visíveis':'Percentagens ocultas','info');
+      const now = Date.now();
+      if(window.__lastShareToggleTs && (now - window.__lastShareToggleTs) < 600){
+        // still toggle silently
+        showGroupShare = !showGroupShare; persistPrefs(); const btn=document.getElementById('btnToggleShare'); if(btn) btn.setAttribute('aria-pressed', showGroupShare?'true':'false'); if(window.__lastLogs) renderFeed(window.__lastLogs);
+        return;
+      }
+      window.__lastShareToggleTs = now;
+      showGroupShare = !showGroupShare; persistPrefs(); const btn=document.getElementById('btnToggleShare'); if(btn) btn.setAttribute('aria-pressed', showGroupShare?'true':'false'); if(window.__lastLogs) renderFeed(window.__lastLogs); notify(showGroupShare? 'Percentagens visíveis (Shift+P)':'Percentagens ocultas (Shift+P)','info');
     }
   });
   // Share percentage toggle button setup
@@ -1164,10 +1328,10 @@
       const total = list.length || 1;
       const pills = Object.entries(counts)
         .sort((a,b)=> b[1]-a[1])
-        .map(([k,v])=>{ const pct = ((v/total)*100).toFixed(0); return `<span class="gt-pill" data-group-type="${k}" title="${v} eventos (${pct}%) ${mapLabel[k]||k}"><b>${mapLabel[k]||k}</b> ${v} <span style="opacity:.6">${pct}%</span></span>`; })
+  .map(function(entry){ var k=entry[0], v=entry[1]; var pct = ((v/total)*100).toFixed(0); return '<span class="gt-pill" data-group-type="' + k + '" title="' + v + ' eventos (' + pct + '%) ' + (mapLabel[k]||k) + '"><b>' + (mapLabel[k]||k) + '</b> ' + v + ' <span style="opacity:.6">' + pct + '%</span></span>'; })
         .join('');
       if(!pills) return '';
-      return `<div class="group-types">${pills}</div>`;
+  return '<div class="group-types">' + pills + '</div>';
     } catch { return '';} 
   }
   function updateClearStreamBtn(){
@@ -1212,24 +1376,24 @@
 
   async function batchFetchMembers(ids){
     try {
-      const u = new URL(`/api/guild/${guildId}/search/members`, window.location.origin);
+  const u = new URL('/api/guild/' + guildId + '/search/members', window.location.origin);
       u.searchParams.set('q', ids.join(','));
       const d = await fetchJson(u);
       const list = Array.isArray(d.results)? d.results: [];
       for(const m of list){
-        const label = m.nick ? `${m.username} (${m.nick})` : `${m.username}`;
+  const label = m.nick ? (m.username + ' (' + m.nick + ')') : (m.username + '');
         __nameCache.member.set(String(m.id), label);
       }
     } catch {}
   }
   async function batchFetchChannels(ids){
     try {
-      const u = new URL(`/api/guild/${guildId}/search/channels`, window.location.origin);
+  const u = new URL('/api/guild/' + guildId + '/search/channels', window.location.origin);
       u.searchParams.set('q', ids.join(','));
       const d = await fetchJson(u);
       const list = Array.isArray(d.results)? d.results: [];
       for(const c of list){
-        const label = `#${c.name||c.id}`;
+  const label = '#' + (c.name||c.id);
         __nameCache.channel.set(String(c.id), label);
       }
     } catch {}
@@ -1239,13 +1403,13 @@
       els.feed?.querySelectorAll('[data-filter-user],[data-filter-mod],[data-filter-channel]')?.forEach(el => {
         if(el.hasAttribute('data-filter-user')){
           const id = el.getAttribute('data-filter-user');
-          if(id && __nameCache.member.has(id)) el.innerHTML = `<i class="fas fa-user"></i> ${escapeHtml(__nameCache.member.get(id))}`;
+          if(id && __nameCache.member.has(id)) el.innerHTML = '<i class="fas fa-user"></i> ' + escapeHtml(__nameCache.member.get(id));
         } else if(el.hasAttribute('data-filter-mod')) {
           const id = el.getAttribute('data-filter-mod');
-          if(id && __nameCache.member.has(id)) el.innerHTML = `<i class="fas fa-shield-alt"></i> ${escapeHtml(__nameCache.member.get(id))}`;
+          if(id && __nameCache.member.has(id)) el.innerHTML = '<i class="fas fa-shield-alt"></i> ' + escapeHtml(__nameCache.member.get(id));
         } else if(el.hasAttribute('data-filter-channel')) {
           const id = el.getAttribute('data-filter-channel');
-          if(id && __nameCache.channel.has(id)) el.innerHTML = `<i class=\"fas fa-hashtag\"></i> ${escapeHtml(__nameCache.channel.get(id))}`;
+          if(id && __nameCache.channel.has(id)) el.innerHTML = '<i class="fas fa-hashtag"></i> ' + escapeHtml(__nameCache.channel.get(id));
         }
       });
     } catch {}
@@ -1269,7 +1433,7 @@
   const ratio = Math.max(0, Math.min(1, age / getRecencyWindowMs()));
       const span = bar.querySelector('span');
       if(span){
-        span.style.transform = `scaleX(${1 - ratio})`;
+  span.style.transform = 'scaleX(' + (1 - ratio) + ')';
         span.style.opacity = (ratio < 1) ? '1' : '0.2';
       }
     });
@@ -1280,8 +1444,8 @@
     const w = getRecencyWindowMs();
     const hours = w / 3600000;
     if(hours <= 1) el.textContent = 'Barra de recência: representa 1 hora completa.';
-    else if(hours < 30) el.textContent = `Barra de recência: encolhe ao longo de ${hours.toFixed(0)} horas.`;
-    else el.textContent = `Barra de recência: encolhe ao longo de ${(hours/24).toFixed(0)} dias.`;
+  else if(hours < 30) el.textContent = 'Barra de recência: encolhe ao longo de ' + hours.toFixed(0) + ' horas.';
+  else el.textContent = 'Barra de recência: encolhe ao longo de ' + (hours/24).toFixed(0) + ' dias.';
   }
   setInterval(updateRecencyBars, 60000); // update every minute
 
@@ -1292,7 +1456,7 @@
     const pressed = els.btnAuto.getAttribute('aria-pressed') === 'true';
     const next = !pressed;
     els.btnAuto.setAttribute('aria-pressed', String(next));
-    els.btnAuto.innerHTML = next ? `<i class="fas fa-pause"></i> Auto` : `<i class="fas fa-play"></i> Auto`;
+  els.btnAuto.innerHTML = next ? '<i class="fas fa-pause"></i> Auto' : '<i class="fas fa-play"></i> Auto';
     if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
     if (next) {
       autoTimer = setInterval(async ()=>{ await loadSummary(); await loadFeed(); }, 5000);
@@ -1322,7 +1486,7 @@
   }
 
   async function fetchAllForExport(){
-    const u = new URL(`/api/guild/${guildId}/logs`, window.location.origin);
+  const u = new URL('/api/guild/' + guildId + '/logs', window.location.origin);
     u.searchParams.set('type', buildTypeParam());
     buildRange(u);
     u.searchParams.set('limit','5000');
@@ -1336,30 +1500,46 @@
       const logs = await fetchAllForExport();
       if(fmt==='json'){
         const blob = new Blob([JSON.stringify(logs,null,2)], { type:'application/json' });
-        const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`logs-${Date.now()}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000); return;
+  const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='logs-' + Date.now() + '.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){ URL.revokeObjectURL(url); },4000); return;
       }
-      // CSV
-      const headers=['id','timestamp','type','userId','executorId','channelId','message'];
-      const rows=[headers.join(',')];
-      logs.forEach(l=>{ const d=l.data||{}; const row=[l.id,l.timestamp,l.type,d.userId||'',d.executorId||'',d.channelId||'', (l.message||'').toString().replace(/\n/g,' ' )]; rows.push(row.map(v=>`"${String(v).replace(/"/g,'"')}"`).join(',')); });
-      const blob = new Blob([rows.join('\n')], { type:'text/csv' });
-      const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`logs-${Date.now()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
+      // CSV (refactored to use export configuration + optional raw column)
+      const { headers, headerPretty, rows } = computeHeadersAndRows(logs);
+      let finalHeaders = headerPretty.slice();
+      let outRows = rows.map(function(r){ return r.slice(); });
+      if(focusedExportConfig.includeRawOriginalCSV){
+        const colName = (focusedExportConfig.rawCSVColumnName||'raw_original').trim().replace(/\s+/g,'_');
+        finalHeaders.push(colName);
+        outRows.forEach(function(r,idx){
+          try { r.push(JSON.stringify(logs[idx])); } catch { r.push(''); }
+        });
+      }
+      function csvEscape(v){
+        if(v==null) return '';
+        const s = String(v);
+        if(/[",\n]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+        return s;
+      }
+      const lines = [];
+      lines.push(finalHeaders.map(csvEscape).join(','));
+      outRows.forEach(function(r){ lines.push(r.map(csvEscape).join(',')); });
+      const blob = new Blob([lines.join('\n')], { type:'text/csv' });
+      const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='logs-' + Date.now() + '.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){ URL.revokeObjectURL(url); },4000);
     } catch(e){ notify(e.message||'Falha exportação','error'); }
   }
 
   // Name resolution helpers to avoid showing raw IDs in UI chips
   const __nameCache = { member: new Map(), channel: new Map() };
-  async function fetchJson(url){ const r = await fetch(url, { credentials:'same-origin' }); const d = await r.json(); if(!r.ok || !d.success) throw new Error(d.error||`HTTP ${r.status}`); return d; }
+  async function fetchJson(url){ const r = await fetch(url, { credentials:'same-origin' }); const d = await r.json(); if(!r.ok || !d.success) throw new Error(d.error||('HTTP ' + r.status)); return d; }
   async function resolveMemberLabel(id){
     if (!id) return null;
     if (__nameCache.member.has(id)) return __nameCache.member.get(id);
     try {
-      const u = new URL(`/api/guild/${guildId}/search/members`, window.location.origin); u.searchParams.set('q', id);
+  const u = new URL('/api/guild/' + guildId + '/search/members', window.location.origin); u.searchParams.set('q', id);
       const d = await fetchJson(u);
       const list = Array.isArray(d.results)? d.results: [];
       const m = list.find(x=> String(x.id)===String(id)) || list[0];
       if (!m) return null;
-      const label = m.nick ? `${m.username} (${m.nick})` : `${m.username}`;
+  const label = m.nick ? (m.username + ' (' + m.nick + ')') : (m.username + '');
       __nameCache.member.set(id, label);
       return label;
     } catch { return null; }
@@ -1368,12 +1548,12 @@
     if (!id) return null;
     if (__nameCache.channel.has(id)) return __nameCache.channel.get(id);
     try {
-      const u = new URL(`/api/guild/${guildId}/search/channels`, window.location.origin); u.searchParams.set('q', id);
+  const u = new URL('/api/guild/' + guildId + '/search/channels', window.location.origin); u.searchParams.set('q', id);
       const d = await fetchJson(u);
       const list = Array.isArray(d.results)? d.results: [];
       const c = list.find(x=> String(x.id)===String(id)) || list[0];
       if (!c) return null;
-      const label = `#${c.name||id}`;
+  const label = '#' + (c.name||id);
       __nameCache.channel.set(id, label);
       return label;
     } catch { return null; }
@@ -1382,20 +1562,20 @@
   async function openEventModal(logId){
     try {
       if (!logId) return;
-      const u = new URL(`/api/guild/${guildId}/moderation/event/${encodeURIComponent(logId)}`, window.location.origin);
+  const u = new URL('/api/guild/' + guildId + '/moderation/event/' + encodeURIComponent(logId), window.location.origin);
       const r = await fetch(u, { credentials: 'same-origin' });
       const d = await r.json();
       if (!r.ok || !d.success) {
         if (r.status === 404 || d.error === 'log_not_found') {
           // Friendly modal for missing events
           els.modalTitle.textContent = 'Evento indisponível';
-          els.modalBody.innerHTML = `<div class="kv"><b>Este evento já não existe.</b></div><div class="text-secondary" style="margin-top:6px">Pode ter sido removido ou está fora do histórico guardado.</div>`;
+          els.modalBody.innerHTML = '<div class="kv"><b>Este evento já não existe.</b></div><div class="text-secondary" style="margin-top:6px">Pode ter sido removido ou está fora do histórico guardado.</div>';
           els.modal.classList.remove('modal-hidden');
           els.modal.classList.add('modal-visible');
           els.modal.setAttribute('aria-hidden','false');
           return;
         }
-        throw new Error(d.error || `HTTP ${r.status}`);
+  throw new Error(d.error || ('HTTP ' + r.status));
       }
       const ev = d.event;
       // Build actions based on type
@@ -1438,49 +1618,48 @@
 
       const resolved = ev.resolved || {};
       const avatarUrl = (id, avatar) => {
-        if (id && avatar) return `https://cdn.discordapp.com/avatars/${encodeURIComponent(id)}/${encodeURIComponent(avatar)}.png?size=128`;
+  if (id && avatar) return 'https://cdn.discordapp.com/avatars/' + encodeURIComponent(id) + '/' + encodeURIComponent(avatar) + '.png?size=128';
         return '/default-avatar.svg';
       };
-  const userText = resolved.user ? `${escapeHtml(resolved.user.username||'')}${resolved.user.nick? ' ('+escapeHtml(resolved.user.nick)+')':''}` : (data.userId ? 'Desconhecido' : '-');
-  const modText = resolved.executor ? `${escapeHtml(resolved.executor.username||'')}${resolved.executor.nick? ' ('+escapeHtml(resolved.executor.nick)+')':''}` : (data.executorId ? 'Desconhecido' : '-');
-  const chanText = resolved.channel ? `#${escapeHtml(resolved.channel.name||'')}` : (data.channelId ? 'Desconhecido' : '-');
+  const userText = resolved.user ? (escapeHtml(resolved.user.username||'') + (resolved.user.nick? ' ('+escapeHtml(resolved.user.nick)+')':'')) : (data.userId ? 'Desconhecido' : '-');
+  const modText = resolved.executor ? (escapeHtml(resolved.executor.username||'') + (resolved.executor.nick? ' ('+escapeHtml(resolved.executor.nick)+')':'')) : (data.executorId ? 'Desconhecido' : '-');
+  const chanText = resolved.channel ? ('#' + escapeHtml(resolved.channel.name||'')) : (data.channelId ? 'Desconhecido' : '-');
   const body = [];
-  body.push(`<div class="kv"><b>Tipo:</b> ${escapeHtml(ev.type)}</div>`);
-  body.push(`<div class="kv"><b>Quando:</b> ${new Date(ev.timestamp).toLocaleString('pt-PT')}</div>`);
+  body.push('<div class="kv"><b>Tipo:</b> ' + escapeHtml(ev.type) + '</div>');
+  body.push('<div class="kv"><b>Quando:</b> ' + new Date(ev.timestamp).toLocaleString('pt-PT') + '</div>');
       // Identity header with avatars
-      body.push(`
-        <div class="identity-row">
-          <div class="id-card">
-            <img class="avatar-sm" src="${avatarUrl(resolved.user?.id, resolved.user?.avatar)}" alt="avatar usuário" />
-            <div class="id-meta">
-              <div class="id-title"><i class="fas fa-user"></i> Usuário</div>
-              <div class="id-name">${resolved.user ? `${escapeHtml(resolved.user.username||'')}${resolved.user.nick? ' ('+escapeHtml(resolved.user.nick)+')':''}` : (data.userId? escapeHtml(data.userId) : '-')}</div>
-            </div>
-          </div>
-          <div class="id-card">
-            <img class="avatar-sm" src="${avatarUrl(resolved.executor?.id, resolved.executor?.avatar)}" alt="avatar moderador" />
-            <div class="id-meta">
-              <div class="id-title"><i class="fas fa-shield-alt"></i> Moderador</div>
-              <div class="id-name">${resolved.executor ? `${escapeHtml(resolved.executor.username||'')}${resolved.executor.nick? ' ('+escapeHtml(resolved.executor.nick)+')':''}` : (data.executorId? escapeHtml(data.executorId) : '-')}</div>
-            </div>
-          </div>
-        </div>
-      `);
-  body.push(`<div class=\"kv\"><b>Usuário:</b> ${userText} ${data.userId? `<button class=\"btn btn-sm btn-glass\" title=\"Copiar ID do usuário\" data-copy-id=\"${escapeHtml(data.userId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
-    body.push(`<div class=\"kv\"><b>Moderador:</b> ${modText} ${data.executorId? `<button class=\"btn btn-sm btn-glass\" title=\"Copiar ID do moderador\" data-copy-id=\"${escapeHtml(data.executorId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
-  const userOpen = data.userId ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-user\" title=\"Abrir usuário no Discord\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(data.userId)}\">@ Abrir usuário</a>` : '';
-  const modOpen = data.executorId ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-mod\" title=\"Abrir moderador no Discord\" target=\"_blank\" href=\"https://discord.com/users/${encodeURIComponent(data.executorId)}\">🛡️ Abrir moderador</a>` : '';
-  const chanOpen = data.channelId ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-channel\" title=\"Abrir canal no Discord\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(data.channelId)}\"># Abrir canal</a>` : '';
-  const msgOpen = (data.channelId && data.messageId) ? `<a class=\"btn btn-sm btn-glass link-btn btn-link-message\" title=\"Abrir mensagem no Discord\" target=\"_blank\" href=\"https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(data.channelId)}/${encodeURIComponent(data.messageId)}\">💬 Abrir mensagem</a>` : '';
-  body.push(`<div class=\"kv\"><b>Abrir:</b> ${[userOpen, modOpen, chanOpen, msgOpen].filter(Boolean).join(' ')||'-'}</div>`);
-  body.push(`<div class=\"kv\"><b>Canal:</b> ${chanText} ${data.channelId? `<button class=\"btn btn-sm btn-glass\" title=\"Copiar ID do canal\" data-copy-id=\"${escapeHtml(data.channelId)}\"><i class=\"fas fa-copy\"></i> Copiar ID</button>`:''}</div>`);
-      if (ev.message) body.push(`<div class="kv"><b>Motivo:</b> ${escapeHtml(ev.message)}</div>`);
+      body.push(
+        '<div class="identity-row">' +
+          '<div class="id-card">' +
+            '<img class="avatar-sm" src="' + avatarUrl(resolved.user?.id, resolved.user?.avatar) + '" alt="avatar usuário" />' +
+            '<div class="id-meta">' +
+              '<div class="id-title"><i class="fas fa-user"></i> Usuário</div>' +
+              '<div class="id-name">' + (resolved.user ? (escapeHtml(resolved.user.username||'') + (resolved.user.nick? ' ('+escapeHtml(resolved.user.nick)+')':'')) : (data.userId? escapeHtml(data.userId) : '-')) + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="id-card">' +
+            '<img class="avatar-sm" src="' + avatarUrl(resolved.executor?.id, resolved.executor?.avatar) + '" alt="avatar moderador" />' +
+            '<div class="id-meta">' +
+              '<div class="id-title"><i class="fas fa-shield-alt"></i> Moderador</div>' +
+              '<div class="id-name">' + (resolved.executor ? (escapeHtml(resolved.executor.username||'') + (resolved.executor.nick? ' ('+escapeHtml(resolved.executor.nick)+')':'')) : (data.executorId? escapeHtml(data.executorId) : '-')) + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+  body.push('<div class="kv"><b>Usuário:</b> ' + userText + ' ' + (data.userId? '<button class="btn btn-sm btn-glass" title="Copiar ID do usuário" data-copy-id="' + escapeHtml(data.userId) + '"><i class="fas fa-copy"></i> Copiar ID</button>' : '') + '</div>');
+  body.push('<div class="kv"><b>Moderador:</b> ' + modText + ' ' + (data.executorId? '<button class="btn btn-sm btn-glass" title="Copiar ID do moderador" data-copy-id="' + escapeHtml(data.executorId) + '"><i class="fas fa-copy"></i> Copiar ID</button>' : '') + '</div>');
+  const userOpen = data.userId ? '<a class="btn btn-sm btn-glass link-btn btn-link-user" title="Abrir usuário no Discord" target="_blank" href="https://discord.com/users/' + encodeURIComponent(data.userId) + '">@ Abrir usuário</a>' : '';
+  const modOpen = data.executorId ? '<a class="btn btn-sm btn-glass link-btn btn-link-mod" title="Abrir moderador no Discord" target="_blank" href="https://discord.com/users/' + encodeURIComponent(data.executorId) + '">🛡️ Abrir moderador</a>' : '';
+  const chanOpen = data.channelId ? '<a class="btn btn-sm btn-glass link-btn btn-link-channel" title="Abrir canal no Discord" target="_blank" href="https://discord.com/channels/' + encodeURIComponent(guildId) + '/' + encodeURIComponent(data.channelId) + '"># Abrir canal</a>' : '';
+  const msgOpen = (data.channelId && data.messageId) ? '<a class="btn btn-sm btn-glass link-btn btn-link-message" title="Abrir mensagem no Discord" target="_blank" href="https://discord.com/channels/' + encodeURIComponent(guildId) + '/' + encodeURIComponent(data.channelId) + '/' + encodeURIComponent(data.messageId) + '">💬 Abrir mensagem</a>' : '';
+  body.push('<div class="kv"><b>Abrir:</b> ' + ([userOpen, modOpen, chanOpen, msgOpen].filter(Boolean).join(' ')||'-') + '</div>');
+  body.push('<div class="kv"><b>Canal:</b> ' + chanText + ' ' + (data.channelId? '<button class="btn btn-sm btn-glass" title="Copiar ID do canal" data-copy-id="' + escapeHtml(data.channelId) + '"><i class="fas fa-copy"></i> Copiar ID</button>' : '') + '</div>');
+      if (ev.message) body.push('<div class="kv"><b>Motivo:</b> ' + escapeHtml(ev.message) + '</div>');
       if (ev.type === 'mod_message_update') {
-        if (data.before) body.push(`<pre class="code-block"><b>Antes:</b>\n${escapeHtml(data.before)}</pre>`);
-        if (data.after) body.push(`<pre class="code-block"><b>Depois:</b>\n${escapeHtml(data.after)}</pre>`);
+        if (data.before) body.push('<pre class="code-block"><b>Antes:</b>\n' + escapeHtml(data.before) + '</pre>');
+        if (data.after) body.push('<pre class="code-block"><b>Depois:</b>\n' + escapeHtml(data.after) + '</pre>');
       } else if (ev.type === 'mod_message_delete') {
-        // If content available in message, show it
-        if (data.content) body.push(`<pre class="code-block"><b>Conteúdo:</b>\n${escapeHtml(data.content)}</pre>`);
+        if (data.content) body.push('<pre class="code-block"><b>Conteúdo:</b>\n' + escapeHtml(data.content) + '</pre>');
       }
 
       // Voice event rich details
@@ -1488,15 +1667,15 @@
         try {
           const rsv = resolved || {};
           if (ev.type === 'mod_voice_move') {
-            const from = rsv.fromChannel ? `#${escapeHtml(rsv.fromChannel.name)}` : 'desconhecido';
-            const to = rsv.toChannel ? `#${escapeHtml(rsv.toChannel.name)}` : (rsv.channel ? `#${escapeHtml(rsv.channel.name)}` : 'desconhecido');
-            body.push(`<div class="kv"><b>Moveu-se:</b> ${from} → ${to}</div>`);
+            const from = rsv.fromChannel ? ('#' + escapeHtml(rsv.fromChannel.name)) : 'desconhecido';
+            const to = rsv.toChannel ? ('#' + escapeHtml(rsv.toChannel.name)) : (rsv.channel ? ('#' + escapeHtml(rsv.channel.name)) : 'desconhecido');
+            body.push('<div class="kv"><b>Moveu-se:</b> ' + from + ' → ' + to + '</div>');
           } else if (ev.type === 'mod_voice_join') {
-            const to = rsv.channel ? `#${escapeHtml(rsv.channel.name)}` : 'desconhecido';
-            body.push(`<div class="kv"><b>Entrou em:</b> ${to}</div>`);
+            const to2 = rsv.channel ? ('#' + escapeHtml(rsv.channel.name)) : 'desconhecido';
+            body.push('<div class="kv"><b>Entrou em:</b> ' + to2 + '</div>');
           } else if (ev.type === 'mod_voice_leave') {
-            const from = rsv.channel ? `#${escapeHtml(rsv.channel.name)}` : 'desconhecido';
-            body.push(`<div class="kv"><b>Saiu de:</b> ${from}</div>`);
+            const from2 = rsv.channel ? ('#' + escapeHtml(rsv.channel.name)) : 'desconhecido';
+            body.push('<div class="kv"><b>Saiu de:</b> ' + from2 + '</div>');
           }
         } catch {}
       }
@@ -1507,14 +1686,14 @@
           if (data.nickname && typeof data.nickname === 'object') {
             const nb = (typeof data.nickname.before !== 'undefined') ? String(data.nickname.before||'') : null;
             const na = (typeof data.nickname.after !== 'undefined') ? String(data.nickname.after||'') : null;
-            if (nb !== null || na !== null) body.push(`<div class="kv"><b>Apelido:</b> ${escapeHtml(nb??'—')} → ${escapeHtml(na??'—')}</div>`);
+            if (nb !== null || na !== null) body.push('<div class="kv"><b>Apelido:</b> ' + escapeHtml(nb??'—') + ' → ' + escapeHtml(na??'—') + '</div>');
           }
           const rr = (resolved && resolved.roles) ? resolved.roles : {};
           if (rr.added?.length || rr.removed?.length) {
-            const added = (rr.added||[]).map(ro=>`@${escapeHtml(ro.name||ro.id)}`).join(', ');
-            const removed = (rr.removed||[]).map(ro=>`@${escapeHtml(ro.name||ro.id)}`).join(', ');
-            if (added) body.push(`<div class="kv"><b>Cargos adicionados:</b> ${added}</div>`);
-            if (removed) body.push(`<div class="kv"><b>Cargos removidos:</b> ${removed}</div>`);
+            const added = (rr.added||[]).map(ro=>('@' + escapeHtml(ro.name||ro.id))).join(', ');
+            const removed = (rr.removed||[]).map(ro=>('@' + escapeHtml(ro.name||ro.id))).join(', ');
+            if (added) body.push('<div class="kv"><b>Cargos adicionados:</b> ' + added + '</div>');
+            if (removed) body.push('<div class="kv"><b>Cargos removidos:</b> ' + removed + '</div>');
           }
         } catch {}
       }
@@ -1525,7 +1704,7 @@
           if (obj && typeof obj === 'object' && ('before' in obj || 'after' in obj)) {
             const b = (obj.before!=null)? String(obj.before): '—';
             const a = (obj.after!=null)? String(obj.after): '—';
-            body.push(`<div class="kv"><b>${escapeHtml(label)}:</b> ${escapeHtml(b)} → ${escapeHtml(a)}</div>`);
+            body.push('<div class="kv"><b>' + escapeHtml(label) + ':</b> ' + escapeHtml(b) + ' → ' + escapeHtml(a) + '</div>');
           }
         };
         try {
@@ -1544,7 +1723,7 @@
           if (obj && typeof obj === 'object' && ('before' in obj || 'after' in obj)) {
             const b = (obj.before!=null)? String(obj.before): '—';
             const a = (obj.after!=null)? String(obj.after): '—';
-            body.push(`<div class="kv"><b>${escapeHtml(label)}:</b> ${escapeHtml(b)} → ${escapeHtml(a)}</div>`);
+            body.push('<div class="kv"><b>' + escapeHtml(label) + ':</b> ' + escapeHtml(b) + ' → ' + escapeHtml(a) + '</div>');
           }
         };
         try {
@@ -1555,21 +1734,21 @@
           if (data.permissions && typeof data.permissions === 'object') {
             const add = Array.isArray(data.permissions.added)? data.permissions.added : [];
             const rem = Array.isArray(data.permissions.removed)? data.permissions.removed : [];
-            if (add.length) body.push(`<div class="kv"><b>Permissões adicionadas:</b> ${add.map(p=>`<code>${escapeHtml(String(p))}</code>`).join(', ')}</div>`);
-            if (rem.length) body.push(`<div class="kv"><b>Permissões removidas:</b> ${rem.map(p=>`<code>${escapeHtml(String(p))}</code>`).join(', ')}</div>`);
+            if (add.length) body.push('<div class="kv"><b>Permissões adicionadas:</b> ' + add.map(function(p){return '<code>' + escapeHtml(String(p)) + '</code>';}).join(', ') + '</div>');
+            if (rem.length) body.push('<div class="kv"><b>Permissões removidas:</b> ' + rem.map(function(p){return '<code>' + escapeHtml(String(p)) + '</code>';}).join(', ') + '</div>');
           }
         } catch {}
       }
 
       if (actions.length) {
-        body.push('<div class="actions-row">' + actions.map(a => `<button class="btn btn-primary" data-action="${a.key}"><i class="fas ${a.icon}"></i> ${a.label}</button>`).join(' ') + '</div>');
+  body.push('<div class="actions-row">' + actions.map(function(a){ return '<button class="btn btn-primary" data-action="' + a.key + '"><i class="fas ' + a.icon + '"></i> ' + a.label + '</button>'; }).join(' ') + '</div>');
         const persisted = localStorage.getItem('mod-event-dryrun') === 'true';
-        body.push(`<div class="kv" style="margin-top:8px"><label><input type="checkbox" id="dryRunToggle" ${persisted? 'checked':''} /> Pré-visualizar (dry run)</label></div>`);
+  body.push('<div class="kv" style="margin-top:8px"><label><input type="checkbox" id="dryRunToggle" ' + (persisted? 'checked':'') + ' /> Pré-visualizar (dry run)</label></div>');
       }
 
   els.modalTitle.textContent = 'Evento de moderação';
   // Add copy details tool at the top
-  body.unshift(`<div class=\"actions-row\">\n    <button id=\"btnCopyDetails\" class=\"btn btn-glass\" title=\"Copiar detalhes do evento\"><i class=\"fas fa-copy\"></i> Copiar detalhes</button>\n    <button id=\"btnExportJson\" class=\"btn btn-glass\" title=\"Exportar JSON bruto do evento\"><i class=\"fas fa-file-code\"></i> Exportar JSON</button>\n  </div>`);
+  body.unshift('<div class="actions-row">\n    <button id="btnCopyDetails" class="btn btn-glass" title="Copiar detalhes do evento"><i class="fas fa-copy"></i> Copiar detalhes</button>\n    <button id="btnExportJson" class="btn btn-glass" title="Exportar JSON bruto do evento"><i class="fas fa-file-code"></i> Exportar JSON</button>\n  </div>');
   els.modalBody.innerHTML = body.join('');
   els.modal.classList.remove('modal-hidden');
   els.modal.classList.add('modal-visible');
@@ -1597,7 +1776,7 @@
             const blob = new Blob([JSON.stringify(ev, null, 2)], { type:'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url; a.download = `evento-${ev.id}.json`;
+            a.href = url; a.download = 'evento-' + ev.id + '.json';
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
             setTimeout(()=> URL.revokeObjectURL(url), 5000);
           } catch { notify('Falha ao exportar JSON','error'); }
@@ -1620,7 +1799,7 @@
       // Wire action clicks
       if (actions.length) {
         actions.forEach(a => {
-          const btn = els.modalBody.querySelector(`[data-action="${a.key}"]`);
+          const btn = els.modalBody.querySelector('[data-action="' + a.key + '"]');
           if (!btn) return;
           btn.addEventListener('click', async () => {
             try {
@@ -1628,19 +1807,19 @@
               const payload = { action: a.key, ...a.payload, logId: ev.id };
               const dry = !!(els.modalBody.querySelector('#dryRunToggle')?.checked);
               if (dry) payload.dryRun = true;
-              const r = await fetch(`/api/guild/${guildId}/moderation/action`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
+              const r = await fetch('/api/guild/' + guildId + '/moderation/action', { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload) });
               const d2 = await r.json();
-              if (!r.ok || !d2.success) throw new Error(d2.error || `HTTP ${r.status}`);
+              if (!r.ok || !d2.success) throw new Error(d2.error || ('HTTP ' + r.status));
               if (payload.dryRun) {
                 // Polished in-modal confirmation: show risks + plan, then confirm to apply
                 const ok = await injectConfirmInCurrentModal(d2);
-                if (!ok) { btn.disabled = false; btn.textContent = `${a.label}`; return; }
+                if (!ok) { btn.disabled = false; btn.textContent = a.label; return; }
                 // Apply for real
                 const payload2 = { ...payload };
                 delete payload2.dryRun;
-                const r2 = await fetch(`/api/guild/${guildId}/moderation/action`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload2) });
+                const r2 = await fetch('/api/guild/' + guildId + '/moderation/action', { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(payload2) });
                 const d3 = await r2.json();
-                if (!r2.ok || !d3.success) throw new Error(d3.error || `HTTP ${r2.status}`);
+                if (!r2.ok || !d3.success) throw new Error(d3.error || ('HTTP ' + r2.status));
                 notify('Ação concluída','success');
                 els.modal.classList.add('modal-hidden');
                 els.modal.classList.remove('modal-visible');
@@ -1705,13 +1884,13 @@
         if(!logs.length){ notify('Sem eventos neste grupo','error'); return; }
         if(fmt==='json'){
           const blob = new Blob([JSON.stringify(logs,null,2)],{type:'application/json'});
-          const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupo-${id}-${Date.now()}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000); return;
+          const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='grupo-' + id + '-' + Date.now() + '.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(url);},4000); return;
         }
         const headers=['id','timestamp','type','userId','executorId','channelId','message'];
         const rows=[headers.join(',')];
-        logs.forEach(l=>{ const d=l.data||{}; const row=[l.id,l.timestamp,l.type,d.userId||'',d.executorId||'',d.channelId||'', (l.message||'').toString().replace(/\n/g,' ')]; rows.push(row.map(v=>`"${String(v).replace(/"/g,'"')}"`).join(',')); });
+  logs.forEach(function(l){ const d=l.data||{}; const row=[l.id,l.timestamp,l.type,d.userId||'',d.executorId||'',d.channelId||'', (l.message||'').toString().replace(/\n/g,' ')]; rows.push(row.map(function(v){ return '"' + String(v).replace(/"/g,'"') + '"'; }).join(',')); });
         const blob = new Blob([rows.join('\n')],{type:'text/csv'});
-        const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`grupo-${id}-${Date.now()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
+  const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='grupo-' + id + '-' + Date.now() + '.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(url);},4000);
       });
     });
     const btn = document.getElementById('btnGroupsToggle'); if(!btn) return;
@@ -1752,12 +1931,12 @@
     inputEl.addEventListener('input', async ()=>{
       const q = inputEl.value.trim(); if (!q || q.length < 2) { hide(); return; }
       try {
-        const u = new URL(`/api/guild/${guildId}/search/${endpoint}`, window.location.origin); u.searchParams.set('q', q);
+  const u = new URL('/api/guild/' + guildId + '/search/' + endpoint, window.location.origin); u.searchParams.set('q', q);
         const r = await fetch(u, { credentials: 'same-origin' }); const d = await r.json(); if(!d.success) throw new Error(d.error||'search_failed');
         const list = Array.isArray(d.results)? d.results: [];
-        const el = ensureDd(); placeDd(); el.innerHTML = list.map(it => {
-          if (endpoint==='members') return `<div class="dd-item" data-id="${it.id}"><span>${(it.nick? (escapeHtml(it.nick)+' • '):'')+escapeHtml(it.username)}</span> <small>${it.id}</small></div>`;
-          return `<div class="dd-item" data-id="${it.id}"><span>#${escapeHtml(it.name||'')}</span> <small>${it.id}</small></div>`;
+        const el = ensureDd(); placeDd(); el.innerHTML = list.map(function(it){
+          if (endpoint==='members') return '<div class="dd-item" data-id="' + it.id + '"><span>' + (it.nick? (escapeHtml(it.nick)+' • '):'') + escapeHtml(it.username) + '</span> <small>' + it.id + '</small></div>';
+          return '<div class="dd-item" data-id="' + it.id + '"><span>#' + escapeHtml(it.name||'') + '</span> <small>' + it.id + '</small></div>';
         }).join('');
         el.querySelectorAll('.dd-item').forEach(n=> n.addEventListener('click', ()=>{ inputEl.value = n.getAttribute('data-id'); hide(); loadFeed(); }));
         show();
@@ -1769,13 +1948,504 @@
   function exportSnapshot(){
     try {
       const feedHtml = els.feed ? els.feed.innerHTML : '';
-      const doc = `<!DOCTYPE html><html lang=\"pt-PT\"><head><meta charset=\"utf-8\"/><title>Snapshot Feed Moderação</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;background:#111;color:#eee;padding:24px}h1{font-size:1.2rem;margin:0 0 16px} .feed{max-width:1100px;margin:0 auto} .feed-item{border:1px solid #333;border-radius:10px;padding:12px 14px;margin:8px 0;background:#1b1b1f} .feed-date{margin-top:28px;font-weight:600;opacity:.8} .badge-soft{display:inline-block;background:#222;padding:2px 6px;border-radius:14px;font-size:.65rem;margin:2px 4px 2px 0} .feed-meta{font-size:.72rem;line-height:1.25;margin-top:4px} code{background:#222;padding:2px 4px;border-radius:4px}</style></head><body><h1>Snapshot Feed de Moderação</h1><div class=\"feed\">${feedHtml}</div></body></html>`;
+  const doc = '<!DOCTYPE html><html lang="pt-PT"><head><meta charset="utf-8"/><title>Snapshot Feed Moderação</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;background:#111;color:#eee;padding:24px}h1{font-size:1.2rem;margin:0 0 16px} .feed{max-width:1100px;margin:0 auto} .feed-item{border:1px solid #333;border-radius:10px;padding:12px 14px;margin:8px 0;background:#1b1b1f} .feed-date{margin-top:28px;font-weight:600;opacity:.8} .badge-soft{display:inline-block;background:#222;padding:2px 6px;border-radius:14px;font-size:.65rem;margin:2px 4px 2px 0} .feed-meta{font-size:.72rem;line-height:1.25;margin-top:4px} code{background:#222;padding:2px 4px;border-radius:4px}</style></head><body><h1>Snapshot Feed de Moderação</h1><div class="feed">' + feedHtml + '</div></body></html>';
       const blob = new Blob([doc], { type:'text/html' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = `feed-snapshot-${Date.now()}.html`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),4000);
+  const a = document.createElement('a'); a.href = url; a.download = 'feed-snapshot-' + Date.now() + '.html'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){URL.revokeObjectURL(url);},4000);
       notify('Snapshot exportado','success');
     } catch(e){ console.error(e); notify('Falha ao exportar snapshot','error'); }
   }
+
+  // ===== Export Config Panel Logic =====
+  function persistExportConfig(){
+    try { localStorage.setItem('mod-focused-export-config', JSON.stringify(focusedExportConfig)); } catch {}
+  }
+  function parseLines(el){
+    return (el.value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  }
+  function loadPanelValues(){
+    const wl = document.getElementById('cfgWhitelist');
+    const pf = document.getElementById('cfgPrefixes');
+    const hm = document.getElementById('cfgHeaderMap');
+    const om = document.getElementById('cfgOrderMode');
+    const gs = document.getElementById('cfgGroupedSections');
+    const df = document.getElementById('cfgDateFormat');
+    const ia = document.getElementById('cfgIncludeArrays');
+    const md = document.getElementById('cfgMaxDepth');
+    const gr = document.getElementById('cfgGroups');
+  const pl = document.getElementById('cfgPreviewLimit');
+  const ir = document.getElementById('cfgIncludeRaw');
+    if(!wl) return;
+    wl.value = (focusedExportConfig.whitelist||[]).join('\n');
+    pf.value = (focusedExportConfig.includePrefixes||[]).join('\n');
+  hm.value = Object.entries(focusedExportConfig.headerMap||{}).map(function(entry){ var k=entry[0], v=entry[1]; return k + '=' + v; }).join('\n');
+    om.value = focusedExportConfig.orderMode || 'whitelist';
+    gs.checked = !!focusedExportConfig.groupedSectionRows;
+    df.value = focusedExportConfig.dateFormat || 'iso';
+    ia.checked = focusedExportConfig.includeArrays !== false;
+    md.value = focusedExportConfig.maxDepth || 10;
+  gr.value = (focusedExportConfig.groups||[]).map(function(g){ return g.match.source + '=' + g.name; }).join('\n');
+    if(pl) pl.value = String(focusedExportConfig.previewRowLimit||5);
+    if(ir) ir.checked = !!focusedExportConfig.includeRawOriginal;
+    // CSV extra options (quick panel duplicates)
+    const rawCsv = document.getElementById('cfgIncludeRawCSV'); if(rawCsv) rawCsv.checked = !!focusedExportConfig.includeRawOriginalCSV;
+    const rawCsvName = document.getElementById('cfgRawCSVName'); if(rawCsvName) rawCsvName.value = focusedExportConfig.rawCSVColumnName || '__raw';
+    renderGroupsEnableList();
+  }
+  function applyPanelChanges(){
+    const wl = document.getElementById('cfgWhitelist');
+    const pf = document.getElementById('cfgPrefixes');
+    const hm = document.getElementById('cfgHeaderMap');
+    const om = document.getElementById('cfgOrderMode');
+    const gs = document.getElementById('cfgGroupedSections');
+    const df = document.getElementById('cfgDateFormat');
+    const ia = document.getElementById('cfgIncludeArrays');
+    const md = document.getElementById('cfgMaxDepth');
+    const gr = document.getElementById('cfgGroups');
+  const pl = document.getElementById('cfgPreviewLimit');
+  const ir = document.getElementById('cfgIncludeRaw');
+    if(!wl) return;
+    focusedExportConfig.whitelist = parseLines(wl);
+    focusedExportConfig.includePrefixes = parseLines(pf);
+    const map = {}; parseLines(hm).forEach(line=>{ const i=line.indexOf('='); if(i>0){ const k=line.slice(0,i).trim(); const v=line.slice(i+1).trim(); if(k) map[k]=v||k; }});
+    focusedExportConfig.headerMap = map;
+    focusedExportConfig.orderMode = om.value || 'whitelist';
+    focusedExportConfig.groupedSectionRows = gs.checked;
+    focusedExportConfig.dateFormat = df.value || 'iso';
+    focusedExportConfig.includeArrays = ia.checked;
+    const depth = parseInt(md.value,10); focusedExportConfig.maxDepth = (!isNaN(depth)&&depth>0)? depth : 10;
+    const groupsRaw = parseLines(gr);
+    focusedExportConfig.groups = groupsRaw.map(line=>{ const i=line.lastIndexOf('='); if(i<=0) return null; const regex=line.slice(0,i).trim(); const name=line.slice(i+1).trim(); try{ return { name, match:new RegExp(regex) }; }catch{return null;} }).filter(Boolean);
+    if(pl){ const lim = parseInt(pl.value,10); focusedExportConfig.previewRowLimit = (!isNaN(lim)&&lim>0)? lim:5; }
+    if(ir) focusedExportConfig.includeRawOriginal = ir.checked;
+    const rawCsv = document.getElementById('cfgIncludeRawCSV'); if(rawCsv) focusedExportConfig.includeRawOriginalCSV = rawCsv.checked;
+    const rawCsvName = document.getElementById('cfgRawCSVName'); if(rawCsvName){ const v = rawCsvName.value.trim(); if(v) focusedExportConfig.rawCSVColumnName = v.slice(0,40); }
+    persistExportConfig();
+  }
+  function resetExportConfig(){
+    Object.assign(focusedExportConfig, {
+      whitelist:['id','timestamp','type','data.executorId','resolved.executor.id','resolved.executor.username','resolved.target.id','resolved.target.username','action','reason'],
+      includePrefixes:[],
+      headerMap:{
+        'id':'Log ID','timestamp':'Data/Hora','type':'Tipo','data.executorId':'Executor ID (data)','resolved.executor.id':'Executor ID','resolved.executor.username':'Executor Nome','resolved.target.id':'Alvo ID','resolved.target.username':'Alvo Nome','action':'Ação','reason':'Motivo'
+      },
+      orderMode:'whitelist',
+      groups:[
+        { name:'Identificação', match:/^(id|timestamp|type)$/ },
+        { name:'Executor', match:/^resolved\.executor\.|data\.executorId$/ },
+        { name:'Alvo', match:/^resolved\.target\./ },
+        { name:'Ação', match:/^(action|reason)$/ }
+      ],
+      groupedSectionRows:false,
+      includeArrays:true,
+      maxDepth:10,
+      dateFormat:'iso',
+      includeRawOriginal:false,
+      previewRowLimit:5,
+      groupsDisabled:[]
+    });
+    persistExportConfig();
+    loadPanelValues();
+  }
+  function initExportConfigPanel(){
+    const btn = document.getElementById('btnExportConfig');
+    const panel = document.getElementById('exportConfigPanel');
+    if(!btn || !panel) return;
+  btn.addEventListener('click', ()=>{ const hidden = panel.hasAttribute('hidden'); if(hidden){ panel.removeAttribute('hidden'); loadPanelValues(); } else { panel.setAttribute('hidden',''); } });
+  document.getElementById('btnExportConfigClose')?.addEventListener('click', ()=>{ panel.setAttribute('hidden',''); });
+    document.getElementById('btnExportConfigReset')?.addEventListener('click', ()=>{ resetExportConfig(); notify('Config export reposta','success'); });
+    document.getElementById('btnExportConfigSave')?.addEventListener('click', ()=>{ applyPanelChanges(); notify('Config export guardada','success'); generateExportPreview(); });
+    document.getElementById('btnExportConfigPreview')?.addEventListener('click', ()=>{ applyPanelChanges(); generateExportPreview(true); });
+    // Preset buttons
+    document.getElementById('btnCfgApplyPreset')?.addEventListener('click', applySelectedPreset);
+    document.getElementById('btnCfgSavePreset')?.addEventListener('click', saveCurrentAsPreset);
+    document.getElementById('btnCfgDeletePreset')?.addEventListener('click', deleteSelectedPreset);
+    populatePresetSelect();
+    // Live validation triggers
+    ['cfgWhitelist','cfgPrefixes','cfgHeaderMap','cfgOrderMode','cfgGroups','cfgMaxDepth'].forEach(id=>{
+      document.getElementById(id)?.addEventListener('input', ()=>{ applyPanelChanges(); validateExportConfig(); });
+    });
+    document.getElementById('cfgPreviewLimit')?.addEventListener('change', ()=>{ applyPanelChanges(); generateExportPreview(); });
+    document.getElementById('cfgIncludeRaw')?.addEventListener('change', ()=>{ applyPanelChanges(); });
+    document.getElementById('btnCfgExportPresets')?.addEventListener('click', exportPresetsFile);
+    document.getElementById('btnCfgImportPresets')?.addEventListener('click', ()=>{ const f=document.getElementById('cfgImportFile'); if(f) f.click(); });
+    document.getElementById('cfgImportFile')?.addEventListener('change', importPresetsFile);
+  }
+  initExportConfigPanel();
+  // Quick preset toolbar wiring (outside panel)
+  (function(){
+    const map = [
+      ['cfgPresetApplyQuick', applySelectedPreset],
+      ['cfgPresetSaveQuick', saveCurrentAsPreset],
+      ['cfgPresetDeleteQuick', deleteSelectedPreset],
+      ['cfgPresetExportFileQuick', exportPresetsFile],
+      ['cfgPresetSyncPullQuick', function(){ /* TODO: implement server pull sync */ notify('Sync Pull (quick) não implementado ainda','warn'); }],
+      ['cfgPresetSyncPushQuick', function(){ /* TODO: implement server push sync */ notify('Sync Push (quick) não implementado ainda','warn'); }]
+    ];
+    map.forEach(function(pair){ const el=document.getElementById(pair[0]); if(el) el.addEventListener('click', pair[1]); });
+    const importInput = document.getElementById('cfgPresetImportFileQuick');
+    if(importInput){ importInput.addEventListener('change', importPresetsFile); }
+    // Clicking label triggers hidden input; already native.
+  })();
+
+  // ===== Presets =====
+  const EXPORT_PRESETS_KEY = 'mod-focused-export-presets';
+  function loadExportPresets(){
+    try { return JSON.parse(localStorage.getItem(EXPORT_PRESETS_KEY)||'{}')||{}; } catch { return {}; }
+  }
+  function saveExportPresets(p){ try { localStorage.setItem(EXPORT_PRESETS_KEY, JSON.stringify(p)); } catch {} }
+  function populatePresetSelect(){
+    const sel = document.getElementById('cfgPresetSelect');
+    const selQuick = document.getElementById('cfgPresetSelectQuick');
+    if(!sel && !selQuick) return;
+    const presets = loadExportPresets();
+    const html = '<option value="">Selecionar preset...</option>' + Object.keys(presets).sort().map(function(k){ return '<option value="' + escapeHtml(k) + '">' + escapeHtml(k) + '</option>'; }).join('');
+    if(sel) sel.innerHTML = html;
+    if(selQuick) selQuick.innerHTML = html;
+  }
+  function applySelectedPreset(){
+    const sel = document.getElementById('cfgPresetSelect');
+    const selQuick = document.getElementById('cfgPresetSelectQuick');
+    const activeSel = (selQuick && selQuick.value)? selQuick : sel;
+    if(!activeSel || !activeSel.value) return;
+    const presets = loadExportPresets(); const p = presets[activeSel.value]; if(!p) return;
+    Object.assign(focusedExportConfig, p); persistExportConfig(); loadPanelValues(); notify('Preset aplicado','success'); generateExportPreview();
+  }
+  function saveCurrentAsPreset(){
+    const name = prompt('Nome do preset?'); if(!name) return;
+    const presets = loadExportPresets(); presets[name] = JSON.parse(JSON.stringify(focusedExportConfig)); saveExportPresets(presets); populatePresetSelect(); notify('Preset guardado','success');
+  }
+  function deleteSelectedPreset(){
+    const sel = document.getElementById('cfgPresetSelect');
+    const selQuick = document.getElementById('cfgPresetSelectQuick');
+    const activeSel = (selQuick && selQuick.value)? selQuick : sel;
+    if(!activeSel || !activeSel.value) return;
+    const presets = loadExportPresets(); if(!presets[activeSel.value]) return; delete presets[activeSel.value]; saveExportPresets(presets); populatePresetSelect(); if(sel) sel.value=''; if(selQuick) selQuick.value=''; notify('Preset apagado','success');
+  }
+
+  // ===== Validation & Preview =====
+  function validateExportConfig(){
+    const errors = [];
+    const seen = new Set();
+  (focusedExportConfig.whitelist||[]).forEach(function(k){ if(seen.has(k)) errors.push('Duplicado na whitelist: ' + k); else seen.add(k); });
+    // Validate regex in groups already compiled; if empty name
+  (focusedExportConfig.groups||[]).forEach(function(g){ if(!g.name) errors.push('Grupo sem nome para regex ' + g.match); });
+    if(focusedExportConfig.maxDepth <=0) errors.push('Profundidade máxima deve ser > 0');
+    const box = document.getElementById('exportConfigErrors'); if(!box) return errors;
+    if(!errors.length){ box.innerHTML=''; box.setAttribute('hidden',''); return errors; }
+  box.innerHTML = '<b>Erros de configuração:</b><ul>' + errors.map(function(e){ return '<li>' + escapeHtml(e) + '</li>'; }).join('') + '</ul>'; box.removeAttribute('hidden');
+    return errors;
+  }
+
+  function formatDateValGeneric(v){
+    if(v==null) return v;
+    const d = (v instanceof Date)? v : (typeof v==='number' || typeof v==='string') ? new Date(v): null;
+    if(!d || isNaN(d.getTime())) return v;
+    switch(focusedExportConfig.dateFormat){
+      case 'epoch': return d.getTime();
+      case 'locale': return d.toLocaleString('pt-PT');
+      case 'iso':
+      default: return d.toISOString();
+    }
+  }
+  function flattenForExport(obj, depth=0, prefix='', out){
+    out = out || {};
+    if(obj==null){ if(prefix) out[prefix]=''; return out; }
+    if(depth >= focusedExportConfig.maxDepth){ if(prefix) out[prefix] = typeof obj==='object'? JSON.stringify(obj): obj; return out; }
+    if(typeof obj !== 'object' || obj instanceof Date){ if(prefix) out[prefix] = formatDateValGeneric(obj); return out; }
+    if(Array.isArray(obj)){
+      if(!focusedExportConfig.includeArrays){ if(prefix) out[prefix]=JSON.stringify(obj); return out; }
+  obj.forEach(function(v,i){ flattenForExport(v, depth+1, prefix? (prefix + '[' + i + ']') : ('[' + i + ']'), out); });
+      return out;
+    }
+    for(const k of Object.keys(obj)){
+  const nk = prefix? (prefix + '.' + k) : k;
+      flattenForExport(obj[k], depth+1, nk, out);
+    }
+    return out;
+  }
+  function computeHeadersAndRows(logs){
+    const flat = logs.map(l=> flattenForExport(l));
+    let keys = new Set(); flat.forEach(f=> Object.keys(f).forEach(k=> keys.add(k)));
+    if(focusedExportConfig.whitelist?.length){
+      keys = new Set(focusedExportConfig.whitelist.filter(k=> keys.has(k)));
+    } else if(focusedExportConfig.includePrefixes?.length){
+      keys = new Set([...keys].filter(k=> focusedExportConfig.includePrefixes.some(p=> k.startsWith(p))));
+    }
+    let headers = [...keys];
+    if(focusedExportConfig.orderMode==='alphabetical') headers.sort((a,b)=> a.localeCompare(b));
+    else if(focusedExportConfig.orderMode==='whitelist' && focusedExportConfig.whitelist.length) headers = focusedExportConfig.whitelist.filter(k=> keys.has(k));
+    else if(focusedExportConfig.orderMode==='grouped'){
+      const used=new Set(); const grouped=[];
+      focusedExportConfig.groups.forEach(g=>{ const m = headers.filter(h=> g.match.test(h)); m.forEach(x=>{ if(!used.has(x)){ used.add(x); grouped.push(x);} }); });
+      headers.forEach(h=>{ if(!used.has(h)) grouped.push(h); }); headers=grouped;
+    }
+    // Remove columns belonging to disabled groups
+    if(Array.isArray(focusedExportConfig.groupsDisabled) && focusedExportConfig.groupsDisabled.length){
+      const disabledSet = new Set(focusedExportConfig.groupsDisabled);
+      const byGroup = {}; (focusedExportConfig.groups||[]).forEach(g=>{ byGroup[g.name]=g; });
+      headers = headers.filter(h=>{
+        for(const g of (focusedExportConfig.groups||[])){
+          if(g.match.test(h) && disabledSet.has(g.name)) return false;
+        }
+        return true;
+      });
+    }
+    const headerPretty = headers.map(h=> focusedExportConfig.headerMap[h] || h);
+    const rows = flat.map(f=> headers.map(h=> f[h]));
+    return { headers, headerPretty, rows };
+  }
+  function generateExportPreview(explicit){
+    const errors = validateExportConfig(); if(errors.length && !explicit) return;
+    const box = document.getElementById('exportConfigPreview'); if(!box) return;
+    if(!window.__lastLogs || !window.__lastLogs.length){ box.setAttribute('hidden',''); return; }
+  const limit = focusedExportConfig.previewRowLimit || 5;
+  const sample = window.__lastLogs.slice(0, Math.min(limit, window.__lastLogs.length));
+    const { headerPretty, rows } = computeHeadersAndRows(sample);
+    const thead = box.querySelector('thead'); const tbody = box.querySelector('tbody');
+  thead.innerHTML = '<tr>' + headerPretty.map(function(h){ return '<th>' + escapeHtml(String(h)) + '</th>'; }).join('') + '</tr>';
+  tbody.innerHTML = rows.map(function(r){ return '<tr>' + r.map(function(c){ return '<td>' + escapeHtml(c==null?'': String(c)) + '</td>'; }).join('') + '</tr>'; }).join('');
+    box.removeAttribute('hidden');
+  }
+
+  // Group enable list
+  function renderGroupsEnableList(){
+    const host = document.getElementById('cfgGroupsEnable'); if(!host) return;
+    const groups = focusedExportConfig.groups || [];
+    const disabled = new Set(focusedExportConfig.groupsDisabled||[]);
+    host.innerHTML = groups.map(g=>{
+  // id kept for potential future use
+  const id = 'ge_' + btoa(g.name).replace(/=/g,'');
+  return '<label><input type="checkbox" data-ge-name="' + escapeHtml(g.name) + '" ' + (disabled.has(g.name)?'':'checked') + ' /> ' + escapeHtml(g.name) + '</label>';
+    }).join('');
+    host.querySelectorAll('input[type="checkbox"][data-ge-name]')?.forEach(cb=>{
+      cb.addEventListener('change', ()=>{
+        const name = cb.getAttribute('data-ge-name');
+        if(!name) return;
+        if(!cb.checked){
+          if(!focusedExportConfig.groupsDisabled.includes(name)) focusedExportConfig.groupsDisabled.push(name);
+        } else {
+          focusedExportConfig.groupsDisabled = focusedExportConfig.groupsDisabled.filter(n=> n!==name);
+        }
+        persistExportConfig();
+        generateExportPreview();
+      });
+    });
+  }
+
+  // Import/Export presets file
+  function exportPresetsFile(){
+    const presets = loadExportPresets();
+    const blob = new Blob([JSON.stringify(presets,null,2)],{type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='export-presets.json'; a.click();
+  }
+  function importPresetsFile(e){
+    const file = e.target.files && e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try {
+        const data = JSON.parse(reader.result);
+        if(typeof data !== 'object' || Array.isArray(data)) throw new Error('Formato inválido');
+        showPresetDiffModal(data, 'file-import');
+      } catch(err){
+        console.error(err); notify('Falha ao importar presets','error');
+      }
+      e.target.value='';
+    };
+    reader.readAsText(file);
+  }
+
+  // ===== Preset Diff Modal =====
+  function computePresetDiff(newSet){
+    const existing = loadExportPresets();
+    const added = [];
+    const removed = [];
+    const changed = [];
+    const unchanged = [];
+    const allKeys = new Set([...Object.keys(existing), ...Object.keys(newSet)]);
+    allKeys.forEach(k=>{
+      const a = existing[k]; const b = newSet[k];
+      if(a && !b) removed.push(k); else if(!a && b) added.push(k); else if(a && b){
+        if(JSON.stringify(a) === JSON.stringify(b)) unchanged.push(k); else changed.push(k);
+      }
+    });
+    return { added, removed, changed, unchanged, existing, incoming:newSet };
+  }
+  function showPresetDiffModal(newSet, source){
+    const modal = document.getElementById('presetDiffModal'); if(!modal) return;
+    const body = document.getElementById('presetDiffDetails');
+    const summary = document.getElementById('presetDiffSummary');
+    const diff = computePresetDiff(newSet);
+    summary.innerHTML = '' +
+      (diff.added.length? '<span class="diff-add">+' + diff.added.length + ' adicionados</span> ':'') +
+      (diff.removed.length? '<span class="diff-rem">-' + diff.removed.length + ' removidos</span> ':'') +
+      (diff.changed.length? '<span class="diff-changed">' + diff.changed.length + ' alterados</span> ':'') +
+      (diff.unchanged.length? '<span class="badge-soft">' + diff.unchanged.length + ' iguais</span>':'');
+    const lines = [];
+    diff.added.forEach(k=> lines.push('<div><span class="diff-add">[ADD]</span> ' + escapeHtml(k) + '</div>'));
+    diff.removed.forEach(k=> lines.push('<div><span class="diff-rem">[REM]</span> ' + escapeHtml(k) + '</div>'));
+    diff.changed.forEach(k=>{
+      try {
+        const before = JSON.stringify(diff.existing[k], null, 0).slice(0,140);
+        const after = JSON.stringify(diff.incoming[k], null, 0).slice(0,140);
+        lines.push('<div><span class="diff-changed">[CHG]</span> ' + escapeHtml(k) + '<br><code class="diff-rem">' + escapeHtml(before) + '</code> → <code class="diff-add">' + escapeHtml(after) + '</code></div>');
+      } catch { lines.push('<div><span class="diff-changed">[CHG]</span> ' + escapeHtml(k) + '</div>'); }
+    });
+    if(!lines.length) lines.push('<div class="text-secondary">Nenhuma diferença.</div>');
+    body.innerHTML = lines.join('');
+    modal.classList.remove('modal-hidden'); modal.classList.add('modal-visible'); modal.setAttribute('aria-hidden','false');
+    modal.dataset.source = source || '';
+    modal.dataset.payload = encodeURIComponent(JSON.stringify(newSet));
+  }
+  function closePresetDiffModal(){
+    const modal = document.getElementById('presetDiffModal'); if(!modal) return;
+    modal.classList.add('modal-hidden'); modal.classList.remove('modal-visible'); modal.setAttribute('aria-hidden','true');
+    delete modal.dataset.source; delete modal.dataset.payload;
+  }
+  function applyPresetDiff(strategy){ // strategy: 'merge' | 'replace'
+    const modal = document.getElementById('presetDiffModal'); if(!modal) return;
+    try {
+      const raw = modal.dataset.payload ? JSON.parse(decodeURIComponent(modal.dataset.payload)) : {};
+      const existing = loadExportPresets();
+      let finalPresets;
+      if(strategy === 'replace'){ finalPresets = raw; }
+      else { finalPresets = { ...existing, ...raw }; }
+      saveExportPresets(finalPresets);
+      populatePresetSelect();
+      notify('Presets ' + (strategy==='replace'?'substituídos':'mesclados'),'success');
+    } catch(e){ console.error(e); notify('Erro ao aplicar diff de presets','error'); }
+    closePresetDiffModal();
+  }
+  (function(){
+    const m = document.getElementById('presetDiffModal'); if(!m) return;
+    document.getElementById('presetDiffClose')?.addEventListener('click', closePresetDiffModal);
+    document.getElementById('presetDiffCancel')?.addEventListener('click', closePresetDiffModal);
+    document.getElementById('presetDiffMerge')?.addEventListener('click', function(){ applyPresetDiff('merge'); });
+    document.getElementById('presetDiffReplace')?.addEventListener('click', function(){ applyPresetDiff('replace'); });
+  })();
+
+  // ===== Preset Sync (Server) =====
+  async function fetchServerPresets(){
+    try {
+      const guildId = new URLSearchParams(location.search).get('guildId');
+      if(!guildId) throw new Error('guildId ausente');
+      const r = await fetch('/api/guild/' + guildId + '/mod-presets');
+      const j = await r.json(); if(!j.success) throw new Error(j.error||'falha');
+      return j.presets || {};
+    } catch(e){ notify('Falha ao obter presets do servidor','error'); return {}; }
+  }
+  async function pushServerPresets(all){
+    try {
+      const guildId = new URLSearchParams(location.search).get('guildId');
+      const r = await fetch('/api/guild/' + guildId + '/mod-presets', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ presets: all }) });
+      const j = await r.json(); if(!j.success) throw new Error(j.error||'falha');
+      notify('Presets enviados','success');
+    } catch(e){ notify('Falha ao enviar presets','error'); }
+  }
+  async function handleSyncPull(){
+    const server = await fetchServerPresets();
+    showPresetDiffModal(server, 'server-pull');
+  }
+  async function handleSyncPush(){
+    if(!confirm('Enviar TODOS os presets locais para o servidor (substitui no servidor)?')) return;
+    const all = loadExportPresets();
+    await pushServerPresets(all);
+  }
+  async function handleSyncDelete(){
+    try {
+      const sel = document.getElementById('cfgPresetSelect') || document.getElementById('cfgPresetSelectQuick');
+      const quick = document.getElementById('cfgPresetSelectQuick');
+      const panelSel = document.getElementById('cfgPresetSelect');
+      const name = (quick && quick.value) ? quick.value : (panelSel && panelSel.value ? panelSel.value : '');
+      if(!name){ return notify('Selecione um preset para apagar remotamente','warn'); }
+      if(!confirm('Apagar preset remoto "' + name + '"?')) return;
+      const guildId = new URLSearchParams(location.search).get('guildId');
+      const r = await fetch('/api/guild/' + guildId + '/mod-presets/' + encodeURIComponent(name), { method:'DELETE' });
+      const j = await r.json(); if(!j.success) throw new Error(j.error||'falha');
+      notify('Preset remoto apagado','success');
+    } catch(e){ notify('Falha ao apagar remoto','error'); }
+  }
+
+  document.getElementById('btnCfgSyncPull')?.addEventListener('click', handleSyncPull);
+  document.getElementById('btnCfgSyncPush')?.addEventListener('click', handleSyncPush);
+  document.getElementById('btnCfgSyncDelete')?.addEventListener('click', handleSyncDelete);
+  document.getElementById('cfgPresetSyncPullQuick')?.addEventListener('click', handleSyncPull);
+  document.getElementById('cfgPresetSyncPushQuick')?.addEventListener('click', handleSyncPush);
+  document.getElementById('cfgPresetSyncDeleteQuick')?.addEventListener('click', handleSyncDelete);
+
+  // ===== Role Manager Frontend =====
+  async function fetchRolesList(){
+    try {
+      const guildId = new URLSearchParams(location.search).get('guildId');
+      const r = await fetch('/api/guild/' + guildId + '/roles');
+      const j = await r.json(); if(!j.success) throw new Error(j.error||'falha');
+      return j.roles || [];
+    } catch(e){ notify('Falha ao obter cargos','error'); return []; }
+  }
+  function renderRoles(list){
+    const host = document.getElementById('rmRolesList'); if(!host) return;
+    const term = (document.getElementById('rmSearchRole')?.value||'').toLowerCase();
+    const tpl = document.getElementById('tplRoleItem');
+    host.innerHTML='';
+    list.filter(r=> !term || r.name.toLowerCase().includes(term) || r.id.includes(term)).forEach(r=>{
+      const node = tpl.content.firstElementChild.cloneNode(true);
+      node.dataset.roleId = r.id;
+      node.querySelector('.ri-name').textContent = r.name;
+      node.querySelector('.ri-pos').textContent = '#' + r.position;
+      node.querySelector('.ri-color').style.background = r.color || '#666';
+      node.querySelector('.ri-up').addEventListener('click', ()=> moveRole(r.id,'up',1));
+      node.querySelector('.ri-down').addEventListener('click', ()=> moveRole(r.id,'down',1));
+      node.querySelector('.ri-del').addEventListener('click', ()=> deleteRole(r.id, r.name));
+      host.appendChild(node);
+    });
+  }
+  async function refreshRoles(){
+    const roles = await fetchRolesList();
+    window.__rolesCache = roles;
+    renderRoles(roles);
+  }
+  async function createRole(){
+    const name = document.getElementById('rmNewRoleName')?.value.trim();
+    const colorRaw = document.getElementById('rmNewRoleColor')?.value.trim();
+    if(!name) return notify('Nome obrigatório','warn');
+    try {
+      const guildId = new URLSearchParams(location.search).get('guildId');
+      const r = await fetch('/api/guild/' + guildId + '/roles', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, color: colorRaw || undefined }) });
+      const j = await r.json(); if(!j.success) throw new Error(j.error||'Falha');
+      notify('Cargo criado','success');
+      document.getElementById('rmNewRoleName').value='';
+      document.getElementById('rmNewRoleColor').value='';
+      refreshRoles();
+    } catch(e){ notify('Erro a criar cargo','error'); }
+  }
+  async function deleteRole(id,name){
+    if(!confirm('Apagar cargo ' + name + '?')) return;
+    try {
+      const guildId = new URLSearchParams(location.search).get('guildId');
+      const r = await fetch('/api/guild/' + guildId + '/roles/' + id, { method:'DELETE' });
+      const j = await r.json(); if(!j.success) throw new Error(j.error||'Falha');
+      notify('Cargo apagado','success');
+      refreshRoles();
+    } catch(e){ notify('Erro ao apagar cargo','error'); }
+  }
+  async function moveRole(id,direction,delta){
+    try {
+      const guildId = new URLSearchParams(location.search).get('guildId');
+      const r = await fetch('/api/guild/' + guildId + '/roles/' + id + '/move', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ direction, delta }) });
+      const j = await r.json(); if(!j.success) throw new Error(j.error||'Falha');
+      refreshRoles();
+    } catch(e){ notify('Erro ao mover cargo','error'); }
+  }
+  (function initRoleManager(){
+    if(!document.getElementById('roleManagerPanel')) return;
+    document.getElementById('rmBtnCreateRole')?.addEventListener('click', createRole);
+    document.getElementById('rmBtnRefreshRoles')?.addEventListener('click', refreshRoles);
+    document.getElementById('rmSearchRole')?.addEventListener('input', ()=>{
+      if(window.__rolesCache) renderRoles(window.__rolesCache);
+    });
+    refreshRoles();
+  })();
+
   attachAutocomplete(els.userId, 'members');
   attachAutocomplete(els.moderatorId, 'members');
   attachAutocomplete(els.channelId, 'channels');
@@ -1806,7 +2476,7 @@
       // If auto is ON, let existing debounced full refresh handle it
       if (els.btnAuto.getAttribute('aria-pressed') === 'true') return false;
       try {
-        const u = new URL(`/api/guild/${guildId}/logs`, window.location.origin);
+  const u = new URL('/api/guild/' + guildId + '/logs', window.location.origin);
         u.searchParams.set('type', buildTypeParam());
         buildRange(u);
         u.searchParams.set('limit', '5');
@@ -1860,7 +2530,7 @@
           const marker = document.createElement('div');
           marker.className = 'feed-marker';
           const t = new Date().toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' });
-          marker.innerHTML = `<span>Retomar a partir daqui • ${t}</span>`;
+          marker.innerHTML = '<span>Retomar a partir daqui • ' + t + '</span>';
           container.insertBefore(marker, prevFirst);
         }
         lastLiveAppendTs = now;
@@ -1912,21 +2582,21 @@
               const label = await resolveMemberLabel(id);
               if (label) {
                 const icon = chip.hasAttribute('data-filter-user') ? 'fa-user' : 'fa-shield-alt';
-                chip.innerHTML = `<i class="fas ${icon}"></i> ${escapeHtml(label)}`;
+                chip.innerHTML = '<i class="fas ' + icon + '"></i> ' + escapeHtml(label);
                 chip.dataset.resolved = '1';
               }
             } else if (chip.hasAttribute('data-filter-channel')){
               const id = chip.getAttribute('data-filter-channel');
               const label = await resolveChannelLabel(id);
               if (label) {
-                chip.innerHTML = `<i class=\"fas fa-hashtag\"></i> ${escapeHtml(label)}`;
+                chip.innerHTML = '<i class="fas fa-hashtag"></i> ' + escapeHtml(label);
                 chip.dataset.resolved = '1';
               }
             }
           });
         } catch {}
         // Subtle in-page toast for new events (click to jump to newest area)
-        try { showFeedToast(`${inserted} novo(s) evento(s)`, () => { try { els.feed?.scrollIntoView({ behavior:'smooth', block:'start' }); } catch {} }); } catch {}
+  try { showFeedToast(inserted + ' novo(s) evento(s)', function(){ try { if(els.feed && els.feed.scrollIntoView) els.feed.scrollIntoView({ behavior:'smooth', block:'start' }); } catch {} }); } catch {}
         // Update head trackers
         lastTopId = list[0].id; lastTopTs = list[0].timestamp;
         return true;
@@ -1972,7 +2642,7 @@
       if (!host) return;
       const toast = document.createElement('div');
       toast.className = 'feed-toast';
-      toast.innerHTML = `<i class="fas fa-bell"></i> <span>${escapeHtml(msg)}</span>`;
+  toast.innerHTML = '<i class="fas fa-bell"></i> <span>' + escapeHtml(msg) + '</span>';
       host.insertBefore(toast, host.firstChild);
       if (typeof onClick === 'function') { toast.style.cursor='pointer'; toast.addEventListener('click', onClick); }
       setTimeout(()=>{
@@ -1992,8 +2662,8 @@
   } catch {}
   // Hierarchy quick tools
   async function postAction(body){
-    const r = await fetch(`/api/guild/${guildId}/moderation/action`, { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(body) });
-    const d = await r.json(); if(!r.ok || !d.success) throw new Error(d.error||`HTTP ${r.status}`); return d;
+  const r = await fetch('/api/guild/' + guildId + '/moderation/action', { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(body) });
+  const d = await r.json(); if(!r.ok || !d.success) throw new Error(d.error||('HTTP ' + r.status)); return d;
   }
   async function confirmPlan(plan, title){
     // Use modal-based confirmation everywhere
