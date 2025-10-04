@@ -282,3 +282,88 @@
   // Initial attempt
   setInterval(applyPositions, 1500); // low frequency fallback
 })();
+// Sorting + multi-delete + minimal diff re-render
+(function(){
+  const sortSel=document.getElementById('roleSort');
+  const rolesContainer=document.getElementById('roles');
+  let lastRolesSnapshot='';
+  function hashRoles(list){
+    return list.map(r=>r.id+':'+r.name+':'+r.position+':' + (r.manageable?1:0)).join('|');
+  }
+  // Expose a lightweight re-render hook
+  window.renderRolesWithState = function(allRoles){
+    if(!Array.isArray(allRoles)) return;
+    // sort
+    const mode=sortSel? sortSel.value : 'position-desc';
+    let arr=[...allRoles];
+    switch(mode){
+      case 'position-asc': arr.sort((a,b)=>a.position-b.position); break;
+      case 'name-asc': arr.sort((a,b)=> a.name.localeCompare(b.name,'pt')); break;
+      case 'name-desc': arr.sort((a,b)=> b.name.localeCompare(a.name,'pt')); break;
+      case 'position-desc': default: arr.sort((a,b)=> b.position-a.position); break;
+    }
+    const h=hashRoles(arr);
+    if(h===lastRolesSnapshot) return; // no DOM churn
+    lastRolesSnapshot=h;
+    if(!rolesContainer) return;
+    rolesContainer.querySelectorAll('label.role').forEach(()=>{});
+    // We reuse existing checkboxes if possible (simpler now: rebuild)
+    const selectedIds=new Set([...rolesContainer.querySelectorAll('label.role input:checked')].map(i=>i.value));
+    rolesContainer.innerHTML = arr.map(r=>{
+      const disabled = r.managed || (r.manageable===false);
+      const clazz = 'role-list role'+(disabled?' role-disabled':'');
+      const color = r.color && r.color!=='#000000'? `style=\"color:${r.color}\"`:'';
+      const checked = selectedIds.has(r.id)? 'checked':'';
+      const title = disabled? `${r.name} — não gerenciável` : r.name;
+      return `<label class="${clazz}" title="${title}">`+
+        `<input type="checkbox" value="${r.id}" ${checked} ${disabled?'disabled':''}/> `+
+        `<i class="fas fa-tag" ${color}></i> <span>${r.name}</span></label>`;
+    }).join('');
+  };
+  sortSel?.addEventListener('change',()=>{ if(window.lastFetchedRoles) window.renderRolesWithState(window.lastFetchedRoles); });
+})();
+//# sourceMappingURL=roles.js.map
+(function(){
+  // Bulk delete logic replacing single deleteRole
+  const delBtn=document.getElementById('rmBtnDeleteRole');
+  const delSel=document.getElementById('rmDeleteRoleSelect');
+  function toast(msg,type='success'){ if(window.showToast) return window.showToast(msg,type); console.log('[toast]',type,msg); }
+  async function apiDel(guildId, roleId){
+    const res=await fetch(`/api/guild/${guildId}/roles/${roleId}`,{method:'DELETE'}); let data=null; try{ data=await res.json(); }catch{}; if(!res.ok || (data && data.success===false)) throw new Error((data&&data.error)||`HTTP ${res.status}`); }
+  function guildId(){ const p=new URLSearchParams(window.location.search); return p.get('guildId')||window.guildId||window.currentGuildId||''; }
+  async function bulkDelete(){
+    if(!delSel) return; const ids=[...delSel.selectedOptions].map(o=>o.value).filter(Boolean);
+    if(ids.length===0){ toast('Selecione pelo menos um cargo','error'); return; }
+    if(!confirm(`Apagar ${ids.length} cargo(s)?`)) return;
+    delBtn.disabled=true; delBtn.classList.add('loading');
+    let ok=0, fail=0; for(const id of ids){ try{ await apiDel(guildId(), id); ok++; } catch(e){ console.error('del role', id, e); fail++; } }
+    delBtn.disabled=false; delBtn.classList.remove('loading');
+    toast(`Remoção concluída: ${ok} ok, ${fail} falha(s)`, fail? 'error':'success');
+    // Trigger refresh
+    document.getElementById('refresh')?.click();
+  }
+  delBtn?.addEventListener('click', bulkDelete);
+})();
+(function(){
+  // Adjust dropdown population for multi-select and integrate sorting pipeline; remove fetch interception earlier (noop if not present)
+  const moveSel=document.getElementById('rmMoveRoleSelect');
+  const delSel=document.getElementById('rmDeleteRoleSelect');
+  // Wrap existing helper or define
+  const baseHelper = window.refreshRoleDropdownHelpers;
+  window.refreshRoleDropdownHelpers = function(allRoles){
+    if(baseHelper) baseHelper(allRoles); // may already populate basic
+    if(!Array.isArray(allRoles)) return;
+    window.lastFetchedRoles = allRoles;
+    // Move select (single) keep placeholder
+    if(moveSel){
+      moveSel.innerHTML = '<option value="">(Cargo)</option>' + allRoles.map(r=>`<option value="${r.id}" ${(r.managed||r.manageable===false)?'disabled':''}>${r.name}${(r.managed||r.manageable===false)?' (X)':''}</option>`).join('');
+    }
+    if(delSel){
+      delSel.innerHTML = allRoles
+        .filter(r=>!r.managed && r.manageable!==false)
+        .map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+    }
+    if(window.renderRolesWithState) window.renderRolesWithState(allRoles);
+  };
+})();
+//# sourceMappingURL=roles.js.map

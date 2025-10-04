@@ -50,7 +50,8 @@
 									<input id="rmMoveSteps" type="number" class="input tiny" value="1" min="1" title="Passos" placeholder="Passos" />
 									<button id="rmBtnMoveUp" class="btn btn-glass btn-sm" title="Subir"><i class="fas fa-arrow-up"></i></button>
 									<button id="rmBtnMoveDown" class="btn btn-glass btn-sm" title="Descer"><i class="fas fa-arrow-down"></i></button>
-									<select id="rmDeleteRoleSelect" class="input mid" title="Cargo para apagar"><option value="">(Cargo)</option></select>
+									<select id="rmDeleteRoleSelect" class="input mid" title="Cargos para apagar" multiple size="4"></select>
+									<span class="text-secondary helper-text">(Ctrl/Cmd + clique para multi-seleção)</span>
 									<button id="rmBtnDeleteRole" class="btn btn-danger btn-sm" title="Apagar cargo" aria-label="Apagar cargo"><i class="fas fa-trash"></i></button>
 								</div>
 					<details id="bulkPanel" class="mt-12">
@@ -70,6 +71,12 @@
 							<h3 class="section-subtitle"><i class="fas fa-id-badge"></i> Cargos</h3>
 							<div class="mt-4 flex-row wrap gap-8">
 								<input id="roleSearch" class="input role-search" placeholder="Pesquisar cargo" />
+								<select id="roleSort" class="input role-sort" title="Ordenar cargos">
+									<option value="position-desc">Posição (desc)</option>
+									<option value="position-asc">Posição (asc)</option>
+									<option value="name-asc">Nome (A-Z)</option>
+									<option value="name-desc">Nome (Z-A)</option>
+								</select>
 								<span id="roleCount" class="text-secondary small"></span>
 							</div>
 							<div id="roles" class="grid gap-6 mt-8"></div>
@@ -104,6 +111,9 @@
 		.role-pos{font-size:11px;padding:2px 6px;border:1px solid var(--glass-border);border-radius:6px;background:rgba(255,255,255,0.05);color:var(--text-secondary)}
 		#roleCount.small{font-size:12px}
 		.role-search{max-width:220px}
+		.helper-text{font-size:12px}
+		.role-sort{max-width:160px}
+		.role-disabled{opacity:0.45;filter:saturate(0.4)}
 	</style>
 	<script src="/js/roles.js"></script>
 </body>
