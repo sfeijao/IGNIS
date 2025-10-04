@@ -46,6 +46,15 @@
   let pinnedGroups = new Set(); // executorId values pinned
   let pinCustomOrder = []; // explicit ordering of pinned groups
   let pillAddedFamilies = new Set(); // families added via group pills (for quick clear)
+  let focusedGroup = null; // currently focused executorId (group isolation)
+  let groupSearchTerm = ''; // search term for grouped moderators
+  // Inject dim style for focus mode (once)
+  if(!document.getElementById('focusDimStyle')){
+    const st = document.createElement('style');
+    st.id = 'focusDimStyle';
+    st.textContent = `.group-mod[data-dim="true"]{opacity:.45;filter:saturate(.6);} .group-mod[data-dim="true"] .group-head{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,0));}`;
+    document.head.appendChild(st);
+  }
 
   function notify(msg, type='info'){
     const n = document.createElement('div');
@@ -262,6 +271,8 @@
   localStorage.setItem('mod-group-pins', JSON.stringify([...pinnedGroups]));
   localStorage.setItem('mod-group-pin-order', JSON.stringify(pinCustomOrder));
   localStorage.setItem('mod-pill-added-fams', JSON.stringify([...pillAddedFamilies]));
+  localStorage.setItem('mod-focused-group', focusedGroup||'');
+  localStorage.setItem('mod-group-search', groupSearchTerm||'');
     } catch {}
   }
   (function restorePrefs(){
@@ -306,8 +317,10 @@
       const hasPillFilters = pillAddedFamilies.size>0;
       quickClear.setAttribute('data-visible', hasPillFilters?'true':'false');
     }
+    const pillCount = pillAddedFamilies.size;
+    const clearLabel = pillCount>0 ? `Limpar (${pillCount})` : 'Limpar tudo';
     const baseChips = chips.map(c => `<span class="chip" data-k="${c.k}">${c.label} <i class="fas fa-times chip-clear" title="Limpar"></i></span>`).join('');
-    const clearAll = ` <span class="chip chip-clear-all" data-clear-all="1" title="Limpar todos os filtros"><i class="fas fa-broom"></i> Limpar tudo</span>`;
+    const clearAll = ` <span class="chip chip-clear-all" data-clear-all="1" title="Limpar filtros adicionados${pillCount>0? ' (Shift+Click nas pills = exclusivo)': ''}"><i class="fas fa-broom"></i> ${clearLabel}</span>`;
     if (!chips.length) { row.querySelectorAll('.chip:not(#quickClearPills)')?.forEach(c=>{ if(c.id!=='quickClearPills') c.remove(); }); return; }
     // Only replace dynamic part, keep quick clear node
     // Remove existing dynamic chips (excluding quick clear)
@@ -372,7 +385,6 @@
   function captureCurrentFilterState(){
     return {
       family: currentFamily,
-      multiFamilies: [...multiFamilies],
       q: els.q?.value||'',
       from: els.from?.value||'',
       to: els.to?.value||'',
@@ -428,6 +440,8 @@
       }
     } catch {}
   }
+    try { const fg = localStorage.getItem('mod-focused-group'); if(fg) focusedGroup = fg||null; } catch {}
+    try { const gs = localStorage.getItem('mod-group-search'); if(gs) groupSearchTerm = gs; } catch {}
   async function loadFeed(){
     if (!guildId) return notify('guildId em falta','error');
     els.feed.innerHTML = `<div class="loading"><span class="loading-spinner"></span> A carregar...</div>`;
