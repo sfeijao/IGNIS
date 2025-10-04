@@ -52,7 +52,11 @@
   if(!document.getElementById('focusDimStyle')){
     const st = document.createElement('style');
     st.id = 'focusDimStyle';
-    st.textContent = `.group-mod[data-dim="true"]{opacity:.45;filter:saturate(.6);} .group-mod[data-dim="true"] .group-head{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,0));}`;
+    st.textContent = `.group-mod[data-dim="true"]{opacity:.45;filter:saturate(.6);} .group-mod[data-dim="true"] .group-head{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,0));}
+    .badge-focus{display:inline-flex;align-items:center;gap:4px;background:#2563eb;color:#fff;font-size:.65rem;padding:2px 6px;border-radius:999px;margin-left:6px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
+    .group-head .unfocus-btn{color:#f87171;}
+    .group-head .unfocus-btn:hover{color:#dc2626;}
+    `;
     document.head.appendChild(st);
   }
 
@@ -910,12 +914,18 @@
       }
       const sharePct = ((g.logs.length/totalLogsAll)*100).toFixed(1);
       const dimAttr = (focusedGroup && focusedGroup!==g.executorId)?'data-dim="true"':'';
-      parts.push(`<div class="group-mod" data-exec="${escapeHtml(g.executorId)}" aria-expanded="true" ${dimAttr} draggable="${pinnedGroups.has(g.executorId)?'true':'false'}">
-        <div class="group-head"><span class="group-drag-handle" ${pinnedGroups.has(g.executorId)?'':'style="display:none"'} data-tip="Arraste para reordenar grupos fixados"><i class="fas fa-grip-vertical"></i></span><button class="btn btn-sm btn-glass group-toggle" title="Expandir/recolher"><i class="fas fa-chevron-down"></i></button>
-          <span class="group-title"><i class="fas ${iconClass}"></i> ${escapeHtml(label||'—')}</span>
-          <button class="btn btn-sm btn-glass pin-btn" data-pin="${escapeHtml(g.executorId)}" title="${pinnedGroups.has(g.executorId)?'Desafixar':'Fixar'} grupo" data-tip="${pinnedGroups.has(g.executorId)?'Desafixar':'Fixar'}"><i class="fas fa-thumbtack" style="transform:${pinnedGroups.has(g.executorId)?'rotate(45deg)':'none'}"></i></button>
-          <button class="btn btn-sm btn-glass export-group-btn" data-export-group="${escapeHtml(g.executorId)}" data-tip="Exportar apenas este grupo"><i class="fas fa-download"></i></button>
-          <span class="group-count" data-tip="${sharePct}% do total">${g.logs.length} evento(s) • ${sharePct}%</span>
+      const isFocused = focusedGroup === g.executorId;
+      const focusBadge = isFocused ? `<span class=\"badge-focus\" data-tip=\"Este grupo está focado. Clique no botão para desfocar.\"><i class=\"fas fa-bullseye\"></i> Focado</span>` : '';
+      const unfocusBtn = isFocused ? `<button class=\"btn btn-sm btn-glass unfocus-btn\" data-unfocus=\"${escapeHtml(g.executorId)}\" data-tip=\"Sair do foco\"><i class=\"fas fa-eye-slash\"></i></button>` : '';
+      const pinTipBase = pinnedGroups.has(g.executorId)?'Desafixar':'Fixar';
+      const pinTip = `${pinTipBase} • ${sharePct}% do total`;
+      parts.push(`<div class=\"group-mod\" data-exec=\"${escapeHtml(g.executorId)}\" aria-expanded=\"true\" ${dimAttr} draggable=\"${pinnedGroups.has(g.executorId)?'true':'false'}\">
+        <div class=\"group-head\"><span class=\"group-drag-handle\" ${pinnedGroups.has(g.executorId)?'':'style=\"display:none\"'} data-tip=\"Arraste para reordenar grupos fixados\"><i class=\"fas fa-grip-vertical\"></i></span><button class=\"btn btn-sm btn-glass group-toggle\" title=\"Expandir/recolher\"><i class=\"fas fa-chevron-down\"></i></button>
+          <span class=\"group-title\"><i class=\"fas ${iconClass}\"></i> ${escapeHtml(label||'—')} ${focusBadge}</span>
+          <button class=\"btn btn-sm btn-glass pin-btn\" data-pin=\"${escapeHtml(g.executorId)}\" title=\"${pinTip}\" data-tip=\"${pinTip}\"><i class=\"fas fa-thumbtack\" style=\"transform:${pinnedGroups.has(g.executorId)?'rotate(45deg)':'none'}\"></i></button>
+          <button class=\"btn btn-sm btn-glass export-group-btn\" data-export-group=\"${escapeHtml(g.executorId)}\" data-tip=\"Exportar apenas este grupo\"><i class=\"fas fa-download\"></i></button>
+          ${unfocusBtn}
+          <span class=\"group-count\" data-tip=\"${sharePct}% do total\">${g.logs.length} evento(s) • ${sharePct}%</span>
         </div>
         ${buildGroupTypesPills(g.logs)}
         <div class="group-body">
@@ -935,6 +945,13 @@
         focusedGroup = (focusedGroup === id) ? null : id;
         persistPrefs();
         if(window.__lastLogs) renderFeed(window.__lastLogs);
+      });
+    });
+    // Unfocus buttons
+    els.feed.querySelectorAll('.unfocus-btn')?.forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        focusedGroup = null; persistPrefs(); if(window.__lastLogs) renderFeed(window.__lastLogs);
       });
     });
     // Attach toggle
