@@ -199,3 +199,86 @@
   // Initial attempt after load
   window.addEventListener('load',()=>{ populateDropdowns(); addCopyButtons(); });
 })();
+// Role search + hierarchy display + disable unmanaged in dropdowns
+(function(){
+  const roleSearch=document.getElementById('roleSearch');
+  const roleCount=document.getElementById('roleCount');
+  const moveSel=document.getElementById('rmMoveRoleSelect');
+  const delSel=document.getElementById('rmDeleteRoleSelect');
+  // Hook into existing global helper
+  const origRefresh = window.refreshRoleDropdownHelpers;
+  window.refreshRoleDropdownHelpers = function(allRoles){
+    if(origRefresh) origRefresh(allRoles);
+    if(allRoles){
+      // Disable unmanaged
+      const buildOpts = list => list.map(r=>`<option value="${r.id}" ${ (r.managed||r.manageable===false)?'disabled':'' }>${r.name}${(r.managed||r.manageable===false)?' (X)':''}</option>`).join('');
+      if(moveSel) moveSel.innerHTML='<option value="">(Cargo)</option>'+buildOpts(allRoles);
+      if(delSel) delSel.innerHTML='<option value="">(Cargo)</option>'+buildOpts(allRoles.filter(r=>!r.managed && r.manageable!==false));
+    }
+    filterRoles();
+  };
+  function filterRoles(){
+    const term=(roleSearch?.value||'').toLowerCase();
+    const container=document.getElementById('roles'); if(!container) return;
+    const items=[...container.querySelectorAll('label.role')];
+    let visible=0;
+    items.forEach(lab=>{
+      const txt=lab.textContent.toLowerCase();
+      if(!term || txt.includes(term)){ lab.style.display='flex'; visible++; } else { lab.style.display='none'; }
+    });
+    if(roleCount){ roleCount.textContent = visible? `${visible} cargo(s)` : 'Nenhum cargo'; }
+  }
+  roleSearch?.addEventListener('input', filterRoles);
+  // Mutation to inject position badges
+  const rolesEl=document.getElementById('roles');
+  const injectPositions=()=>{
+    const labels=[...rolesEl.querySelectorAll('label.role')];
+    labels.forEach(lab=>{
+      if(lab.querySelector('.role-pos')) return;
+      const idInput=lab.querySelector('input[type="checkbox"]');
+      if(!idInput) return;
+      // attempt to read position info from title or dataset later; fallback unknown
+      // We will add a placeholder now; replaced when dataset present
+      const posSpan=document.createElement('span'); posSpan.className='role-pos'; posSpan.textContent='?';
+      lab.insertBefore(posSpan, lab.firstChild);
+    });
+  };
+  if(rolesEl){
+    const obs=new MutationObserver(()=>{ injectPositions(); filterRoles(); });
+    obs.observe(rolesEl,{childList:true, subtree:true});
+  }
+})();
+// Patch renderRolesList to show position numbers
+(function(){
+  const origRenderRolesList = typeof renderRolesList !== 'undefined' ? renderRolesList : null;
+})();
+// Since renderRolesList is inside IIFE we re-implement position labeling using MutationObserver + roles from API
+(function(){
+  let lastRoles=[];
+  // Intercept fetch of roles via monkey patch fetch (lightweight) to capture positions
+  const origFetch = window.fetch;
+  window.fetch = async function(input, init){
+    const res = await origFetch(input, init);
+    try {
+      const url = typeof input==='string'? input : input.url;
+      if(/\/api\/guild\/.+\/roles$/.test(url) && res.ok){
+        const cloned = res.clone();
+        const data = await cloned.json();
+        if(data && data.roles){ lastRoles = data.roles; setTimeout(applyPositions, 50); window.refreshRoleDropdownHelpers && window.refreshRoleDropdownHelpers(lastRoles); }
+      }
+    } catch {}
+    return res;
+  };
+  function applyPositions(){
+    if(!lastRoles.length) return;
+    const map = new Map(lastRoles.map(r=>[r.id,r.position]));
+    document.querySelectorAll('#roles label.role').forEach(lab=>{
+      const chk = lab.querySelector('input[type="checkbox"]'); if(!chk) return;
+      let posEl = lab.querySelector('.role-pos');
+      if(!posEl){ posEl=document.createElement('span'); posEl.className='role-pos'; lab.insertBefore(posEl, lab.firstChild); }
+      const pos = map.get(chk.value); posEl.textContent = typeof pos==='number'? pos : '?';
+    });
+  }
+  // Initial attempt
+  setInterval(applyPositions, 1500); // low frequency fallback
+})();

@@ -68,7 +68,11 @@
 						</div>
 						<div>
 							<h3 class="section-subtitle"><i class="fas fa-id-badge"></i> Cargos</h3>
-							<div id="roles" class="grid gap-6"></div>
+							<div class="mt-4 flex-row wrap gap-8">
+								<input id="roleSearch" class="input role-search" placeholder="Pesquisar cargo" />
+								<span id="roleCount" class="text-secondary small"></span>
+							</div>
+							<div id="roles" class="grid gap-6 mt-8"></div>
 						</div>
 					</div>
 				</div>
@@ -97,6 +101,9 @@
 		.role-manage input.short{max-width:100px}
 		.role-manage input.mid{max-width:140px}
 		.role-manage input.tiny{max-width:80px}
+		.role-pos{font-size:11px;padding:2px 6px;border:1px solid var(--glass-border);border-radius:6px;background:rgba(255,255,255,0.05);color:var(--text-secondary)}
+		#roleCount.small{font-size:12px}
+		.role-search{max-width:220px}
 	</style>
 	<script src="/js/roles.js"></script>
 </body>
