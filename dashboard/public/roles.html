@@ -42,17 +42,17 @@
 						<label class="ml-8"><input type="checkbox" id="openOnFailOnly" /> Abrir detalhes apenas em falhas</label>
 						<span id="bulkProgress" class="text-secondary"></span>
 					</div>
-					<div class="role-manage mt-12 flex-row wrap gap-8">
-						<input id="rmNewRoleName2" class="input" placeholder="Novo cargo" maxlength="80" />
-						<input id="rmNewRoleColor2" class="input short" placeholder="#hex" maxlength="7" />
-						<button id="rmBtnCreateRole2" class="btn btn-secondary btn-sm"><i class="fas fa-plus"></i> Criar</button>
-						<input id="rmMoveRoleId" class="input mid" placeholder="ID para mover" />
-						<input id="rmMoveSteps" type="number" class="input tiny" value="1" min="1" title="Passos" placeholder="Passos" />
-						<button id="rmBtnMoveUp" class="btn btn-glass btn-sm" title="Subir"><i class="fas fa-arrow-up"></i></button>
-						<button id="rmBtnMoveDown" class="btn btn-glass btn-sm" title="Descer"><i class="fas fa-arrow-down"></i></button>
-						<input id="rmDeleteRoleId" class="input mid" placeholder="ID para apagar" />
-						<button id="rmBtnDeleteRole" class="btn btn-danger btn-sm" title="Apagar cargo" aria-label="Apagar cargo"><i class="fas fa-trash"></i></button>
-					</div>
+								<div class="role-manage mt-12 flex-row wrap gap-8">
+									<input id="rmNewRoleName2" class="input" placeholder="Novo cargo" maxlength="80" />
+									<input id="rmNewRoleColor2" class="input short" placeholder="#hex" maxlength="7" />
+									<button id="rmBtnCreateRole2" class="btn btn-secondary btn-sm"><i class="fas fa-plus"></i> Criar</button>
+									<select id="rmMoveRoleSelect" class="input mid" title="Cargo para mover"><option value="">(Cargo)</option></select>
+									<input id="rmMoveSteps" type="number" class="input tiny" value="1" min="1" title="Passos" placeholder="Passos" />
+									<button id="rmBtnMoveUp" class="btn btn-glass btn-sm" title="Subir"><i class="fas fa-arrow-up"></i></button>
+									<button id="rmBtnMoveDown" class="btn btn-glass btn-sm" title="Descer"><i class="fas fa-arrow-down"></i></button>
+									<select id="rmDeleteRoleSelect" class="input mid" title="Cargo para apagar"><option value="">(Cargo)</option></select>
+									<button id="rmBtnDeleteRole" class="btn btn-danger btn-sm" title="Apagar cargo" aria-label="Apagar cargo"><i class="fas fa-trash"></i></button>
+								</div>
 					<details id="bulkPanel" class="mt-12">
 						<summary>Resultados em detalhe</summary>
 						<div class="mt-8">
@@ -92,6 +92,8 @@
 		.result-row.ok{border-color:rgba(22,163,74,.5)}
 		.result-row.fail{border-color:rgba(220,38,38,.5)}
 		.role-manage input{min-width:120px}
+		.role-manage select{min-width:160px}
+		.btn-xs{padding:2px 6px;font-size:11px;line-height:1.2}
 		.role-manage input.short{max-width:100px}
 		.role-manage input.mid{max-width:140px}
 		.role-manage input.tiny{max-width:80px}

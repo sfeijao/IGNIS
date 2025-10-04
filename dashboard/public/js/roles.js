@@ -117,3 +117,85 @@
     bindBtn('rmBtnDeleteRole', deleteRoleStandalone);
   });
 })();
+// Enhancement: dropdown population + copy ID buttons + toast errors + inline refresh
+(function(){
+  const guildParam=new URLSearchParams(window.location.search); const guildId=guildParam.get('guildId');
+  const moveSel=document.getElementById('rmMoveRoleSelect');
+  const delSel=document.getElementById('rmDeleteRoleSelect');
+  // Attempt to hook into existing roles loading by monkey patching loadRoles if present later
+  function populateDropdowns(){
+    if(!window.allRolesGlobal && !window.getAllRolesInternal){
+      // Try to infer roles from DOM list
+      const roleLabels=[...document.querySelectorAll('#roles label.role-list input[type="checkbox"]')];
+      if(roleLabels.length && moveSel && delSel){
+        const opts=roleLabels.map(chk=>`<option value="${chk.value}">${chk.parentElement?.textContent?.trim()||chk.value}</option>`).join('');
+        if(moveSel && moveSel.options.length<=1) moveSel.insertAdjacentHTML('beforeend',opts);
+        if(delSel && delSel.options.length<=1) delSel.insertAdjacentHTML('beforeend',opts);
+      }
+      return;
+    }
+  }
+  // Provide a hook that roles.js can call after roles render
+  window.refreshRoleDropdownHelpers = function(allRoles){
+    if(!allRoles) return populateDropdowns();
+    if(moveSel){ moveSel.innerHTML='<option value="">(Cargo)</option>'+allRoles.map(r=>`<option value="${r.id}">${r.name}</option>`).join(''); }
+    if(delSel){ delSel.innerHTML='<option value="">(Cargo)</option>'+allRoles.map(r=>`<option value="${r.id}">${r.name}</option>`).join(''); }
+  };
+  // Copy ID buttons: delegate after roles render
+  function addCopyButtons(){
+    const container=document.getElementById('roles');
+    if(!container) return;
+    container.querySelectorAll('label.role').forEach(label=>{
+      if(label.querySelector('.copy-id-btn')) return;
+      const chk=label.querySelector('input[type="checkbox"]'); if(!chk) return;
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='btn btn-glass btn-xs copy-id-btn';
+      btn.title='Copiar ID';
+      btn.innerHTML='<i class="fas fa-copy"></i>';
+      btn.addEventListener('click',e=>{ e.stopPropagation(); navigator.clipboard.writeText(chk.value).then(()=>toast('ID copiado')).catch(()=>toastError('Falha ao copiar')); });
+      label.appendChild(btn);
+    });
+  }
+  // Observe mutations to re-inject copy buttons when roles list updates
+  const rolesEl=document.getElementById('roles');
+  if(rolesEl){
+    const obs=new MutationObserver(()=>{ addCopyButtons(); populateDropdowns(); });
+    obs.observe(rolesEl,{childList:true, subtree:true});
+  }
+  function getGuildId(){ return guildId || window.currentGuildId || window.guildId || ''; }
+  function toast(msg,type='success'){ if(window.showToast) return window.showToast(msg,type); console.log('[toast]',type,msg); }
+  function toastError(msg){ toast(msg,'error'); }
+  async function apiJson(url,opts){
+    const res=await fetch(url,opts); let data=null; try{ data=await res.json(); }catch{ /* ignore */ }
+    if(!res.ok || (data && data.success===false)) throw new Error((data&&data.error)||`HTTP ${res.status}`);
+    return data;
+  }
+  async function createRole(){
+    const nameEl=document.getElementById('rmNewRoleName2');
+    const colorEl=document.getElementById('rmNewRoleColor2');
+    const name=nameEl?.value.trim(); let color=colorEl?.value.trim();
+    if(!name){ toastError('Nome obrigatório'); return; }
+    if(color){ if(!/^#?[0-9a-fA-F]{6}$/.test(color)){ toastError('Cor inválida'); return;} if(color[0]!=='#') color='#'+color; }
+    try{ await apiJson(`/api/guild/${getGuildId()}/roles`,{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,color})}); nameEl.value=''; if(colorEl) colorEl.value=''; toast('Cargo criado'); triggerSoftReload(); }
+    catch(e){ toastError(e.message||'Erro ao criar'); }
+  }
+  function selValue(sel){ return sel && sel.value ? sel.value.trim():''; }
+  async function moveRole(direction){
+    const roleId=selValue(moveSel); const stepsEl=document.getElementById('rmMoveSteps'); const steps=parseInt(stepsEl?.value||'1',10)||1;
+    if(!roleId){ toastError('Selecione cargo para mover'); return; }
+    try{ await apiJson(`/api/guild/${getGuildId()}/roles/${roleId}/move`,{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({direction,steps})}); toast('Cargo movido'); triggerSoftReload(); }
+    catch(e){ toastError(e.message||'Erro ao mover'); }
+  }
+  async function deleteRole(){ const roleId=selValue(delSel); if(!roleId){ toastError('Selecione cargo para apagar'); return; } if(!confirm('Apagar cargo selecionado?')) return; try{ await apiJson(`/api/guild/${getGuildId()}/roles/${roleId}`,{method:'DELETE'}); toast('Cargo apagado'); if(delSel) delSel.value=''; triggerSoftReload(); }catch(e){ toastError(e.message||'Erro ao apagar'); } }
+  function triggerSoftReload(){
+    // Try to reuse existing refresh logic; if loadRoles function in closure not accessible, fallback to clicking refresh button
+    const btn=document.getElementById('refresh'); if(btn) btn.click();
+  }
+  document.getElementById('rmBtnCreateRole2')?.addEventListener('click',createRole);
+  document.getElementById('rmBtnMoveUp')?.addEventListener('click',()=>moveRole('up'));
+  document.getElementById('rmBtnMoveDown')?.addEventListener('click',()=>moveRole('down'));
+  document.getElementById('rmBtnDeleteRole')?.addEventListener('click',deleteRole);
+  // Initial attempt after load
+  window.addEventListener('load',()=>{ populateDropdowns(); addCopyButtons(); });
+})();
