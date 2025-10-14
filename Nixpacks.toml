@@ -1,0 +1,21 @@
+# Explicit Nixpacks config to control build and caching
+
+# The plan: use npm install (not ci) to avoid removing node_modules and breaking the cache mount.
+# Also, do not cache node_modules/.cache to avoid EBUSY issues.
+
+[phases.setup]
+# no-op: rely on default Node detection
+
+[phases.install]
+cmd = "npm install --no-audit --no-fund"
+
+[phases.build]
+# no build step required for this app (runtime Node app)
+cmd = "echo 'no build phase'"
+
+[phases.start]
+cmd = "node index.js"
+
+[caches]
+# Disable caching the problematic path explicitly
+paths = []
