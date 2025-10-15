@@ -29,6 +29,9 @@ Open http://localhost:3001.
  - Servers: search box to filter by name; empty state with reload
  - Pills: active tickets and total members populated when guild is selected
  - A11y: keyboard activation for server tiles and card bodies; reduced motion respected; lazy-loading images
+ - Sorting & highlight: ordena por nome/membros; resultados mostram contagem e sublinham a pesquisa
+ - Shortcuts: 'g s' para abrir servidores, 'g h' para home, '/' foca a pesquisa
+ - Persistência: pesquisa e ordenação guardadas; scroll restaurado ao regressar aos servidores
 
 ## Next steps (tracked in code)
 - Add skeletons for hero pills and cards

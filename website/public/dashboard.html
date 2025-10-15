@@ -16,6 +16,13 @@
       <p class="muted">Selecione o servidor para abrir o painel.</p>
       <div class="server-toolbar" role="search">
         <input id="server-search" class="input" type="search" placeholder="Procurar por nome…" aria-label="Procurar servidor" autocomplete="off" />
+        <select id="server-sort" class="input" aria-label="Ordenar por">
+          <option value="name-asc">Nome (A→Z)</option>
+          <option value="name-desc">Nome (Z→A)</option>
+          <option value="members-desc">Membros (maior primeiro)</option>
+          <option value="members-asc">Membros (menor primeiro)</option>
+        </select>
+        <span id="server-count" class="muted" aria-live="polite"></span>
       </div>
       <div id="server-grid" class="cards cards-servers" role="list" aria-busy="true"></div>
       <div id="server-empty" class="empty" hidden>

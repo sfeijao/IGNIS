@@ -13,8 +13,11 @@
 
   let currentGuild = null;
   let guildsCache = [];
+  let serverScrollY = 0;
 
   const SELECTED_GUILD_KEY = 'ignis:selectedGuildId';
+  const SEARCH_KEY = 'ignis:serverSearch';
+  const SORT_KEY = 'ignis:serverSort';
 
   function mountLayout(){
     const navbarMount = qs('#app-navbar');
@@ -38,10 +41,21 @@
   function route(){
     const hash = location.hash || '#/home';
     if (hash.startsWith('#/servers')){
+      // restore scroll and focus search on /
       showView('servers');
       if (!guildsCache.length) loadGuilds();
+      try {
+        const input = qs('#server-search');
+        const saved = localStorage.getItem(SEARCH_KEY) || '';
+        const savedSort = localStorage.getItem(SORT_KEY) || 'name-asc';
+        if (input && input.value !== saved){ input.value = saved; }
+        const sortSel = qs('#server-sort'); if (sortSel) sortSel.value = savedSort;
+        applyFilterAndSort();
+        window.scrollTo({ top: serverScrollY, behavior: 'instant' });
+      } catch{}
     } else {
       showView('home');
+      serverScrollY = window.scrollY;
       if (!currentGuild) autoPickGuild();
     }
   // Close mobile menu on navigation (ensures overlay/body scroll reset)
@@ -62,6 +76,7 @@
   function renderServers(list){
     const grid = qs('#server-grid');
     const empty = qs('#server-empty');
+    const count = qs('#server-count');
     if (!grid) return;
     grid.setAttribute('aria-busy','true');
     grid.innerHTML = '';
@@ -85,8 +100,8 @@
 
       const meta = document.createElement('div');
       meta.className = 'server-meta';
-      const name = document.createElement('div');
-      name.className = 'server-name'; name.textContent = g.name;
+  const name = document.createElement('div');
+  name.className = 'server-name'; name.innerHTML = highlight(g.name);
       const count = document.createElement('div');
       count.className = 'server-count'; count.textContent = `${g.memberCount ?? '—'} membros`;
       meta.append(name, count);
@@ -98,16 +113,17 @@
     });
     grid.removeAttribute('aria-busy');
     if (empty){ empty.hidden = list.length !== 0; }
+    if (count){ count.textContent = `${list.length} resultado${list.length===1?'':'s'}`; }
   }
 
   async function loadGuilds(){
     try{
       renderServerSkeletons();
       const res = await fetch('/api/guilds');
-      if (!res.ok) return;
+      if (!res.ok) throw new Error('Falha ao carregar servidores');
       const data = await res.json();
       guildsCache = data.guilds || [];
-      renderServers(guildsCache);
+      renderServers(applyFilterAndSort());
       setupServerSearch();
       // If we have a persisted selection, restore it
       const persisted = localStorage.getItem(SELECTED_GUILD_KEY);
@@ -118,7 +134,11 @@
           return;
         }
       }
-    }catch{}
+    }catch(e){
+      const empty = qs('#server-empty');
+      if (empty) empty.hidden = false;
+      window.IGNISToast?.show({ title:'Erro a carregar', message: e?.message || 'Não foi possível obter a lista de servidores.', type:'error' });
+    }
   }
 
   function setupServerSearch(){
@@ -126,12 +146,39 @@
     const reload = qs('#server-reload');
     if (reload){ reload.addEventListener('click', () => loadGuilds()); }
     if (!input) return;
-    input.addEventListener('input', () => {
-      const query = input.value.trim().toLowerCase();
-      if (!query){ renderServers(guildsCache); return; }
-      const filtered = guildsCache.filter(g => (g.name||'').toLowerCase().includes(query));
-      renderServers(filtered);
-    });
+    const sortSel = qs('#server-sort');
+    const doApply = () => renderServers(applyFilterAndSort());
+    input.addEventListener('input', () => { try{ localStorage.setItem(SEARCH_KEY, input.value); }catch{} doApply(); });
+    if (sortSel){ sortSel.addEventListener('change', () => { try{ localStorage.setItem(SORT_KEY, sortSel.value);}catch{} doApply(); }); }
+  }
+
+  function applyFilterAndSort(){
+    const input = qs('#server-search');
+    const sortSel = qs('#server-sort');
+    const query = (input?.value || '').trim().toLowerCase();
+    const sort = sortSel?.value || 'name-asc';
+    let list = guildsCache;
+    if (query){ list = list.filter(g => (g.name||'').toLowerCase().includes(query)); }
+    const byName = (a,b)=> (a.name||'').localeCompare(b.name||'', undefined, { sensitivity:'base' });
+    const byMembers = (a,b)=> (b.memberCount||0) - (a.memberCount||0);
+    if (sort === 'name-asc') list = list.slice().sort(byName);
+    else if (sort === 'name-desc') list = list.slice().sort((a,b)=> byName(b,a));
+    else if (sort === 'members-desc') list = list.slice().sort(byMembers);
+    else if (sort === 'members-asc') list = list.slice().sort((a,b)=> -byMembers(a,b));
+    return list;
+  }
+
+  function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[c])); }
+  function highlight(text){
+    const input = qs('#server-search');
+    const q = (input?.value||'').trim();
+    if (!q) return escapeHtml(text);
+    const idx = text.toLowerCase().indexOf(q.toLowerCase());
+    if (idx === -1) return escapeHtml(text);
+    const before = escapeHtml(text.slice(0, idx));
+    const match = escapeHtml(text.slice(idx, idx+q.length));
+    const after = escapeHtml(text.slice(idx+q.length));
+    return `${before}<span class="hl">${match}</span>${after}`;
   }
 
   function renderServerSkeletons(count=6){
@@ -261,6 +308,17 @@
         location.hash = '#/servers';
       });
     }
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e)=>{
+      // '/' focuses search when servers view visible
+      if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey){
+        if (!views.servers?.hidden){ const input = qs('#server-search'); if (input){ e.preventDefault(); input.focus(); input.select(); } }
+      }
+      // g s → servers, g h → home
+      if (e.key.toLowerCase() === 's' && e.ctrlKey === false && e.metaKey === false && e.altKey === false && e.shiftKey === false && window.__gPress){ e.preventDefault(); location.hash = '#/servers'; window.__gPress = false; }
+      else if (e.key.toLowerCase() === 'h' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && window.__gPress){ e.preventDefault(); location.hash = '#/home'; window.__gPress = false; }
+      else if (e.key.toLowerCase() === 'g' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey){ window.__gPress = true; setTimeout(()=> window.__gPress = false, 1500); }
+    });
   }
 
   window.addEventListener('hashchange', route);
