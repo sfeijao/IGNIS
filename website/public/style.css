@@ -5,7 +5,46 @@
   --primary:#7C3AED; --primary-700:#6D28D9; --primary-500:#8B5CF6;
   --danger:#EF4444; --neutral:#3B82F6;
   --pill:#0F1B2E; --online:#16A34A; --degraded:#F59E0B; --offline:#EF4444;
+  --radius-sm:8px; --radius-md:12px; --radius-lg:14px;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px; --space-7:28px;
+  --shadow-md:0 8px 24px var(--shadow); --shadow-lg:0 12px 30px var(--shadow);
 }
+
+/* Light theme tokens */
+:root[data-theme="light"]{
+  --bg:#f7f8fb; --panel:#ffffff; --panel-2:#f5f6fa; --muted:#4b5563; --muted-2:#334155;
+  --border:#e5e7eb; --shadow:rgba(0,0,0,.08);
+  --primary:#7C3AED; --primary-700:#6D28D9; --primary-500:#6d28d9;
+  --danger:#DC2626; --neutral:#2563EB;
+  --pill:#eef2ff; --online:#16A34A; --degraded:#D97706; --offline:#DC2626;
+}
+
+/* Base */
+body{font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial;margin:0;background:var(--bg);color:#E6E8EB;transition:background .2s ease, color .2s ease}
+.container{max-width:1160px;margin:0 auto;padding:0 20px}
+.muted{color:var(--muted)}
+
+/* Navbar */
+.navbar{background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.navbar-content{display:flex;justify-content:space-between;align-items:center;height:64px}
+.navbar-brand{font-size:20px;font-weight:700;color:#cdd6f4;display:flex;align-items:center;gap:10px;text-decoration:none}
+.ignis-logo{color:var(--primary-500)}
+.navbar-user{display:flex;align-items:center;gap:12px;color:var(--muted-2)}
+.user-avatar{width:32px;height:32px;border-radius:50%;border:2px solid #2C3350;background:var(--primary-700);display:flex;align-items:center;justify-content:center}
+.nav-btn{color:#fff;text-decoration:none;padding:8px 14px;background:var(--primary-700);border-radius:6px;border:1px solid var(--border)}
+.nav-btn:hover{background:var(--primary)}
+.nav-burger{display:none;background:transparent;border:1px solid var(--border);border-radius:8px;color:inherit;padding:6px 10px;cursor:pointer}
+.nav-menu{display:none;position:absolute;right:12px;top:60px;background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);padding:10px;min-width:200px;z-index:1000}
+.nav-menu.open{display:block}
+.nav-menu .menu-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;color:inherit;text-decoration:none;border:1px solid transparent}
+.nav-menu .menu-item:hover{background:var(--panel-2);border-color:var(--border)}
+.theme-toggle{background:transparent;border:1px solid var(--border);border-radius:8px;color:inherit;padding:6px 10px;cursor:pointer}
+.theme-toggle:hover{background:var(--panel-2)}
+/* Mobile menu overlay & focus styles */
+.nav-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:saturate(120%) blur(1px);z-index:999}
+.nav-menu.open + .nav-overlay{display:block}
+.nav-menu .menu-item:focus{outline:2px solid var(--primary-500);outline-offset:2px}
+body.menu-open{overflow:hidden}
 
 .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:28px;align-items:center;padding:28px 0}
 .hero-text h1{font-size:36px;line-height:1.15;margin:0 0 8px}
@@ -18,9 +57,19 @@
 .pill.status[data-status="degraded"]{color:#FEF3C7;background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.25)}
 .pill.status[data-status="offline"]{color:#FEE2E2;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25)}
 
+/* Pills skeleton text */
+.skeleton-text{color:transparent !important;position:relative;display:inline-block;border-radius:6px;min-height:1em;min-width:60px;background:#0d1520}
+.skeleton-text::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.06), rgba(255,255,255,0));animation:shimmer 1.5s infinite}
+.skeleton-text{width:var(--skw, 80px)}
+
+/* Pills loading shimmer */
+.pills[aria-busy="true"] .pill{position:relative;overflow:hidden}
+.pills[aria-busy="true"] .pill::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.06), rgba(255,255,255,0));animation:shimmer 1.5s infinite}
+
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 8px}
 .btn{min-width:44px;min-height:44px;padding:12px 16px;border-radius:10px;border:1px solid var(--border);cursor:pointer;font-weight:700;letter-spacing:.3px}
 .btn:focus{outline:2px solid var(--primary-500);outline-offset:2px}
+.btn:active{transform:translateY(0.5px)}
 .btn-primary{background:var(--primary-700);color:#fff}
 .btn-primary:hover{background:var(--primary)}
 .btn-danger{background:rgba(239,68,68,.12);color:#fff;border-color:rgba(239,68,68,.35)}
@@ -31,6 +80,17 @@
 
 .feedback{margin-top:10px;color:#D1FAE5;background:rgba(22,163,74,.08);border:1px solid rgba(22,163,74,.25);padding:10px 12px;border-radius:10px}
 
+/* Toasts */
+.toast-container{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:10px;z-index:9999}
+.toast{display:flex;align-items:flex-start;gap:10px;min-width:260px;max-width:420px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow-md);animation:toastIn .2s ease}
+.toast.success{border-color:rgba(22,163,74,.35)}
+.toast.error{border-color:rgba(239,68,68,.35)}
+.toast .title{font-weight:700}
+.toast .body{color:var(--muted)}
+/* Toast duplicate counter */
+.toast .count-badge{margin-left:auto;background:var(--panel-2);border:1px solid var(--border);border-radius:999px;padding:2px 8px;font-size:12px;color:var(--muted-2)}
+@keyframes toastIn{from{transform:translateY(6px);opacity:0}to{transform:translateY(0);opacity:1}}
+
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:22px 0}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 8px 24px var(--shadow);transition:transform .2s ease, box-shadow .2s ease}
 .card:hover{transform:translateY(-3px);box-shadow:0 12px 30px var(--shadow)}
@@ -38,6 +98,23 @@
 .card-body{padding:14px}
 .card-body h3{margin:0 0 8px}
 .card-body ul{margin:0;padding-left:18px;color:var(--muted)}
+.skeleton{position:relative;overflow:hidden;background:#0f1624;border:1px solid var(--border);border-radius:var(--radius-md)}
+.skeleton::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.06), rgba(255,255,255,0));animation:shimmer 1.5s infinite}
+@keyframes shimmer{100%{transform:translateX(100%)}}
+.skeleton-line{height:14px;background:#0d1520;border-radius:6px}
+.skeleton-avatar{width:44px;height:44px;border-radius:50%;background:#0d1520;border:1px solid var(--border)}
+.server-card.skeleton{display:flex;align-items:center;gap:12px;padding:12px}
+.server-card .skeleton-lines{display:flex;flex:1;flex-direction:column;gap:8px}
+
+
+/* Servers grid */
+.cards-servers{grid-template-columns:repeat(3,1fr)}
+.server-card{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;cursor:pointer;transition:transform .2s ease, box-shadow .2s ease, background .2s ease}
+.server-card:hover{transform:translateY(-2px);box-shadow:0 10px 24px var(--shadow);background:var(--panel-2)}
+.server-avatar{width:44px;height:44px;border-radius:50%;flex:0 0 44px;object-fit:cover;border:1px solid var(--border);background:var(--primary-700);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700}
+.server-meta{display:flex;flex-direction:column}
+.server-name{font-weight:700}
+.server-count{font-size:12px;color:var(--muted)}
 
 .identity img{width:100%;height:220px;object-fit:cover;border-radius:12px;opacity:.95;border:1px solid var(--border)}
 
@@ -48,8 +125,14 @@
 }
 @media (max-width:800px){
   .cards{grid-template-columns:repeat(2,1fr)}
+  .cards-servers{grid-template-columns:repeat(2,1fr)}
+  .navbar-content{flex-wrap:wrap;height:auto;gap:8px;padding:8px 0}
 }
 @media (max-width:560px){
   .cards{grid-template-columns:1fr}
   .hero-text h1{font-size:28px}
+  .cards-servers{grid-template-columns:1fr}
+  .navbar-user .nav-btn{display:none}
+  .navbar-user #userName{display:none}
+  .nav-burger{display:inline-block}
 }
