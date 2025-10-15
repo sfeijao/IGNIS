@@ -233,6 +233,7 @@
     const btn = document.getElementById('themeToggle');
     if (btn){
       btn.textContent = theme === 'light' ? '🌙' : '☀️';
+      btn.setAttribute('aria-label', theme === 'light' ? 'Mudar para tema escuro' : 'Mudar para tema claro');
       // Sync burger menu theme item
       const menuTheme = document.getElementById('menuTheme');
       if (menuTheme) menuTheme.textContent = 'Alternar tema';
@@ -242,6 +243,7 @@
         apply(next);
         localStorage.setItem(KEY, next);
         btn.textContent = next === 'light' ? '🌙' : '☀️';
+        btn.setAttribute('aria-label', next === 'light' ? 'Mudar para tema escuro' : 'Mudar para tema claro');
       });
       if (menuTheme){
         menuTheme.addEventListener('click', () => btn.click());
