@@ -14,6 +14,8 @@ const { PermissionFlagsBits, ActivityType } = require('discord.js');
 const app = express();
 let io = null;
 const PORT = process.env.PORT || 4000;
+// When running behind a reverse proxy (Railway/Heroku), trust the proxy so secure cookies work
+try { app.set('trust proxy', 1); } catch {}
 const isSqlite = (process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite';
 const OAUTH_VERBOSE = (process.env.OAUTH_VERBOSE_LOGS || '').toLowerCase() === 'true';
 // Suppress common noisy warnings in production
@@ -93,7 +95,9 @@ const sessionMiddleware = session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false, // Always false for development/localhost
+        // Use secure cookies in production; requires trust proxy for TLS-terminating proxies
+        secure: (process.env.NODE_ENV || 'production') === 'production',
+        sameSite: 'lax',
         maxAge: 24 * 60 * 60 * 1000, // 24 horas
         httpOnly: true
     }
