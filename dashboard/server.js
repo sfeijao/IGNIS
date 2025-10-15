@@ -76,6 +76,13 @@ const getCallbackURL = () => {
 
 // Middleware
 app.use(express.static(path.join(__dirname, 'public')));
+// Serve the revamped website dashboard assets under /dashboard (auth-protected)
+const WEBSITE_PUBLIC_DIR = path.join(__dirname, '..', 'website', 'public');
+function requireAuth(req, res, next){
+    try { if (req.isAuthenticated && req.isAuthenticated()) return next(); } catch {}
+    return res.redirect('/login');
+}
+app.use('/dashboard', requireAuth, express.static(WEBSITE_PUBLIC_DIR, { index: 'dashboard.html' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -140,10 +147,8 @@ app.get('/login', (req, res) => {
 
 app.get('/dashboard', (req, res) => {
     if (OAUTH_VERBOSE) logger.info(`Route /dashboard - isAuthenticated: ${req.isAuthenticated()}, user: ${req.user ? req.user.username : 'none'}, sessionID: ${req.sessionID}`);
-    if (!req.isAuthenticated()) {
-        return res.redirect('/login');
-    }
-    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+    // Redirect to trailing slash so relative assets resolve under /dashboard/; require auth via middleware on static
+    return res.redirect('/dashboard/');
 });
 
 // Auth routes
