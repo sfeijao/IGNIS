@@ -82,7 +82,8 @@ function requireAuth(req, res, next){
     try { if (req.isAuthenticated && req.isAuthenticated()) return next(); } catch {}
     return res.redirect('/login');
 }
-app.use('/dashboard', requireAuth, express.static(WEBSITE_PUBLIC_DIR, { index: 'dashboard.html' }));
+// Disable static redirect to prevent potential proxy-induced loop between /dashboard and /dashboard/
+app.use('/dashboard', requireAuth, express.static(WEBSITE_PUBLIC_DIR, { index: 'dashboard.html', redirect: false }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -145,10 +146,21 @@ app.get('/login', (req, res) => {
     }
 });
 
-app.get('/dashboard', (req, res) => {
+app.get('/dashboard', requireAuth, (req, res) => {
     if (OAUTH_VERBOSE) logger.info(`Route /dashboard - isAuthenticated: ${req.isAuthenticated()}, user: ${req.user ? req.user.username : 'none'}, sessionID: ${req.sessionID}`);
-    // Redirect to trailing slash so relative assets resolve under /dashboard/; require auth via middleware on static
-    return res.redirect('/dashboard/');
+    // Serve dashboard without redirect; inject a <base> so relative assets resolve under /dashboard/
+    try {
+        const indexPath = path.join(WEBSITE_PUBLIC_DIR, 'dashboard.html');
+        let html = fs.readFileSync(indexPath, 'utf8');
+        if (!/\<base\s+href=/i.test(html)) {
+            html = html.replace(/<head(\s[^>]*)?>/i, (m) => `${m}\n  <base href="/dashboard/">`);
+        }
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
+    } catch (e) {
+        try { return res.sendFile(path.join(WEBSITE_PUBLIC_DIR, 'dashboard.html')); } catch {}
+        return res.status(500).send('Dashboard unavailable');
+    }
 });
 
 // Auth routes
