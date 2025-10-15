@@ -14,7 +14,16 @@
     <section id="view-servers" class="view" aria-labelledby="servers-title" hidden>
       <h1 id="servers-title">Escolha um servidor</h1>
       <p class="muted">Selecione o servidor para abrir o painel.</p>
+      <div class="server-toolbar" role="search">
+        <input id="server-search" class="input" type="search" placeholder="Procurar por nome…" aria-label="Procurar servidor" autocomplete="off" />
+      </div>
       <div id="server-grid" class="cards cards-servers" role="list" aria-busy="true"></div>
+      <div id="server-empty" class="empty" hidden>
+        <div class="empty-icon">🔍</div>
+        <h2>Sem resultados</h2>
+        <p class="muted">Não encontrámos servidores a corresponder à pesquisa.</p>
+        <button id="server-reload" class="btn btn-neutral" type="button">Recarregar lista</button>
+      </div>
     </section>
 
     <!-- View: Home / Dashboard -->
@@ -28,6 +37,8 @@
             <span class="pill" id="pill-guild">🏷️ <span data-guild-name>Servidor</span></span>
             <span class="pill" id="pill-staff">👥 Staff online: <span data-staff-online>—</span></span>
             <span class="pill status" id="pill-status" data-status="online">● <span data-system-status>ONLINE</span></span>
+            <span class="pill" id="pill-active">🎫 Abertos: <span data-active-tickets>—</span></span>
+            <span class="pill" id="pill-members">📊 Membros: <span data-total-members>—</span></span>
           </div>
 
           <div class="actions">
@@ -53,8 +64,8 @@
     <!-- Cards -->
     <section class="cards" aria-label="Departamentos de atendimento">
       <article class="card">
-        <img class="card-img" src="https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=840&h=280&fit=crop&crop=center" alt="Suporte Técnico" />
-        <div class="card-body">
+        <img class="card-img" src="https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=840&h=280&fit=crop&crop=center" alt="Suporte Técnico" loading="lazy" />
+        <div class="card-body" data-ticket="technical" role="button" tabindex="0" aria-label="Abrir ticket de suporte técnico">
           <h3>🔧 Suporte Técnico</h3>
           <ul>
             <li>Configuração de bots e integrações</li>
@@ -64,8 +75,8 @@
         </div>
       </article>
       <article class="card">
-        <img class="card-img" src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=840&h=280&fit=crop&crop=center" alt="Reportar Problema" />
-        <div class="card-body">
+        <img class="card-img" src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=840&h=280&fit=crop&crop=center" alt="Reportar Problema" loading="lazy" />
+        <div class="card-body" data-ticket="incident" role="button" tabindex="0" aria-label="Reportar um problema">
           <h3>⚠️ Reportar Problema</h3>
           <ul>
             <li>Erros, bugs e instabilidades</li>
@@ -75,8 +86,8 @@
         </div>
       </article>
       <article class="card">
-        <img class="card-img" src="https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=840&h=280&fit=crop&crop=center" alt="Moderação e Segurança" />
-        <div class="card-body">
+        <img class="card-img" src="https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=840&h=280&fit=crop&crop=center" alt="Moderação e Segurança" loading="lazy" />
+        <div class="card-body" data-ticket="moderation" role="button" tabindex="0" aria-label="Abrir ticket de moderação e segurança">
           <h3>🛡️ Moderação & Segurança</h3>
           <ul>
             <li>Denúncias e investigações</li>
@@ -89,7 +100,7 @@
 
     <!-- Banner final / identidade visual -->
     <section class="identity" aria-hidden="true">
-      <img src="https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1200&h=300&fit=crop&crop=center" alt="Identidade IGNIS" />
+      <img src="https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1200&h=300&fit=crop&crop=center" alt="Identidade IGNIS" loading="lazy" />
     </section>
 
     <div id="app-footer"></div>

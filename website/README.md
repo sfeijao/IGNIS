@@ -26,6 +26,9 @@ Open http://localhost:3001.
 - Loading: skeletons for server list while guilds are fetched; pills and cards skeletons during guild switching
 - Toasts: queued with limit and priorities; duplicate toasts collapse and show a counter badge; click to dismiss
 - Mobile menu: burger opens a menu with backdrop, focus is trapped until closed; Esc closes; background scroll is disabled while open
+ - Servers: search box to filter by name; empty state with reload
+ - Pills: active tickets and total members populated when guild is selected
+ - A11y: keyboard activation for server tiles and card bodies; reduced motion respected; lazy-loading images
 
 ## Next steps (tracked in code)
 - Add skeletons for hero pills and cards

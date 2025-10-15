@@ -40,6 +40,11 @@ body{font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial;margin:0;
 .nav-menu .menu-item:hover{background:var(--panel-2);border-color:var(--border)}
 .theme-toggle{background:transparent;border:1px solid var(--border);border-radius:8px;color:inherit;padding:6px 10px;cursor:pointer}
 .theme-toggle:hover{background:var(--panel-2)}
+/* Toolbar & inputs */
+.server-toolbar{display:flex;gap:10px;align-items:center;margin:10px 0 14px}
+.input{background:var(--panel);border:1px solid var(--border);border-radius:10px;color:#E6E8EB;padding:10px 12px;min-width:240px}
+.input::placeholder{color:var(--muted)}
+.input:focus{outline:2px solid var(--primary-500);outline-offset:2px}
 /* Mobile menu overlay & focus styles */
 .nav-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:saturate(120%) blur(1px);z-index:999}
 .nav-menu.open + .nav-overlay{display:block}
@@ -95,7 +100,8 @@ body.menu-open{overflow:hidden}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 8px 24px var(--shadow);transition:transform .2s ease, box-shadow .2s ease}
 .card:hover{transform:translateY(-3px);box-shadow:0 12px 30px var(--shadow)}
 .card-img{width:100%;height:140px;object-fit:cover}
-.card-body{padding:14px}
+.card-body{padding:14px;cursor:pointer}
+.card-body:focus{outline:2px solid var(--primary-500);outline-offset:2px}
 .card-body h3{margin:0 0 8px}
 .card-body ul{margin:0;padding-left:18px;color:var(--muted)}
 .skeleton{position:relative;overflow:hidden;background:#0f1624;border:1px solid var(--border);border-radius:var(--radius-md)}
@@ -119,6 +125,15 @@ body.menu-open{overflow:hidden}
 .identity img{width:100%;height:220px;object-fit:cover;border-radius:12px;opacity:.95;border:1px solid var(--border)}
 
 .footer{display:flex;justify-content:center;align-items:center;height:64px;color:var(--muted);border-top:1px solid var(--border);margin:18px 0 28px}
+
+/* Empty state */
+.empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px;background:var(--panel);border:1px solid var(--border);border-radius:14px}
+.empty .empty-icon{font-size:36px}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important;transition:none !important}
+}
 
 @media (max-width:1000px){
   .hero{grid-template-columns:1fr;gap:16px}

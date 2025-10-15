@@ -61,6 +61,7 @@
 
   function renderServers(list){
     const grid = qs('#server-grid');
+    const empty = qs('#server-empty');
     if (!grid) return;
     grid.setAttribute('aria-busy','true');
     grid.innerHTML = '';
@@ -92,9 +93,11 @@
 
       card.append(avatar, meta);
       card.addEventListener('click', () => selectGuild(g));
+      card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectGuild(g); }});
       grid.appendChild(card);
     });
     grid.removeAttribute('aria-busy');
+    if (empty){ empty.hidden = list.length !== 0; }
   }
 
   async function loadGuilds(){
@@ -105,6 +108,7 @@
       const data = await res.json();
       guildsCache = data.guilds || [];
       renderServers(guildsCache);
+      setupServerSearch();
       // If we have a persisted selection, restore it
       const persisted = localStorage.getItem(SELECTED_GUILD_KEY);
       if (persisted){
@@ -115,6 +119,19 @@
         }
       }
     }catch{}
+  }
+
+  function setupServerSearch(){
+    const input = qs('#server-search');
+    const reload = qs('#server-reload');
+    if (reload){ reload.addEventListener('click', () => loadGuilds()); }
+    if (!input) return;
+    input.addEventListener('input', () => {
+      const query = input.value.trim().toLowerCase();
+      if (!query){ renderServers(guildsCache); return; }
+      const filtered = guildsCache.filter(g => (g.name||'').toLowerCase().includes(query));
+      renderServers(filtered);
+    });
   }
 
   function renderServerSkeletons(count=6){
@@ -150,6 +167,7 @@
     currentGuild = g;
     setText('[data-guild-name]', g.name);
     location.hash = '#/home';
+    try{ document.title = `Central • ${g.name} – IGNIS`; }catch{}
     try{ localStorage.setItem(SELECTED_GUILD_KEY, String(g.id)); }catch{}
     const pills = qs('.pills'); if (pills) pills.setAttribute('aria-busy','true');
     // Start pill skeletons
@@ -171,6 +189,7 @@
       const data = await res.json();
       if (data?.success){
         setText('[data-staff-online]', data.stats?.onlineCount ?? 0);
+        setText('[data-total-members]', data.stats?.memberCount ?? '—');
       }
     }catch{}
   }
@@ -183,6 +202,7 @@
       const data = await res.json();
       if (data?.success){
         const open = data.stats?.open || 0;
+        setText('[data-active-tickets]', open);
         const statusEl = qs('#pill-status');
         const labelEl = qs('[data-system-status]');
         if (!statusEl || !labelEl) return;
@@ -202,23 +222,29 @@
 
   function setupButtons(){
     qsa('[data-ticket]').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      const handler = async () => {
         const type = btn.getAttribute('data-ticket');
+        if (!currentGuild){
+          window.IGNISToast?.show({ title:'Selecione um servidor', message:'Escolha um servidor antes de abrir um ticket.', type:'error' });
+          return;
+        }
         const original = btn.textContent;
+        btn.setAttribute('aria-busy','true');
         btn.disabled = true; btn.classList.add('loading'); btn.textContent = 'A criar…';
         try{
           await new Promise(r => setTimeout(r, 800));
-          if (window.IGNISToast && typeof window.IGNISToast.show === 'function'){
-            window.IGNISToast.show({
-              title: 'Pedido enviado',
-              message: `${type.toUpperCase()}: verifica o Discord para o canal privado.`,
-              type: 'success'
-            });
-          }
+          window.IGNISToast?.show({
+            title: 'Pedido enviado',
+            message: `${type.toUpperCase()}: verifica o Discord para o canal privado.`,
+            type: 'success'
+          });
         } finally {
+          btn.removeAttribute('aria-busy');
           btn.disabled = false; btn.classList.remove('loading'); btn.textContent = original;
         }
-      });
+      };
+      btn.addEventListener('click', handler);
+      btn.addEventListener('keydown', (e)=>{ if (e.key==='Enter' || e.key===' ') { e.preventDefault(); handler(); }});
     });
   }
 
