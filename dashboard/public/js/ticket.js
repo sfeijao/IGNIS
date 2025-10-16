@@ -26,7 +26,13 @@
     el('t-priority').textContent = (t.priority||'normal').toUpperCase();
     el('t-sla').textContent = timeAgo(new Date(t.created_at));
     const lockPill = el('t-locked');
-    if (lockPill) lockPill.style.display = t.locked ? 'inline-flex' : 'none';
+    if (lockPill) {
+      if (t.locked) {
+        lockPill.classList.remove('hidden');
+      } else {
+        lockPill.classList.add('hidden');
+      }
+    }
   }
 
   function timeAgo(date){

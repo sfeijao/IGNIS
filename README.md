@@ -45,13 +45,16 @@
 ## 🎮 Comandos Disponíveis
 
 ### 📌 **Comandos Básicos**
+
 | Comando | Descrição | Exemplo |
 |---------|-----------|---------|
 | `/ping` | Testa a latência do bot | `/ping` |
 | `/ajuda` | Lista completa de comandos | `/ajuda` |
 | `/info-servidor` | Informações do servidor | `/info-servidor` |
 
+
 ### ⚙️ **Comandos de Configuração** (Apenas Admins)
+
 | Comando | Descrição | Permissão |
 |---------|-----------|-----------|
 | `/configurar-verificacao` | Configura painel de verificação | Administrator |
@@ -60,14 +63,16 @@
 | `/dar-cargo` | Atribui cargo a um membro | Administrator |
 | `/remover-cargo` | Remove cargo de um membro | Administrator |
 
+
 ### 🏷️ **Sistema de Tags**
+
 | Comando | Descrição | Acesso |
 |---------|-----------|---------|
 | `/solicitar-tag` | Solicita tags especiais | Todos os membros |
 
 ---
 
-## � Deploy no Railway
+## 🚀 Deploy no Railway
 
 ### **Método 1: Deploy Direto (Recomendado)**
 
@@ -213,6 +218,7 @@ The repo includes an example local receiver under `examples/private-receiver/` w
 ## �📋 Passo a Passo para Discord Developer
 
 ### 1. **Criar Aplicação Discord**
+
 1. Acesse [Discord Developer Portal](https://discord.com/developers/applications)
 2. Clique em **"New Application"**
 3. Nomeie como **"IGNIS Bot"**
@@ -221,11 +227,14 @@ The repo includes an example local receiver under `examples/private-receiver/` w
 6. Copie o **Application ID** (CLIENT_ID)
 
 ### 2. **Configurar Permissões**
+
 Em **OAuth2** → **URL Generator**:
+
 - **Scopes**: `bot`, `applications.commands`
 - **Permissions**: `Administrator` (ou permissões específicas)
 
 ### 3. **Adicionar ao Servidor**
+
 1. Gere a URL de convite
 2. Adicione o bot ao seu servidor
 3. Execute `/deploy-commands` para registrar comandos slash
@@ -242,12 +251,14 @@ Em **OAuth2** → **URL Generator**:
 - **Design moderno** e profissional
 
 ### ⚡ **Performance**
+
 - **Discord.js v14** - Última versão estável
 - **Slash Commands** - Comandos nativos Discord
 - **Event-driven** - Arquitetura eficiente
 - **Error handling** - Tratamento robusto de erros
 
 ### 🔒 **Segurança**
+
 - **Verificação de permissões** em todos comandos admin
 - **Rate limiting** automático
 - **Logs detalhados** de todas ações
@@ -258,6 +269,7 @@ Em **OAuth2** → **URL Generator**:
 ## 🐛 Solução de Problemas
 
 ### **Bot não responde aos comandos**
+
 ```bash
 # Verifique se os comandos foram registrados
 npm run deploy
@@ -267,14 +279,17 @@ npm start
 ```
 
 ### **Emojis aparecem como quadrados**
+
 - ✅ **Resolvido!** Emojis Unicode funcionais
 - Tema roxo com emojis nativos Discord
 
 ### **Erro de permissões**
+
 - Verifique se o bot tem permissão **Administrator**
 - Confirme IDs de canais e cargos no `config.json`
 
 ### **Deploy Railway falha**
+
 - Confirme variáveis de ambiente no Railway
 - Verifique logs no dashboard Railway
 - NODE_ENV deve estar como **production**
@@ -284,6 +299,7 @@ npm start
 ## 📝 Changelog
 
 ### **v2.1.0** (Atual)
+
 - ✅ **Tema roxo** completo implementado
 - ✅ **Emojis funcionais** (não mais quadrados)
 - ✅ **Painel de status** interativo
@@ -291,6 +307,7 @@ npm start
 - ✅ **Documentação** completa GitHub
 
 ### **v2.0.0**
+
 - 🔄 Migração para Discord.js v14
 - ⚡ Slash commands implementados
 - 🎨 Interface renovada
@@ -323,7 +340,7 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para de
 
 ---
 
-**Desenvolvido com 💜 para IGNIS Community**
+> Desenvolvido com 💜 para IGNIS Community
 
 [![Discord](https://img.shields.io/discord/GUILD_ID?color=7289da&logo=discord&logoColor=white)](https://discord.gg/ignis)
 [![GitHub](https://img.shields.io/github/stars/USUARIO/IGNIS-Discord-Bot?style=social)](https://github.com/USUARIO/IGNIS-Discord-Bot)
@@ -340,15 +357,18 @@ npm install
 ```
 
 ### 3. Configuração
+
 1. Copie `.env.example` para `.env`
 2. Preencha as variáveis no arquivo `.env`:
+
 ```env
 DISCORD_TOKEN=seu_token_aqui
 CLIENT_ID=id_do_cliente
 GUILD_ID=id_do_servidor
 ```
 
-3. Configure os IDs no arquivo `config.json`:
+1. Configure os IDs no arquivo `config.json`:
+
 ```json
 {
   "token": "SEU_TOKEN_AQUI",
@@ -375,11 +395,13 @@ GUILD_ID=id_do_servidor
 ```
 
 ### 4. Deploy dos Comandos
+
 ```bash
 npm run deploy
 ```
 
 ### 5. Iniciar o Bot
+
 ```bash
 # Desenvolvimento
 npm run dev
@@ -391,14 +413,17 @@ npm start
 ## 🚀 Deploy para Railway
 
 ### 1. Configuração no Railway
+
 1. Conecte seu repositório GitHub ao Railway
 2. Configure as variáveis de ambiente:
-   - `DISCORD_TOKEN`
-   - `CLIENT_ID` 
-   - `GUILD_ID`
-   - Todas as outras variáveis do `.env`
+
+- `DISCORD_TOKEN`
+- `CLIENT_ID`
+- `GUILD_ID`
+- Todas as outras variáveis do `.env`
 
 ### 2. Arquivo railway.json (opcional)
+
 ```json
 {
   "build": {
@@ -415,7 +440,9 @@ npm start
 ## 🔧 Configuração do Servidor Discord
 
 ### Permissões Necessárias
+
 O bot precisa das seguintes permissões:
+
 - Ler Mensagens
 
 ---
@@ -439,6 +466,7 @@ node website/tools/e2e-ticket-test.js
 ```
 
 Se quiser que eu execute o e2e agora ou abra um PR com estas alterações, diga-me e eu faço isso.
+
 - Enviar Mensagens
 - Usar Comandos de Barra
 - Gerenciar Cargos
@@ -447,7 +475,9 @@ Se quiser que eu execute o e2e agora ou abra um PR com estas alterações, diga-
 - Usar Embeds
 
 ### Canais Necessários
+
 Crie os seguintes canais no seu servidor:
+
 - `#verificar` - Canal de verificação
 - `#logs-verificação` - Canal de logs
 - `#status` - Canal de status do bot
@@ -455,7 +485,9 @@ Crie os seguintes canais no seu servidor:
 - `#comandos-adm` - Canal para comandos administrativos
 
 ### Cargos Necessários
+
 Crie os seguintes cargos:
+
 - `Verificado` - Cargo dado após verificação
 - `Admin` - Cargo de administrador
 - `Staff` - Cargo de staff
@@ -467,7 +499,7 @@ Crie os seguintes cargos:
 
 ## 📁 Estrutura do Projeto
 
-```
+```text
 ignis-community-bot/
 ├── commands/           # Comandos slash
 │   ├── ajuda.js
@@ -491,8 +523,10 @@ ignis-community-bot/
 ## 🛠️ Personalização
 
 ### Adicionando Novos Comandos
+
 1. Crie um arquivo `.js` na pasta `commands/`
 2. Use a estrutura padrão:
+
 ```javascript
 const { SlashCommandBuilder } = require('discord.js');
 
@@ -507,8 +541,10 @@ module.exports = {
 ```
 
 ### Adicionando Novos Eventos
+
 1. Crie um arquivo `.js` na pasta `events/`
 2. Use a estrutura padrão:
+
 ```javascript
 const { Events } = require('discord.js');
 
@@ -523,16 +559,19 @@ module.exports = {
 ## 🔍 Troubleshooting
 
 ### Bot Não Inicia
+
 - Verifique se o token está correto
 - Confirme se todas as dependências estão instaladas
 - Verifique os logs de erro no console
 
 ### Comandos Não Aparecem
+
 - Execute `npm run deploy` para registrar os comandos
 - Verifique se o CLIENT_ID e GUILD_ID estão corretos
 - Aguarde alguns minutos para o Discord processar
 
 ### Permissões Negadas
+
 - Verifique se o bot tem as permissões necessárias
 - Confirme se os IDs dos cargos e canais estão corretos
 - Verifique a hierarquia de cargos

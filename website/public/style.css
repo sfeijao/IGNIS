@@ -49,7 +49,7 @@ body{font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial;margin:0;
 .server-toolbar #server-count{margin-left:auto}
 .hl{background:rgba(124,58,237,.18);border-radius:4px;padding:0 2px}
 /* Mobile menu overlay & focus styles */
-.nav-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:saturate(120%) blur(1px);z-index:999}
+.nav-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);/* Safari/iOS need -webkit-backdrop-filter */-webkit-backdrop-filter:saturate(120%) blur(1px);backdrop-filter:saturate(120%) blur(1px);z-index:999}
 .nav-menu.open + .nav-overlay{display:block}
 .nav-menu .menu-item:focus{outline:2px solid var(--primary-500);outline-offset:2px}
 body.menu-open{overflow:hidden}
