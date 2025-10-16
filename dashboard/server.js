@@ -78,15 +78,15 @@ const getCallbackURL = () => {
 
 // Middleware
 app.use(express.static(path.join(__dirname, 'public')));
-// Serve the revamped website dashboard assets under /dashboard (auth-protected)
+// Serve the revamped website dashboard assets under /dashboard
 const WEBSITE_PUBLIC_DIR = path.join(__dirname, '..', 'website', 'public');
 function requireAuth(req, res, next){
     try { if (req.isAuthenticated && req.isAuthenticated()) return next(); } catch {}
     return res.redirect('/login');
 }
-// Serve static assets for the website UI without auth; API and HTML are auth-protected
-// Disable redirect to avoid proxy-induced loops; the HTML routes below enforce auth
-app.use('/dashboard', express.static(WEBSITE_PUBLIC_DIR, { index: 'dashboard.html', redirect: false }));
+// Serve static assets for the website UI without auth; API and HTML are auth-protected by explicit routes below
+// Do not serve index from static to avoid bypassing auth on /dashboard
+app.use('/dashboard', express.static(WEBSITE_PUBLIC_DIR, { index: false, redirect: false }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -181,6 +181,23 @@ app.get('/dashboard/', requireAuth, (req, res) => {
     } catch (e) {
         try { return res.sendFile(path.join(WEBSITE_PUBLIC_DIR, 'dashboard.html')); } catch {}
         return res.status(500).send('Dashboard unavailable');
+    }
+});
+
+// Secure direct ticket page access under dashboard path
+app.get(['/dashboard/ticket.html','/dashboard/ticket'], requireAuth, (req, res) => {
+    try {
+        const indexPath = path.join(__dirname, 'public', 'ticket.html');
+        let html = fs.readFileSync(indexPath, 'utf8');
+        // keep base for dashboard assets context
+        if (!/\<base\s+href=/i.test(html)) {
+            html = html.replace(/<head(\s[^>]*)?>/i, (m) => `${m}\n  <base href="/dashboard/">`);
+        }
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
+    } catch (e) {
+        try { return res.sendFile(path.join(__dirname, 'public', 'ticket.html')); } catch {}
+        return res.status(500).send('Ticket page unavailable');
     }
 });
 

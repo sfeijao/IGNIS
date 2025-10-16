@@ -1,0 +1,35 @@
+/* Ticket page styles extracted from inline <style> */
+
+.page { max-width: 1200px; margin: 0 auto; padding: var(--space-xl); }
+.ticket-header { display:flex; align-items:center; justify-content: space-between; margin-bottom: var(--space-lg); }
+.ticket-badges { display:flex; gap: var(--space-sm); align-items:center; }
+.badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+.badge-open { background:#065f46; color:#ecfdf5; }
+.badge-waiting { background:#78350f; color:#fffbeb; }
+.badge-closed { background:#374151; color:#e5e7eb; }
+.badge-claimed { background:#78350f; color:#fffbeb; }
+.locked-pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background: rgba(239,68,68,.15); color:#fca5a5; border:1px solid rgba(239,68,68,.25); font-weight:600; }
+.badge-urgent { background:#7f1d1d; color:#fee2e2; }
+.layout { display:grid; grid-template-columns: 280px 1fr 320px; gap: var(--space-lg); }
+.card { background: var(--glass-bg, rgba(255,255,255,0.03)); border:1px solid var(--glass-border, rgba(255,255,255,0.08)); border-radius: 12px; padding: var(--space-lg); }
+.messages { height: 52vh; overflow: auto; display:flex; flex-direction: column; gap: var(--space-md); }
+.bubble { padding:12px 14px; border-radius: 12px; max-width: 78%; }
+.bubble.me { align-self:flex-end; background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); }
+.bubble.other { align-self:flex-start; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); }
+.bubble .meta { font-size: 12px; opacity: .7; margin-bottom: 6px; display:flex; gap:8px; align-items:center; }
+.composer { display:flex; gap: var(--space-sm); align-items:flex-end; }
+.composer textarea { flex:1; min-height: 64px; resize: vertical; }
+.btn-row { display:flex; gap: var(--space-sm); flex-wrap: wrap; }
+.section-title { font-weight: 600; margin-bottom: var(--space-sm); }
+.kv { font-size: 14px; opacity:.9; display:grid; grid-template-columns: 110px 1fr; gap: 6px 12px; }
+.divider { height:1px; background: var(--glass-border, rgba(255,255,255,0.08)); margin: var(--space-md) 0; }
+
+/* Utilities replacing inline styles */
+.hidden { display: none !important; }
+.mt-8 { margin-top: 8px; }
+.mb-8 { margin-bottom: 8px; }
+
+@media (max-width: 1024px) {
+  .layout { grid-template-columns: 1fr; }
+  .messages { height: 46vh; }
+}

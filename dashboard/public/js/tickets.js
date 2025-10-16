@@ -140,7 +140,7 @@
               <span><i class="fas fa-clock"></i> ${t.timeAgo||''}</span>
             </div>
             <div>
-              <a class="btn btn-glass btn-sm" href="/ticket.html?guildId=${encodeURIComponent(guildId)}&ticketId=${encodeURIComponent(t.id)}"><i class="fas fa-eye"></i> Ver</a>
+              <a class="btn btn-glass btn-sm" href="/dashboard/ticket.html?guildId=${encodeURIComponent(guildId)}&ticketId=${encodeURIComponent(t.id)}"><i class="fas fa-eye"></i> Ver</a>
             </div>
           </div>
           <div class="ticket-body">
