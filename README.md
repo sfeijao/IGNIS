@@ -1,6 +1,8 @@
 # 🤖 IGNIS Community Discord Bot
 
 ![Discord](https://img.shields.io/badge/Discord.js-v14.14.1-blue.svg)
+[![Node CI](https://github.com/sfeijao/IGNIS_BOT/actions/workflows/node-ci.yml/badge.svg)](https://github.com/sfeijao/IGNIS_BOT/actions/workflows/node-ci.yml)
+[![Markdownlint](https://github.com/sfeijao/IGNIS_BOT/actions/workflows/markdownlint.yml/badge.svg)](https://github.com/sfeijao/IGNIS_BOT/actions/workflows/markdownlint.yml)
 ![Node.js](https://img.shields.io/badge/Node.js-16.9.0+-green.svg)
 ![Railway](https://img.shields.io/badge/Railway-Deploy%20Ready-purple.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
