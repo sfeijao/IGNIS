@@ -1,0 +1,19 @@
+* text=auto
+
+# Default to LF in repo; let Git handle checkout conversions.
+* eol=lf
+
+# Keep Windows scripts with CRLF when checked out
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Preserve binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary

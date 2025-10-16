@@ -28,7 +28,8 @@
     "test:ci": "npm run test:private-receiver",
     "smoke:fetch": "node website/tools/e2e-smoke-fetch.js",
     "smoke:headless": "node website/tools/e2e-smoke-headless.js",
-    "smoke:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-smoke-local.ps1"
+    "smoke:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-smoke-local.ps1",
+    "lint:md": "npx --yes markdownlint-cli2 README.md README-LOCAL.md README-SQLITE.md README-CI.md website/README.md || exit 0"
   },
   "repository": {
     "type": "git",
