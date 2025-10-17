@@ -1,34 +1,36 @@
 /* IGNIS Dashboard - Modern Design with Glassmorphism & Neumorphism */
 
 :root {
-    /* Purple Theme Colors */
-    --primary: #8B5CF6;
-    --primary-dark: #7C3AED;
-    --primary-light: #A78BFA;
-    --secondary: #EC4899;
-    --accent: #F59E0B;
-    
-    /* Dark Theme */
-    --bg-primary: #0F0F23;
-    --bg-secondary: #1A1A2E;
-    --bg-tertiary: #16213E;
+    /* Core palette: dark-only with purple/blue accents */
+    --primary: #8B5CF6;        /* purple */
+    --primary-dark: #6D28D9;   /* deeper purple */
+    --primary-light: #A78BFA;  /* light purple */
+    --blue: #60A5FA;           /* accent blue */
+    --blue-dark: #3B82F6;
+    --secondary: var(--blue);
+    --accent: var(--blue-dark);
+
+    /* Dark Theme (no light variant) */
+    --bg-primary: #0B0C12;     /* darker base */
+    --bg-secondary: #121421;   /* panels */
+    --bg-tertiary: #0F1220;    /* subtle gradient stop */
     --bg-card: rgba(255, 255, 255, 0.05);
-    --bg-glass: rgba(139, 92, 246, 0.1);
-    
+    --bg-glass: rgba(99, 102, 241, 0.10); /* indigo/blue hint */
+
     /* Text Colors */
     --text-primary: #FFFFFF;
     --text-secondary: #B8BCC8;
     --text-muted: #6B7280;
-    
+
     /* Glassmorphism */
-    --glass-bg: rgba(255, 255, 255, 0.1);
-    --glass-border: rgba(255, 255, 255, 0.2);
-    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
-    
+    --glass-bg: rgba(255, 255, 255, 0.10);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+
     /* Neumorphism */
-    --neuro-shadow-dark: rgba(0, 0, 0, 0.5);
-    --neuro-shadow-light: rgba(255, 255, 255, 0.1);
-    
+    --neuro-shadow-dark: rgba(0, 0, 0, 0.55);
+    --neuro-shadow-light: rgba(255, 255, 255, 0.06);
+
     /* Spacing */
     --space-xs: 0.25rem;
     --space-sm: 0.5rem;
@@ -36,14 +38,14 @@
     --space-lg: 1.5rem;
     --space-xl: 2rem;
     --space-2xl: 3rem;
-    
-    /* Border Radius */
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 24px;
-    --radius-full: 50%;
-    
+
+    /* Rounded corners (more rounded as requested) */
+    --radius-sm: 10px;
+    --radius-md: 14px;
+    --radius-lg: 18px;
+    --radius-xl: 28px;
+    --radius-full: 9999px;
+
     /* Animations */
     --transition-fast: 0.2s ease;
     --transition-normal: 0.3s ease;
@@ -71,11 +73,11 @@ body {
     overflow-x: hidden;
     
     /* Animated gradient background */
-    background: linear-gradient(-45deg, 
-        var(--bg-primary), 
-        var(--bg-secondary), 
-        var(--bg-tertiary), 
-        #1a1a2e
+    background: linear-gradient(-45deg,
+        var(--bg-primary),
+        var(--bg-secondary),
+        #101426,
+        #0E1222
     );
     background-size: 400% 400%;
     animation: gradientShift 15s ease infinite;
@@ -112,15 +114,15 @@ body {
     -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-xl);
     box-shadow: var(--glass-shadow);
     transition: all var(--transition-normal);
 }
 
 .glass-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 16px 48px rgba(139, 92, 246, 0.2);
-    border-color: var(--primary);
+    transform: translateY(-3px);
+    box-shadow: 0 16px 48px rgba(59, 130, 246, 0.18);
+    border-color: var(--blue);
 }
 
 /* Utilities */
@@ -237,7 +239,7 @@ body {
     gap: var(--space-sm);
     font-size: 1.5rem;
     font-weight: 700;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: linear-gradient(135deg, var(--primary), var(--blue));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -253,7 +255,7 @@ body {
     width: 40px;
     height: 40px;
     border-radius: var(--radius-full);
-    border: 2px solid var(--primary);
+    border: 2px solid var(--blue);
     transition: all var(--transition-fast);
 }
 
@@ -300,14 +302,14 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    background: linear-gradient(135deg, var(--primary), var(--blue-dark));
     color: white;
-    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.30);
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.40);
 }
 
 .btn-glass {
@@ -319,8 +321,8 @@ body {
 }
 
 .btn-glass:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: var(--primary);
+    background: rgba(255, 255, 255, 0.20);
+    border-color: var(--blue);
 }
 
 /* Small button variant for compact grids */
@@ -333,13 +335,13 @@ body {
 
 .btn-sm:focus {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(139,92,246,0.35);
+    box-shadow: 0 0 0 3px rgba(96,165,250,0.35);
 }
 
 .btn-logout {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(239, 68, 68, 0.10);
     color: #F87171;
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    border: 1px solid rgba(239, 68, 68, 0.30);
 }
 
 .btn-logout:hover {
@@ -384,9 +386,9 @@ label {
 }
 
 .input:focus {
-    border-color: var(--primary);
+    border-color: var(--blue);
     background: rgba(255,255,255,0.12);
-    box-shadow: 0 0 0 3px rgba(139,92,246,0.25);
+    box-shadow: 0 0 0 3px rgba(96,165,250,0.28);
 }
 
 /* Fix for Windows/Chrome: select dropdown uses light system background but inherits white text
