@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 </head>
-<body>
+<body class="dense">
   <nav class="navbar">
     <div class="navbar-container">
       <div class="navbar-brand"><i class="fas fa-ticket-alt"></i> Tickets</div>
@@ -21,6 +21,7 @@
         </span>
         <img id="userAvatar" src="/default-avatar.svg" alt="Avatar" class="user-avatar">
         <span id="userName">Carregando...</span>
+        <a href="/dashboard-new" class="btn btn-glass btn-sm" title="Try the new design (beta)"><i class="fas fa-flask"></i> Beta</a>
         <a href="/dashboard" class="btn btn-glass"><i class="fas fa-home"></i> Dashboard</a>
         <a href="/logout" class="btn btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
       </div>
@@ -129,12 +130,12 @@
   </main>
   <script src="/js/tickets.js"></script>
   <style>
-    .card-pad{padding:16px}
+    .card-pad{padding:14px}
     .gap-12{gap:12px}
     .mt-12{margin-top:12px}
     .grid-col-2{grid-column: span 2}
-    .badge.stat{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);border-radius:12px;padding:10px 12px}
-    .ticket-item{background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);border-radius:12px;padding:12px;margin-bottom:10px}
+  .badge.stat{display:inline-flex;align-items:center;gap:8px;background:rgba(99,102,241,0.14);border:1px solid rgba(99,102,241,0.35);color:#A5B4FC;border-radius:12px;padding:8px 10px}
+  .ticket-item{background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);border-radius:12px;padding:10px;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
     .ticket-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
     .ticket-meta{display:flex;gap:12px;color:var(--text-secondary);font-size:.9rem}
     .pagination .btn{min-width:36px}

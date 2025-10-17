@@ -133,6 +133,22 @@ body {
 .pad-24 { padding: 24px; }
 .flex-wrap { flex-wrap: wrap; }
 .minw-180 { min-width: 180px; }
+/* Compact utility for tighter pages (tickets/logs) */
+.dense .grid { gap: 12px; }
+.dense .card-pad { padding: 14px !important; }
+.dense .btn-sm { min-width: 120px; }
+
+/* High-contrast badges on dark bg with softer shadow */
+.badge { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; background: rgba(99,102,241,0.14); color:#A5B4FC; border:1px solid rgba(99,102,241,0.35); box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+.badge i { opacity:.9 }
+.badge.soft { background: rgba(255,255,255,0.06); color: var(--text-secondary); border-color: var(--glass-border); }
+
+/* Health dots */
+.health-badge{margin-right:8px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.dot-green{background:#22c55e}
+.dot-red{background:#ef4444}
+.dot-gray{background:#6b7280}
 
 /* Confirm Block (in-modal plan preview) */
 .confirm-block {
