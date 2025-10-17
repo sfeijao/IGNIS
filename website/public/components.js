@@ -30,7 +30,13 @@
     toggle.setAttribute('aria-label','Alternar tema');
     toggle.textContent = 'Tema';
 
-    const logout = document.createElement('a');
+  const classic = document.createElement('a');
+  classic.href = '/dashboard';
+  classic.className = 'nav-btn';
+  classic.setAttribute('aria-label','Abrir dashboard clássico');
+  classic.textContent = 'Clássico';
+
+  const logout = document.createElement('a');
     logout.href = logoutHref;
     logout.className = 'nav-btn';
     logout.setAttribute('aria-label','Terminar sessão');
@@ -108,7 +114,7 @@
       isOpen: () => menu.classList.contains('open')
     };
 
-    user.append(avatar, name, toggle, logout, burger, menu);
+  user.append(avatar, name, toggle, classic, logout, burger, menu);
     wrap.append(brand, user);
     nav.appendChild(wrap);
     return nav;
