@@ -78,15 +78,17 @@ const getCallbackURL = () => {
 
 // Middleware
 app.use(express.static(path.join(__dirname, 'public')));
-// Serve the revamped website dashboard assets under /dashboard
+// Paths for classic dashboard (rich features) and the revamped website UI
 const WEBSITE_PUBLIC_DIR = path.join(__dirname, '..', 'website', 'public');
+const CLASSIC_PUBLIC_DIR = path.join(__dirname, 'public');
 function requireAuth(req, res, next){
     try { if (req.isAuthenticated && req.isAuthenticated()) return next(); } catch {}
     return res.redirect('/login');
 }
-// Serve static assets for the website UI without auth; API and HTML are auth-protected by explicit routes below
-// Do not serve index from static to avoid bypassing auth on /dashboard
-app.use('/dashboard', express.static(WEBSITE_PUBLIC_DIR, { index: false, redirect: false }));
+// Serve classic dashboard assets under /dashboard (no index to avoid bypassing auth on HTML routes)
+app.use('/dashboard', express.static(CLASSIC_PUBLIC_DIR, { index: false, redirect: false }));
+// Serve the revamped website dashboard assets under /dashboard-new (separate entry point)
+app.use('/dashboard-new', express.static(WEBSITE_PUBLIC_DIR, { index: false, redirect: false }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -151,11 +153,11 @@ app.get('/login', (req, res) => {
     }
 });
 
+// Classic dashboard as default under /dashboard
 app.get('/dashboard', requireAuth, (req, res) => {
     if (OAUTH_VERBOSE) logger.info(`Route /dashboard - isAuthenticated: ${req.isAuthenticated()}, user: ${req.user ? req.user.username : 'none'}, sessionID: ${req.sessionID}`);
-    // Serve dashboard without redirect; inject a <base> so relative assets resolve under /dashboard/
     try {
-        const indexPath = path.join(WEBSITE_PUBLIC_DIR, 'dashboard.html');
+        const indexPath = path.join(CLASSIC_PUBLIC_DIR, 'dashboard.html');
         let html = fs.readFileSync(indexPath, 'utf8');
         if (!/\<base\s+href=/i.test(html)) {
             html = html.replace(/<head(\s[^>]*)?>/i, (m) => `${m}\n  <base href="/dashboard/">`);
@@ -163,7 +165,7 @@ app.get('/dashboard', requireAuth, (req, res) => {
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         return res.send(html);
     } catch (e) {
-        try { return res.sendFile(path.join(WEBSITE_PUBLIC_DIR, 'dashboard.html')); } catch {}
+        try { return res.sendFile(path.join(CLASSIC_PUBLIC_DIR, 'dashboard.html')); } catch {}
         return res.status(500).send('Dashboard unavailable');
     }
 });
@@ -171,7 +173,7 @@ app.get('/dashboard', requireAuth, (req, res) => {
 // Also handle trailing slash explicitly (no redirect) with auth
 app.get('/dashboard/', requireAuth, (req, res) => {
     try {
-        const indexPath = path.join(WEBSITE_PUBLIC_DIR, 'dashboard.html');
+        const indexPath = path.join(CLASSIC_PUBLIC_DIR, 'dashboard.html');
         let html = fs.readFileSync(indexPath, 'utf8');
         if (!/\<base\s+href=/i.test(html)) {
             html = html.replace(/<head(\s[^>]*)?>/i, (m) => `${m}\n  <base href="/dashboard/">`);
@@ -179,8 +181,24 @@ app.get('/dashboard/', requireAuth, (req, res) => {
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         return res.send(html);
     } catch (e) {
-        try { return res.sendFile(path.join(WEBSITE_PUBLIC_DIR, 'dashboard.html')); } catch {}
+        try { return res.sendFile(path.join(CLASSIC_PUBLIC_DIR, 'dashboard.html')); } catch {}
         return res.status(500).send('Dashboard unavailable');
+    }
+});
+
+// New UI entry under /dashboard-new
+app.get(['/dashboard-new','/dashboard-new/'], requireAuth, (req, res) => {
+    try {
+        const indexPath = path.join(WEBSITE_PUBLIC_DIR, 'dashboard.html');
+        let html = fs.readFileSync(indexPath, 'utf8');
+        if (!/\<base\s+href=/i.test(html)) {
+            html = html.replace(/<head(\s[^>]*)?>/i, (m) => `${m}\n  <base href="/dashboard-new/">`);
+        }
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
+    } catch (e) {
+        try { return res.sendFile(path.join(WEBSITE_PUBLIC_DIR, 'dashboard.html')); } catch {}
+        return res.status(500).send('Dashboard (new UI) unavailable');
     }
 });
 
