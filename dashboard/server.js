@@ -18,6 +18,7 @@ const PORT = process.env.PORT || 4000;
 try { app.set('trust proxy', 1); } catch {}
 const isSqlite = (process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite';
 const BYPASS_AUTH = (process.env.DASHBOARD_BYPASS_AUTH || '').toLowerCase() === 'true';
+const IS_LOCAL = (process.env.NODE_ENV || 'development') !== 'production';
 const OAUTH_VERBOSE = (process.env.OAUTH_VERBOSE_LOGS || '').toLowerCase() === 'true';
 // Suppress common noisy warnings in production
 if ((process.env.NODE_ENV || 'production') === 'production') {
@@ -83,8 +84,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 const WEBSITE_PUBLIC_DIR = path.join(__dirname, '..', 'website', 'public');
 const CLASSIC_PUBLIC_DIR = path.join(__dirname, 'public');
 function requireAuth(req, res, next){
-    // Development-only bypass: allows viewing pages without OAuth when DASHBOARD_BYPASS_AUTH=true
-    if (BYPASS_AUTH) {
+    // Development-only bypasses to allow visual checks without OAuth locally
+    // 1) Env flag DASHBOARD_BYPASS_AUTH=true
+    // 2) Local query/header toggle: ?dev=1 or x-dev-bypass: 1 (only when not in production)
+    if (BYPASS_AUTH || (IS_LOCAL && (req.query?.dev === '1' || req.headers['x-dev-bypass'] === '1'))) {
         if (!req.user) {
             // Inject a minimal fake user for pages that expect it
             req.user = { id: '0', username: 'dev', discriminator: '0000', avatar: null, accessToken: null };
