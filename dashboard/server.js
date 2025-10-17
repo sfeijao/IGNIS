@@ -17,6 +17,7 @@ const PORT = process.env.PORT || 4000;
 // When running behind a reverse proxy (Railway/Heroku), trust the proxy so secure cookies work
 try { app.set('trust proxy', 1); } catch {}
 const isSqlite = (process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite';
+const BYPASS_AUTH = (process.env.DASHBOARD_BYPASS_AUTH || '').toLowerCase() === 'true';
 const OAUTH_VERBOSE = (process.env.OAUTH_VERBOSE_LOGS || '').toLowerCase() === 'true';
 // Suppress common noisy warnings in production
 if ((process.env.NODE_ENV || 'production') === 'production') {
@@ -82,6 +83,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 const WEBSITE_PUBLIC_DIR = path.join(__dirname, '..', 'website', 'public');
 const CLASSIC_PUBLIC_DIR = path.join(__dirname, 'public');
 function requireAuth(req, res, next){
+    // Development-only bypass: allows viewing pages without OAuth when DASHBOARD_BYPASS_AUTH=true
+    if (BYPASS_AUTH) {
+        if (!req.user) {
+            // Inject a minimal fake user for pages that expect it
+            req.user = { id: '0', username: 'dev', discriminator: '0000', avatar: null, accessToken: null };
+        }
+        return next();
+    }
     try { if (req.isAuthenticated && req.isAuthenticated()) return next(); } catch {}
     return res.redirect('/login');
 }
