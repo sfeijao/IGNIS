@@ -95,3 +95,6 @@ website/public_backups_html/
 # Local SQLite DB
 website/database/ignis_dashboard.db
 
+# Runtime JSON logs (keep untracked)
+data/logs.json
+
