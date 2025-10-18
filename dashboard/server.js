@@ -123,6 +123,20 @@ app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Development auth bypass for API routes as well (local only or env flag)
+app.use((req, res, next) => {
+    try {
+        const devHeader = req.headers['x-dev-bypass'] === '1';
+        const devQuery = req.query && req.query.dev === '1';
+        if (BYPASS_AUTH || (IS_LOCAL && (devHeader || devQuery))) {
+            if (!req.user) req.user = { id: '0', username: 'dev', discriminator: '0000', avatar: null, accessToken: null };
+            // Monkey-patch isAuthenticated so API guards succeed
+            req.isAuthenticated = () => true;
+        }
+    } catch {}
+    next();
+});
+
 // Discord OAuth Strategy
 passport.use(new DiscordStrategy({
     clientID: config.DISCORD.CLIENT_ID,
