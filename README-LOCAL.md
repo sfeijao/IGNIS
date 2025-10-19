@@ -64,6 +64,30 @@ irm http://localhost:3000/api/health | ConvertTo-Json -Depth 5
 
 - You should see `storage.backend` = `sqlite`.
 
+MongoDB (persistência)
+
+- Opção B (URI sem DB no path + nome via variável):
+
+```powershell
+$env:MONGO_URI = 'mongodb+srv://user:pass@cluster.mongodb.net/?retryWrites=true&w=majority&appName=IGNIS'
+$env:MONGO_DB_NAME = 'IGNIS'
+```
+
+- Remover forçamento de SQLite (se existir):
+
+```powershell
+Remove-Item Env:STORAGE_BACKEND -ErrorAction SilentlyContinue
+```
+
+- Arrancar e validar: Health deve mostrar mongo: connected
+
+```powershell
+node index.js
+irm http://localhost:4000/api/health?dev=1 | ConvertTo-Json -Depth 5
+```
+
+- Persistência: altera algo no dashboard, reinicia `node index.js` e confirma que manteve.
+
 Backups & migration (local)
 
 - Create a backup (JSON + raw .db copy):
