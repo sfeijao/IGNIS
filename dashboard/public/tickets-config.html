@@ -47,13 +47,24 @@
               </div>
               <div>
                 <label>Categoria para tickets</label>
-                <select id="ticketsCategory" class="input" title="Categoria onde os tickets serão criados (opcional)"></select>
-                <p class="text-muted mt-6 text-sm">Se selecionares, os canais de ticket serão organizados nesta categoria.</p>
+                <div class="grid gap-8">
+                  <select id="ticketsCategory" class="input" title="Categoria onde os tickets serão criados (opcional)"></select>
+                  <div class="grid grid-2 gap-8">
+                    <input id="newCategoryName" class="input" placeholder="Criar nova categoria (ex.: 📁 TICKETS)" />
+                    <button id="btnCreateCategory" class="btn btn-glass"><i class="fas fa-plus"></i> Criar Categoria</button>
+                  </div>
+                </div>
+                <p class="text-muted mt-6 text-sm">Se selecionares, os canais de ticket serão organizados nesta categoria. Podes também criar uma nova categoria.</p>
               </div>
               <div class="full">
                 <label>Cargos com acesso inicial</label>
                 <select id="accessRoles" multiple class="input" title="Cargos que terão acesso por padrão aos tickets"></select>
                 <p class="text-muted mt-6 text-sm">Mantém CTRL/CMD pressionado para selecionar múltiplos cargos.</p>
+              </div>
+              <div class="full">
+                <label>Canal de logs de tickets</label>
+                <select id="logsChannel" class="input" title="Canal onde ações de tickets serão registadas"></select>
+                <p class="text-muted mt-6 text-sm">Seleciona onde notificações (abrir/fechar, etc.) serão enviadas quando não existe webhook dedicado.</p>
               </div>
             </div>
           </div>

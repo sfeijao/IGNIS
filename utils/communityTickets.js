@@ -199,18 +199,19 @@ async function createTicket(interaction, type) {
 
   // Mensagem inicial no canal
   const visualAssets = require('../assets/visual-assets');
+  // Mensagem inicial personalizada com placeholders
+  const cfgTickets = (cfg && cfg.tickets) || {};
+  const placeholders = {
+    '{user}': `${interaction.user}`,
+    '{user_tag}': `${interaction.user.tag}`,
+    '{server}': interaction.guild?.name || '',
+    '{ticket_id}': String(ticket.id)
+  };
+  const welcome = (cfgTickets.welcomeMsg || `Olá {user}, obrigado por abrir um ticket!`).replace(/\{user\}|\{user_tag\}|\{server\}|\{ticket_id\}/g, (m)=> placeholders[m] || m);
   const intro = new EmbedBuilder()
     .setColor(info.color)
     .setTitle(`${info.emoji} ${info.name}`)
-    .setDescription([
-      `Olá ${interaction.user}, obrigado por abrir um ticket!`,
-      'Deixa uma descrição objetiva do teu pedido para acelerar a resposta.',
-      '',
-      'Regras rápidas:',
-      '• Sem spam • Respeito pela equipa • Um tópico por ticket',
-      '',
-      'Usa os controlos abaixo para gerir este ticket.'
-    ].join('\n'))
+    .setDescription(welcome)
     .setThumbnail(visualAssets.realImages.supportIcon)
     .setImage(visualAssets.realImages.supportBanner)
     .addFields(
@@ -260,7 +261,13 @@ async function createTicket(interaction, type) {
         guild: interaction.guild
       });
     } else {
-      const logCh = await findLogsChannel(interaction.guild);
+      // Prefer configuração explícita do dashboard
+      let logCh = null;
+      try {
+        const logsId = cfgTickets.logsChannelId;
+        if (logsId) logCh = interaction.guild.channels.cache.get(logsId) || await interaction.client.channels.fetch(logsId).catch(()=>null);
+      } catch {}
+      if (!logCh) logCh = await findLogsChannel(interaction.guild);
       if (logCh && logCh.send) {
         await logCh.send({ embeds: [new EmbedBuilder().setColor(0x7C3AED).setTitle('📩 Ticket Aberto').setDescription(`${interaction.user} abriu um ticket: ${channel}`)] });
       }

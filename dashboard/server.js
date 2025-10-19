@@ -1467,6 +1467,22 @@ app.get('/api/guild/:guildId/categories', async (req, res) => {
     }
 });
 
+// Create new category (admin gated)
+app.post('/api/guild/:guildId/categories/create', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const name = (req.body && req.body.name) ? String(req.body.name).slice(0, 96) : '';
+        if (!name.trim()) return res.status(400).json({ success: false, error: 'missing_name' });
+        const created = await check.guild.channels.create({ name, type: 4 /* GuildCategory */ });
+        return res.json({ success: true, category: { id: created.id, name: created.name } });
+    } catch (e) {
+        logger.error('Error creating category:', e);
+        return res.status(500).json({ success: false, error: 'create_category_failed' });
+    }
+});
+
 // Roles list (for UIs)
 app.get('/api/guild/:guildId/roles', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });

@@ -17,6 +17,9 @@
     defaultTemplate: document.getElementById('defaultTemplate'),
     panelChannel: document.getElementById('panelChannel'),
     ticketsCategory: document.getElementById('ticketsCategory'),
+    logsChannel: document.getElementById('logsChannel'),
+    newCategoryName: document.getElementById('newCategoryName'),
+    btnCreateCategory: document.getElementById('btnCreateCategory'),
     accessRoles: document.getElementById('accessRoles'),
     save: document.getElementById('btnSave'),
   };
@@ -54,6 +57,9 @@
       if (els.ticketsCategory) {
         els.ticketsCategory.innerHTML = `<option value="">— Sem categoria —</option>` + categories.map(c=>`<option value="${c.id}">${(c.name||c.id)}</option>`).join('');
       }
+      if (els.logsChannel) {
+        els.logsChannel.innerHTML = `<option value="">— Sem logs —</option>` + channels.map(c=>`<option value="${c.id}">${(c.name||c.id)}</option>`).join('');
+      }
       if (els.accessRoles) {
         els.accessRoles.innerHTML = roles.map(r=>`<option value="${r.id}">${(r.name||r.id)}</option>`).join('');
       }
@@ -79,6 +85,7 @@
       // New fields
       if (els.panelChannel) els.panelChannel.value = t.panelChannelId || '';
       if (els.ticketsCategory) els.ticketsCategory.value = t.ticketsCategoryId || '';
+      if (els.logsChannel) els.logsChannel.value = t.logsChannelId || '';
       if (els.accessRoles && Array.isArray(t.accessRoleIds)) {
         for (const opt of els.accessRoles.options) { opt.selected = t.accessRoleIds.includes(opt.value); }
       }
@@ -87,6 +94,11 @@
 
   async function save() {
     try {
+      // Basic validation
+      if (els.accessRoles && Array.from(els.accessRoles.selectedOptions||[]).length === 0) {
+        notify('Seleciona pelo menos um cargo com acesso aos tickets', 'error');
+        return;
+      }
       const payload = {
         tickets: {
           categories: {
@@ -111,6 +123,7 @@
           })(),
           panelChannelId: els.panelChannel?.value || '',
           ticketsCategoryId: els.ticketsCategory?.value || '',
+          logsChannelId: els.logsChannel?.value || '',
           accessRoleIds: (()=>{
             if (!els.accessRoles) return [];
             return Array.from(els.accessRoles.selectedOptions || []).map(o=>o.value);
@@ -123,5 +136,22 @@
   }
 
   if (els.save) els.save.addEventListener('click', save);
+  if (els.btnCreateCategory) els.btnCreateCategory.addEventListener('click', async ()=>{
+    try {
+      const name = (els.newCategoryName?.value||'').trim();
+      if (!name) { notify('Indica um nome para a categoria', 'error'); return; }
+      const res = await api(`/api/guild/${guildId}/categories/create`, { method:'POST', body: JSON.stringify({ name }) });
+      const cat = res.category;
+      // Refresh categories dropdown
+      try {
+        const cats = await api(`/api/guild/${guildId}/categories`);
+        if (els.ticketsCategory) {
+          els.ticketsCategory.innerHTML = `<option value="">— Sem categoria —</option>` + (cats.categories||[]).map(c=>`<option value="${c.id}">${(c.name||c.id)}</option>`).join('');
+          els.ticketsCategory.value = cat?.id || '';
+        }
+      } catch {}
+      notify('Categoria criada', 'success');
+    } catch (e) { console.error(e); notify(e.message||'Falha ao criar categoria', 'error'); }
+  });
   load();
 })();
