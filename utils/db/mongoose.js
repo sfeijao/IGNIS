@@ -57,12 +57,19 @@ async function connect(uri) {
     throw err;
   }
 
+  // If URI has no "/db" path, allow overriding dbName via env, default to 'IGNIS'
+  let connOpts = { autoIndex: true, serverSelectionTimeoutMS: 10000 };
+  try {
+    const hasDbPath = /mongodb(?:\+srv)?:\/\/[^/]+\/.+/.test(uri);
+    if (!hasDbPath) {
+      const dbName = process.env.MONGO_DB_NAME || 'IGNIS';
+      connOpts.dbName = dbName;
+    }
+  } catch {}
+
   mongoose.set('strictQuery', true);
   try {
-    await mongoose.connect(uri, {
-      autoIndex: true,
-      serverSelectionTimeoutMS: 10000,
-    });
+    await mongoose.connect(uri, connOpts);
     isConnected = true;
     return mongoose.connection;
   } catch (e) {
