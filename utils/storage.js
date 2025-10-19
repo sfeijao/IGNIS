@@ -14,6 +14,8 @@ try {
     ({ TicketModel, GuildConfigModel, TagModel, TicketLogModel } = require('./db/models'));
     // Estado inicial com base na ligação atual
     useMongo = !!isReady();
+        // Expose backend marker for health endpoint
+        this.__backend = useMongo ? 'mongo' : ((process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite' ? 'sqlite' : 'json');
     if (useMongo) {
         console.log('✅ Mongo pronto (storage)');
     }
@@ -21,10 +23,12 @@ try {
     try {
         mongoose.connection.on('connected', () => {
             useMongo = true;
+                this.__backend = 'mongo';
             console.log('✅ Mongo conectado (storage)');
         });
         mongoose.connection.on('disconnected', () => {
             useMongo = false;
+                this.__backend = ((process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite' ? 'sqlite' : 'json');
             console.warn('⚠️ Mongo desconectado, a usar JSON fallback (storage)');
         });
     } catch {}

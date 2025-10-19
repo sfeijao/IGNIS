@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 let isConnected = false;
+let lastError = null; // { code, message }
 
 function maskMongoUri(uri) {
   try {
@@ -71,6 +72,7 @@ async function connect(uri) {
   try {
     await mongoose.connect(uri, connOpts);
     isConnected = true;
+    lastError = null;
     return mongoose.connection;
   } catch (e) {
     // Reclassify common parse errors to provide clearer guidance upstream
@@ -79,6 +81,7 @@ async function connect(uri) {
       const masked = maskMongoUri(uri);
       const err = new Error(`MongoDB URI inválida/malformada: ${message}. Sugestão: se a password tiver caracteres especiais (por ex. @ : / ? # [ ]), codifique-a com encodeURIComponent. (uri: ${masked})`);
       err.code = 'MONGO_URI_MALFORMED';
+      lastError = { code: err.code, message: err.message };
       throw err;
     }
     // Authentication failures
@@ -86,6 +89,7 @@ async function connect(uri) {
       const masked = maskMongoUri(uri);
       const err = new Error(`Falha de autenticação no MongoDB: ${message}. Verifique o utilizador, password (caracteres especiais devem ser codificados) e permissões no cluster. (uri: ${masked})`);
       err.code = 'MONGO_AUTH_FAILED';
+      lastError = { code: err.code, message: err.message };
       throw err;
     }
     // Network/selection failures
@@ -93,21 +97,27 @@ async function connect(uri) {
       const masked = maskMongoUri(uri);
       const err = new Error(`Falha de ligação ao MongoDB: ${message}. Verifique Network Access no Atlas (IP allowlist), DNS, e acesso de saída do ambiente. (uri: ${masked})`);
       err.code = 'MONGO_NET_FAILED';
+      lastError = { code: err.code, message: err.message };
       throw err;
     }
+    lastError = { code: e && e.code || 'MONGO_UNKNOWN', message: message };
     throw e;
   }
 }
 
 // Sincronizar flag com eventos de ligação
 try {
-  mongoose.connection.on('connected', () => { isConnected = true; });
+  mongoose.connection.on('connected', () => { isConnected = true; lastError = null; });
   mongoose.connection.on('disconnected', () => { isConnected = false; });
-  mongoose.connection.on('error', () => { /* noop */ });
+  mongoose.connection.on('error', (e) => { try { lastError = { code: e && e.code || 'MONGO_ERROR', message: (e && e.message) || String(e) }; } catch {} });
 } catch {}
 
 function isReady() {
   return isConnected && mongoose.connection.readyState === 1;
 }
 
-module.exports = { mongoose, connect, isReady };
+function getStatus(){
+  return { connected: isReady(), lastError };
+}
+
+module.exports = { mongoose, connect, isReady, getStatus };

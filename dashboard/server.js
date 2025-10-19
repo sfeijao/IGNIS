@@ -294,19 +294,30 @@ app.get('/api/health', (req, res) => {
         let discord = false;
         try { discord = !!(client && typeof client.isReady === 'function' ? client.isReady() : client?.readyAt); } catch {}
         let mongoState = 'disabled';
+        let mongoLastError = null;
         try {
             const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
             if (hasMongoEnv) {
-                const { isReady } = require('../utils/db/mongoose');
+                const { isReady, getStatus } = require('../utils/db/mongoose');
                 mongoState = isReady() ? 'connected' : 'disconnected';
+                const st = getStatus && getStatus();
+                mongoLastError = st && st.lastError || null;
             }
         } catch { mongoState = 'unknown'; }
+        // Determine active storage backend from storage module state
+        let storageBackend = 'json';
+        try {
+            const storage = require('../utils/storage');
+            // cheap heuristic: useMongo flag set by storage
+            storageBackend = storage && storage.__backend ? storage.__backend : (mongoState === 'connected' ? 'mongo' : ((process.env.STORAGE_BACKEND||'').toLowerCase()==='sqlite' ? 'sqlite' : 'json'));
+        } catch {}
         return res.json({
             success: true,
             dashboard: true,
             discord,
             mongo: mongoState,
-            storage: isSqlite ? 'sqlite' : (process.env.MONGO_URI || process.env.MONGODB_URI ? 'mongo' : 'json'),
+            mongoError: mongoLastError,
+            storage: storageBackend,
             time: new Date().toISOString()
         });
     } catch (e) {
