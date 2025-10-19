@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const dns = require('dns');
 
 let isConnected = false;
 let lastError = null; // { code, message }
@@ -49,6 +50,15 @@ async function connect(uri) {
     // Only remove spaces if they are surrounding the URI or obvious line breaks
     uri = uri.replace(/[\r\n]+/g, '');
   }
+
+  // Optional: override DNS servers to improve SRV resolution on some environments
+  try {
+    const dnsServers = (process.env.MONGO_DNS_SERVERS || '').trim();
+    if (dnsServers) {
+      const servers = dnsServers.split(',').map(s => s.trim()).filter(Boolean);
+      if (servers.length) dns.setServers(servers);
+    }
+  } catch {}
 
   const validation = validateMongoUri(uri);
   if (!validation.ok) {

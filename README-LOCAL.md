@@ -7,44 +7,44 @@ Prerequisites
 - npm
 
 Environment
-- Copy `.env.example` to `.env` (if present) and set the following at minimum:
+
+- Copy `.env.example` to `.env` (if present) and set at minimum:
   - DISCORD_TOKEN — bot token
-  - DISCORD_CLIENT_ID
-  - DISCORD_CLIENT_SECRET
-  - WEBSITE_SESSION_SECRET — a long random string
-  - (optional) ALLOW_DEV_TOKENS=true to enable the dev-token bypass in non-dev environments
-    - (optional) ALLOW_LOCAL_AUTH_BYPASS=true to enable a local session/auth bypass for quick development (preferred over ALLOW_DEV_TOKENS)
+  - DISCORD_CLIENT_ID (or CLIENT_ID)
+  - DISCORD_CLIENT_SECRET (or CLIENT_SECRET)
+  - SESSION_SECRET — a long random string
+  - For Mongo persistence: set MONGO_URI; if the URI has no `/db` path, also set MONGO_DB_NAME (e.g., `IGNIS`)
 
 Install and start
+
 1. Install deps:
 
 ```powershell
 npm install
 ```
 
-2. Start the website server only (recommended with local bypass for quick testing):
+1. Start the website server only (optional; serves the new UI):
 
 ```powershell
-# Enable local session bypass for development
-$env:ALLOW_LOCAL_AUTH_BYPASS = 'true';
 node website/server.js
 ```
 
-3. Or start the full bot (registers slash commands):
+1. Start the full bot + dashboard (registers slash commands):
 
 ```powershell
 node index.js
 ```
 
 Local dev notes
-- The recommended way to bypass OAuth for local development is to set `ALLOW_LOCAL_AUTH_BYPASS=true` before starting the server.
-- Avoid enabling `ALLOW_DEV_TOKENS` or exposing dev tokens in shared environments.
-- To access admin UI quickly use: `http://localhost:4000/admin-guild-config.html`
+
+- To bypass OAuth locally for quick previews, either set `DASHBOARD_BYPASS_AUTH=true` before starting, or append `?dev=1` to URLs (e.g. `http://localhost:4000/dashboard?dev=1`).
 
 Security
+
 - Do not enable dev tokens in production. Set `ALLOW_DEV_TOKENS` to `false` or omit it.
 
 Troubleshooting
+
 - If port 4000 is in use, stop the existing node process or change `PORT` env.
 - Database file: `website/database/ignis_dashboard.db` — backup before schema changes.
 
@@ -59,10 +59,10 @@ $env:STORAGE_BACKEND = 'sqlite'; $env:DATA_DIR = "$PWD/data"; npm run start:loca
 - Health check:
 
 ```powershell
-irm http://localhost:3000/api/health | ConvertTo-Json -Depth 5
+irm http://localhost:4000/api/health?dev=1 | ConvertTo-Json -Depth 5
 ```
 
-- You should see `storage.backend` = `sqlite`.
+- For SQLite you should see `storage.backend` = `sqlite`. For Mongo, `mongo` should be `connected`.
 
 MongoDB (persistência)
 
