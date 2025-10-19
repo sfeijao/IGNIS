@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const path = require('path');
+require('dotenv').config();
 
 async function migrateSqliteToMongo() {
   const { connect } = require('../utils/db/mongoose');
@@ -15,9 +16,28 @@ async function migrateSqliteToMongo() {
   // We don't have a direct list method for all tickets; iterate from panels/configs to infer guilds
   // Simpler: query distinct guilds from tables
   const sqlite3 = require('sqlite3').verbose();
-  const dbFile = process.env.SQLITE_DB_FILE || path.join(__dirname, '..', 'data', 'ignis.db');
+  const dbFile = process.env.SQLITE_DB_FILE || process.env.DATABASE_PATH || path.join(__dirname, '..', 'data', 'ignis.db');
+  const fs = require('fs');
+  if (!fs.existsSync(dbFile)) {
+    console.log(`ℹ️  Nenhuma base SQLite encontrada em ${dbFile} – nada para migrar.`);
+    return;
+  }
   const db = new sqlite3.Database(dbFile);
   function all(sql, params=[]) { return new Promise((resolve, reject)=> db.all(sql, params, (e, rows)=> e?reject(e):resolve(rows||[]))); }
+  async function tableExists(name){
+    try {
+      const rows = await all("SELECT name FROM sqlite_master WHERE type='table' AND name=?", [name]);
+      return rows && rows.length > 0;
+    } catch { return false; }
+  }
+  // If core tables don't exist, skip migration gracefully
+  const requiredTables = ['tickets','guild_config','panels','user_tags','webhooks'];
+  const exists = await Promise.all(requiredTables.map(tableExists));
+  if (exists.every(Boolean) === false) {
+    console.log('ℹ️  Tabelas SQLite não encontradas – nada para migrar.');
+    db.close();
+    return;
+  }
   const guildsRows = await all("SELECT DISTINCT guild_id FROM (SELECT guild_id FROM tickets UNION SELECT guild_id FROM guild_config UNION SELECT guild_id FROM panels UNION SELECT guild_id FROM webhooks)");
   guildsRows.forEach(r => r.guild_id && guildIds.add(r.guild_id));
   // Tickets
@@ -76,7 +96,7 @@ async function migrateMongoToSqlite() {
   const { TicketModel, GuildConfigModel, PanelModel, TagModel, WebhookModel } = require('../utils/db/models');
   const storage = require('../utils/storage-sqlite');
   const sqlite3 = require('sqlite3').verbose();
-  const dbFile = process.env.SQLITE_DB_FILE || path.join(__dirname, '..', 'data', 'ignis.db');
+  const dbFile = process.env.SQLITE_DB_FILE || process.env.DATABASE_PATH || path.join(__dirname, '..', 'data', 'ignis.db');
   const db = new sqlite3.Database(dbFile);
   function run(sql, params=[]) { return new Promise((resolve, reject) => db.run(sql, params, function(e){ e?reject(e):resolve(this) })); }
 
