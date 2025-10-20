@@ -205,7 +205,9 @@ async function createTicket(interaction, type) {
     '{user}': `${interaction.user}`,
     '{user_tag}': `${interaction.user.tag}`,
     '{server}': interaction.guild?.name || '',
-    '{ticket_id}': String(ticket.id)
+    '{ticket_id}': String(ticket.id),
+    '{category}': departmentInfo(type)?.name || String(type || ''),
+    '{priority}': priorityLabel(ticket.priority)
   };
   const welcome = (cfgTickets.welcomeMsg || `Olá {user}, obrigado por abrir um ticket!`).replace(/\{user\}|\{user_tag\}|\{server\}|\{ticket_id\}/g, (m)=> placeholders[m] || m);
   const intro = new EmbedBuilder()

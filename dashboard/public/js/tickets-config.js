@@ -22,6 +22,8 @@
     btnCreateCategory: document.getElementById('btnCreateCategory'),
     accessRoles: document.getElementById('accessRoles'),
     save: document.getElementById('btnSave'),
+    btnPreview: document.getElementById('btnPreview'),
+    btnPublish: document.getElementById('btnPublish'),
   };
   
   function notify(msg, type='info') {
@@ -99,6 +101,15 @@
         notify('Seleciona pelo menos um cargo com acesso aos tickets', 'error');
         return;
       }
+      // Stricter validation as requested: require category and logs channel
+      if (!els.ticketsCategory?.value) {
+        notify('Seleciona a categoria para os tickets', 'error');
+        return;
+      }
+      if (!els.logsChannel?.value) {
+        notify('Seleciona o canal de logs para os tickets', 'error');
+        return;
+      }
       const payload = {
         tickets: {
           categories: {
@@ -136,6 +147,94 @@
   }
 
   if (els.save) els.save.addEventListener('click', save);
+  // Rich preview: mirror server-side tickets panel embed structure
+  function buildTicketsPanelModel(template, guildName){
+    const t = template || 'classic';
+    const model = { title: '', description: '', fields: [], rows: [] };
+    if (t === 'compact') {
+      model.title = '🎫 Tickets • Compacto';
+      model.description = 'Escolhe abaixo e abre um ticket privado.';
+      model.rows = [
+        [
+          { label: 'Suporte', emoji: '🎫', style: 'primary' },
+          { label: 'Problema', emoji: '⚠️', style: 'danger' },
+        ]
+      ];
+    } else if (t === 'minimal') {
+      model.title = '🎫 Abrir ticket';
+      model.description = 'Carrega num botão para abrir um ticket.';
+      model.rows = [[ { label: 'Abrir Ticket', emoji: '🎟️', style: 'primary' } ]];
+    } else if (t === 'premium') {
+      model.title = '🎫 Centro de Suporte • Premium';
+      model.description = 'Serviço prioritário, acompanhamento dedicado e histórico guardado.';
+      model.fields = [
+        { name: '• Resposta express', value: 'Prioridade máxima' },
+        { name: '• Privado & seguro', value: 'Só tu e equipa' },
+        { name: '• Transcript', value: 'Disponível a pedido' },
+      ];
+      model.rows = [
+        [
+          { label: 'VIP / Premium', emoji: '👑', style: 'success' },
+          { label: 'Suporte Técnico', emoji: '🔧', style: 'primary' },
+          { label: 'Reportar Problema', emoji: '⚠️', style: 'danger' },
+        ],
+        [
+          { label: 'Moderação & Segurança', emoji: '🛡️', style: 'secondary' },
+          { label: 'Dúvidas Gerais', emoji: '💬', style: 'secondary' },
+        ]
+      ];
+    } else {
+      // classic
+      model.title = '🎫 Centro de Suporte';
+      model.description = 'Escolhe o departamento abaixo para abrir um ticket privado com a equipa.';
+      model.fields = [
+        { name: '• Resposta rápida', value: 'Tempo médio: minutos' },
+        { name: '• Canal privado', value: 'Visível só para ti e staff' },
+        { name: '• Histórico guardado', value: 'Transcript disponível' },
+      ];
+      model.rows = [
+        [
+          { label: 'Suporte Técnico', emoji: '🔧', style: 'primary' },
+          { label: 'Reportar Problema', emoji: '⚠️', style: 'danger' },
+          { label: 'Moderação & Segurança', emoji: '🛡️', style: 'secondary' },
+        ],
+        [
+          { label: 'Dúvidas Gerais', emoji: '💬', style: 'secondary' },
+          { label: 'Suporte de Conta', emoji: '🧾', style: 'secondary' },
+        ]
+      ];
+    }
+    return model;
+  }
+  function openPreview(){
+    const tmpl = els.defaultTemplate?.value || 'classic';
+    const model = buildTicketsPanelModel(tmpl, 'Servidor');
+    const css = `.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:10000}.modal{background:rgba(17,24,39,.98);border:1px solid rgba(255,255,255,.08);border-radius:12px;max-width:760px;width:92%;padding:16px;color:#e5e7eb}.modal h3{margin:0 0 8px}.embed{border-left:4px solid #7C3AED;background:rgba(255,255,255,.02);padding:12px;border-radius:8px}.embed-title{font-weight:700;margin-bottom:6px}.embed-desc{white-space:pre-wrap;opacity:.95;margin-bottom:8px}.embed-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:8px}.embed-field{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);padding:8px;border-radius:6px}.buttons{display:flex;flex-wrap:wrap;gap:8px}.btnx{border-radius:6px;padding:8px 10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);cursor:default}.btnx.primary{background:#3B82F6;color:#fff;border-color:#2563EB}.btnx.secondary{background:#374151;color:#e5e7eb;border-color:#4B5563}.btnx.danger{background:#DC2626;color:#fff;border-color:#B91C1C}.btnx.success{background:#16A34A;color:#fff;border-color:#15803D}.actions{display:flex;justify-content:flex-end;margin-top:12px}`;
+    const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
+    const overlay = document.createElement('div'); overlay.className='modal-overlay';
+    const fieldsHtml = (model.fields||[]).map(f=>`<div class="embed-field"><div class="text-secondary" style="opacity:.8">${f.name}</div><div>${f.value}</div></div>`).join('');
+    const rowsHtml = (model.rows||[]).map(r=>`<div class="buttons">${r.map(b=>`<div class="btnx ${b.style}">${b.emoji?b.emoji+' ':''}${b.label}</div>`).join('')}</div>`).join('');
+    overlay.innerHTML = `<div class="modal"><h3>Pré-visualização do Painel • ${tmpl}</h3><div class="embed"><div class="embed-title">${model.title}</div><div class="embed-desc">${model.description}</div>${fieldsHtml?`<div class="embed-fields">${fieldsHtml}</div>`:''}${rowsHtml}</div><div class="actions"><button class="btn btn-glass" id="pvClose">Fechar</button></div></div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#pvClose')?.addEventListener('click', ()=> overlay.remove());
+  }
+  async function publish(){
+    try {
+      const ch = els.panelChannel?.value || '';
+      if (!ch) { notify('Seleciona o canal do painel', 'error'); return; }
+      // Also enforce required config before publishing
+      if (!els.ticketsCategory?.value) { notify('Seleciona a categoria para os tickets', 'error'); return; }
+      if (!els.logsChannel?.value) { notify('Seleciona o canal de logs para os tickets', 'error'); return; }
+      const template = els.defaultTemplate?.value || 'classic';
+      const theme = 'dark';
+      const res = await fetch(`/api/guild/${guildId}/panels/create`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type:'tickets', channel_id: ch, template, theme }) });
+      const json = await res.json().catch(()=>({}));
+      if (!res.ok || !json.success) throw new Error(json.error || `HTTP ${res.status}`);
+      notify('Painel publicado/atualizado', 'success');
+    } catch(e){ console.error(e); notify(e.message||'Erro ao publicar', 'error'); }
+  }
+  if (els.btnPreview) els.btnPreview.addEventListener('click', openPreview);
+  if (els.btnPublish) els.btnPublish.addEventListener('click', publish);
   if (els.btnCreateCategory) els.btnCreateCategory.addEventListener('click', async ()=>{
     try {
       const name = (els.newCategoryName?.value||'').trim();
