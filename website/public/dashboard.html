@@ -12,7 +12,10 @@
   <main class="container">
     <!-- View: Server selection -->
     <section id="view-servers" class="view" aria-labelledby="servers-title" hidden>
-      <h1 id="servers-title">Escolha um servidor</h1>
+      <div class="actions justify-between">
+        <h1 id="servers-title" class="m-0">Escolha um servidor</h1>
+        <a class="btn btn-neutral" href="#/home" aria-label="Voltar ao dashboard">← Voltar</a>
+      </div>
       <p class="muted">Selecione o servidor para abrir o painel.</p>
       <div class="server-toolbar" role="search">
         <input id="server-search" class="input" type="search" placeholder="Procurar por nome…" aria-label="Procurar servidor" autocomplete="off" />
