@@ -68,6 +68,66 @@
       </div>
     </section>
 
+    <!-- View: Tickets Config (SPA) -->
+    <section id="view-tickets-config" class="view" aria-labelledby="tickets-config-title" hidden>
+      <h1 id="tickets-config-title">Configuração de Tickets</h1>
+      <p class="muted">Define categoria, cargos com acesso, logs, template e a mensagem inicial.</p>
+  <div class="cards two">
+        <div class="card">
+          <div class="card-body">
+            <h3>🎛️ Painel & Acesso</h3>
+            <div class="form-grid">
+              <label>Canal do painel
+                <select id="tc_panelChannel" class="input"></select>
+              </label>
+              <label>Categoria para tickets
+                <select id="tc_ticketsCategory" class="input"></select>
+              </label>
+              <div class="row">
+                <input id="tc_newCategoryName" class="input" placeholder="Criar nova categoria (ex.: 📁 TICKETS)" />
+                <button id="tc_btnCreateCategory" class="btn btn-neutral" type="button">Criar categoria</button>
+              </div>
+              <label>Canal de logs
+                <select id="tc_logsChannel" class="input"></select>
+              </label>
+              <label>Cargos com acesso inicial
+                <select id="tc_accessRoles" class="input" multiple></select>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <h3>🧩 Template & Mensagem</h3>
+            <div class="form-grid">
+              <label>Template por omissão
+                <select id="tc_defaultTemplate" class="input">
+                  <option value="classic">Clássico</option>
+                  <option value="compact">Compacto</option>
+                  <option value="premium">Premium</option>
+                  <option value="minimal">Minimal</option>
+                </select>
+              </label>
+              <label>Mensagem inicial
+                <textarea id="tc_welcomeMsg" class="input" rows="4" placeholder="Olá {user}, obrigado por abrir o ticket #{ticket_id}!"></textarea>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+  <div class="actions spaced">
+        <button id="tc_btnSave" class="btn btn-primary" type="button">Guardar</button>
+        <button id="tc_btnPreview" class="btn btn-neutral" type="button">Pré‑visualizar</button>
+        <button id="tc_btnPublish" class="btn" type="button">Publicar/Atualizar</button>
+      </div>
+  <div id="tc_preview" class="card hidden">
+        <div class="card-body">
+          <h3>Pré-visualização</h3>
+          <div id="tc_previewBody" class="muted">—</div>
+        </div>
+      </div>
+    </section>
+
     <!-- Cards -->
     <section class="cards" aria-label="Departamentos de atendimento">
       <article class="card">

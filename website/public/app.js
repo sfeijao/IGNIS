@@ -8,7 +8,8 @@
 
   const views = {
     servers: qs('#view-servers'),
-    home: qs('#view-home')
+    home: qs('#view-home'),
+    ticketsConfig: qs('#view-tickets-config')
   };
 
   let currentGuild = null;
@@ -53,6 +54,12 @@
         applyFilterAndSort();
         window.scrollTo({ top: serverScrollY, behavior: 'instant' });
       } catch{}
+    } else if (hash.startsWith('#/tickets-config')){
+      showView('ticketsConfig');
+      // ensure a guild is selected
+      if (!currentGuild) autoPickGuild();
+      // Load form lists and state
+      initTicketsConfig();
     } else {
       showView('home');
       serverScrollY = window.scrollY;
@@ -226,6 +233,8 @@
     // Stop pill skeletons
     window.IGNISPills?.setSkeleton(false);
     renderCardsSkeletons(false);
+    // If currently on tickets-config view, reload its data for the new guild
+    if (!views.ticketsConfig?.hidden){ initTicketsConfig(true); }
     // Rewire admin quick-links to include guildId context
     try{
       const links = Array.from(document.querySelectorAll('.cards-admin .card .card-link'));
@@ -236,6 +245,155 @@
         a.setAttribute('href', url.toString());
       });
     }catch{}
+  }
+
+  // ================= Tickets Config (SPA) =================
+  function notifyToast(title, message, type='success'){
+    window.IGNISToast?.show({ title, message, type });
+  }
+  async function api(path, opts){
+    const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', ...(opts||{}) });
+    const json = await res.json().catch(()=>({}));
+    if (!res.ok || json.success === false) throw new Error(json.error || `HTTP ${res.status}`);
+    return json;
+  }
+  function elsTC(){
+    return {
+      panel: qs('#tc_panelChannel'),
+      cat: qs('#tc_ticketsCategory'),
+      logs: qs('#tc_logsChannel'),
+      roles: qs('#tc_accessRoles'),
+      tmpl: qs('#tc_defaultTemplate'),
+      msg: qs('#tc_welcomeMsg'),
+      btnSave: qs('#tc_btnSave'),
+      btnPrev: qs('#tc_btnPreview'),
+      btnPub: qs('#tc_btnPublish'),
+      newCat: qs('#tc_newCategoryName'),
+      btnCreateCat: qs('#tc_btnCreateCategory'),
+      prevWrap: qs('#tc_preview'),
+      prevBody: qs('#tc_previewBody')
+    };
+  }
+  async function loadLists(){
+    if (!currentGuild?.id) return;
+    const gid = currentGuild.id;
+    const [channelsR, catsR, rolesR] = await Promise.allSettled([
+      api(`/api/guild/${gid}/channels`),
+      api(`/api/guild/${gid}/categories`),
+      api(`/api/guild/${gid}/roles`)
+    ]);
+    const channels = channelsR.status==='fulfilled' ? (channelsR.value.channels||[]) : [];
+    const cats = catsR.status==='fulfilled' ? (catsR.value.categories||[]) : [];
+    const roles = rolesR.status==='fulfilled' ? (rolesR.value.roles||[]) : [];
+    const el = elsTC();
+    if (el.panel) el.panel.innerHTML = `<option value="">— Selecionar canal —</option>` + channels.map(c=>`<option value="${c.id}">${c.name||c.id}</option>`).join('');
+    if (el.cat) el.cat.innerHTML = `<option value="">— Sem categoria —</option>` + cats.map(c=>`<option value="${c.id}">${c.name||c.id}</option>`).join('');
+    if (el.logs) el.logs.innerHTML = `<option value="">— Sem logs —</option>` + channels.map(c=>`<option value="${c.id}">${c.name||c.id}</option>`).join('');
+    if (el.roles) el.roles.innerHTML = roles.map(r=>`<option value="${r.id}">${r.name||r.id}</option>`).join('');
+  }
+  async function loadConfig(){
+    const gid = currentGuild?.id; if (!gid) return;
+    const el = elsTC();
+    const d = await api(`/api/guild/${gid}/tickets/config`).catch(()=>({config:{}}));
+    const t = d?.config?.tickets || {};
+    if (el.panel) el.panel.value = t.panelChannelId || '';
+    if (el.cat) el.cat.value = t.ticketsCategoryId || '';
+    if (el.logs) el.logs.value = t.logsChannelId || '';
+    if (el.tmpl) el.tmpl.value = ['classic','compact','premium','minimal'].includes(t.defaultTemplate) ? t.defaultTemplate : 'classic';
+    if (el.msg) el.msg.value = t.welcomeMsg || 'Olá {user}, obrigado por abrir o ticket #{ticket_id}!';
+    if (el.roles && Array.isArray(t.accessRoleIds)){
+      Array.from(el.roles.options).forEach(o => { o.selected = t.accessRoleIds.includes(o.value); });
+    }
+  }
+  function buildPanelModel(tmpl){
+    const t = tmpl || 'classic';
+    const model = { title:'', desc:'', fields:[], buttons:[] };
+    if (t==='compact'){
+      model.title='🎫 Tickets • Compacto';
+      model.desc='Escolhe abaixo e abre um ticket privado.';
+      model.buttons=[{label:'Suporte',emoji:'🎫',style:'primary'},{label:'Problema',emoji:'⚠️',style:'danger'}];
+    } else if (t==='minimal'){
+      model.title='🎫 Abrir ticket';
+      model.desc='Carrega num botão para abrir um ticket.';
+      model.buttons=[{label:'Abrir Ticket',emoji:'🎟️',style:'primary'}];
+    } else if (t==='premium'){
+      model.title='🎫 Centro de Suporte • Premium';
+      model.desc='Serviço prioritário, acompanhamento dedicado e histórico guardado.';
+      model.fields=[{name:'• Resposta express',value:'Prioridade máxima'},{name:'• Privado & seguro',value:'Só tu e equipa'},{name:'• Transcript',value:'Disponível a pedido'}];
+      model.buttons=[{label:'VIP / Premium',emoji:'👑',style:'success'},{label:'Suporte Técnico',emoji:'🔧',style:'primary'},{label:'Reportar Problema',emoji:'⚠️',style:'danger'},{label:'Moderação & Segurança',emoji:'🛡️',style:'secondary'},{label:'Dúvidas Gerais',emoji:'💬',style:'secondary'}];
+    } else {
+      model.title='🎫 Centro de Suporte';
+      model.desc='Escolhe o departamento abaixo para abrir um ticket privado com a equipa.';
+      model.fields=[{name:'• Resposta rápida',value:'Tempo médio: minutos'},{name:'• Canal privado',value:'Visível só para ti e staff'},{name:'• Histórico guardado',value:'Transcript disponível'}];
+      model.buttons=[{label:'Suporte Técnico',emoji:'🔧',style:'primary'},{label:'Reportar Problema',emoji:'⚠️',style:'danger'},{label:'Moderação & Segurança',emoji:'🛡️',style:'secondary'},{label:'Dúvidas Gerais',emoji:'💬',style:'secondary'},{label:'Suporte de Conta',emoji:'🧾',style:'secondary'}];
+    }
+    return model;
+  }
+  function renderPreview(){
+    const el = elsTC();
+    if (!el.prevWrap || !el.prevBody) return;
+    const tmpl = el.tmpl?.value || 'classic';
+    const model = buildPanelModel(tmpl);
+    el.prevWrap.classList.remove('hidden');
+    el.prevWrap.style.display = '';
+    const fields = model.fields?.length ? `<div class="preview-fields">${model.fields.map(f=>`<div class=\"preview-field\"><div class=\"text-secondary\" style=\"font-size:12px\">${f.name}</div><div>${f.value}</div></div>`).join('')}</div>` : '';
+    const btns = model.buttons?.length ? `<div class="preview-buttons">${model.buttons.map(b=>`<div class=\"preview-btn ${b.style}\">${b.emoji} ${b.label}</div>`).join('')}</div>` : '';
+    el.prevBody.innerHTML = `<div class="preview-title">${model.title}</div><div class="preview-desc">${model.desc}</div>${fields}${btns}`;
+  }
+  async function saveConfig(){
+    const el = elsTC();
+    // validations
+    const rolesSel = Array.from(el.roles?.selectedOptions || []);
+    if (rolesSel.length === 0){ notifyToast('Validação', 'Seleciona pelo menos um cargo com acesso', 'error'); return; }
+    if (!el.cat?.value){ notifyToast('Validação', 'Seleciona a categoria de tickets', 'error'); return; }
+    if (!el.logs?.value){ notifyToast('Validação', 'Seleciona o canal de logs', 'error'); return; }
+    const payload = {
+      tickets: {
+        defaultTemplate: (['classic','compact','premium','minimal'].includes(el.tmpl?.value) ? el.tmpl.value : 'classic'),
+        panelChannelId: el.panel?.value || '',
+        ticketsCategoryId: el.cat?.value || '',
+        logsChannelId: el.logs?.value || '',
+        welcomeMsg: el.msg?.value || '',
+        accessRoleIds: rolesSel.map(o=>o.value)
+      }
+    };
+    await api(`/api/guild/${currentGuild.id}/tickets/config`, { method:'POST', body: JSON.stringify(payload) });
+    notifyToast('Sucesso', 'Configurações guardadas');
+  }
+  async function publishPanel(){
+    const el = elsTC();
+    if (!el.panel?.value) { notifyToast('Validação', 'Seleciona o canal do painel', 'error'); return; }
+    if (!el.cat?.value) { notifyToast('Validação', 'Seleciona a categoria de tickets', 'error'); return; }
+    if (!el.logs?.value) { notifyToast('Validação', 'Seleciona o canal de logs', 'error'); return; }
+    const template = el.tmpl?.value || 'classic';
+    const theme = 'dark';
+    await api(`/api/guild/${currentGuild.id}/panels/create`, { method:'POST', body: JSON.stringify({ type:'tickets', channel_id: el.panel.value, template, theme }) });
+    notifyToast('Sucesso', 'Painel publicado/atualizado');
+  }
+  async function createCategory(){
+    const el = elsTC();
+    const name = (el.newCat?.value || '').trim();
+    if (!name){ notifyToast('Validação', 'Indica um nome para a categoria', 'error'); return; }
+    const res = await api(`/api/guild/${currentGuild.id}/categories/create`, { method:'POST', body: JSON.stringify({ name }) });
+    // refresh list and select
+    await loadLists();
+    if (elsTC().cat) elsTC().cat.value = res?.category?.id || '';
+    notifyToast('Sucesso', 'Categoria criada');
+  }
+  function bindTicketsConfig(){
+    const el = elsTC();
+    el?.btnSave?.addEventListener('click', saveConfig);
+    el?.btnPrev?.addEventListener('click', renderPreview);
+    el?.btnPub?.addEventListener('click', publishPanel);
+    el?.btnCreateCat?.addEventListener('click', createCategory);
+  }
+  async function initTicketsConfig(forceReloadLists=false){
+    try{
+      if (!currentGuild?.id) return;
+      if (forceReloadLists) await loadLists(); else await loadLists();
+      await loadConfig();
+      bindTicketsConfig();
+    }catch(e){ notifyToast('Erro', e.message || 'Falha ao carregar configuração', 'error'); }
   }
 
   async function updateStats(){
