@@ -106,6 +106,12 @@
           <div class="card-body">
             <h3>🧩 Template & Mensagem</h3>
             <div class="form-grid">
+              <label>Tema do painel
+                <select id="tc_theme" class="input">
+                  <option value="dark">Escuro</option>
+                  <option value="light">Claro</option>
+                </select>
+              </label>
               <label>Template por omissão
                 <select id="tc_defaultTemplate" class="input">
                   <option value="classic">Clássico</option>
@@ -113,6 +119,9 @@
                   <option value="premium">Premium</option>
                   <option value="minimal">Minimal</option>
                 </select>
+              </label>
+              <label>Cor do embed (opcional)
+                <input id="tc_embedColor" class="input" placeholder="#7C3AED" pattern="#?[0-9a-fA-F]{6}" />
               </label>
               <label>Mensagem inicial
                 <textarea id="tc_welcomeMsg" class="input" rows="4" placeholder="Olá {user}, obrigado por abrir o ticket #{ticket_id}!"></textarea>

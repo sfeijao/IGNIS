@@ -264,6 +264,8 @@
       logs: qs('#tc_logsChannel'),
       roles: qs('#tc_accessRoles'),
       tmpl: qs('#tc_defaultTemplate'),
+      theme: qs('#tc_theme'),
+      color: qs('#tc_embedColor'),
       msg: qs('#tc_welcomeMsg'),
       btnSave: qs('#tc_btnSave'),
       btnPrev: qs('#tc_btnPreview'),
@@ -300,6 +302,8 @@
     if (el.cat) el.cat.value = t.ticketsCategoryId || '';
     if (el.logs) el.logs.value = t.logsChannelId || '';
     if (el.tmpl) el.tmpl.value = ['classic','compact','premium','minimal'].includes(t.defaultTemplate) ? t.defaultTemplate : 'classic';
+  if (el.theme) el.theme.value = 'dark';
+  if (el.color) el.color.value = '';
     if (el.msg) el.msg.value = t.welcomeMsg || 'Olá {user}, obrigado por abrir o ticket #{ticket_id}!';
     if (el.roles && Array.isArray(t.accessRoleIds)){
       Array.from(el.roles.options).forEach(o => { o.selected = t.accessRoleIds.includes(o.value); });
@@ -333,12 +337,22 @@
     const el = elsTC();
     if (!el.prevWrap || !el.prevBody) return;
     const tmpl = el.tmpl?.value || 'classic';
+    const theme = (el.theme?.value === 'light') ? 'light' : 'dark';
+    const parseColor = (s)=>{
+      if (!s) return null;
+      if (typeof s === 'number') return s;
+      const t = String(s).trim();
+      if (/^#?[0-9a-fA-F]{6}$/.test(t)) return parseInt(t.replace('#',''), 16);
+      return null;
+    };
+    const resolvedColor = parseColor(el.color?.value) ?? (theme === 'light' ? 0x60A5FA : 0x7C3AED);
     const model = buildPanelModel(tmpl);
     el.prevWrap.classList.remove('hidden');
     el.prevWrap.style.display = '';
     const fields = model.fields?.length ? `<div class="preview-fields">${model.fields.map(f=>`<div class=\"preview-field\"><div class=\"text-secondary\" style=\"font-size:12px\">${f.name}</div><div>${f.value}</div></div>`).join('')}</div>` : '';
     const btns = model.buttons?.length ? `<div class="preview-buttons">${model.buttons.map(b=>`<div class=\"preview-btn ${b.style}\">${b.emoji} ${b.label}</div>`).join('')}</div>` : '';
-    el.prevBody.innerHTML = `<div class="preview-title">${model.title}</div><div class="preview-desc">${model.desc}</div>${fields}${btns}`;
+    const cssColor = `#${resolvedColor.toString(16).padStart(6,'0')}`;
+    el.prevBody.innerHTML = `<div class="preview-embed" style="--embed-color:${cssColor}"><div class=\"preview-title\">${model.title}</div><div class=\"preview-desc\">${model.desc}</div>${fields}${btns}</div>`;
   }
   async function saveConfig(){
     const el = elsTC();
@@ -366,8 +380,12 @@
     if (!el.cat?.value) { notifyToast('Validação', 'Seleciona a categoria de tickets', 'error'); return; }
     if (!el.logs?.value) { notifyToast('Validação', 'Seleciona o canal de logs', 'error'); return; }
     const template = el.tmpl?.value || 'classic';
-    const theme = 'dark';
-    await api(`/api/guild/${currentGuild.id}/panels/create`, { method:'POST', body: JSON.stringify({ type:'tickets', channel_id: el.panel.value, template, theme }) });
+    const theme = (el.theme?.value === 'light') ? 'light' : 'dark';
+    const colorStr = (el.color?.value || '').trim();
+    const hasColor = /^#?[0-9a-fA-F]{6}$/.test(colorStr);
+    const body = { type:'tickets', channel_id: el.panel.value, template, theme };
+    if (hasColor){ body.options = { color: colorStr.startsWith('#') ? colorStr : `#${colorStr}` }; }
+    await api(`/api/guild/${currentGuild.id}/panels/create`, { method:'POST', body: JSON.stringify(body) });
     notifyToast('Sucesso', 'Painel publicado/atualizado');
   }
   async function createCategory(){
