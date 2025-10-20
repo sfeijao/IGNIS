@@ -1264,6 +1264,89 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
     }
 }
 
+// --- Bootstrap and global navigation helpers ---
+(function(){
+    // Create a single instance and expose it
+    const dash = new IGNISDashboard();
+    window.dashboard = dash;
+
+    function requireGuild(){
+        const gid = dash?.currentGuild;
+        if (!gid) {
+            try { alert('Selecione um servidor primeiro'); } catch {}
+            return null;
+        }
+        return gid;
+    }
+
+    // Tickets panel actions
+    window.configureTickets = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/tickets-config.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.viewTickets = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/tickets.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.viewPanels = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/panels.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.ticketStats = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/tickets.html?guildId=${encodeURIComponent(gid)}#stats`;
+    };
+
+    // Moderation and settings actions
+    window.configureVerification = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/verification.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.manageRoles = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/roles.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.viewLogs = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/logs.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.openModeration = function(){
+        if (dash && typeof dash.openModeration === 'function') return dash.openModeration();
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/moderation.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.botSettings = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/bot-settings.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.openWebhooks = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/webhooks.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.openConfigs = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/configs.html?guildId=${encodeURIComponent(gid)}`;
+    };
+
+    // Advanced tools
+    window.serverDiagnostics = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/diagnostics.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.backupData = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/diagnostics.html?guildId=${encodeURIComponent(gid)}#backup`;
+    };
+    window.botPerformance = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/performance.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.customCommands = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/commands.html?guildId=${encodeURIComponent(gid)}`;
+    };
+})();
+
 function viewTickets() {
     if (!dashboard.currentGuild) {
         dashboard.showError('Nenhum servidor selecionado');
