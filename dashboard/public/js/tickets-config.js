@@ -15,6 +15,8 @@
     closeReason: document.getElementById('closeReason'),
     closeTranscript: document.getElementById('closeTranscript'),
     defaultTemplate: document.getElementById('defaultTemplate'),
+  theme: document.getElementById('theme'),
+  embedColor: document.getElementById('embedColor'),
     panelChannel: document.getElementById('panelChannel'),
     ticketsCategory: document.getElementById('ticketsCategory'),
     logsChannel: document.getElementById('logsChannel'),
@@ -209,7 +211,10 @@
   function openPreview(){
     const tmpl = els.defaultTemplate?.value || 'classic';
     const model = buildTicketsPanelModel(tmpl, 'Servidor');
-    const css = `.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:10000}.modal{background:rgba(17,24,39,.98);border:1px solid rgba(255,255,255,.08);border-radius:12px;max-width:760px;width:92%;padding:16px;color:#e5e7eb}.modal h3{margin:0 0 8px}.embed{border-left:4px solid #7C3AED;background:rgba(255,255,255,.02);padding:12px;border-radius:8px}.embed-title{font-weight:700;margin-bottom:6px}.embed-desc{white-space:pre-wrap;opacity:.95;margin-bottom:8px}.embed-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:8px}.embed-field{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);padding:8px;border-radius:6px}.buttons{display:flex;flex-wrap:wrap;gap:8px}.btnx{border-radius:6px;padding:8px 10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);cursor:default}.btnx.primary{background:#3B82F6;color:#fff;border-color:#2563EB}.btnx.secondary{background:#374151;color:#e5e7eb;border-color:#4B5563}.btnx.danger{background:#DC2626;color:#fff;border-color:#B91C1C}.btnx.success{background:#16A34A;color:#fff;border-color:#15803D}.actions{display:flex;justify-content:flex-end;margin-top:12px}`;
+    const parseColor = (s)=>{ if (!s) return null; const t = String(s).trim(); return /^#?[0-9a-fA-F]{6}$/.test(t) ? `#${t.replace('#','')}` : null; };
+    const theme = (els.theme?.value === 'light') ? 'light' : 'dark';
+    const resolved = parseColor(els.embedColor?.value) || (theme === 'light' ? '#60A5FA' : '#7C3AED');
+    const css = `.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:10000}.modal{background:rgba(17,24,39,.98);border:1px solid rgba(255,255,255,.08);border-radius:12px;max-width:760px;width:92%;padding:16px;color:#e5e7eb}.modal h3{margin:0 0 8px}.embed{border-left:4px solid ${resolved};background:rgba(255,255,255,.02);padding:12px;border-radius:8px}.embed-title{font-weight:700;margin-bottom:6px}.embed-desc{white-space:pre-wrap;opacity:.95;margin-bottom:8px}.embed-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:8px}.embed-field{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);padding:8px;border-radius:6px}.buttons{display:flex;flex-wrap:wrap;gap:8px}.btnx{border-radius:6px;padding:8px 10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);cursor:default}.btnx.primary{background:#3B82F6;color:#fff;border-color:#2563EB}.btnx.secondary{background:#374151;color:#e5e7eb;border-color:#4B5563}.btnx.danger{background:#DC2626;color:#fff;border-color:#B91C1C}.btnx.success{background:#16A34A;color:#fff;border-color:#15803D}.actions{display:flex;justify-content:flex-end;margin-top:12px}`;
     const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
     const overlay = document.createElement('div'); overlay.className='modal-overlay';
     const fieldsHtml = (model.fields||[]).map(f=>`<div class="embed-field"><div class="text-secondary" style="opacity:.8">${f.name}</div><div>${f.value}</div></div>`).join('');
@@ -225,9 +230,13 @@
       // Also enforce required config before publishing
       if (!els.ticketsCategory?.value) { notify('Seleciona a categoria para os tickets', 'error'); return; }
       if (!els.logsChannel?.value) { notify('Seleciona o canal de logs para os tickets', 'error'); return; }
-      const template = els.defaultTemplate?.value || 'classic';
-      const theme = 'dark';
-      const res = await fetch(`/api/guild/${guildId}/panels/create`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type:'tickets', channel_id: ch, template, theme }) });
+  const template = els.defaultTemplate?.value || 'classic';
+  const theme = (els.theme?.value === 'light') ? 'light' : 'dark';
+  const colorStr = (els.embedColor?.value || '').trim();
+  const hasColor = /^#?[0-9a-fA-F]{6}$/.test(colorStr);
+  const body = { type:'tickets', channel_id: ch, template, theme };
+  if (hasColor){ body.options = { color: colorStr.startsWith('#') ? colorStr : `#${colorStr}` }; }
+  const res = await fetch(`/api/guild/${guildId}/panels/create`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
       const json = await res.json().catch(()=>({}));
       if (!res.ok || !json.success) throw new Error(json.error || `HTTP ${res.status}`);
       notify('Painel publicado/atualizado', 'success');
