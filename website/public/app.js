@@ -226,6 +226,16 @@
     // Stop pill skeletons
     window.IGNISPills?.setSkeleton(false);
     renderCardsSkeletons(false);
+    // Rewire admin quick-links to include guildId context
+    try{
+      const links = Array.from(document.querySelectorAll('.cards-admin .card .card-link'));
+      links.forEach(a => {
+        const url = new URL(a.getAttribute('href'), location.origin);
+        if (!url.pathname.startsWith('/dashboard/')) return; // only classic modules
+        url.searchParams.set('guildId', String(g.id));
+        a.setAttribute('href', url.toString());
+      });
+    }catch{}
   }
 
   async function updateStats(){
