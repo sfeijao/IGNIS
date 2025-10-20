@@ -21,8 +21,8 @@
     "server": "node website/server.js",
     "database:backup": "node -e \"require('./website/database/database').backupDatabase()\"",
     "logs:clean": "node -e \"require('./utils/logger').cleanOldLogs()\"",
-  "mongo:test": "node scripts/test-mongo.js",
-  "mongo:resolve": "node scripts/resolve-srv.js",
+    "mongo:test": "node scripts/test-mongo.js",
+    "mongo:resolve": "node scripts/resolve-srv.js",
     "restart": "taskkill /f /im node.exe >nul 2>&1 & timeout /t 2 /nobreak >nul & node index.js",
     "clean-start": "restart-bot.bat",
     "test": "echo \"✅ No tests specified\" && exit 0",
@@ -57,6 +57,7 @@
   "homepage": "https://github.com/sfeijao/IGNIS_BOT#readme",
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "connect-mongo": "^5.1.0",
     "discord.js": "^14.14.1",
     "dotenv": "^16.3.1",
     "express": "^4.21.2",

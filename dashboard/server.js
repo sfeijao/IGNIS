@@ -1,5 +1,6 @@
 const express = require('express');
 const session = require('express-session');
+let MongoStore = null; try { MongoStore = require('connect-mongo'); } catch {}
 const passport = require('passport');
 const DiscordStrategy = require('passport-discord').Strategy;
 const path = require('path');
@@ -105,7 +106,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Session configuration
-const sessionMiddleware = session({
+const useMongoSession = ((process.env.NODE_ENV || 'production') === 'production') && !!(process.env.MONGO_URI || process.env.MONGODB_URI) && !!MongoStore;
+const sessionOptions = {
     secret: process.env.SESSION_SECRET || 'ignis-dashboard-development-secret-2024',
     resave: false,
     saveUninitialized: false,
@@ -116,7 +118,26 @@ const sessionMiddleware = session({
         maxAge: 24 * 60 * 60 * 1000, // 24 horas
         httpOnly: true
     }
-});
+};
+if (useMongoSession) {
+    try {
+        const mongoUrl = process.env.MONGO_URI || process.env.MONGODB_URI;
+        sessionOptions.store = MongoStore.create({
+            mongoUrl,
+            collectionName: 'sessions',
+            ttl: 14 * 24 * 60 * 60, // 14 days
+            touchAfter: 24 * 3600 // reduce write frequency
+        });
+        logger.info('🧠 Using MongoDB session store');
+    } catch (e) {
+        logger.warn('Session store fallback to MemoryStore (connect-mongo setup failed):', e?.message || String(e));
+    }
+} else {
+    if ((process.env.NODE_ENV || 'production') === 'production') {
+        logger.warn('Warning: connect.session() MemoryStore is not designed for production. Consider configuring connect-mongo.');
+    }
+}
+const sessionMiddleware = session(sessionOptions);
 app.use(sessionMiddleware);
 
 // Passport configuration
@@ -147,6 +168,17 @@ passport.use(new DiscordStrategy({
     profile.accessToken = accessToken;
     return done(null, profile);
 }));
+
+// Detect mismatched BASE_URL vs OAuth callback hostname
+try {
+    const baseUrl = (config.getBaseUrl && config.getBaseUrl()) || (config.WEBSITE?.BASE_URL) || `http://localhost:${PORT}`;
+    const callbackUrl = getCallbackURL();
+    const baseHost = new URL(baseUrl).host;
+    const cbHost = new URL(callbackUrl).host;
+    if (baseHost && cbHost && baseHost !== cbHost) {
+        logger.warn(`OAuth Callback host (${cbHost}) differs from BASE_URL host (${baseHost}). Ensure they match to avoid login issues.`);
+    }
+} catch {}
 
 passport.serializeUser((user, done) => {
     if (OAUTH_VERBOSE) logger.info(`Serializing user: ${user.username} (${user.id})`);
@@ -349,6 +381,29 @@ app.get('/api/guilds', async (req, res) => {
     }
 
     try {
+        // Basic session-scoped cache to avoid hammering Discord and hitting 429s
+        const now = Date.now();
+        const TTL_MS = 60 * 1000; // 60 seconds
+        const force = String(req.query.force || '').toLowerCase() === 'true';
+        if (!force) {
+            const cache = req.session.__guildsCache;
+            if (cache && Array.isArray(cache.data) && (now - (cache.at || 0) < TTL_MS)) {
+                return res.json({ success: true, guilds: cache.data });
+            }
+        }
+
+        // Backoff logic in case of previous rate limit
+        const backoffUntil = req.session.__guildsBackoffUntil || 0;
+        if (!force && now < backoffUntil) {
+            // Serve stale cache if we have it
+            const cache = req.session.__guildsCache;
+            if (cache && Array.isArray(cache.data)) {
+                res.setHeader('X-Stale-Cache', '1');
+                return res.json({ success: true, guilds: cache.data });
+            }
+            return res.status(429).json({ success: false, error: 'rate_limited', retry_after_ms: backoffUntil - now });
+        }
+
         // Ensure we have an access token
         const accessToken = req.user && req.user.accessToken;
         if (!accessToken) {
@@ -364,6 +419,23 @@ app.get('/api/guilds', async (req, res) => {
         if (!response.ok) {
             const txt = await response.text().catch(() => '');
             logger.warn(`Discord /users/@me/guilds failed: ${response.status} ${response.statusText} ${txt}`);
+            if (response.status === 429) {
+                // Try to parse retry_after
+                let retryAfterMs = 2000;
+                try {
+                    const parsed = JSON.parse(txt);
+                    if (parsed && (parsed.retry_after != null)) {
+                        retryAfterMs = Math.max(100, Math.ceil(Number(parsed.retry_after) * 1000));
+                    }
+                } catch {}
+                req.session.__guildsBackoffUntil = Date.now() + retryAfterMs;
+                const cache = req.session.__guildsCache;
+                if (cache && Array.isArray(cache.data)) {
+                    res.setHeader('X-Stale-Cache', '1');
+                    return res.json({ success: true, guilds: cache.data });
+                }
+                return res.status(429).json({ success: false, error: 'rate_limited', retry_after_ms: retryAfterMs });
+            }
             // Likely expired/invalid OAuth token: ask client to re-auth
             return res.status(401).json({ success: false, error: 'discord_oauth_failed', status: response.status });
         }
@@ -401,6 +473,8 @@ app.get('/api/guilds', async (req, res) => {
             botPresent: true
         }));
 
+        // Cache the processed result to reduce future calls
+        try { req.session.__guildsCache = { at: Date.now(), data: managedGuilds }; } catch {}
         return res.json({ success: true, guilds: managedGuilds });
 
     } catch (error) {
