@@ -1695,15 +1695,8 @@ window.configureTickets = () => {
         dashboard.showError('Selecione um servidor primeiro');
         return;
     }
-    
-    // Redirecionar para seção de configuração de tickets
-    const ticketSection = document.getElementById('ticket-configuration');
-    if (ticketSection) {
-        ticketSection.scrollIntoView({ behavior: 'smooth' });
-        dashboard.showNotification('Configure o sistema de tickets abaixo', 'info');
-    } else {
-        dashboard.showNotification('Painel de configuração em breve', 'info');
-    }
+    const gid = encodeURIComponent(dashboard.currentGuild);
+    window.location.href = `/tickets-config.html?guildId=${gid}`;
 };
 
 window.viewTickets = () => {
