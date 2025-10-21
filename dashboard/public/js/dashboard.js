@@ -74,21 +74,21 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             }
             window.__ignis.guildsPromise = (async () => {
                 const response = await fetch('/api/guilds');
-                let stale = response.headers.get('X-Stale-Cache') === '1';
-                let data = null;
+                const stale = response.headers.get('X-Stale-Cache') === '1';
+                let json = null;
                 const ct = response.headers.get('content-type') || '';
                 if (ct.includes('application/json')) {
-                    try { data = await response.json(); } catch (_) { data = null; }
+                    try { json = await response.json(); } catch (_) { json = null; }
                 }
-                return { response, data, stale };
+                return { response, json, stale };
             })();
-            const { response, data: pData, stale } = await window.__ignis.guildsPromise;
+            const { response, json, stale } = await window.__ignis.guildsPromise;
             window.__ignis.guildsPromise = null;
-            let data = null;
+            const data = json;
             // Cache successful payloads
             try {
-                if (pData?.success && Array.isArray(pData.guilds)) {
-                    window.__ignis.guildsCache = { at: Date.now(), data: pData.guilds };
+                if (data?.success && Array.isArray(data.guilds)) {
+                    window.__ignis.guildsCache = { at: Date.now(), data: data.guilds };
                 }
             } catch {}
 
@@ -101,11 +101,11 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 throw new Error(data?.error || `HTTP ${response.status}`);
             }
 
-            if (!data?.success) {
-                throw new Error(data?.error || 'Erro ao carregar servidores');
+            if (!data || data.success === false) {
+                throw new Error((data && data.error) || 'Erro ao carregar servidores');
             }
 
-            this.guilds = (pData && pData.guilds) || [];
+            this.guilds = Array.isArray(data.guilds) ? data.guilds : [];
             this.displayGuilds();
             if (stale) this.showStaleBanner();
         } catch (error) {
@@ -1738,45 +1738,7 @@ const styleSheet = document.createElement('style');
 styleSheet.textContent = additionalStyles;
 document.head.appendChild(styleSheet);
 
-// Initialize dashboard when DOM is loaded
-let dashboard;
-document.addEventListener('DOMContentLoaded', () => {
-    dashboard = new IGNISDashboard();
-});
-
-// Global functions for ticket system
-window.configureTickets = () => {
-    if (!dashboard.currentGuild) {
-        dashboard.showError('Selecione um servidor primeiro');
-        return;
-    }
-    const gid = encodeURIComponent(dashboard.currentGuild);
-    window.location.href = `/tickets-config.html?guildId=${gid}`;
-};
-
-window.viewTickets = () => {
-    if (!dashboard.currentGuild) {
-        dashboard.showError('Selecione um servidor primeiro');
-        return;
-    }
-    dashboard.loadAdvancedTickets();
-};
-
-window.ticketStats = () => {
-    if (!dashboard.currentGuild) {
-        dashboard.showError('Selecione um servidor primeiro');
-        return;
-    }
-    dashboard.showTicketStatistics();
-};
-
-window.openWebhooks = () => {
-    if (!dashboard.currentGuild) {
-        dashboard.showError('Selecione um servidor primeiro');
-        return;
-    }
-    window.location.href = `/webhooks.html?guildId=${encodeURIComponent(dashboard.currentGuild)}`;
-};
+// Remove duplicate bootstrap (already present earlier in this file)
 
 window.openConfigs = () => {
     if (!dashboard.currentGuild) {
