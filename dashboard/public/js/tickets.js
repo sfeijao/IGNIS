@@ -35,6 +35,10 @@
     setTimeout(() => { div.style.animation = 'slideDown 0.3s ease-in'; setTimeout(() => div.remove(), 300); }, 2500);
   }
 
+  function showStaleBanner(){
+    try { if(document.getElementById('stale-banner')) return; const el=document.createElement('div'); el.id='stale-banner'; el.style.position='fixed'; el.style.bottom='16px'; el.style.left='50%'; el.style.transform='translateX(-50%)'; el.style.background='rgba(124,58,237,0.95)'; el.style.color='#fff'; el.style.padding='10px 14px'; el.style.borderRadius='8px'; el.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)'; el.style.zIndex='9999'; el.style.fontSize='14px'; el.textContent='Mostrando dados em cache temporariamente (a API do Discord limitou pedidos).'; document.body.appendChild(el); setTimeout(()=>{ el.remove(); }, 4000);} catch {}
+  }
+
   function buildUrl(pageOverride){
     const u = new URL(`/api/guild/${guildId}/tickets`, window.location.origin);
     const status = (els.status?.value||'').trim(); if (status) u.searchParams.set('status', status);
@@ -79,9 +83,19 @@
     loading = true;
     els.list.innerHTML = `<div class="loading"><span class="loading-spinner"></span> A carregar...</div>`;
     try {
-      const res = await fetch(buildUrl(), { credentials: 'same-origin' });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
+      // Use cached GET when helper is available (reduces burst when filters change rapidly)
+      let data;
+      if (window.IGNISFetch && window.IGNISFetch.fetchJsonCached){
+        const { ok, json, stale, status } = await window.IGNISFetch.fetchJsonCached(buildUrl(), { ttlMs: 20_000, credentials:'same-origin' });
+        if (stale) showStaleBanner();
+        if (!ok) throw new Error(json?.error || `HTTP ${status||500}`);
+        data = json;
+      } else {
+        const res = await fetch(buildUrl(), { credentials: 'same-origin' });
+        const j = await res.json();
+        if (!res.ok || !j.success) throw new Error(j.error || `HTTP ${res.status}`);
+        data = j;
+      }
       renderStats(data.stats||{});
       renderList(data.tickets||[]);
       renderPager(data.pagination||{page:1,pageSize:20,total:0,totalPages:1});
@@ -97,9 +111,18 @@
   async function loadRoles(){
     try {
       if (!guildId || !els.role) return;
-      const res = await fetch(`/api/guild/${guildId}/roles`, { credentials: 'same-origin' });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
+      let data;
+      if (window.IGNISFetch && window.IGNISFetch.fetchJsonCached){
+        const { ok, json, stale, status } = await window.IGNISFetch.fetchJsonCached(`/api/guild/${guildId}/roles`, { ttlMs: 60_000, credentials:'same-origin' });
+        if (stale) showStaleBanner();
+        if (!ok) throw new Error(json?.error || `HTTP ${status||500}`);
+        data = json;
+      } else {
+        const res = await fetch(`/api/guild/${guildId}/roles`, { credentials: 'same-origin' });
+        const j = await res.json();
+        if (!res.ok || !j.success) throw new Error(j.error || `HTTP ${res.status}`);
+        data = j;
+      }
       const roles = [{ id:'', name:'Todos os cargos' }, ...(data.roles||[])];
       els.role.innerHTML = roles.map(r => `<option value="${r.id}">${escapeHtml(r.name||'Cargo')}</option>`).join('');
       // Restore from URL if present

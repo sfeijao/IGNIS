@@ -53,12 +53,44 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
     
     async loadGuilds() {
         try {
-            const response = await fetch('/api/guilds');
-            let data = null;
-            const ct = response.headers.get('content-type') || '';
-            if (ct.includes('application/json')) {
-                try { data = await response.json(); } catch (_) { data = null; }
+            // Client-side cache + request coalescing to avoid duplicate calls
+            if (!window.__ignis) window.__ignis = {};
+            const cacheKey = 'guilds';
+            const now = Date.now();
+            const TTL = 60 * 1000; // 60s
+            // Serve fresh cache
+            if (window.__ignis.guildsCache && (now - window.__ignis.guildsCache.at < TTL)) {
+                this.guilds = window.__ignis.guildsCache.data || [];
+                this.displayGuilds();
+                return;
             }
+            // Reuse in-flight request
+            if (window.__ignis.guildsPromise) {
+                const { data: pData, stale: pStale } = await window.__ignis.guildsPromise;
+                this.guilds = pData || [];
+                this.displayGuilds();
+                if (pStale) this.showStaleBanner();
+                return;
+            }
+            window.__ignis.guildsPromise = (async () => {
+                const response = await fetch('/api/guilds');
+                let stale = response.headers.get('X-Stale-Cache') === '1';
+                let data = null;
+                const ct = response.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    try { data = await response.json(); } catch (_) { data = null; }
+                }
+                return { response, data, stale };
+            })();
+            const { response, data: pData, stale } = await window.__ignis.guildsPromise;
+            window.__ignis.guildsPromise = null;
+            let data = null;
+            // Cache successful payloads
+            try {
+                if (pData?.success && Array.isArray(pData.guilds)) {
+                    window.__ignis.guildsCache = { at: Date.now(), data: pData.guilds };
+                }
+            } catch {}
 
             if (!response.ok) {
                 if (response.status === 401) {
@@ -73,8 +105,9 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 throw new Error(data?.error || 'Erro ao carregar servidores');
             }
 
-            this.guilds = data.guilds || [];
+            this.guilds = (pData && pData.guilds) || [];
             this.displayGuilds();
+            if (stale) this.showStaleBanner();
         } catch (error) {
             console.error('Erro ao carregar servidores:', error);
             this.showError('Erro ao carregar servidores');
@@ -92,6 +125,28 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 `;
             }
         }
+    }
+
+    showStaleBanner() {
+        try {
+            if (document.getElementById('stale-banner')) return;
+            const el = document.createElement('div');
+            el.id = 'stale-banner';
+            el.style.position = 'fixed';
+            el.style.bottom = '16px';
+            el.style.left = '50%';
+            el.style.transform = 'translateX(-50%)';
+            el.style.background = 'rgba(124,58,237,0.95)';
+            el.style.color = '#fff';
+            el.style.padding = '10px 14px';
+            el.style.borderRadius = '8px';
+            el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+            el.style.zIndex = '9999';
+            el.style.fontSize = '14px';
+            el.textContent = 'Mostrando dados em cache temporariamente (a API do Discord limitou pedidos).';
+            document.body.appendChild(el);
+            setTimeout(() => { el.remove(); }, 4000);
+        } catch {}
     }
     
     updateUserDisplay() {

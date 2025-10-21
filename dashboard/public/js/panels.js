@@ -14,6 +14,7 @@
   const scanMessages = document.getElementById('scanMessages');
   const btnScanNow = document.getElementById('btnScanNow');
   const preview = document.getElementById('panelPreview');
+  const fetchCached = window.IGNISFetch && window.IGNISFetch.fetchJsonCached;
 
   if (!guildId) {
     if (container) container.innerHTML = `<div class="notification notification-error">ID do servidor em falta. Volte ao dashboard e selecione um servidor.</div>`;
@@ -29,10 +30,41 @@
   }
 
   async function api(path, opts) {
+    // Prefer cached GETs (for listing panels/channels) to reduce bursts; POST/others go direct
+    const isGet = !opts || !opts.method || String(opts.method).toUpperCase() === 'GET';
+    if (isGet && fetchCached) {
+      const { ok, json, stale, status } = await fetchCached(path, { ttlMs: 60_000, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } });
+      if (stale) showStaleBanner();
+      if (!ok) throw new Error(json?.error || `HTTP ${status || 500}`);
+      if (json?.success === false) throw new Error(json?.error || 'Erro');
+      return json;
+    }
     const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', ...opts });
     const json = await res.json().catch(() => ({}));
     if (!res.ok || !json.success) throw new Error(json.error || `HTTP ${res.status}`);
     return json;
+  }
+
+  function showStaleBanner() {
+    try {
+      if (document.getElementById('stale-banner')) return;
+      const el = document.createElement('div');
+      el.id = 'stale-banner';
+      el.style.position = 'fixed';
+      el.style.bottom = '16px';
+      el.style.left = '50%';
+      el.style.transform = 'translateX(-50%)';
+      el.style.background = 'rgba(124,58,237,0.95)';
+      el.style.color = '#fff';
+      el.style.padding = '10px 14px';
+      el.style.borderRadius = '8px';
+      el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+      el.style.zIndex = '9999';
+      el.style.fontSize = '14px';
+      el.textContent = 'Mostrando dados em cache temporariamente (a API do Discord limitou pedidos).';
+      document.body.appendChild(el);
+      setTimeout(() => { el.remove(); }, 4000);
+    } catch {}
   }
 
   function renderList(panels) {

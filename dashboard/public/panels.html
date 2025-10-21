@@ -20,10 +20,13 @@
             <div class="navbar-user">
                 <span id="healthBadge" class="badge health-badge" title="Estado do sistema">
                     <span id="health-mongo" class="dot dot-gray" title="DB"></span>
+                    <span id="health-discord" class="dot dot-gray" title="Discord"></span>
                 <a href="/dashboard" class="btn btn-glass">
                     <i class="fas fa-home"></i>
                     Dashboard
                 </a>
+                <img id="userAvatar" src="/default-avatar.svg" alt="Avatar" class="user-avatar">
+                <span id="userName">Carregando...</span>
                 <a href="/logout" class="btn btn-logout">
                     <i class="fas fa-sign-out-alt"></i>
                     Logout
@@ -124,7 +127,7 @@
             </section>
         </div>
     </main>
-
+    <script src="/js/utils/fetch-cache.js"></script>
     <script src="/js/panels.js"></script>
     <style>
         .card-pad{padding:16px}

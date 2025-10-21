@@ -26,6 +26,8 @@
     save: document.getElementById('btnSave'),
     btnPreview: document.getElementById('btnPreview'),
     btnPublish: document.getElementById('btnPublish'),
+    userName: document.getElementById('userName'),
+    userAvatar: document.getElementById('userAvatar'),
   };
   
   function notify(msg, type='info') {
@@ -37,10 +39,27 @@
   }
 
   async function api(path, opts) {
-    const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', ...opts });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok || !json.success) throw new Error(json.error || `HTTP ${res.status}`);
-    return json;
+    // Prefer shared cached fetch helper if available
+    if (window.IGNISFetch && window.IGNISFetch.fetchJsonCached && (!opts || (opts.method||'GET') === 'GET')){
+      const out = await window.IGNISFetch.fetchJsonCached(path, { ttlMs: 60_000 });
+      if (!out.ok) throw new Error(out.json?.error || `HTTP ${out.status||''}`);
+      return out.json;
+    } else {
+      const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', ...opts });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) throw new Error(json.error || `HTTP ${res.status}`);
+      return json;
+    }
+  }
+
+  async function loadUser(){
+    try {
+      const d = await api('/api/user');
+      if (d?.success && d.user){
+        if (els.userName) els.userName.textContent = d.user.username || 'Utilizador';
+        if (els.userAvatar && d.user.avatar) els.userAvatar.src = d.user.avatar;
+      }
+    } catch {}
   }
 
   async function load() {
@@ -261,5 +280,6 @@
       notify('Categoria criada', 'success');
     } catch (e) { console.error(e); notify(e.message||'Falha ao criar categoria', 'error'); }
   });
-  load();
+  // Load user info (fixes header showing "Carregando...") and then page data
+  loadUser().then(load).catch(load);
 })();

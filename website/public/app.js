@@ -126,12 +126,22 @@
   async function loadGuilds(){
     try{
       renderServerSkeletons();
-      const res = await fetch('/api/guilds');
-      if (!res.ok) throw new Error('Falha ao carregar servidores');
-      const data = await res.json();
+      // Reuse global helper if available; otherwise fall back to plain fetch
+      let data, stale = false;
+      if (window.IGNISFetch && window.IGNISFetch.fetchJsonCached){
+        const out = await window.IGNISFetch.fetchJsonCached('/api/guilds', { ttlMs: 60_000 });
+        if (!out.ok) throw new Error(out.json?.error || `HTTP ${out.status||''}`);
+        data = out.json; stale = !!out.stale;
+      } else {
+        const res = await fetch('/api/guilds', { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('Falha ao carregar servidores');
+        data = await res.json();
+        stale = res.headers.get('X-Stale-Cache') === '1';
+      }
       guildsCache = data.guilds || [];
       renderServers(applyFilterAndSort());
       setupServerSearch();
+      if (stale) showStaleBanner();
       // If we have a persisted selection, restore it
       const persisted = localStorage.getItem(SELECTED_GUILD_KEY);
       if (persisted){
@@ -146,6 +156,20 @@
       if (empty) empty.hidden = false;
       window.IGNISToast?.show({ title:'Erro a carregar', message: e?.message || 'Não foi possível obter a lista de servidores.', type:'error' });
     }
+  }
+
+  function showStaleBanner(){
+    try{
+      if (document.getElementById('spa-stale-banner')) return;
+      const el = document.createElement('div');
+      el.id = 'spa-stale-banner';
+      el.style.position = 'fixed'; el.style.bottom = '16px'; el.style.left = '50%'; el.style.transform = 'translateX(-50%)';
+      el.style.background = 'rgba(124,58,237,0.95)'; el.style.color = '#fff'; el.style.padding = '10px 14px'; el.style.borderRadius = '8px';
+      el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'; el.style.zIndex = '9999'; el.style.fontSize = '14px';
+      el.textContent = 'A mostrar dados em cache temporariamente (Discord limitou pedidos).';
+      document.body.appendChild(el);
+      setTimeout(()=> el.remove(), 4000);
+    }catch{}
   }
 
   function setupServerSearch(){

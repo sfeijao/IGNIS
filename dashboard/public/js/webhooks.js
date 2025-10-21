@@ -24,6 +24,13 @@
   }
 
   async function api(path, opts) {
+    const isGet = !opts || !opts.method || String(opts.method).toUpperCase() === 'GET';
+    if (isGet && window.IGNISFetch && window.IGNISFetch.fetchJsonCached){
+      const { ok, json, stale, status } = await window.IGNISFetch.fetchJsonCached(path, { ttlMs: 60_000, credentials:'same-origin', headers:{'Content-Type':'application/json'} });
+      if (stale) showStaleBanner();
+      if (!ok) { const e=new Error(json?.error || `HTTP ${status||500}`); e.status = status||500; throw e; }
+      return json;
+    }
     const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', ...opts });
     const json = await res.json().catch(() => ({}));
     if (!res.ok || !json.success) {
@@ -32,6 +39,13 @@
       throw err;
     }
     return json;
+  }
+
+  function showStaleBanner(){
+    try {
+      if (document.getElementById('stale-banner')) return;
+      const el=document.createElement('div'); el.id='stale-banner'; el.style.position='fixed'; el.style.bottom='16px'; el.style.left='50%'; el.style.transform='translateX(-50%)'; el.style.background='rgba(124,58,237,0.95)'; el.style.color='#fff'; el.style.padding='10px 14px'; el.style.borderRadius='8px'; el.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)'; el.style.zIndex='9999'; el.style.fontSize='14px'; el.textContent='Mostrando dados em cache temporariamente (a API do Discord limitou pedidos).'; document.body.appendChild(el); setTimeout(()=>{ el.remove(); }, 4000);
+    } catch {}
   }
 
   function render(list, config) {

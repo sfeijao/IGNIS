@@ -105,6 +105,58 @@ app.use('/dashboard-new', express.static(WEBSITE_PUBLIC_DIR, { index: false, red
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Reusable helper to call Discord OAuth user-scoped endpoints with session cache and backoff
+async function oauthFetchWithSessionCache(req, url, opts={}){
+    const TTL_MS = opts.ttlMs ?? 60 * 1000;
+    const cacheKey = `__oauthCache_${Buffer.from(url).toString('base64')}`;
+    const backoffKey = `${cacheKey}_backoff`;
+    const now = Date.now();
+    const force = !!opts.force;
+    const hdrs = Object.assign({}, opts.headers || {});
+    const accessToken = req.user && req.user.accessToken;
+    if (!accessToken) return { ok:false, status:401, error:'missing_oauth_token' };
+    hdrs['Authorization'] = `Bearer ${accessToken}`;
+    // Serve from cache
+    if (!force) {
+        const cache = req.session[cacheKey];
+        if (cache && (now - (cache.at||0) < TTL_MS)) {
+            return { ok:true, status:200, json:cache.data, headers: { 'X-Stale-Cache': cache.stale ? '1' : undefined } };
+        }
+    }
+    // Respect backoff
+    const until = req.session[backoffKey] || 0;
+    if (!force && now < until) {
+        const cache = req.session[cacheKey];
+        if (cache && cache.data) {
+            cache.stale = true;
+            return { ok:true, status:200, json:cache.data, headers: { 'X-Stale-Cache': '1' } };
+        }
+        return { ok:false, status:429, error:'rate_limited', retry_after_ms: until - now };
+    }
+    const fetch = require('node-fetch');
+    const response = await fetch(url, { headers: hdrs });
+    const text = await response.text().catch(()=> '');
+    if (!response.ok) {
+        if (response.status === 429) {
+            let retryAfterMs = 2000;
+            try { const parsed = JSON.parse(text); if (parsed && parsed.retry_after != null) retryAfterMs = Math.max(100, Math.ceil(Number(parsed.retry_after)*1000)); } catch {}
+            req.session[backoffKey] = Date.now() + retryAfterMs;
+            const cache = req.session[cacheKey];
+            if (cache && cache.data) {
+                cache.stale = true;
+                return { ok:true, status:200, json:cache.data, headers: { 'X-Stale-Cache': '1' } };
+            }
+            return { ok:false, status:429, error:'rate_limited', retry_after_ms: retryAfterMs };
+        }
+        logger.warn(`OAuth fetch failed ${response.status} ${response.statusText} for ${url} ${text}`);
+        return { ok:false, status:401, error:'discord_oauth_failed' };
+    }
+    let json = null;
+    try { json = text ? JSON.parse(text) : null; } catch { json = null; }
+    try { req.session[cacheKey] = { at: Date.now(), data: json, stale: false }; } catch {}
+    return { ok:true, status:200, json, headers: {} };
+}
+
 // Session configuration
 const useMongoSession = ((process.env.NODE_ENV || 'production') === 'production') && !!(process.env.MONGO_URI || process.env.MONGODB_URI) && !!MongoStore;
 const sessionOptions = {
@@ -381,66 +433,14 @@ app.get('/api/guilds', async (req, res) => {
     }
 
     try {
-        // Basic session-scoped cache to avoid hammering Discord and hitting 429s
-        const now = Date.now();
-        const TTL_MS = 60 * 1000; // 60 seconds
         const force = String(req.query.force || '').toLowerCase() === 'true';
-        if (!force) {
-            const cache = req.session.__guildsCache;
-            if (cache && Array.isArray(cache.data) && (now - (cache.at || 0) < TTL_MS)) {
-                return res.json({ success: true, guilds: cache.data });
-            }
+        const resp = await oauthFetchWithSessionCache(req, 'https://discord.com/api/v10/users/@me/guilds', { ttlMs: 60_000, force });
+        if (!resp.ok) {
+            if (resp.status === 429) return res.status(429).json({ success:false, error: resp.error, retry_after_ms: resp.retry_after_ms });
+            if (resp.status === 401) return res.status(401).json({ success:false, error: resp.error });
+            return res.status(500).json({ success:false, error: 'discord_oauth_failed' });
         }
-
-        // Backoff logic in case of previous rate limit
-        const backoffUntil = req.session.__guildsBackoffUntil || 0;
-        if (!force && now < backoffUntil) {
-            // Serve stale cache if we have it
-            const cache = req.session.__guildsCache;
-            if (cache && Array.isArray(cache.data)) {
-                res.setHeader('X-Stale-Cache', '1');
-                return res.json({ success: true, guilds: cache.data });
-            }
-            return res.status(429).json({ success: false, error: 'rate_limited', retry_after_ms: backoffUntil - now });
-        }
-
-        // Ensure we have an access token
-        const accessToken = req.user && req.user.accessToken;
-        if (!accessToken) {
-            return res.status(401).json({ success: false, error: 'missing_oauth_token' });
-        }
-
-        // Get user guilds from Discord API using access token
-        const fetch = require('node-fetch');
-        const response = await fetch('https://discord.com/api/v10/users/@me/guilds', {
-            headers: { 'Authorization': `Bearer ${accessToken}` }
-        });
-
-        if (!response.ok) {
-            const txt = await response.text().catch(() => '');
-            logger.warn(`Discord /users/@me/guilds failed: ${response.status} ${response.statusText} ${txt}`);
-            if (response.status === 429) {
-                // Try to parse retry_after
-                let retryAfterMs = 2000;
-                try {
-                    const parsed = JSON.parse(txt);
-                    if (parsed && (parsed.retry_after != null)) {
-                        retryAfterMs = Math.max(100, Math.ceil(Number(parsed.retry_after) * 1000));
-                    }
-                } catch {}
-                req.session.__guildsBackoffUntil = Date.now() + retryAfterMs;
-                const cache = req.session.__guildsCache;
-                if (cache && Array.isArray(cache.data)) {
-                    res.setHeader('X-Stale-Cache', '1');
-                    return res.json({ success: true, guilds: cache.data });
-                }
-                return res.status(429).json({ success: false, error: 'rate_limited', retry_after_ms: retryAfterMs });
-            }
-            // Likely expired/invalid OAuth token: ask client to re-auth
-            return res.status(401).json({ success: false, error: 'discord_oauth_failed', status: response.status });
-        }
-
-        let userGuilds = await response.json();
+        let userGuilds = resp.json;
         if (!Array.isArray(userGuilds)) {
             logger.warn('Unexpected /users/@me/guilds payload (not array).');
             userGuilds = [];
@@ -473,9 +473,10 @@ app.get('/api/guilds', async (req, res) => {
             botPresent: true
         }));
 
-        // Cache the processed result to reduce future calls
-        try { req.session.__guildsCache = { at: Date.now(), data: managedGuilds }; } catch {}
-        return res.json({ success: true, guilds: managedGuilds });
+    // Cache the processed result to reduce future calls
+    try { req.session.__guildsCache = { at: Date.now(), data: managedGuilds }; } catch {}
+    if (resp.headers && resp.headers['X-Stale-Cache'] === '1') res.setHeader('X-Stale-Cache', '1');
+    return res.json({ success: true, guilds: managedGuilds });
 
     } catch (error) {
         logger.error('Error fetching guilds:', error);
