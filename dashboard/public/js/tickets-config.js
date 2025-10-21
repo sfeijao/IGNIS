@@ -85,6 +85,10 @@
       }
       if (els.accessRoles) {
         els.accessRoles.innerHTML = roles.map(r=>`<option value="${r.id}">${(r.name||r.id)}</option>`).join('');
+        // Enhance multiselect UI for better usability
+        if (window.IGNISMultiselect) {
+          window.IGNISMultiselect.enhance(els.accessRoles, { searchPlaceholder: 'Pesquisar cargos…' });
+        }
       }
       const d = await api(`/api/guild/${guildId}/tickets/config`);
       const cfg = (d.config || {});
@@ -111,6 +115,7 @@
       if (els.logsChannel) els.logsChannel.value = t.logsChannelId || '';
       if (els.accessRoles && Array.isArray(t.accessRoleIds)) {
         for (const opt of els.accessRoles.options) { opt.selected = t.accessRoleIds.includes(opt.value); }
+        if (window.IGNISMultiselect) window.IGNISMultiselect.refresh(els.accessRoles);
       }
     } catch (e) { console.error(e); notify(e.message, 'error'); }
   }
