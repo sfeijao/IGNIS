@@ -134,6 +134,9 @@
   const guildParam=new URLSearchParams(window.location.search); const guildId=guildParam.get('guildId');
   const moveSel=document.getElementById('rmMoveRoleSelect');
   const delSel=document.getElementById('rmDeleteRoleSelect');
+  function enhanceDeleteSelect(){
+    try{ if(window.IGNISMultiselect && delSel) window.IGNISMultiselect.enhance(delSel, { searchPlaceholder:'Pesquisar cargos…' }); }catch{}
+  }
   // Attempt to hook into existing roles loading by monkey patching loadRoles if present later
   function populateDropdowns(){
     if(!window.allRolesGlobal && !window.getAllRolesInternal){
@@ -142,7 +145,7 @@
       if(roleLabels.length && moveSel && delSel){
         const opts=roleLabels.map(chk=>`<option value="${chk.value}">${chk.parentElement?.textContent?.trim()||chk.value}</option>`).join('');
         if(moveSel && moveSel.options.length<=1) moveSel.insertAdjacentHTML('beforeend',opts);
-        if(delSel && delSel.options.length<=1) delSel.insertAdjacentHTML('beforeend',opts);
+        if(delSel && delSel.options.length<=1) { delSel.insertAdjacentHTML('beforeend',opts); enhanceDeleteSelect(); }
       }
       return;
     }
@@ -151,7 +154,7 @@
   window.refreshRoleDropdownHelpers = function(allRoles){
     if(!allRoles) return populateDropdowns();
     if(moveSel){ moveSel.innerHTML='<option value="">(Cargo)</option>'+allRoles.map(r=>`<option value="${r.id}">${r.name}</option>`).join(''); }
-    if(delSel){ delSel.innerHTML='<option value="">(Cargo)</option>'+allRoles.map(r=>`<option value="${r.id}">${r.name}</option>`).join(''); }
+    if(delSel){ delSel.innerHTML='<option value="">(Cargo)</option>'+allRoles.map(r=>`<option value="${r.id}">${r.name}</option>`).join(''); enhanceDeleteSelect(); }
   };
   // Copy ID buttons: delegate after roles render
   function addCopyButtons(){
@@ -199,7 +202,21 @@
     try{ await apiJson(`/api/guild/${getGuildId()}/roles/${roleId}/move`,{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({direction,steps})}); toast('Cargo movido'); triggerSoftReload(); }
     catch(e){ toastError(e.message||'Erro ao mover'); }
   }
-  async function deleteRole(){ const roleId=selValue(delSel); if(!roleId){ toastError('Selecione cargo para apagar'); return; } if(!confirm('Apagar cargo selecionado?')) return; try{ await apiJson(`/api/guild/${getGuildId()}/roles/${roleId}`,{method:'DELETE'}); toast('Cargo apagado'); if(delSel) delSel.value=''; triggerSoftReload(); }catch(e){ toastError(e.message||'Erro ao apagar'); } }
+  async function deleteRole(){
+    const selected = Array.from(delSel?.selectedOptions||[]).map(o=>({ id:o.value.trim(), name:(o.textContent||'').trim() })).filter(x=>x.id);
+    if(selected.length===0){ toastError('Selecione pelo menos um cargo para apagar'); return; }
+    const namesPreview = selected.slice(0,5).map(x=>x.name||x.id).join(', ')+ (selected.length>5?` … +${selected.length-5}`:'');
+    if(!confirm(`Apagar ${selected.length} cargo(s)?\n${namesPreview}`)) return;
+    let ok=0, fail=0; const errors=[];
+    for(const it of selected){
+      try{ await apiJson(`/api/guild/${getGuildId()}/roles/${encodeURIComponent(it.id)}`, { method:'DELETE' }); ok++; }
+      catch(e){ fail++; errors.push({ id: it.id, name: it.name, err: e && e.message || 'erro' }); }
+    }
+    if(delSel){ for(const o of delSel.options){ o.selected = false; } try{ if(window.IGNISMultiselect) window.IGNISMultiselect.refresh(delSel); }catch{} }
+    if(ok) toast(`Apagado(s): ${ok}`);
+    if(fail){ toastError(`${fail} falha(s)`); console.warn('Falhas ao apagar cargos:', errors); }
+    triggerSoftReload();
+  }
   function triggerSoftReload(){
     // Try to reuse existing refresh logic; if loadRoles function in closure not accessible, fallback to clicking refresh button
     const btn=document.getElementById('refresh'); if(btn) btn.click();
@@ -209,7 +226,7 @@
   document.getElementById('rmBtnMoveDown')?.addEventListener('click',()=>moveRole('down'));
   document.getElementById('rmBtnDeleteRole')?.addEventListener('click',deleteRole);
   // Initial attempt after load
-  window.addEventListener('load',()=>{ populateDropdowns(); addCopyButtons(); });
+  window.addEventListener('load',()=>{ populateDropdowns(); addCopyButtons(); enhanceDeleteSelect(); });
 })();
 // Role search + hierarchy display + disable unmanaged in dropdowns
 (function(){
