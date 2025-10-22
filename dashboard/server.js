@@ -3141,27 +3141,30 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             } else {
                 rows = [];
             }
-        } else if (template === 'compact') {
+    } else if (template === 'compact') {
             embed
                 .setTitle('🎫 Tickets • Compacto')
-                .setDescription('Escolhe abaixo e abre um ticket privado.');
+        .setDescription('Escolhe abaixo e abre um ticket privado.')
+        .setThumbnail(check.guild?.iconURL({ size: 256, dynamic: true }) || null);
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('ticket:create:support').setLabel('Suporte').setEmoji('🎫').setStyle(ButtonStyle.Primary),
                 new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger)
             );
             rows = [row];
-        } else if (template === 'minimal') {
+    } else if (template === 'minimal') {
             embed
                 .setTitle('🎫 Abrir ticket')
-                .setDescription('Carrega num botão para abrir um ticket.');
+        .setDescription('Carrega num botão para abrir um ticket.')
+        .setThumbnail(check.guild?.iconURL({ size: 256, dynamic: true }) || null);
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Abrir Ticket').setEmoji('🎟️').setStyle(ButtonStyle.Primary)
             );
             rows = [row];
-        } else if (template === 'premium') {
+    } else if (template === 'premium') {
             embed
                 .setTitle('🎫 Centro de Suporte • Premium')
                 .setDescription('Serviço prioritário, acompanhamento dedicado e histórico guardado.')
+        .setThumbnail(check.guild?.iconURL({ size: 256, dynamic: true }) || null)
                 .addFields(
                     { name: '• Resposta express', value: 'Prioridade máxima', inline: true },
                     { name: '• Privado & seguro', value: 'Só tu e equipa', inline: true },
@@ -3179,7 +3182,7 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             rows = [row1, row2];
         } else if (template === 'gamer') {
             const guild = check.guild;
-            const iconUrl = guild?.iconURL({ size: 1024, extension: 'png' }) || guild?.iconURL({ size: 1024 }) || null;
+            const iconUrl = guild?.iconURL({ size: 1024, dynamic: true }) || null;
             const fallback = (visualAssets && visualAssets.realImages && visualAssets.realImages.supportBanner)
                 || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1200&h=400&fit=crop&crop=center';
             embed
@@ -3193,11 +3196,12 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
                 new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('👤').setStyle(ButtonStyle.Secondary)
             );
             rows = [row];
-        } else {
+    } else {
             // classic (default)
             embed
                 .setTitle('🎫 Centro de Suporte')
                 .setDescription('Escolhe o departamento abaixo para abrir um ticket privado com a equipa.')
+        .setThumbnail(check.guild?.iconURL({ size: 256, dynamic: true }) || null)
                 .addFields(
                     { name: '• Resposta rápida', value: 'Tempo médio: minutos', inline: true },
                     { name: '• Canal privado', value: 'Visível só para ti e staff', inline: true },
