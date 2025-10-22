@@ -80,6 +80,22 @@ const getCallbackURL = () => {
 };
 
 // Middleware
+// Optional CORS (only when explicitly configured)
+try {
+    const CORS_ORIGIN = (process.env.CORS_ORIGIN || '').trim();
+    if (CORS_ORIGIN) {
+        app.use((req, res, next) => {
+            res.header('Access-Control-Allow-Origin', CORS_ORIGIN);
+            res.header('Vary', 'Origin');
+            res.header('Access-Control-Allow-Credentials', 'true');
+            res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Internal-Token, X-Dev-Bypass');
+            res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+            if (req.method === 'OPTIONS') return res.sendStatus(204);
+            next();
+        });
+    }
+} catch {}
+
 app.use(express.static(path.join(__dirname, 'public')));
 // Paths for classic dashboard (rich features) and the revamped website UI
 const WEBSITE_PUBLIC_DIR = path.join(__dirname, '..', 'website', 'public');
