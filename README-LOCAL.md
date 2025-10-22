@@ -111,3 +111,24 @@ $env:MONGO_URI = 'mongodb+srv://user:pass@host/db'; npm run migrate:mongo-to-sql
 Contact
 
 - Repo: <https://github.com/sfeijao/IGNIS_BOT>
+
+## Production checklist (quick)
+
+Run the automated environment check:
+
+```powershell
+npm run env:check
+```
+
+Confirm these before deploying:
+
+- BASE_URL points to your public dashboard URL (e.g., https://ignis.example.com)
+- OAUTH_CALLBACK (or CALLBACK_URL) matches the Discord application settings exactly
+- DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET are set and valid
+- DISCORD_TOKEN is the production bot token; bot is in the target guild(s)
+- SESSION_SECRET is long and random
+- INTERNAL_API_TOKEN set (and unique) if using internal modlog webhook
+- MONGO_URI set (recommended for production) and reachable; MONGO_DB_NAME provided if your URI has no path
+- CORS_ORIGIN set to your website origin if you need cross-origin access
+- DASHBOARD_BYPASS_AUTH disabled (unset or false) in production
+- Logs and backups policy defined (see scripts/ and data/)

@@ -578,10 +578,20 @@ app.post('/api/guild/:guildId/roles', async (req,res)=>{
         const guild = client.guilds.cache.get(guildId); if(!guild) return res.status(404).json({ success:false, error:'Guild not found' });
         const me = guild.members.me || guild.members.cache.get(client.user.id);
         const myHighest = me?.roles?.highest?.position ?? 0;
-        const name = (req.body && req.body.name) ? String(req.body.name).trim() : 'novo-cargo';
-        const color = (req.body && req.body.color) ? String(req.body.color) : undefined;
-        const hoist = !!(req.body && req.body.hoist);
-        const mentionable = !!(req.body && req.body.mentionable);
+        // Validate body
+        const bodySchema = Joi.object({
+            name: Joi.string().trim().min(1).max(100).default('novo-cargo'),
+            color: Joi.string().trim().pattern(/^#?[0-9a-fA-F]{6}$/).optional().allow('', null),
+            hoist: Joi.boolean().default(false),
+            mentionable: Joi.boolean().default(false)
+        }).unknown(false);
+        const { error: roleErr, value: roleBody } = bodySchema.validate(req.body || {}, { abortEarly: false });
+        if (roleErr) return res.status(400).json({ success:false, error:'validation_failed', details: roleErr.details.map(d=>d.message) });
+        const name = roleBody.name;
+        let color = roleBody.color;
+        if (typeof color === 'string' && color) { color = color.startsWith('#') ? color : `#${color}`; }
+        const hoist = !!roleBody.hoist;
+        const mentionable = !!roleBody.mentionable;
         const role = await guild.roles.create({ name, color, hoist, mentionable, reason:'Dashboard create role' });
         if(role.position >= myHighest){
             // Immediately lower it if above bot (rare, but safety)
@@ -613,7 +623,13 @@ app.post('/api/guild/:guildId/roles/:roleId/move', async (req,res)=>{
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
         const guildId = req.params.guildId; const roleId = req.params.roleId;
-        const { position, direction, delta } = req.body || {};
+        // Validate body: either absolute position or relative move
+        const moveSchema = Joi.alternatives().try(
+            Joi.object({ position: Joi.number().integer().min(0).required() }).unknown(false),
+            Joi.object({ direction: Joi.string().valid('up','down').required(), delta: Joi.number().integer().min(1).max(100).default(1) }).unknown(false)
+        );
+        const { error: moveErr, value: moveBody } = moveSchema.validate(req.body || {}, { abortEarly: false });
+        if (moveErr) return res.status(400).json({ success:false, error:'validation_failed', details: moveErr.details.map(d=>d.message) });
         const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
         const guild = client.guilds.cache.get(guildId); if(!guild) return res.status(404).json({ success:false, error:'Guild not found' });
         const role = guild.roles.cache.get(roleId); if(!role) return res.status(404).json({ success:false, error:'Role not found' });
@@ -622,10 +638,11 @@ app.post('/api/guild/:guildId/roles/:roleId/move', async (req,res)=>{
         const myHighest = me?.roles?.highest?.position ?? 0;
         if(role.position >= myHighest) return res.status(403).json({ success:false, error:'insufficient_role_hierarchy' });
         let newPos;
-        if(typeof position === 'number' && Number.isFinite(position)) newPos = position;
-        else if(direction){
-            const d = (direction === 'up') ? 1 : -1;
-            const step = (typeof delta === 'number' && Number.isFinite(delta)) ? delta : 1;
+        if (Object.prototype.hasOwnProperty.call(moveBody, 'position')) {
+            newPos = moveBody.position;
+        } else if (Object.prototype.hasOwnProperty.call(moveBody, 'direction')) {
+            const d = (moveBody.direction === 'up') ? 1 : -1;
+            const step = moveBody.delta ?? 1;
             newPos = role.position + d*step;
         } else { return res.status(400).json({ success:false, error:'invalid_move_params' }); }
         newPos = Math.max(0, Math.min(newPos, myHighest-1));
@@ -653,7 +670,15 @@ app.post('/api/guild/:guildId/mod-presets', (req,res)=>{
         const guildId = req.params.guildId;
         const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
         if(!client.guilds.cache.get(guildId)) return res.status(404).json({ success:false, error:'Guild not found' });
-        const body = req.body || {};
+        const presetSchema = Joi.alternatives().try(
+            Joi.object({ presets: Joi.object().unknown(true).required() }).unknown(false),
+            Joi.object({
+                name: Joi.string().pattern(/^[A-Za-z0-9_.\-]{1,64}$/).required(),
+                preset: Joi.object().unknown(true).required()
+            }).unknown(false)
+        );
+        const { error: pErr, value: body } = presetSchema.validate(req.body || {}, { abortEarly: false });
+        if (pErr) return res.status(400).json({ success:false, error:'validation_failed', details: pErr.details.map(d=>d.message) });
         let presets = loadModPresetsSafe();
         if(body && body.presets && typeof body.presets === 'object'){
             presets = body.presets; // replace all
@@ -671,6 +696,9 @@ app.delete('/api/guild/:guildId/mod-presets/:name', (req,res)=>{
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
         const guildId = req.params.guildId; const name = req.params.name;
+        // Validate name to avoid weird keys
+        const { error: nameErr } = Joi.string().pattern(/^[A-Za-z0-9_.\-]{1,64}$/).validate(name);
+        if (nameErr) return res.status(400).json({ success:false, error:'validation_failed', details:[nameErr.message] });
         const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
         if(!client.guilds.cache.get(guildId)) return res.status(404).json({ success:false, error:'Guild not found' });
         const presets = loadModPresetsSafe();
@@ -693,10 +721,19 @@ app.get('/api/guild/:guildId/members', async (req, res) => {
         if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
     const me = guild.members.me || guild.members.cache.get(client.user.id);
     const myHighest = me?.roles?.highest?.position ?? 0;
-        const q = String(req.query.q || '').toLowerCase();
-        const roleId = String(req.query.role || '');
-        let limit = parseInt(String(req.query.limit || '50'), 10); if (!Number.isFinite(limit) || limit < 1) limit = 50; limit = Math.min(200, limit);
-        const refresh = String(req.query.refresh || '').toLowerCase() === 'true';
+        // Validate query
+        const schema = Joi.object({
+            q: Joi.string().trim().max(100).allow('').default(''),
+            role: Joi.alternatives().try(Joi.string().valid(''), Joi.string().pattern(/^\d+$/)).default(''),
+            limit: Joi.number().integer().min(1).max(200).default(50),
+            refresh: Joi.boolean().truthy('true','1').falsy('false','0').default(false)
+        });
+        const { error: memErr, value: memQ } = schema.validate(req.query || {}, { abortEarly: false, convert: true });
+        if (memErr) return res.status(400).json({ success:false, error:'validation_failed', details: memErr.details.map(d=>d.message) });
+        const q = (memQ.q || '').toLowerCase();
+        const roleId = memQ.role || '';
+        let limit = memQ.limit;
+        const refresh = !!memQ.refresh;
         if (refresh) { try { await guild.members.fetch(); } catch {}
         }
         let members = guild.members.cache;
@@ -727,9 +764,16 @@ app.post('/api/guild/:guildId/members/:userId/roles', async (req, res) => {
     }
     try {
         const guildId = req.params.guildId; const userId = req.params.userId;
-        const { add, remove } = req.body || {};
-        const toAdd = Array.isArray(add) ? add.map(String) : [];
-        const toRemove = Array.isArray(remove) ? remove.map(String) : [];
+        // Validate body
+        const roleIds = Joi.array().items(Joi.string().pattern(/^\d+$/)).max(100);
+        const bodySchema = Joi.object({
+            add: roleIds.default([]),
+            remove: roleIds.default([])
+        }).or('add','remove');
+        const { error: mErr, value: body } = bodySchema.validate(req.body || {}, { abortEarly: false });
+        if (mErr) return res.status(400).json({ success:false, error:'validation_failed', details: mErr.details.map(d=>d.message) });
+        const toAdd = body.add || [];
+        const toRemove = body.remove || [];
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const guild = client.guilds.cache.get(guildId);
@@ -802,23 +846,42 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
         const storage = require('../utils/storage');
         const allTickets = await storage.getTickets(guildId);
 
-        // Inputs
-    const status = (req.query.status || '').toString().trim().toLowerCase(); // '', 'open', 'claimed', 'closed', 'pending'
-    const priority = (req.query.priority || '').toString().trim().toLowerCase(); // '', 'low','normal','high','urgent'
-        const q = (req.query.q || '').toString().trim().toLowerCase();
-        const from = req.query.from ? new Date(req.query.from) : null; // ISO or date string
-        const to = req.query.to ? new Date(req.query.to) : null;
-    const category = (req.query.category || '').toString().trim().toLowerCase();
-    let assigned = (req.query.assigned || '').toString().trim(); // user id or 'me' or ''
-    if (assigned.toLowerCase() === 'me') assigned = (req.user && req.user.id) ? req.user.id : '';
-    const roleId = (req.query.role || '').toString().trim();
-    const staffOnly = String(req.query.staffOnly || '').toLowerCase() === 'true' || String(req.query.staffOnly || '') === '1';
-    const deepRoleFetch = String(req.query.deepRoleFetch || '').toLowerCase() === 'true' || String(req.query.deepRoleFetch || '') === '1';
-        let page = parseInt(String(req.query.page || '1'), 10); if (!Number.isFinite(page) || page < 1) page = 1;
-        let pageSize = parseInt(String(req.query.pageSize || '20'), 10); if (!Number.isFinite(pageSize) || pageSize < 1) pageSize = 20; pageSize = Math.min(100, pageSize);
+        // Inputs (validate with Joi)
+        const ticketsSchema = Joi.object({
+            status: Joi.string().valid('', 'open','claimed','closed','pending').default(''),
+            priority: Joi.string().valid('', 'low','normal','high','urgent').default(''),
+            q: Joi.string().trim().max(200).allow('').default(''),
+            from: Joi.date().iso().optional(),
+            to: Joi.date().iso().optional(),
+            category: Joi.string().trim().max(100).allow('').default(''),
+            assigned: Joi.alternatives().try(
+                Joi.string().valid('', 'me'),
+                Joi.string().pattern(/^\d+$/)
+            ).default(''),
+            role: Joi.alternatives().try(Joi.string().valid(''), Joi.string().pattern(/^\d+$/)).default(''),
+            staffOnly: Joi.boolean().truthy('true','1').falsy('false','0').default(false),
+            deepRoleFetch: Joi.boolean().truthy('true','1').falsy('false','0').default(false),
+            page: Joi.number().integer().min(1).default(1),
+            pageSize: Joi.number().integer().min(1).max(100).default(20)
+        });
+        const { error: tErr, value: qv } = ticketsSchema.validate(req.query || {}, { abortEarly: false, convert: true });
+        if (tErr) return res.status(400).json({ success:false, error:'validation_failed', details: tErr.details.map(d=>d.message) });
+        const status = (qv.status || '').toLowerCase();
+        const priority = (qv.priority || '').toLowerCase();
+        const q = (qv.q || '').toLowerCase();
+        const from = qv.from ? new Date(qv.from) : null;
+        const to = qv.to ? new Date(qv.to) : null;
+        const category = (qv.category || '').toLowerCase();
+        let assigned = qv.assigned || '';
+        if (assigned.toLowerCase && assigned.toLowerCase() === 'me') assigned = (req.user && req.user.id) ? req.user.id : '';
+        const roleId = qv.role || '';
+        const staffOnly = !!qv.staffOnly;
+        const deepRoleFetch = !!qv.deepRoleFetch;
+        let page = qv.page;
+        let pageSize = qv.pageSize;
 
         // Filter
-        let filtered = allTickets.slice();
+    let filtered = allTickets.slice();
         if (status) filtered = filtered.filter(t => (t.status || '').toLowerCase() === status);
         if (priority) filtered = filtered.filter(t => (t.priority || '').toLowerCase() === priority);
     if (from && !Number.isNaN(from.getTime())) filtered = filtered.filter(t => new Date(t.created_at) >= from);
@@ -1735,16 +1798,31 @@ app.get('/api/guild/:guildId/mod/cases', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.json({ success: true, cases: [], total: 0 });
         const { ModerationCaseModel } = require('../utils/db/models');
+        // Validate filters
+        const schema = Joi.object({
+            type: Joi.string().trim().max(32).optional(),
+            userId: Joi.string().pattern(/^\d+$/).optional(),
+            staffId: Joi.string().pattern(/^\d+$/).optional(),
+            status: Joi.string().trim().max(32).optional(),
+            from: Joi.date().iso().optional(),
+            to: Joi.date().iso().optional(),
+            limit: Joi.number().integer().min(1).max(100).default(25),
+            page: Joi.number().integer().min(1).default(1)
+        });
+        const { error: cErr, value: cq } = schema.validate(req.query || {}, { abortEarly: false, convert: true });
+        if (cErr) return res.status(400).json({ success:false, error:'validation_failed', details: cErr.details.map(d=>d.message) });
         const q = { guild_id: req.params.guildId };
-        if (req.query.type) q.type = String(req.query.type);
-        if (req.query.userId) q.user_id = String(req.query.userId);
-        if (req.query.staffId) q.staff_id = String(req.query.staffId);
-        if (req.query.status) q.status = String(req.query.status);
-        const from = req.query.from ? new Date(req.query.from) : null;
-        const to = req.query.to ? new Date(req.query.to) : null;
-        if (from || to) q.occurred_at = {}; if (from && !Number.isNaN(from.getTime())) q.occurred_at.$gte = from; if (to && !Number.isNaN(to.getTime())) q.occurred_at.$lte = to;
-        let limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit||'25'), 10) || 25));
-        let page = Math.max(1, parseInt(String(req.query.page||'1'), 10) || 1);
+        if (cq.type) q.type = String(cq.type);
+        if (cq.userId) q.user_id = String(cq.userId);
+        if (cq.staffId) q.staff_id = String(cq.staffId);
+        if (cq.status) q.status = String(cq.status);
+        const from = cq.from ? new Date(cq.from) : null;
+        const to = cq.to ? new Date(cq.to) : null;
+        if (from || to) q.occurred_at = {};
+        if (from && !Number.isNaN(from.getTime())) q.occurred_at.$gte = from;
+        if (to && !Number.isNaN(to.getTime())) q.occurred_at.$lte = to;
+        let limit = cq.limit;
+        let page = cq.page;
         const total = await ModerationCaseModel.countDocuments(q);
         const list = await ModerationCaseModel.find(q).sort({ occurred_at: -1 }).skip((page-1)*limit).limit(limit).lean();
         return res.json({ success: true, cases: list, total });
@@ -1820,8 +1898,11 @@ app.get('/api/guild/:guildId/mod/stats', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.json({ success: true, charts: { ticketsPerDay: [], avgResolutionMs: 0, modActionsByType: [] } });
         const { ModerationCaseModel, TicketModel } = require('../utils/db/models');
+        // Validate query
+        const { error: sErr, value: s } = Joi.object({ days: Joi.number().integer().min(1).max(90).default(14) }).validate(req.query || {}, { convert: true });
+        if (sErr) return res.status(400).json({ success:false, error:'validation_failed', details: sErr.details.map(d=>d.message) });
         const now = new Date();
-        const days = parseInt(String(req.query.days || '14'), 10) || 14;
+        const days = s.days;
         const from = new Date(now.getTime() - days*24*3600*1000);
         // Tickets per day
         const tAgg = await TicketModel.aggregate([
@@ -1861,9 +1942,14 @@ app.get('/api/guild/:guildId/mod/automod/events', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.json({ success: true, events: [] });
         const { AutomodEventModel } = require('../utils/db/models');
+        const { error: eErr, value: ev } = Joi.object({
+            type: Joi.string().trim().max(64).optional(),
+            resolved: Joi.boolean().truthy('true','1').falsy('false','0').optional()
+        }).validate(req.query || {}, { convert: true });
+        if (eErr) return res.status(400).json({ success:false, error:'validation_failed', details: eErr.details.map(d=>d.message) });
         const q = { guild_id: req.params.guildId };
-        if (req.query.type) q.type = String(req.query.type);
-        if (req.query.resolved) q.resolved = String(req.query.resolved) === 'true';
+        if (ev.type) q.type = String(ev.type);
+        if (typeof ev.resolved === 'boolean') q.resolved = ev.resolved;
         const list = await AutomodEventModel.find(q).sort({ createdAt: -1 }).limit(200).lean();
         return res.json({ success: true, events: list });
     } catch (e) {
@@ -1880,7 +1966,10 @@ app.post('/api/guild/:guildId/mod/automod/events/:id/review', async (req, res) =
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.status(501).json({ success: false, error: 'MongoDB required' });
         const { AutomodEventModel } = require('../utils/db/models');
-        const action = (req.body && req.body.action) ? String(req.body.action) : 'release';
+        const schema = Joi.object({ action: Joi.string().valid('release','confirm').default('release') });
+        const { error: aErr, value: aVal } = schema.validate(req.body || {}, { abortEarly: false });
+        if (aErr) return res.status(400).json({ success:false, error:'validation_failed', details: aErr.details.map(d=>d.message) });
+        const action = aVal.action;
         const update = { resolved: true, resolved_by: req.user.id, resolved_at: new Date() };
         const updated = await AutomodEventModel.findOneAndUpdate({ _id: req.params.id, guild_id: req.params.guildId }, { $set: update }, { new: true }).lean();
         if (!updated) return res.status(404).json({ success: false, error: 'Not found' });
@@ -1899,8 +1988,10 @@ app.get('/api/guild/:guildId/mod/appeals', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.json({ success: true, appeals: [] });
         const { AppealModel } = require('../utils/db/models');
+        const { error: aErr, value: aq } = Joi.object({ status: Joi.string().trim().max(32).optional() }).validate(req.query || {}, { convert: true });
+        if (aErr) return res.status(400).json({ success:false, error:'validation_failed', details: aErr.details.map(d=>d.message) });
         const q = { guild_id: req.params.guildId };
-        if (req.query.status) q.status = String(req.query.status);
+        if (aq.status) q.status = String(aq.status);
         const list = await AppealModel.find(q).sort({ createdAt: -1 }).limit(200).lean();
         return res.json({ success: true, appeals: list });
     } catch (e) {
@@ -1982,7 +2073,23 @@ app.post('/api/internal/modlog', express.json(), async (req, res) => {
         const token = (req.headers['x-internal-token'] || req.query.token || '').toString();
         const expected = process.env.INTERNAL_API_TOKEN || '';
         if (!expected || token !== expected) return res.status(403).json({ success: false, error: 'forbidden' });
-        const b = req.body || {};
+        // Validate payload (allow unknowns for forward-compat)
+        const baseSchema = Joi.object({
+            guild_id: Joi.string().trim().required(),
+            type: Joi.string().trim().max(64).required(),
+            kind: Joi.string().valid('automod').optional(),
+            user_id: Joi.string().trim().allow('', null),
+            staff_id: Joi.string().trim().allow('', null),
+            reason: Joi.string().allow('').max(2000),
+            duration_ms: Joi.number().integer().min(0),
+            message_id: Joi.string().trim().optional(),
+            channel_id: Joi.string().trim().optional(),
+            content: Joi.string().allow('').max(2000).optional(),
+            action: Joi.string().trim().max(64).optional(),
+            occurred_at: Joi.date().iso().optional()
+        }).unknown(true);
+        const { error: iErr, value: b } = baseSchema.validate(req.body || {}, { abortEarly: false, convert: true });
+        if (iErr) return res.status(400).json({ success:false, error:'validation_failed', details: iErr.details.map(d=>d.message) });
         if (!b.guild_id || !b.type) return res.status(400).json({ success: false, error: 'missing_fields' });
         if (!ensureMongoAvailable()) return res.json({ success: true });
         const { ModerationCaseModel, NotificationModel, AutomodEventModel } = require('../utils/db/models');
