@@ -1412,7 +1412,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
             }
             case 'template': {
                 const newTemplate = typeof data?.template === 'string' ? String(data.template) : 'classic';
-                const allowed = new Set(['classic','compact','premium','minimal']);
+                const allowed = new Set(['classic','compact','premium','minimal','gamer']);
                 const tpl = allowed.has(newTemplate) ? newTemplate : 'classic';
                 // Rebuild payload using existing theme for consistency
                 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
@@ -1451,6 +1451,17 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                         new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary)
                     );
                     rows = [r1, r2];
+                } else if (tpl === 'gamer') {
+                    embed
+                        .setTitle('Precisas de ajuda? Clica aí 👇')
+                        .setDescription('Escolhe o tipo de ajuda abaixo. Visual gamer, chill e funcional.');
+                    const r = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
+                        new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('👤').setStyle(ButtonStyle.Secondary)
+                    );
+                    rows = [r];
                 } else {
                     embed.setTitle('🎫 Centro de Suporte')
                         .setDescription('Escolhe o departamento abaixo para abrir um ticket privado com a equipa.')
