@@ -3178,11 +3178,14 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             );
             rows = [row1, row2];
         } else if (template === 'gamer') {
-            const hero = visualAssets?.realImages?.supportBanner || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1200&h=400&fit=crop&crop=center';
+            const guild = check.guild;
+            const iconUrl = guild?.iconURL({ size: 1024, extension: 'png' }) || guild?.iconURL({ size: 1024 }) || null;
+            const fallback = (visualAssets && visualAssets.realImages && visualAssets.realImages.supportBanner)
+                || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1200&h=400&fit=crop&crop=center';
             embed
                 .setTitle('Precisas de ajuda? Clica aí 👇')
                 .setDescription('Escolhe o tipo de ajuda abaixo. Visual gamer, chill e funcional.')
-                .setImage(hero);
+                .setImage(iconUrl || fallback);
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
                 new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
