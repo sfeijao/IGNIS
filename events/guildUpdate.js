@@ -18,6 +18,17 @@ module.exports = {
       const client = newGuild.client;
       const guildId = newGuild.id;
 
+      // Check guild setting: auto-refresh panels toggle (default: enabled)
+      let enabled = true;
+      try {
+        const storage = require('../utils/storage');
+        const cfg = await storage.getGuildConfig(guildId).catch(() => ({}));
+        if (cfg && Object.prototype.hasOwnProperty.call(cfg, 'autoRefreshPanels')) {
+          enabled = !!cfg.autoRefreshPanels;
+        }
+      } catch {}
+      if (!enabled) return;
+
       // Resolve panels from storage (Mongo preferred, fallback to SQLite if configured)
       let panels = [];
       let preferSqlite = (process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite';
@@ -26,19 +37,23 @@ module.exports = {
           const { isReady } = require('../utils/db/mongoose');
           if (isReady()) {
             const { PanelModel } = require('../utils/db/models');
-            panels = await PanelModel.find({ guild_id: guildId, type: 'tickets' }).lean();
+            panels = await PanelModel.find({ guild_id: guildId, type: { $in: ['tickets','verification'] } }).lean();
           } else {
             preferSqlite = true;
           }
         }
         if (preferSqlite) {
           const sqlite = require('../utils/storage-sqlite');
-          panels = await sqlite.getPanelsByType(guildId, 'tickets');
+          const t = await sqlite.getPanelsByType(guildId, 'tickets');
+          const v = await sqlite.getPanelsByType(guildId, 'verification');
+          panels = [...(Array.isArray(t)?t:[]), ...(Array.isArray(v)?v:[])];
         }
       } catch (e) {
         try {
           const sqlite = require('../utils/storage-sqlite');
-          panels = await sqlite.getPanelsByType(guildId, 'tickets');
+          const t = await sqlite.getPanelsByType(guildId, 'tickets');
+          const v = await sqlite.getPanelsByType(guildId, 'verification');
+          panels = [...(Array.isArray(t)?t:[]), ...(Array.isArray(v)?v:[])];
         } catch {}
       }
       if (!Array.isArray(panels) || panels.length === 0) return;
@@ -118,8 +133,28 @@ module.exports = {
           if (!ch || !ch.messages?.fetch || !p.message_id) continue;
           const msg = await ch.messages.fetch(p.message_id).catch(() => null);
           if (!msg) continue;
-          const payload = buildPayload(p.template, p.theme);
-          await msg.edit(payload).catch(() => {});
+          if (p.type === 'verification') {
+            // Preserve existing content/components; just ensure embed has server thumbnail
+            const currentEmbed = Array.isArray(msg.embeds) && msg.embeds[0] ? msg.embeds[0] : null;
+            let embed;
+            if (currentEmbed) {
+              embed = EmbedBuilder.from(currentEmbed);
+            } else {
+              embed = new EmbedBuilder()
+                .setTitle('🔒 Verificação do Servidor')
+                .setDescription('Clica em Verificar para concluir e ganhar acesso aos canais.')
+                .setColor(color);
+            }
+            if (iconThumb) embed.setThumbnail(iconThumb); else embed.setThumbnail(null);
+            const editPayload = { embeds: [embed] };
+            if (Array.isArray(msg.components) && msg.components.length) {
+              editPayload.components = msg.components;
+            }
+            await msg.edit(editPayload).catch(() => {});
+          } else {
+            const payload = buildPayload(p.template, p.theme);
+            await msg.edit(payload).catch(() => {});
+          }
         } catch (e) {
           // Best-effort, continue
         }

@@ -85,6 +85,10 @@
             <small class="text-secondary">Exemplo: { webhookRouting: { create: 'logs', close: 'tickets', update: 'updates', claim: 'updates' } }</small>
           </div>
           <div class="mt-12">
+            <div class="row-inline">
+              <input id="cfgAutoRefreshPanels" type="checkbox" />
+              <label for="cfgAutoRefreshPanels" title="Atualiza automaticamente os painéis quando o nome/ícone do servidor mudar">Auto-atualizar painéis (ícone/nome do servidor)</label>
+            </div>
             <button id="cfgSave" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>
           </div>
         </div>
@@ -96,6 +100,7 @@
   <style>
     .card-pad{padding:16px}
     .mt-12{margin-top:12px}
+    .row-inline{margin-bottom:12px;display:flex;align-items:center;gap:8px}
     .badge{padding:4px 8px;border-radius:999px;background:rgba(255,255,255,0.06);font-size:12px}
     .health-badge{margin-right:8px;display:inline-flex;align-items:center;gap:6px}
     .dot{width:10px;height:10px;border-radius:50%;display:inline-block}

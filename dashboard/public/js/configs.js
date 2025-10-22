@@ -4,6 +4,7 @@
   const logsSel = document.getElementById('cfgLogsChannel');
   const roleSel = document.getElementById('cfgStaffRole');
   const btn = document.getElementById('cfgSave');
+  const autoRefreshChk = document.getElementById('cfgAutoRefreshPanels');
   const routeCreate = document.getElementById('routeCreate');
   const routeClose = document.getElementById('routeClose');
   const routeUpdate = document.getElementById('routeUpdate');
@@ -50,6 +51,7 @@
       const cfg = d.config || {};
       if (cfg.logs_channel_id) logsSel.value = cfg.logs_channel_id;
       if (cfg.staff_role_id) roleSel.value = cfg.staff_role_id;
+      if (autoRefreshChk) autoRefreshChk.checked = (cfg.autoRefreshPanels !== false);
   const routing = (cfg.webhookRouting) || {};
       if (routeCreate) routeCreate.value = routing.create || 'tickets';
       if (routeClose) routeClose.value = routing.close || 'tickets';
@@ -78,6 +80,7 @@
       const updates = { 
         logs_channel_id: logsSel.value || null, 
         staff_role_id: roleSel.value || null,
+        autoRefreshPanels: autoRefreshChk ? !!autoRefreshChk.checked : true,
         webhookRouting: {
           create: routeCreate?.value || 'tickets',
           close: routeClose?.value || 'tickets',
