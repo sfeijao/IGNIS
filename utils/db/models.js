@@ -70,4 +70,55 @@ const TicketLogSchema = new mongoose.Schema({
 
 const TicketLogModel = mongoose.models.TicketLog || mongoose.model('TicketLog', TicketLogSchema);
 
-module.exports = { TicketModel, GuildConfigModel, PanelModel, TagModel, WebhookModel, TicketLogModel };
+// Moderation: generic case (warn/mute/ban/kick/note)
+const ModerationCaseSchema = new mongoose.Schema({
+  guild_id: { type: String, index: true },
+  user_id: { type: String, index: true },
+  staff_id: { type: String, index: true },
+  type: { type: String, enum: ['warn','mute','ban','kick','note'], index: true },
+  reason: { type: String, default: '' },
+  duration_ms: { type: Number, default: 0 },
+  status: { type: String, enum: ['open','archived','closed'], default: 'open', index: true },
+  data: { type: Object, default: {} },
+  occurred_at: { type: Date, default: Date.now }
+}, { timestamps: true });
+const ModerationCaseModel = mongoose.models.ModerationCase || mongoose.model('ModerationCase', ModerationCaseSchema);
+
+// Appeals for moderation cases
+const AppealSchema = new mongoose.Schema({
+  guild_id: { type: String, index: true },
+  user_id: { type: String, index: true },
+  case_id: { type: mongoose.Schema.Types.ObjectId, ref: 'ModerationCase', index: true },
+  message: { type: String, default: '' },
+  status: { type: String, enum: ['pending','accepted','rejected'], default: 'pending', index: true },
+  staff_id: { type: String, default: null },
+  staff_response: { type: String, default: '' }
+}, { timestamps: true });
+const AppealModel = mongoose.models.Appeal || mongoose.model('Appeal', AppealSchema);
+
+// Internal notifications (dashboard)
+const NotificationSchema = new mongoose.Schema({
+  guild_id: { type: String, index: true },
+  type: { type: String, index: true },
+  message: { type: String, default: '' },
+  data: { type: Object, default: {} },
+  read: { type: Boolean, default: false }
+}, { timestamps: true });
+const NotificationModel = mongoose.models.Notification || mongoose.model('Notification', NotificationSchema);
+
+// Automoderation events
+const AutomodEventSchema = new mongoose.Schema({
+  guild_id: { type: String, index: true },
+  user_id: { type: String, index: true },
+  type: { type: String, enum: ['spam','flood','offensive','link','other'], index: true },
+  message_id: { type: String },
+  channel_id: { type: String },
+  content: { type: String, default: '' },
+  action: { type: String, enum: ['flag','mute','kick','ban','none'], default: 'flag' },
+  resolved: { type: Boolean, default: false },
+  resolved_by: { type: String, default: null },
+  resolved_at: { type: Date, default: null }
+}, { timestamps: true });
+const AutomodEventModel = mongoose.models.AutomodEvent || mongoose.model('AutomodEvent', AutomodEventSchema);
+
+module.exports = { TicketModel, GuildConfigModel, PanelModel, TagModel, WebhookModel, TicketLogModel, ModerationCaseModel, AppealModel, NotificationModel, AutomodEventModel };

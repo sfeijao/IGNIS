@@ -1370,6 +1370,45 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         const gid = requireGuild(); if (!gid) return;
         window.location.href = `/moderation.html?guildId=${encodeURIComponent(gid)}`;
     };
+    // Moderation suite quick links
+    window.openIncidents = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/incidents.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.openLogsStats = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/logs-stats.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.openPermissions = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/permissions.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.openAutomoderation = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/automoderation.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.openAppeals = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/appeals.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.openNotifications = function(){
+        const gid = requireGuild(); if (!gid) return;
+        window.location.href = `/notifications.html?guildId=${encodeURIComponent(gid)}`;
+    };
+    window.exportModerationCSV = function(){
+        const gid = requireGuild(); if (!gid) return;
+        const period = prompt('Exportar período (YYYY-MM). Deixe em branco para mês atual:', '');
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth()+1).padStart(2,'0');
+        const per = (period && /^\d{4}-\d{2}$/.test(period)) ? period : `${yyyy}-${mm}`;
+        const a = document.createElement('a');
+        a.href = `/api/guild/${encodeURIComponent(gid)}/mod/export?format=csv&period=${encodeURIComponent(per)}`;
+        a.download = `ignis-moderation-${gid}-${per}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    };
     window.botSettings = function(){
         const gid = requireGuild(); if (!gid) return;
         window.location.href = `/bot-settings.html?guildId=${encodeURIComponent(gid)}`;

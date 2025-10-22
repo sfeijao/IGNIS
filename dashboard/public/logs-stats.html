@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IGNIS - Logs & Estatísticas</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="navbar-brand"><i class="fas fa-chart-bar"></i> Logs & Estatísticas</div>
+      <div class="navbar-user">
+        <a href="/dashboard" class="btn btn-glass"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="/logout" class="btn btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+      </div>
+    </div>
+  </nav>
+  <main class="main-content">
+    <div class="container">
+      <section class="dashboard-section fade-in">
+        <div class="grid grid-3 gap-12">
+          <div class="glass-card card-pad">
+            <h3>Tickets por dia</h3>
+            <canvas id="chartTickets"></canvas>
+          </div>
+          <div class="glass-card card-pad">
+            <h3>Tempo médio de resolução</h3>
+            <div id="avgRes"></div>
+          </div>
+          <div class="glass-card card-pad">
+            <h3>Ações de moderação por tipo</h3>
+            <canvas id="chartMod"></canvas>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script src="/js/utils/fetch-cache.js"></script>
+  <script src="/js/logs-stats.js"></script>
+  <style>.card-pad{padding:16px}</style>
+</body>
+</html>

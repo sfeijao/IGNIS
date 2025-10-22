@@ -1704,6 +1704,285 @@ app.post('/api/guild/:guildId/config', async (req, res) => {
     }
 });
 
+// ===================== Moderation APIs (Mongo only for persistence) =====================
+// Guard: only when bot available and user is guild admin
+function ensureMongoAvailable() {
+    const hasMongo = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
+    return hasMongo;
+}
+
+// List moderation cases with filters
+app.get('/api/guild/:guildId/mod/cases', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        if (!ensureMongoAvailable()) return res.json({ success: true, cases: [], total: 0 });
+        const { ModerationCaseModel } = require('../utils/db/models');
+        const q = { guild_id: req.params.guildId };
+        if (req.query.type) q.type = String(req.query.type);
+        if (req.query.userId) q.user_id = String(req.query.userId);
+        if (req.query.staffId) q.staff_id = String(req.query.staffId);
+        if (req.query.status) q.status = String(req.query.status);
+        const from = req.query.from ? new Date(req.query.from) : null;
+        const to = req.query.to ? new Date(req.query.to) : null;
+        if (from || to) q.occurred_at = {}; if (from && !Number.isNaN(from.getTime())) q.occurred_at.$gte = from; if (to && !Number.isNaN(to.getTime())) q.occurred_at.$lte = to;
+        let limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit||'25'), 10) || 25));
+        let page = Math.max(1, parseInt(String(req.query.page||'1'), 10) || 1);
+        const total = await ModerationCaseModel.countDocuments(q);
+        const list = await ModerationCaseModel.find(q).sort({ occurred_at: -1 }).skip((page-1)*limit).limit(limit).lean();
+        return res.json({ success: true, cases: list, total });
+    } catch (e) {
+        logger.error('Error listing moderation cases:', e);
+        return res.status(500).json({ success: false, error: 'Failed to list cases' });
+    }
+});
+
+// Create case (manual warn or other action for records)
+app.post('/api/guild/:guildId/mod/cases', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        if (!ensureMongoAvailable()) return res.status(501).json({ success: false, error: 'MongoDB required' });
+        const schema = Joi.object({
+            type: Joi.string().valid('warn','mute','ban','kick','note').required(),
+            userId: Joi.string().required(),
+            reason: Joi.string().allow('').max(1000).default(''),
+            durationMs: Joi.number().min(0).default(0)
+        });
+        const { error, value } = schema.validate(req.body||{}); if (error) return res.status(400).json({ success:false, error:'validation_failed', details: error.details.map(d=>d.message) });
+        const { ModerationCaseModel, NotificationModel } = require('../utils/db/models');
+        const doc = await ModerationCaseModel.create({ guild_id: req.params.guildId, user_id: value.userId, staff_id: req.user.id, type: value.type, reason: value.reason, duration_ms: value.durationMs || 0, status: 'open', occurred_at: new Date() });
+        try { await NotificationModel.create({ guild_id: req.params.guildId, type: 'mod_action', message: `${req.user.username||'Staff'} aplicou ${value.type} a ${value.userId}`, data: { caseId: String(doc._id), type: value.type, userId: value.userId } }); } catch {}
+        return res.json({ success: true, case: doc });
+    } catch (e) {
+        logger.error('Error creating moderation case:', e);
+        return res.status(500).json({ success: false, error: 'Failed to create case' });
+    }
+});
+
+// Archive/close a case
+app.post('/api/guild/:guildId/mod/cases/:id/archive', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        if (!ensureMongoAvailable()) return res.status(501).json({ success: false, error: 'MongoDB required' });
+        const { ModerationCaseModel } = require('../utils/db/models');
+        const updated = await ModerationCaseModel.findOneAndUpdate({ _id: req.params.id, guild_id: req.params.guildId }, { $set: { status: 'archived' } }, { new: true }).lean();
+        if (!updated) return res.status(404).json({ success: false, error: 'Not found' });
+        return res.json({ success: true, case: updated });
+    } catch (e) {
+        logger.error('Error archiving case:', e);
+        return res.status(500).json({ success: false, error: 'Failed to archive case' });
+    }
+});
+
+// Warns summary for a user
+app.get('/api/guild/:guildId/mod/warns/:userId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        if (!ensureMongoAvailable()) return res.json({ success: true, total: 0, risk: 'low' });
+        const { ModerationCaseModel } = require('../utils/db/models');
+        const total = await ModerationCaseModel.countDocuments({ guild_id: req.params.guildId, user_id: req.params.userId, type: 'warn', status: { $ne: 'archived' } });
+        const risk = total >= 5 ? 'high' : total >= 3 ? 'medium' : 'low';
+        return res.json({ success: true, total, risk });
+    } catch (e) {
+        logger.error('Error warn summary:', e);
+        return res.status(500).json({ success: false, error: 'Failed to fetch warn summary' });
+    }
+});
+
+// Stats for charts
+app.get('/api/guild/:guildId/mod/stats', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        if (!ensureMongoAvailable()) return res.json({ success: true, charts: { ticketsPerDay: [], avgResolutionMs: 0, modActionsByType: [] } });
+        const { ModerationCaseModel, TicketModel } = require('../utils/db/models');
+        const now = new Date();
+        const days = parseInt(String(req.query.days || '14'), 10) || 14;
+        const from = new Date(now.getTime() - days*24*3600*1000);
+        // Tickets per day
+        const tAgg = await TicketModel.aggregate([
+            { $match: { guild_id: req.params.guildId, created_at: { $gte: from } } },
+            { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$created_at' } }, count: { $sum: 1 } } },
+            { $sort: { _id: 1 } }
+        ]);
+        // Avg resolution (ms)
+        const rAgg = await TicketModel.aggregate([
+            { $match: { guild_id: req.params.guildId, closed_at: { $ne: null }, created_at: { $gte: from } } },
+            { $project: { delta: { $subtract: ['$closed_at', '$created_at'] } } },
+            { $group: { _id: null, avg: { $avg: '$delta' } } }
+        ]);
+        // Mod actions by type
+        const mAgg = await ModerationCaseModel.aggregate([
+            { $match: { guild_id: req.params.guildId, occurred_at: { $gte: from } } },
+            { $group: { _id: '$type', count: { $sum: 1 } } },
+            { $sort: { count: -1 } }
+        ]);
+        const charts = {
+            ticketsPerDay: tAgg.map(r => ({ date: r._id, count: r.count })),
+            avgResolutionMs: (rAgg[0] && rAgg[0].avg) || 0,
+            modActionsByType: mAgg.map(r => ({ type: r._id, count: r.count }))
+        };
+        return res.json({ success: true, charts });
+    } catch (e) {
+        logger.error('Error building stats:', e);
+        return res.status(500).json({ success: false, error: 'Failed to compute stats' });
+    }
+});
+
+// Automoderation events list
+app.get('/api/guild/:guildId/mod/automod/events', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        if (!ensureMongoAvailable()) return res.json({ success: true, events: [] });
+        const { AutomodEventModel } = require('../utils/db/models');
+        const q = { guild_id: req.params.guildId };
+        if (req.query.type) q.type = String(req.query.type);
+        if (req.query.resolved) q.resolved = String(req.query.resolved) === 'true';
+        const list = await AutomodEventModel.find(q).sort({ createdAt: -1 }).limit(200).lean();
+        return res.json({ success: true, events: list });
+    } catch (e) {
+        logger.error('Error listing automod events:', e);
+        return res.status(500).json({ success: false, error: 'Failed to list automod events' });
+    }
+});
+
+// Review automod event (release/confirm)
+app.post('/api/guild/:guildId/mod/automod/events/:id/review', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        if (!ensureMongoAvailable()) return res.status(501).json({ success: false, error: 'MongoDB required' });
+        const { AutomodEventModel } = require('../utils/db/models');
+        const action = (req.body && req.body.action) ? String(req.body.action) : 'release';
+        const update = { resolved: true, resolved_by: req.user.id, resolved_at: new Date() };
+        const updated = await AutomodEventModel.findOneAndUpdate({ _id: req.params.id, guild_id: req.params.guildId }, { $set: update }, { new: true }).lean();
+        if (!updated) return res.status(404).json({ success: false, error: 'Not found' });
+        return res.json({ success: true, event: updated });
+    } catch (e) {
+        logger.error('Error reviewing automod event:', e);
+        return res.status(500).json({ success: false, error: 'Failed to review event' });
+    }
+});
+
+// Appeals list
+app.get('/api/guild/:guildId/mod/appeals', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        if (!ensureMongoAvailable()) return res.json({ success: true, appeals: [] });
+        const { AppealModel } = require('../utils/db/models');
+        const q = { guild_id: req.params.guildId };
+        if (req.query.status) q.status = String(req.query.status);
+        const list = await AppealModel.find(q).sort({ createdAt: -1 }).limit(200).lean();
+        return res.json({ success: true, appeals: list });
+    } catch (e) {
+        logger.error('Error listing appeals:', e);
+        return res.status(500).json({ success: false, error: 'Failed to list appeals' });
+    }
+});
+
+// Appeal decision
+app.post('/api/guild/:guildId/mod/appeals/:id/decision', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        if (!ensureMongoAvailable()) return res.status(501).json({ success: false, error: 'MongoDB required' });
+        const schema = Joi.object({ status: Joi.string().valid('accepted','rejected').required(), response: Joi.string().allow('').max(2000).default('') });
+        const { error, value } = schema.validate(req.body||{}); if (error) return res.status(400).json({ success:false, error:'validation_failed', details: error.details.map(d=>d.message) });
+        const { AppealModel } = require('../utils/db/models');
+        const updated = await AppealModel.findOneAndUpdate({ _id: req.params.id, guild_id: req.params.guildId }, { $set: { status: value.status, staff_id: req.user.id, staff_response: value.response } }, { new: true }).lean();
+        if (!updated) return res.status(404).json({ success: false, error: 'Not found' });
+        return res.json({ success: true, appeal: updated });
+    } catch (e) {
+        logger.error('Error deciding appeal:', e);
+        return res.status(500).json({ success: false, error: 'Failed to decide appeal' });
+    }
+});
+
+// Notifications
+app.get('/api/guild/:guildId/mod/notifications', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        if (!ensureMongoAvailable()) return res.json({ success: true, notifications: [] });
+        const { NotificationModel } = require('../utils/db/models');
+        const list = await NotificationModel.find({ guild_id: req.params.guildId }).sort({ createdAt: -1 }).limit(50).lean();
+        return res.json({ success: true, notifications: list });
+    } catch (e) {
+        logger.error('Error listing notifications:', e);
+        return res.status(500).json({ success: false, error: 'Failed to list notifications' });
+    }
+});
+
+// Export CSV (moderation cases)
+app.get('/api/guild/:guildId/mod/export', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        if (!ensureMongoAvailable()) return res.status(501).json({ success: false, error: 'MongoDB required' });
+        const { ModerationCaseModel } = require('../utils/db/models');
+        const fmt = (req.query.format||'csv').toString().toLowerCase();
+        const period = (req.query.period||'').toString(); // e.g., 2025-10
+        let from, to;
+        if (/^\d{4}-\d{2}$/.test(period)) {
+            const [y,m] = period.split('-').map(n=>parseInt(n,10));
+            from = new Date(Date.UTC(y, m-1, 1, 0, 0, 0));
+            to = new Date(Date.UTC(y, m, 1, 0, 0, 0));
+        }
+        const q = { guild_id: req.params.guildId };
+        if (from && to) q.occurred_at = { $gte: from, $lt: to };
+        const list = await ModerationCaseModel.find(q).sort({ occurred_at: 1 }).lean();
+        if (fmt !== 'csv') return res.status(501).json({ success: false, error: 'format_not_supported' });
+        const header = ['id','type','user_id','staff_id','reason','duration_ms','status','occurred_at'];
+        const rows = list.map(d => [d._id, d.type, d.user_id, d.staff_id, (d.reason||'').replace(/\n/g,' '), d.duration_ms||0, d.status, (d.occurred_at||d.createdAt||'').toISOString()]);
+        const csv = [header.join(','), ...rows.map(r=>r.map(x=>`"${String(x||'').replace(/"/g,'""')}"`).join(','))].join('\n');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=moderation-${period||'export'}.csv`);
+        return res.send(csv);
+    } catch (e) {
+        logger.error('Error exporting moderation CSV:', e);
+        return res.status(500).json({ success: false, error: 'Failed to export' });
+    }
+});
+
+// Internal webhook for the bot to send moderation actions/logs securely
+app.post('/api/internal/modlog', express.json(), async (req, res) => {
+    try {
+        const token = (req.headers['x-internal-token'] || req.query.token || '').toString();
+        const expected = process.env.INTERNAL_API_TOKEN || '';
+        if (!expected || token !== expected) return res.status(403).json({ success: false, error: 'forbidden' });
+        const b = req.body || {};
+        if (!b.guild_id || !b.type) return res.status(400).json({ success: false, error: 'missing_fields' });
+        if (!ensureMongoAvailable()) return res.json({ success: true });
+        const { ModerationCaseModel, NotificationModel, AutomodEventModel } = require('../utils/db/models');
+        if (b.kind === 'automod') {
+            await AutomodEventModel.create({ guild_id: b.guild_id, user_id: b.user_id||null, type: b.type||'other', message_id: b.message_id||null, channel_id: b.channel_id||null, content: b.content||'', action: b.action||'flag' });
+        } else {
+            const doc = await ModerationCaseModel.create({ guild_id: b.guild_id, user_id: b.user_id||null, staff_id: b.staff_id||null, type: b.type, reason: b.reason||'', duration_ms: b.duration_ms||0, status: 'open', occurred_at: b.occurred_at ? new Date(b.occurred_at) : new Date() });
+            try { await NotificationModel.create({ guild_id: b.guild_id, type: 'mod_action', message: `${b.type} aplicado em ${b.user_id||'N/A'}`, data: { caseId: String(doc._id), type: b.type, userId: b.user_id||null } }); } catch {}
+        }
+        return res.json({ success: true });
+    } catch (e) {
+        logger.error('Internal modlog error:', e);
+        return res.status(500).json({ success: false, error: 'internal_error' });
+    }
+});
+
 // Bot Settings API (simple guild-level preferences with optional live-apply)
 app.get('/api/guild/:guildId/bot-settings', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });

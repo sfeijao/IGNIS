@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IGNIS - Incidentes</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="navbar-brand"><i class="fas fa-shield-alt"></i> Incidentes</div>
+      <div class="navbar-user">
+        <a href="/dashboard" class="btn btn-glass"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="/logout" class="btn btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+      </div>
+    </div>
+  </nav>
+  <main class="main-content">
+    <div class="container">
+      <section class="dashboard-section fade-in">
+        <div class="section-header">
+          <h1 class="section-title"><i class="fas fa-exclamation-triangle"></i> Casos de Moderação</h1>
+        </div>
+        <div class="glass-card card-pad">
+          <div class="grid grid-5 gap-8">
+            <div>
+              <label>Tipo</label>
+              <select id="fltType" class="input">
+                <option value="">Todos</option>
+                <option value="warn">Warn</option>
+                <option value="mute">Mute</option>
+                <option value="ban">Ban</option>
+                <option value="kick">Kick</option>
+                <option value="note">Nota</option>
+              </select>
+            </div>
+            <div>
+              <label>Utilizador</label>
+              <input id="fltUserId" class="input" placeholder="ID do utilizador" />
+            </div>
+            <div>
+              <label>Staff</label>
+              <input id="fltStaffId" class="input" placeholder="ID do staff" />
+            </div>
+            <div>
+              <label>Estado</label>
+              <select id="fltStatus" class="input">
+                <option value="">Todos</option>
+                <option value="open">Aberto</option>
+                <option value="archived">Arquivado</option>
+                <option value="closed">Fechado</option>
+              </select>
+            </div>
+            <div style="align-self:end">
+              <button id="btnSearch" class="btn btn-primary"><i class="fas fa-search"></i> Filtrar</button>
+            </div>
+          </div>
+          <div class="mt-12" id="casesContainer"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script src="/js/utils/fetch-cache.js"></script>
+  <script src="/js/incidents.js"></script>
+  <style>
+    .card-pad{padding:16px}
+    .mt-12{margin-top:12px}
+    .case-row{display:grid;grid-template-columns: 1fr 1fr 1fr 2fr 1fr 140px;gap:8px;align-items:center;padding:10px;border-radius:8px;background:rgba(255,255,255,0.04);margin-bottom:8px}
+    .case-row .pill{padding:4px 8px;border-radius:999px;background:rgba(255,255,255,0.06);font-size:12px}
+    .pill-red{background:#ef44441a;color:#ef4444}
+    .pill-yellow{background:#f59e0b1a;color:#f59e0b}
+    .pill-green{background:#22c55e1a;color:#22c55e}
+  </style>
+</body>
+</html>
