@@ -77,8 +77,8 @@
           notify(`Atenção: mapeamento aponta para tipos não configurados: ${missing.join(', ')}`, 'error');
         }
       } catch {}
-      const updates = { 
-        logs_channel_id: logsSel.value || null, 
+      const updates = {
+        logs_channel_id: logsSel.value || null,
         staff_role_id: roleSel.value || null,
         autoRefreshPanels: autoRefreshChk ? !!autoRefreshChk.checked : true,
         webhookRouting: {

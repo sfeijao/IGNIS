@@ -4,10 +4,10 @@ class IGNISDashboard {
         this.currentGuild = null;
         this.user = null;
         this.guilds = [];
-        
+
         this.init();
     }
-    
+
     async init() {
         // ========================================
 // IGNIS Dashboard - Sistema de Tickets Avançado
@@ -17,7 +17,7 @@ class IGNISDashboard {
 // Note: Arquivos como sharebx.js, css.js são de extensões do navegador, não nosso código
 
 console.log('🚀 Inicializando IGNIS Dashboard...');
-        
+
         try {
             await this.loadUser();
             await this.loadGuilds();
@@ -28,17 +28,17 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             this.showError('Erro ao carregar dashboard');
         }
     }
-    
+
     async loadUser() {
         try {
             const response = await fetch('/api/user');
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 this.user = data.user;
                 this.updateUserDisplay();
@@ -50,7 +50,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             window.location.href = '/login';
         }
     }
-    
+
     async loadGuilds() {
         try {
             // Client-side cache + request coalescing to avoid duplicate calls
@@ -148,36 +148,36 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             setTimeout(() => { el.remove(); }, 4000);
         } catch {}
     }
-    
+
     updateUserDisplay() {
         const userName = document.getElementById('userName');
         const userAvatar = document.getElementById('userAvatar');
-        
+
         if (userName && this.user) {
             userName.textContent = this.user.username;
         }
-        
+
         if (userAvatar && this.user?.avatar) {
             userAvatar.src = this.user.avatar;
         }
     }
-    
+
     displayGuilds() {
         const serverGrid = document.getElementById('serverGrid');
-        
+
         if (!serverGrid) return;
-        
+
         if (this.guilds.length === 0) {
             serverGrid.innerHTML = this.createNoServersMessage();
             return;
         }
-        
+
         const serversHtml = this.guilds.map(guild => this.createServerCard(guild)).join('');
         serverGrid.innerHTML = serversHtml;
-        
+
         // Add click events to server cards
         this.attachServerCardEvents();
-        
+
         // Add fade-in animation
         setTimeout(() => {
             const cards = serverGrid.querySelectorAll('.server-card');
@@ -186,17 +186,17 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             });
         }, 100);
     }
-    
+
     createServerCard(guild) {
-        const iconUrl = guild.icon 
+        const iconUrl = guild.icon
             ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`
             : null;
-        
+
         return `
             <div class="server-card glass-card" data-guild-id="${guild.id}">
                 <div class="server-info">
                     <div class="server-icon">
-                        ${iconUrl 
+                        ${iconUrl
                             ? `<img src="${iconUrl}" alt="${guild.name}">`
                             : guild.name.charAt(0).toUpperCase()
                         }
@@ -220,7 +220,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             </div>
         `;
     }
-    
+
     createNoServersMessage() {
         return `
             <div class="no-servers glass-card">
@@ -230,7 +230,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                     </div>
                     <h3>Nenhum servidor encontrado</h3>
                     <p>Você não tem acesso de administrador em nenhum servidor onde o IGNIS Bot esteja instalado.</p>
-                    <a href="https://discord.com/api/oauth2/authorize?client_id=${window.BOT_CLIENT_ID || 'YOUR_BOT_ID'}&permissions=8&scope=bot" 
+                    <a href="https://discord.com/api/oauth2/authorize?client_id=${window.BOT_CLIENT_ID || 'YOUR_BOT_ID'}&permissions=8&scope=bot"
                        class="btn btn-primary" target="_blank" rel="noopener">
                         <i class="fab fa-discord"></i>
                         Adicionar Bot ao Servidor
@@ -239,10 +239,10 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             </div>
         `;
     }
-    
+
     attachServerCardEvents() {
         const serverCards = document.querySelectorAll('.server-card[data-guild-id]');
-        
+
         serverCards.forEach(card => {
             card.addEventListener('click', () => {
                 const guildId = card.dataset.guildId;
@@ -260,37 +260,37 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             }
         });
     }
-    
+
     async selectGuild(guildId, cardElement) {
         try {
             // Update UI
             document.querySelectorAll('.server-card').forEach(card => {
                 card.classList.remove('selected');
             });
-            
+
             if (cardElement) {
                 cardElement.classList.add('selected');
             }
-            
+
             this.currentGuild = guildId;
-            
+
             // Hide server selection and show dashboard
             const serverSelection = document.getElementById('serverSelection');
             const dashboardContent = document.getElementById('dashboardContent');
-            
+
             if (serverSelection) {
                 serverSelection.style.display = 'none';
             }
-            
+
             if (dashboardContent) {
                 dashboardContent.classList.remove('hidden');
                 dashboardContent.classList.add('fade-in');
             }
-            
+
             // Load guild data
             await this.loadGuildData(guildId);
             await this.loadGuildTickets(guildId);
-            
+
         } catch (error) {
             console.error('Erro ao selecionar servidor:', error);
             this.showError('Erro ao carregar dados do servidor');
@@ -306,12 +306,12 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         }
         window.location.href = `/moderation.html?guildId=${encodeURIComponent(guildId)}`;
     }
-    
+
     async loadGuildData(guildId) {
         try {
             const response = await fetch(`/api/guild/${guildId}/stats`);
             const data = await response.json();
-            
+
             if (data.success && data.stats) {
                 this.updateStatsDisplay(data.stats);
             } else {
@@ -322,12 +322,12 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             this.updateStatsDisplay({});
         }
     }
-    
+
     async loadGuildTickets(guildId) {
         try {
             const response = await fetch(`/api/guild/${guildId}/tickets`);
             const data = await response.json();
-            
+
             if (data.success) {
                 this.displayTickets(data.tickets || []);
             } else {
@@ -338,7 +338,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             this.displayTickets([]);
         }
     }
-    
+
     updateStatsDisplay(stats) {
         const statElements = {
             memberCount: stats.memberCount || 0,
@@ -346,7 +346,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             roleCount: stats.roleCount || 0,
             boosterCount: stats.boosterCount || 0
         };
-        
+
         Object.entries(statElements).forEach(([key, value]) => {
             const element = document.getElementById(key);
             if (element) {
@@ -354,12 +354,12 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             }
         });
     }
-    
+
     displayTickets(tickets) {
         const ticketsList = document.getElementById('ticketsList');
-        
+
         if (!ticketsList) return;
-        
+
         if (tickets.length === 0) {
             ticketsList.innerHTML = `
                 <div class="no-tickets">
@@ -372,10 +372,10 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             `;
             return;
         }
-        
+
         const recentTickets = tickets.slice(0, 5);
         const ticketsHtml = recentTickets.map(ticket => this.createTicketCard(ticket)).join('');
-        
+
         ticketsList.innerHTML = `
             <div class="tickets-header">
                 <h4><i class="fas fa-clock"></i> Tickets Recentes</h4>
@@ -384,7 +384,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             <div class="tickets-list">${ticketsHtml}</div>
         `;
     }
-    
+
     createTicketCard(ticket) {
         const statusColors = {
             open: '#10B981',
@@ -393,16 +393,16 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             closed: '#6B7280',
             pending: '#8B5CF6'
         };
-        
+
         const priorityEmojis = {
             urgent: '🔴',
             high: '🟠',
             normal: '🟡',
             low: '🟢'
         };
-        
+
         const createdDate = new Date(ticket.created_at).toLocaleDateString('pt-PT');
-        
+
         return `
             <div class="ticket-card">
                 <div class="ticket-header">
@@ -428,79 +428,79 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             </div>
         `;
     }
-    
+
     animateNumber(element, targetValue) {
         const startValue = parseInt(element.textContent) || 0;
         const duration = 1000;
         const startTime = Date.now();
-        
+
         const animate = () => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
-            
+
             const currentValue = Math.round(startValue + (targetValue - startValue) * this.easeOutCubic(progress));
             element.textContent = currentValue.toLocaleString();
-            
+
             if (progress < 1) {
                 requestAnimationFrame(animate);
             }
         };
-        
+
         animate();
     }
-    
+
     easeOutCubic(t) {
         return 1 - Math.pow(1 - t, 3);
     }
-    
+
     setupEventListeners() {
         // Add any global event listeners here
         window.addEventListener('beforeunload', () => {
             console.log('Dashboard fechando...');
         });
     }
-    
+
     showError(message) {
         this.showNotification(message, 'error');
     }
-    
+
     showSuccess(message) {
         this.showNotification(message, 'success');
     }
-    
+
     showNotification(message, type = 'info') {
         const notification = document.createElement('div');
         notification.className = `notification notification-${type} slide-up`;
-        
-        const icon = type === 'error' ? 'fas fa-exclamation-circle' : 
+
+        const icon = type === 'error' ? 'fas fa-exclamation-circle' :
                     type === 'success' ? 'fas fa-check-circle' : 'fas fa-info-circle';
-        
+
         notification.innerHTML = `
             <i class="${icon}"></i>
             <span>${this.escapeHtml(message)}</span>
         `;
-        
+
         document.body.appendChild(notification);
-        
+
         setTimeout(() => {
             notification.style.animation = 'slideDown 0.3s ease-in';
             setTimeout(() => notification.remove(), 300);
         }, 3000);
     }
-    
+
     escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text || '';
         return div.innerHTML;
     }
-    
+
     // Advanced Ticket System Functions
     async loadAdvancedTickets() {
         if (!this.currentGuild) return;
-        
+
         const ticketsContainer = document.getElementById('ticketsList');
         if (!ticketsContainer) return;
-        
+
         try {
             ticketsContainer.innerHTML = `
                 <div class="loading">
@@ -508,10 +508,10 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                     Carregando tickets avançados...
                 </div>
             `;
-            
+
             const response = await fetch(`/api/guild/${this.currentGuild}/tickets`);
             const data = await response.json();
-            
+
             if (data.success) {
                 this.renderAdvancedTickets(data.tickets, data.stats);
             } else {
@@ -527,7 +527,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             `;
         }
     }
-    
+
     renderAdvancedTickets(tickets, stats) {
         const ticketsContainer = document.getElementById('ticketsList');
         this._allTickets = tickets || [];
@@ -537,7 +537,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         this._sort = persisted.sort || { by: 'created_at', dir: 'desc' };
         const filtered = this.applyTicketFilters(this._allTickets);
         const sorted = this.applyTicketSort(filtered);
-        
+
         if (tickets.length === 0) {
             ticketsContainer.innerHTML = `
                 <div class="empty-state">
@@ -550,11 +550,11 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             `;
             return;
         }
-        
+
         const controls = this.createAdvancedTicketControls();
         const ticketCards = sorted.map(ticket => this.createAdvancedTicketCard(ticket)).join('');
         const statsHtml = this.createAdvancedTicketStats(stats);
-        
+
         ticketsContainer.innerHTML = `
             ${statsHtml}
             ${controls}
@@ -726,7 +726,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             ch.classList.toggle('active', !!active);
         });
     }
-    
+
     createAdvancedTicketStats(stats) {
         return `
             <div class="ticket-stats-grid">
@@ -769,11 +769,11 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             </div>
         `;
     }
-    
+
     createAdvancedTicketCard(ticket) {
         const statusClass = this.getTicketStatusClass(ticket.status);
         const statusIcon = this.getTicketStatusIcon(ticket.status);
-        
+
         return `
             <div class="ticket-card advanced ${statusClass}" onclick="dashboard.openAdvancedTicketModal('${ticket.id}')">
                 <div class="ticket-header">
@@ -786,7 +786,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                         ${ticket.locked ? `<span class="ticket-locked"><i class="fas fa-lock"></i> Bloqueado</span>` : ''}
                     </div>
                 </div>
-                
+
                 <div class="ticket-info">
                     <div class="ticket-category">
                         <i class="fas fa-tag"></i>
@@ -797,11 +797,11 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                         ${ticket.timeAgo}
                     </div>
                 </div>
-                
+
                 <div class="ticket-description">
                     ${ticket.description || 'Sem descrição'}
                 </div>
-                
+
                 <div class="ticket-footer">
                     <div class="ticket-owner">
                         <img src="${ticket.ownerAvatar || '/default-avatar.svg'}" alt="Avatar" class="user-avatar-small">
@@ -814,7 +814,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                         </div>
                     ` : ''}
                 </div>
-                
+
                 <div class="ticket-actions">
                     ${this.getAdvancedTicketActions(ticket)}
                     <a class="btn btn-sm btn-glass" href="/dashboard/ticket.html?guildId=${this.currentGuild}&ticketId=${ticket.id}" onclick="event.stopPropagation();">Ver</a>
@@ -822,7 +822,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             </div>
         `;
     }
-    
+
     getTicketStatusClass(status) {
         const classes = {
             'open': 'status-open',
@@ -832,7 +832,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         };
         return classes[status] || 'status-unknown';
     }
-    
+
     getTicketStatusIcon(status) {
         const icons = {
             'open': 'fa-unlock',
@@ -842,7 +842,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         };
         return icons[status] || 'fa-question';
     }
-    
+
     formatTicketStatus(status) {
         const labels = {
             'open': 'Aberto',
@@ -852,10 +852,10 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         };
         return labels[status] || status;
     }
-    
+
     getAdvancedTicketActions(ticket) {
         let actions = [];
-        
+
         if (ticket.status === 'open') {
             actions.push(`
                 <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); dashboard.claimAdvancedTicket('${ticket.id}')">
@@ -864,7 +864,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 </button>
             `);
         }
-        
+
         if (['open', 'claimed'].includes(ticket.status)) {
             actions.push(`
                 <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); dashboard.closeAdvancedTicket('${ticket.id}')">
@@ -873,7 +873,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 </button>
             `);
         }
-        
+
         if (ticket.status === 'closed') {
             actions.push(`
                 <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); dashboard.reopenAdvancedTicket('${ticket.id}')">
@@ -882,15 +882,15 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 </button>
             `);
         }
-        
+
         return actions.join('');
     }
-    
+
     async openAdvancedTicketModal(ticketId) {
         try {
             const response = await fetch(`/api/guild/${this.currentGuild}/tickets/${ticketId}`);
             const data = await response.json();
-            
+
             if (data.success) {
                 this.showAdvancedTicketDetails(data.ticket);
             } else {
@@ -901,7 +901,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             this.showError('Erro ao carregar detalhes do ticket');
         }
     }
-    
+
     showAdvancedTicketDetails(ticket) {
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
@@ -916,7 +916,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                
+
                 <div class="modal-body">
                     <div class="ticket-details-grid">
                         <div class="ticket-info-panel">
@@ -960,7 +960,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                                     ` : ''}
                                 </div>
                             </div>
-                            
+
                             <div class="actions-card">
                                 <h3>Ações</h3>
                                 <div class="action-buttons">
@@ -968,7 +968,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="ticket-messages-panel">
                             <div class="messages-card">
                                 <h3>Histórico de Mensagens</h3>
@@ -999,7 +999,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                                     <div class="loading"><div class="loading-spinner"></div> A carregar histórico...</div>
                                 </div>
                             </div>
-                            
+
                             <div class="add-note-card">
                                 <h3>Adicionar Nota</h3>
                                 <div class="note-form">
@@ -1015,7 +1015,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
         // Fetch logs asynchronously and wire toolbar
         const sel = document.querySelector('.modal-overlay #logs-limit');
@@ -1120,10 +1120,10 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         }
         return this._ticketLogsCache[ticketId] || [];
     }
-    
+
     getModalAdvancedTicketActions(ticket) {
         let actions = [];
-        
+
         if (ticket.status === 'open') {
             actions.push(`
                 <button class="btn btn-primary" onclick="dashboard.claimAdvancedTicket('${ticket.id}', true)">
@@ -1132,7 +1132,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 </button>
             `);
         }
-        
+
         if (['open', 'claimed'].includes(ticket.status)) {
             actions.push(`
                 <button class="btn btn-danger" onclick="dashboard.closeAdvancedTicket('${ticket.id}', true)">
@@ -1141,7 +1141,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 </button>
             `);
         }
-        
+
         if (ticket.status === 'closed') {
             actions.push(`
                 <button class="btn btn-success" onclick="dashboard.reopenAdvancedTicket('${ticket.id}', true)">
@@ -1150,15 +1150,15 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 </button>
             `);
         }
-        
+
         return actions.join('');
     }
-    
+
     renderAdvancedTicketMessages(messages) {
         if (!messages || messages.length === 0) {
             return '<div class="no-messages">Nenhuma mensagem encontrada</div>';
         }
-        
+
         return messages.map(msg => `
             <div class="message-item">
                 <div class="message-header">
@@ -1180,7 +1180,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             </div>
         `).join('');
     }
-    
+
     async claimAdvancedTicket(ticketId, fromModal = false) {
         try {
             const response = await fetch(`/api/guild/${this.currentGuild}/tickets/${ticketId}/action`, {
@@ -1190,9 +1190,9 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 },
                 body: JSON.stringify({ action: 'claim' })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 this.showSuccess('Ticket reclamado com sucesso!');
                 if (fromModal) {
@@ -1207,24 +1207,24 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             this.showError('Erro ao reclamar ticket: ' + error.message);
         }
     }
-    
+
     async closeAdvancedTicket(ticketId, fromModal = false) {
         const reason = prompt('Motivo do fechamento (opcional):');
-        
+
         try {
             const response = await fetch(`/api/guild/${this.currentGuild}/tickets/${ticketId}/action`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     action: 'close',
                     data: { reason: reason || 'Fechado via dashboard' }
                 })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 this.showSuccess('Ticket fechado com sucesso!');
                 if (fromModal) {
@@ -1239,7 +1239,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             this.showError('Erro ao fechar ticket: ' + error.message);
         }
     }
-    
+
     async reopenAdvancedTicket(ticketId, fromModal = false) {
         try {
             const response = await fetch(`/api/guild/${this.currentGuild}/tickets/${ticketId}/action`, {
@@ -1249,9 +1249,9 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 },
                 body: JSON.stringify({ action: 'reopen' })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 this.showSuccess('Ticket reaberto com sucesso!');
                 if (fromModal) {
@@ -1266,29 +1266,29 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             this.showError('Erro ao reabrir ticket: ' + error.message);
         }
     }
-    
+
     async addAdvancedTicketNote(ticketId) {
         const noteContent = document.getElementById('ticketNote').value.trim();
-        
+
         if (!noteContent) {
             this.showError('Por favor, digite uma nota');
             return;
         }
-        
+
         try {
             const response = await fetch(`/api/guild/${this.currentGuild}/tickets/${ticketId}/action`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     action: 'addNote',
                     data: { content: noteContent }
                 })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 this.showSuccess('Nota adicionada com sucesso!');
                 document.getElementById('ticketNote').value = '';
@@ -1302,13 +1302,13 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             this.showError('Erro ao adicionar nota: ' + error.message);
         }
     }
-    
+
     showTicketStatistics() {
         if (!this.currentGuild) {
             this.showError('Selecione um servidor primeiro');
             return;
         }
-        
+
         // Carregar estatísticas reais do sistema de tickets
         this.loadAdvancedTickets().then(() => {
             this.showNotification('Estatísticas de tickets carregadas com sucesso!', 'success');
@@ -1407,7 +1407,7 @@ function viewTickets() {
         dashboard.showError('Nenhum servidor selecionado');
         return;
     }
-    
+
     dashboard.loadAdvancedTickets();
 }
 
@@ -1416,7 +1416,7 @@ function configureVerification() {
         dashboard.showError('Nenhum servidor selecionado');
         return;
     }
-    
+
     const gid = encodeURIComponent(dashboard.currentGuild);
     window.location.href = `/verification.html?guildId=${gid}`;
 }
@@ -1426,7 +1426,7 @@ function manageTags() {
         dashboard.showError('Nenhum servidor selecionado');
         return;
     }
-    
+
     const gid = encodeURIComponent(dashboard.currentGuild);
     window.location.href = `/tags.html?guildId=${gid}`;
 }
@@ -1445,7 +1445,7 @@ function viewLogs() {
         dashboard.showError('Nenhum servidor selecionado');
         return;
     }
-    
+
     const gid = encodeURIComponent(dashboard.currentGuild);
     window.location.href = `/logs.html?guildId=${gid}`;
 }
@@ -1464,7 +1464,7 @@ function botSettings() {
         dashboard.showError('Nenhum servidor selecionado');
         return;
     }
-    
+
     const gid = encodeURIComponent(dashboard.currentGuild);
     window.location.href = `/bot-settings.html?guildId=${gid}`;
 }
@@ -1474,7 +1474,7 @@ function serverDiagnostics() {
         dashboard.showError('Nenhum servidor selecionado');
         return;
     }
-    
+
     const gid = encodeURIComponent(dashboard.currentGuild);
     window.location.href = `/diagnostics.html?guildId=${gid}`;
 }
@@ -1484,7 +1484,7 @@ function backupData() {
         dashboard.showError('Nenhum servidor selecionado');
         return;
     }
-    
+
     const gid = encodeURIComponent(dashboard.currentGuild);
     window.location.href = `/backup.html?guildId=${gid}`;
 }
@@ -1494,7 +1494,7 @@ function botPerformance() {
         dashboard.showError('Nenhum servidor selecionado');
         return;
     }
-    
+
     const gid = encodeURIComponent(dashboard.currentGuild);
     window.location.href = `/performance.html?guildId=${gid}`;
 }
@@ -1504,7 +1504,7 @@ function customCommands() {
         dashboard.showError('Nenhum servidor selecionado');
         return;
     }
-    
+
     const gid = encodeURIComponent(dashboard.currentGuild);
     window.location.href = `/commands.html?guildId=${gid}`;
 }
@@ -1514,7 +1514,7 @@ function viewAllTickets() {
         dashboard.showError('Nenhum servidor selecionado');
         return;
     }
-    
+
     // Usar a função de tickets avançados já implementada
     dashboard.loadAdvancedTickets();
 }
@@ -1560,37 +1560,37 @@ const additionalStyles = `
         max-width: 400px;
         min-width: 250px;
     }
-    
+
     .notification-error {
         border-left: 4px solid #EF4444;
     }
-    
+
     .notification-success {
         border-left: 4px solid #10B981;
     }
-    
+
     .notification-info {
         border-left: 4px solid var(--primary);
     }
-    
+
     .no-servers, .no-tickets {
         padding: var(--space-2xl);
         text-align: center;
         color: var(--text-secondary);
     }
-    
+
     .no-servers-content, .no-tickets-content {
         max-width: 400px;
         margin: 0 auto;
     }
-    
+
     .no-servers-icon, .no-tickets-content i {
         font-size: 3rem;
         margin-bottom: var(--space-lg);
         opacity: 0.5;
         color: var(--primary);
     }
-    
+
     .tickets-header {
         display: flex;
         justify-content: space-between;
@@ -1599,7 +1599,7 @@ const additionalStyles = `
         padding-bottom: var(--space-md);
         border-bottom: 1px solid var(--glass-border);
     }
-    
+
     .tickets-header h4 {
         display: flex;
         align-items: center;
@@ -1607,7 +1607,7 @@ const additionalStyles = `
         margin: 0;
         color: var(--text-primary);
     }
-    
+
     .ticket-card {
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid var(--glass-border);
@@ -1616,13 +1616,13 @@ const additionalStyles = `
         margin-bottom: var(--space-md);
         transition: all var(--transition-fast);
     }
-    
+
     .ticket-card:hover {
         background: rgba(255, 255, 255, 0.05);
         border-color: var(--primary);
         transform: translateX(4px);
     }
-    
+
     .ticket-header {
         display: flex;
         justify-content: space-between;
@@ -1635,18 +1635,18 @@ const additionalStyles = `
         align-items: center;
         gap: 8px;
     }
-    
+
     .ticket-info {
         display: flex;
         align-items: center;
         gap: var(--space-sm);
     }
-    
+
     .ticket-id {
         font-weight: 600;
         color: var(--primary);
     }
-    
+
     .ticket-status {
         padding: var(--space-xs) var(--space-sm);
         border-radius: var(--radius-sm);
@@ -1666,18 +1666,18 @@ const additionalStyles = `
         color: #FCA5A5;
         border: 1px solid rgba(239, 68, 68, 0.25);
     }
-    
+
     .ticket-content h5 {
         margin: 0 0 var(--space-sm) 0;
         color: var(--text-primary);
     }
-    
+
     .ticket-content p {
         margin: 0;
         color: var(--text-secondary);
         font-size: 0.9rem;
     }
-    
+
     .ticket-meta {
         display: flex;
         gap: var(--space-lg);
@@ -1685,21 +1685,21 @@ const additionalStyles = `
         font-size: 0.8rem;
         color: var(--text-muted);
     }
-    
+
     .ticket-meta span {
         display: flex;
         align-items: center;
         gap: var(--space-xs);
     }
-    
+
     .server-status.online {
         color: #10B981;
     }
-    
+
     .server-status.offline {
         color: #EF4444;
     }
-    
+
     .btn-sm {
         padding: var(--space-xs) var(--space-sm);
         font-size: 0.8rem;

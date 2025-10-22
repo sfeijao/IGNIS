@@ -341,7 +341,7 @@
         const u = d.user;
         const avatar = document.getElementById('userAvatar');
         const name = document.getElementById('userName');
-        if (avatar && u.avatar) avatar.src = u.avatar; 
+        if (avatar && u.avatar) avatar.src = u.avatar;
         if (name) name.textContent = u.username;
       }
     } catch {}

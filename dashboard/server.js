@@ -70,12 +70,12 @@ const getCallbackURL = () => {
     if (process.env.CALLBACK_URL) {
         return process.env.CALLBACK_URL;
     }
-    
-    // Auto-detect based on environment  
-    const baseUrl = process.env.NODE_ENV === 'production' 
+
+    // Auto-detect based on environment
+    const baseUrl = process.env.NODE_ENV === 'production'
         ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'ignisbot-alberto.up.railway.app'}`
         : `http://localhost:${PORT}`;
-    
+
     return `${baseUrl}/auth/discord/callback`;
 };
 
@@ -415,7 +415,7 @@ app.get('/api/user', (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
-    
+
     res.json({
         success: true,
         user: {
@@ -488,28 +488,28 @@ app.get('/api/guild/:guildId/stats', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
-    
+
     try {
         const guildId = req.params.guildId;
         const client = global.discordClient;
-        
+
         if (!client) {
             return res.status(500).json({ success: false, error: 'Bot not available' });
         }
-        
+
         const guild = client.guilds.cache.get(guildId);
         if (!guild) {
             return res.status(404).json({ success: false, error: 'Guild not found' });
         }
-        
+
         const stats = {
             memberCount: guild.memberCount,
             channelCount: guild.channels.cache.size,
             roleCount: guild.roles.cache.size,
             boosterCount: guild.premiumSubscriptionCount || 0,
-            onlineCount: guild.members.cache.filter(member => 
-                member.presence?.status === 'online' || 
-                member.presence?.status === 'idle' || 
+            onlineCount: guild.members.cache.filter(member =>
+                member.presence?.status === 'online' ||
+                member.presence?.status === 'idle' ||
                 member.presence?.status === 'dnd'
             ).size
         };
@@ -520,9 +520,9 @@ app.get('/api/guild/:guildId/stats', async (req, res) => {
             const memMB = Math.round(process.memoryUsage().rss / 1024 / 1024);
             pushPerfSample(guildId, { cpu, memMB, ticketsOpen: 0, activeUsers: stats.onlineCount });
         } catch {}
-        
+
         res.json({ success: true, stats });
-        
+
     } catch (error) {
         logger.error('Error fetching guild stats:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch stats' });
@@ -767,11 +767,11 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
-    
+
     try {
         const guildId = req.params.guildId;
         const client = global.discordClient;
-        
+
         if (!client) {
             return res.status(500).json({ success: false, error: 'Bot not available' });
         }
@@ -898,7 +898,7 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
             stats,
             pagination: { page, pageSize, total, totalPages }
         });
-        
+
     } catch (error) {
         logger.error('Error fetching tickets:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch tickets' });
@@ -1312,7 +1312,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 return res.status(500).json({ success: false, error: 'Panels storage not available' });
             }
         }
-        
+
         // Suportar guardar painéis detetados (IDs sintéticos começados por 'detected:')
         if (action === 'save' && panelId.startsWith('detected:')) {
             try {
@@ -3266,11 +3266,11 @@ app.get('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
-    
+
     try {
         const { guildId, ticketId } = req.params;
         const client = global.discordClient;
-        
+
         if (!client) {
             return res.status(500).json({ success: false, error: 'Bot not available' });
         }
@@ -3351,7 +3351,7 @@ app.get('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
         }
 
         res.json({ success: true, ticket: enrichedTicket });
-        
+
     } catch (error) {
         logger.error('Error fetching ticket details:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch ticket details' });
@@ -3458,12 +3458,12 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
-    
+
     try {
         const { guildId, ticketId } = req.params;
         const { action, data } = req.body;
         const client = global.discordClient;
-        
+
         if (!client) {
             return res.status(500).json({ success: false, error: 'Bot not available' });
         }
@@ -3587,7 +3587,7 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
         }
 
         res.json({ success, message });
-        
+
     } catch (error) {
         logger.error('Error performing ticket action:', error);
         res.status(500).json({ success: false, error: 'Failed to perform action' });
@@ -3601,7 +3601,7 @@ function formatTimeAgo(date) {
     const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
+
     if (days > 0) return `${days}d atrás`;
     if (hours > 0) return `${hours}h atrás`;
     if (minutes > 0) return `${minutes}m atrás`;

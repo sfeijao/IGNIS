@@ -29,7 +29,7 @@
     userName: document.getElementById('userName'),
     userAvatar: document.getElementById('userAvatar'),
   };
-  
+
   function notify(msg, type='info') {
     const div = document.createElement('div');
     div.className = `notification notification-${type} slide-up`;
