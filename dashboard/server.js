@@ -3066,7 +3066,7 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
     if (type === 'verification') {
         if (!['minimal','rich'].includes(template)) template = 'minimal';
     } else {
-        if (!['classic','compact','premium','minimal'].includes(template)) template = 'classic';
+        if (!['classic','compact','premium','minimal','gamer'].includes(template)) template = 'classic';
     }
     if (!channel_id) return res.status(400).json({ success: false, error: 'Missing channel_id' });
         // Idempotency/lock: avoid duplicate sends for same (guild, channel, type) within a short window
@@ -3177,6 +3177,19 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
                 new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary)
             );
             rows = [row1, row2];
+        } else if (template === 'gamer') {
+            const hero = visualAssets?.realImages?.supportBanner || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1200&h=400&fit=crop&crop=center';
+            embed
+                .setTitle('Precisas de ajuda? Clica aí 👇')
+                .setDescription('Escolhe o tipo de ajuda abaixo. Visual gamer, chill e funcional.')
+                .setImage(hero);
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
+                new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('👤').setStyle(ButtonStyle.Secondary)
+            );
+            rows = [row];
         } else {
             // classic (default)
             embed

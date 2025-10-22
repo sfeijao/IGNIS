@@ -87,13 +87,14 @@
       const detectedBadge = p.detected ? '<span class="badge badge-warn">detectado</span>' : '<span class="badge badge-ok">guardado</span>';
       const currentTemplate = (p.template || 'classic');
       const tFriendly = {
+        gamer: 'Gamer',
         classic: 'Clássico',
         compact: 'Compacto',
         premium: 'Premium',
         minimal: 'Minimal'
       };
       const nextTemplate = (cur) => {
-        const order = ['classic','compact','premium','minimal'];
+        const order = ['gamer','classic','compact','premium','minimal'];
         const idx = order.indexOf(cur);
         return order[(idx >= 0 ? idx : 0) + 1 === order.length ? 0 : (idx >= 0 ? idx + 1 : 1)];
       };
@@ -239,8 +240,8 @@
     if (!preview) return;
     const theme = themeSel?.value || 'dark';
     const type = typeSel?.value || 'tickets';
-    const template = templateSel?.value || 'classic';
-    preview.className = `preview-embed ${theme}`;
+  const template = templateSel?.value || 'classic';
+  preview.className = `preview-embed ${theme} ${template==='gamer'?'gamer':''}`;
     if (type === 'verification') {
       // Filter template options to verification-compatible
       if (templateSel) {
@@ -279,11 +280,14 @@
           templateSel.value = 'classic';
         }
       }
-      const title = template === 'premium' ? '🎫 Centro de Suporte • Premium'
+      const title = template === 'gamer' ? 'Precisas de ajuda? Clica aí 👇'
+                   : template === 'premium' ? '🎫 Centro de Suporte • Premium'
                    : template === 'compact' ? '🎫 Tickets • Compacto'
                    : template === 'minimal' ? '🎫 Abrir ticket'
                    : '🎫 Centro de Suporte';
-      const desc = template === 'minimal'
+      const desc = template === 'gamer'
+        ? 'Escolhe o tipo de ajuda abaixo. Visual gamer, chill e funcional.'
+        : template === 'minimal'
         ? 'Clica num botão para abrir um ticket privado.'
         : 'Escolhe o departamento abaixo para abrir um ticket privado com a equipa.';
       const fields = [
@@ -296,6 +300,13 @@
             { label: 'Suporte', emoji: '🎫', style: 'primary' },
             { label: 'Problema', emoji: '⚠️', style: 'danger' },
           ]
+        : template === 'gamer'
+        ? [
+            { label: 'Suporte Técnico', emoji: '🔧', style: 'neon-purple' },
+            { label: 'Reportar Problema', emoji: '⚠️', style: 'neon-red' },
+            { label: 'Dúvidas Gerais', emoji: '💬', style: 'neon-blue' },
+            { label: 'Suporte de Conta', emoji: '👤', style: 'neon-blue' }
+          ]
         : [
             { label: 'Suporte Técnico', emoji: '🔧', style: 'primary' },
             { label: 'Reportar Problema', emoji: '⚠️', style: 'danger' },
@@ -303,12 +314,20 @@
             { label: 'Dúvidas Gerais', emoji: '💬', style: 'secondary' },
             { label: 'Suporte de Conta', emoji: '🧾', style: 'secondary' }
           ];
-      preview.innerHTML = `
-        <div class="preview-title">${title}</div>
-        <div class="preview-desc">${desc}</div>
-        <div class="preview-fields">${fields.map(f => `<div class="preview-field"><div class="text-secondary" style="font-size:12px">${f.name}</div><div>${f.value}</div></div>`).join('')}</div>
-        <div class="preview-buttons">${buttons.map(b => `<div class="preview-btn">${b.emoji} ${b.label}</div>`).join('')}</div>
-      `;
+      if (template === 'gamer') {
+        preview.innerHTML = `
+          <div class="preview-title">${title}</div>
+          <div class="preview-desc">${desc}</div>
+          <div class="neon-row">${buttons.map(b => `<div class="neon-btn ${b.style}"><i>${b.emoji}</i>${b.label}</div>`).join('')}</div>
+        `;
+      } else {
+        preview.innerHTML = `
+          <div class="preview-title">${title}</div>
+          <div class="preview-desc">${desc}</div>
+          <div class="preview-fields">${fields.map(f => `<div class="preview-field"><div class="text-secondary" style="font-size:12px">${f.name}</div><div>${f.value}</div></div>`).join('')}</div>
+          <div class="preview-buttons">${buttons.map(b => `<div class="preview-btn">${b.emoji} ${b.label}</div>`).join('')}</div>
+        `;
+      }
     }
   }
 
