@@ -131,6 +131,9 @@ body {
 .text-secondary { color: var(--text-secondary); }
 .w-120 { width: 120px; }
 .pad-24 { padding: 24px; }
+.card-pad { padding: 16px; }
+.mt-12 { margin-top: 12px; }
+.align-self-end { align-self: end; }
 .flex-wrap { flex-wrap: wrap; }
 .minw-180 { min-width: 180px; }
 /* Compact utility for tighter pages (tickets/logs) */
@@ -149,6 +152,13 @@ body {
 .dot-green{background:#22c55e}
 .dot-red{background:#ef4444}
 .dot-gray{background:#6b7280}
+
+/* Incidents list layout */
+.case-row{display:grid;grid-template-columns: 1fr 1fr 1fr 2fr 1fr 140px;gap:8px;align-items:center;padding:10px;border-radius:8px;background:rgba(255,255,255,0.04);margin-bottom:8px}
+.case-row .pill{padding:4px 8px;border-radius:999px;background:rgba(255,255,255,0.06);font-size:12px}
+.pill-red{background:#ef44441a;color:#ef4444}
+.pill-yellow{background:#f59e0b1a;color:#f59e0b}
+.pill-green{background:#22c55e1a;color:#22c55e}
 
 /* Confirm Block (in-modal plan preview) */
 .confirm-block {
