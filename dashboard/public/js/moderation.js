@@ -2023,7 +2023,6 @@
     });
   });
   document.getElementById('pagePrev')?.addEventListener('click', ()=>{ if(page>1){ page--; persistPrefs(); loadPaged(); }});
-        if(!pillAddedFamilies.has(famKey)) pillAddedFamilies.add(famKey);
   document.getElementById('pageNext')?.addEventListener('click', ()=>{ page++; persistPrefs(); loadPaged(); });
   document.getElementById('pageInput')?.addEventListener('change', (e)=>{ const v=parseInt(e.target.value,10); if(!isNaN(v)&&v>0){ page=v; persistPrefs(); loadPaged(); }});
   document.getElementById('perPage')?.addEventListener('change', (e)=>{ perPage=parseInt(e.target.value,10)||100; page=1; persistPrefs(); loadPaged(); });

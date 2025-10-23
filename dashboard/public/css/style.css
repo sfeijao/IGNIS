@@ -132,6 +132,7 @@ body {
 .w-120 { width: 120px; }
 .pad-24 { padding: 24px; }
 .card-pad { padding: 16px; }
+.gap-12 { gap: 12px; }
 .mt-12 { margin-top: 12px; }
 .align-self-end { align-self: end; }
 .flex-wrap { flex-wrap: wrap; }

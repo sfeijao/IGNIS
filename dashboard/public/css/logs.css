@@ -1,0 +1,8 @@
+/* IGNIS - Logs page styles */
+
+/* Utilities local to this page if not globally available */
+.gap-12{gap:12px}
+
+/* Logs list */
+.log-item{background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);border-radius:12px;padding:12px;margin-bottom:8px}
+.log-meta{color:var(--text-secondary);font-size:.9rem}

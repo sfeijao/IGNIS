@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IGNIS - Moderação</title>
   <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/moderation.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -378,81 +379,5 @@
       });
     })();
   </script>
-    <style>
-    /* Light theme overrides for this page using CSS variables */
-    html[data-theme="light"] {
-      --bg-primary: #F7F7FB;
-      --bg-secondary: #FFFFFF;
-      --bg-tertiary: #F1F5F9;
-      --bg-card: rgba(0,0,0,0.03);
-      --bg-glass: rgba(99,102,241,0.08);
-      --text-primary: #1F2937;
-      --text-secondary: #4B5563;
-      --text-muted: #6B7280;
-      --glass-border: rgba(0,0,0,0.12);
-    }
-    /* High contrast accessibility mode */
-    html.high-contrast {
-      --bg-primary: #000000 !important;
-      --bg-secondary: #0B0B0B !important;
-      --bg-tertiary: #141414 !important;
-      --bg-card: #101010 !important;
-      --bg-glass: rgba(255,255,255,0.08) !important;
-      --text-primary: #FFFFFF !important;
-      --text-secondary: #E5E7EB !important;
-      --text-muted: #D1D5DB !important;
-      --border-color: #FFFFFF !important;
-      --accent-blue: #60A5FA !important;
-      --accent-green: #34D399 !important;
-      --accent-red: #F87171 !important;
-      --accent-yellow: #FBBF24 !important;
-      --accent-purple: #C084FC !important;
-      --accent-pink: #F472B6 !important;
-      --accent-indigo: #818CF8 !important;
-      --shadow-elev-1: 0 0 0 1px #ffffff, 0 0 0 2px #000000;
-      --shadow-elev-2: 0 0 0 1px #ffffff, 0 2px 4px rgba(0,0,0,.6);
-    }
-    html.high-contrast .feed-item { border:1px solid #FFFFFF; }
-    html.high-contrast .feed-card { border:1px solid #FFFFFF; }
-    html.high-contrast .btn { box-shadow:0 0 0 2px #fff inset; }
-    html.high-contrast .btn.btn-secondary { background:#2563EB; color:#fff; }
-    html.high-contrast .segmented { border:1px solid #fff; }
-    html.high-contrast #segIndicator { background:#fff; mix-blend-mode:normal; }
-    html.high-contrast .chip { border-color:#fff; }
-    html.high-contrast #globalTooltip { background:#111; border:1px solid #fff; color:#fff; }
-    .shortcut-list{list-style:none;padding:0;margin:0;display:grid;gap:6px;font-size:.8rem}
-    .shortcut-list li{background:var(--bg-tertiary);padding:6px 10px;border-radius:6px;line-height:1.3}
-    kbd{display:inline-block;padding:2px 6px;border:1px solid var(--glass-border);border-radius:4px;font-size:.65rem;background:var(--bg-elev);font-weight:600;margin:0 2px}
-    .recency-legend{font-size:.65rem;opacity:.8}
-    .modal-wide{max-width:640px}
-    .progress-global{position:relative;height:6px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;opacity:0;transition:opacity .25s}
-    html[data-theme="light"] .progress-global{background:rgba(0,0,0,0.12)}
-    .progress-global[data-active="true"]{opacity:1}
-    .progress-global span{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,var(--accent-indigo),var(--accent-purple));transition:width .25s}
-    .pagination-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .pagination-label{display:flex;align-items:center;gap:4px;font-size:.7rem}
-    .page-info{font-size:.65rem}
-    .latency-delta{display:inline-block;margin-left:6px;font-size:.6rem;padding:2px 6px;background:var(--bg-tertiary);border-radius:12px;opacity:.75}
-  .group-mod{border:1px solid var(--glass-border);border-radius:12px;margin-bottom:10px;background:rgba(255,255,255,.03);padding:8px 10px}
-  .group-mod[aria-expanded="false"] .group-body{display:none}
-  .group-head{display:flex;align-items:center;gap:10px;font-size:.8rem;font-weight:600}
-  .group-title{flex:1}
-  .group-count{font-size:.65rem;opacity:.7}
-  .group-types{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 6px 34px}
-  .group-types .gt-pill{background:rgba(255,255,255,.07);border:1px solid var(--glass-border);border-radius:10px;padding:2px 6px;font-size:.6rem;display:inline-flex;align-items:center;gap:4px}
-  html.high-contrast .group-types .gt-pill{background:#000;border-color:#fff}
-  .group-mod.pinned{border-color:#f59e0b;box-shadow:0 0 0 1px rgba(245,158,11,.45)}
-  .group-head .pin-btn{margin-left:4px}
-  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);border:0}
-  /* Roles list extracted style */
-  #rmRolesList{max-height:260px;overflow:auto;border:1px solid var(--glass-border);border-radius:8px;padding:6px;display:flex;flex-direction:column;gap:4px}
-  #presetDiffModal .diff-add{background:rgba(16,185,129,.15);color:#34d399;padding:2px 4px;border-radius:4px}
-  #presetDiffModal .diff-rem{background:rgba(239,68,68,.18);color:#f87171;padding:2px 4px;border-radius:4px;text-decoration:line-through}
-  #presetDiffModal .diff-changed{background:rgba(245,158,11,.18);color:#fbbf24;padding:2px 4px;border-radius:4px}
-  .preset-diff-modal-size{max-width:760px}
-  .preset-diff-summary{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
-  .preset-diff-details{max-height:300px;overflow:auto;border:1px solid var(--glass-border);border-radius:8px;padding:8px;font-size:.7rem;line-height:1.3}
-  .preset-diff-actions{display:flex;flex-wrap:wrap;gap:8px}
-    </style>
 </body>
 </html>
