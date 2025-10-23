@@ -1,0 +1,3 @@
+/* IGNIS - Permissions page styles */
+
+.perm-row{display:grid;grid-template-columns:1fr repeat(5,140px);gap:8px;align-items:center;padding:8px;border-radius:8px;background:rgba(255,255,255,0.04);margin-bottom:6px}
