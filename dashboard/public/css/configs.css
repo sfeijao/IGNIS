@@ -1,0 +1,5 @@
+/* Configs page styles extracted from inline <style> */
+.card-pad{padding:16px}
+.mt-12{margin-top:12px}
+.row-inline{margin-bottom:12px;display:flex;align-items:center;gap:8px}
+/* Health badge and dot styles centralized in style.css */

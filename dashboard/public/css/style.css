@@ -153,7 +153,7 @@ body {
 .badge.soft { background: rgba(255,255,255,0.06); color: var(--text-secondary); border-color: var(--glass-border); }
 
 /* Health dots */
-.health-badge{margin-right:8px}
+.health-badge{margin-right:8px;display:inline-flex;align-items:center;gap:6px}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
 .dot-green{background:#22c55e}
 .dot-red{background:#ef4444}

@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="/css/webhooks.css" />
 </head>
 <body>
   <nav class="navbar">
@@ -64,10 +65,7 @@
       </section>
     </div>
   </main>
-  <!-- Inline Modal for adding missing webhook types -->
-  <style>
-    .hidden{display:none}
-  </style>
+  <!-- Modal and page styles moved to /css/webhooks.css -->
   <div id="modalOverlay" class="modal-overlay hidden">
     <div class="modal hidden">
       <div class="modal-header">
@@ -109,28 +107,7 @@
       }
     })();
   </script>
-  <style>
-    .card-pad{padding:16px}
-    .mb-16{margin-bottom:16px}
-    .mt-8{margin-top:8px}
-    .mt-12{margin-top:12px}
-    .actions-row{display:flex;gap:8px}
-    .badge{padding:4px 8px;border-radius:999px;background:rgba(255,255,255,0.06);font-size:12px}
-    .health-badge{margin-right:8px;display:inline-flex;align-items:center;gap:6px}
-    .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
-    .dot-green{background:#22c55e}
-    .dot-red{background:#ef4444}
-    .dot-gray{background:#6b7280}
-    /* Modal Styles */
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:2000}
-    .modal{background:var(--glass-bg);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:12px;max-width:640px;width:100%;padding:16px}
-    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-    .modal-body{max-height:60vh;overflow:auto}
-    .modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
-    .type-row{display:grid;grid-template-columns:120px 1fr;gap:8px;align-items:center;margin-bottom:10px}
-    .input-row{display:flex;gap:8px}
-    .input{width:100%}
-  </style>
+  
   <script>
     (async () => {
       try { const r = await fetch('/api/user'); if (r.ok) { const d = await r.json(); if (d.success) { userName.textContent = d.user.username; if (d.user.avatar) userAvatar.src = d.user.avatar; } } } catch {}

@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="/css/configs.css" />
 </head>
 <body>
   <nav class="navbar">
@@ -97,17 +98,7 @@
   </main>
   <script src="/js/utils/fetch-cache.js"></script>
   <script src="/js/configs.js"></script>
-  <style>
-    .card-pad{padding:16px}
-    .mt-12{margin-top:12px}
-    .row-inline{margin-bottom:12px;display:flex;align-items:center;gap:8px}
-    .badge{padding:4px 8px;border-radius:999px;background:rgba(255,255,255,0.06);font-size:12px}
-    .health-badge{margin-right:8px;display:inline-flex;align-items:center;gap:6px}
-    .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
-    .dot-green{background:#22c55e}
-    .dot-red{background:#ef4444}
-    .dot-gray{background:#6b7280}
-  </style>
+  
   <script>
     (async () => {
       try { const r = await fetch('/api/user'); if (r.ok) { const d = await r.json(); if (d.success) { userName.textContent = d.user.username; if (d.user.avatar) userAvatar.src = d.user.avatar; } } } catch {}
