@@ -325,7 +325,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             this.showError('Selecione um servidor primeiro');
             return;
         }
-        window.location.href = `/moderation.html?guildId=${encodeURIComponent(guildId)}`;
+        window.location.href = `/moderation-react.html?guildId=${encodeURIComponent(guildId)}`;
     }
 
     async loadGuildData(guildId) {
@@ -1516,7 +1516,7 @@ function openModeration() {
         return;
     }
     const gid = encodeURIComponent(dashboard.currentGuild);
-    window.location.href = `/moderation.html?guildId=${gid}`;
+    window.location.href = `/moderation-react.html?guildId=${gid}`;
 }
 
 function botSettings() {

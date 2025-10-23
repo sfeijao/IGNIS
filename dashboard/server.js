@@ -2443,6 +2443,127 @@ app.get('/api/guild/:guildId/logs/export', async (req, res) => {
     }
 });
 
+// Logs stats endpoint: aggregate counts over period for faster charts
+app.get('/api/guild/:guildId/logs/stats', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const period = String(req.query.period || '7d').toLowerCase();
+        const now = new Date();
+        const from = new Date(now);
+        if (period === '24h') from.setDate(now.getDate() - 1);
+        else if (period === '30d') from.setDate(now.getDate() - 30);
+        else from.setDate(now.getDate() - 7);
+        const all = await storage.getLogs(req.params.guildId, 1000);
+        let filtered = Array.isArray(all) ? all.slice() : [];
+        // Apply shared filters similar to list API
+        const type = (req.query.type || '').toString().toLowerCase().trim();
+        const qFrom = req.query.from ? new Date(req.query.from) : null;
+        const qTo = req.query.to ? new Date(req.query.to) : null;
+        const userId = (req.query.userId || '').toString().trim();
+        const moderatorId = (req.query.moderatorId || '').toString().trim();
+        const channelId = (req.query.channelId || '').toString().trim();
+        if (type) {
+            const t = type.toLowerCase();
+            if (t.endsWith('*')) {
+                const prefix = t.slice(0, -1);
+                filtered = filtered.filter(l => (l.type || '').toLowerCase().startsWith(prefix));
+            } else {
+                filtered = filtered.filter(l => (l.type || '').toLowerCase() === t);
+            }
+        }
+        // Time window: intersection of 'period from' and optional query from/to
+        filtered = filtered.filter(l => new Date(l.timestamp) >= from);
+        if (qFrom && !Number.isNaN(qFrom.getTime())) filtered = filtered.filter(l => new Date(l.timestamp) >= qFrom);
+        if (qTo && !Number.isNaN(qTo.getTime())) filtered = filtered.filter(l => new Date(l.timestamp) <= qTo);
+        if (userId) filtered = filtered.filter(l => {
+            const d = l.data || {};
+            return (`${d.userId||''}` === userId) || (`${l.actor_id||''}` === userId) || (`${d.authorId||''}` === userId);
+        });
+        if (moderatorId) filtered = filtered.filter(l => {
+            const d = l.data || {};
+            return (`${d.executorId||''}` === moderatorId) || (`${l.actor_id||''}` === moderatorId);
+        });
+        if (channelId) filtered = filtered.filter(l => {
+            const d = l.data || {};
+            return (`${d.channelId||''}` === channelId);
+        });
+        // Aggregate per day (YYYY-MM-DD)
+        const byDay = new Map();
+        const toKey = (d) => new Date(d).toISOString().slice(0,10);
+        for (const l of filtered) {
+            const key = toKey(l.timestamp);
+            if (!byDay.has(key)) byDay.set(key, { date:key, deletes:0, bans:0, voice:0, warns:0, other:0 });
+            const row = byDay.get(key);
+            const t = String(l.type||'').toLowerCase();
+            if (t.startsWith('message_delete')) row.deletes++;
+            else if (t.startsWith('ban')) row.bans++;
+            else if (t.startsWith('voice')) row.voice++;
+            else if (t.startsWith('warn')) row.warns++;
+            else row.other++;
+        }
+        const series = Array.from(byDay.values()).sort((a,b)=>a.date.localeCompare(b.date));
+        return res.json({ success:true, period, series });
+    } catch (e) {
+        logger.error('Error building logs stats:', e);
+        return res.status(500).json({ success: false, error: 'Failed to build stats' });
+    }
+});
+
+// Simple SSE stream for logs updates (server-driven updates instead of client polling)
+app.get('/api/guild/:guildId/logs/stream', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).end();
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).end();
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).end();
+
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+
+        const send = (event, data) => {
+            res.write(`event: ${event}\n`);
+            res.write(`data: ${JSON.stringify(data)}\n\n`);
+        };
+
+        let alive = true;
+        req.on('close', () => { alive = false; clearInterval(timer); });
+
+        // Initial snapshot (last 50)
+        const storage = require('../utils/storage');
+        const all = await storage.getLogs(req.params.guildId, 200);
+        const sorted = Array.isArray(all) ? all.sort((a,b)=> new Date(b.timestamp)-new Date(a.timestamp)) : [];
+        const init = sorted.slice(0,50);
+        send('init', { logs: init });
+
+        let lastTs = init[0]?.timestamp ? new Date(init[0].timestamp).getTime() : 0;
+        const timer = setInterval(async () => {
+            if (!alive) return;
+            try {
+                const all2 = await storage.getLogs(req.params.guildId, 200);
+                const newest = Array.isArray(all2) ? all2.filter(l => new Date(l.timestamp).getTime() > lastTs) : [];
+                if (newest.length) {
+                    newest.sort((a,b)=> new Date(a.timestamp)-new Date(b.timestamp));
+                    lastTs = new Date(newest[newest.length-1].timestamp).getTime();
+                    send('update', { logs: newest });
+                } else {
+                    // heartbeat
+                    res.write(': keep-alive\n\n');
+                }
+            } catch {}
+        }, 10000);
+    } catch {
+        try { res.end(); } catch {}
+    }
+});
+
 // Moderation event details by log id
 app.get('/api/guild/:guildId/moderation/event/:logId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });

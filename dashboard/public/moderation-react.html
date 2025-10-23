@@ -234,12 +234,13 @@
       );
     }
 
-    function Charts({ data, period, onPeriod }) {
-      const series = useMemo(() => {
-        // Aggregate per day (simple client-side demo)
+  function Charts({ guildId, filters, data, period, onPeriod }) {
+      // Helper: client-side fallback aggregation
+      const aggregateClient = React.useCallback((logs) => {
         const byDay = new Map();
-        (data||[]).forEach(l => {
+        (logs||[]).forEach(l => {
           const d = new Date(l.timestamp);
+          if (isNaN(d)) return;
           const key = d.toISOString().slice(0,10);
           const t = (l.type||'').toLowerCase();
           const cat = Object.keys(TYPE_META).find(k => t===k || t.startsWith(k)) || 'other';
@@ -252,7 +253,51 @@
           else row.other++;
         });
         return Array.from(byDay.values()).sort((a,b)=>a.date.localeCompare(b.date));
-      }, [data]);
+      }, []);
+
+      const [series, setSeries] = useState(() => aggregateClient(data));
+      const [statsLoading, setStatsLoading] = useState(false);
+      const [statsError, setStatsError] = useState('');
+
+      // Build stats query from filters
+      const buildStatsQuery = React.useCallback(() => {
+        const p = new URLSearchParams();
+        if (filters?.type) p.set('type', filters.type);
+        if (filters?.moderatorId) p.set('moderatorId', filters.moderatorId);
+        if (filters?.channelId) p.set('channelId', filters.channelId);
+        if (filters?.userId) p.set('userId', filters.userId);
+        if (filters?.from) p.set('from', filters.from);
+        if (filters?.to) p.set('to', filters.to);
+        p.set('period', period);
+        return p.toString();
+      }, [filters, period]);
+
+      // Fetch server-backed stats with graceful fallback to client aggregation
+      useEffect(() => {
+        if (!guildId) { setSeries(aggregateClient(data)); return; }
+        let cancelled = false;
+        setStatsLoading(true);
+        setStatsError('');
+        const qs = buildStatsQuery();
+        fetch(`/api/guild/${guildId}/logs/stats?${qs}`, { credentials:'same-origin' })
+          .then(r => {
+            if (!r.ok) throw new Error('Falha ao carregar estatísticas');
+            return r.json();
+          })
+          .then(body => {
+            if (cancelled) return;
+            const serverSeries = Array.isArray(body?.series) ? body.series : (Array.isArray(body?.data) ? body.data : null);
+            if (serverSeries) setSeries(serverSeries);
+            else setSeries(aggregateClient(data));
+          })
+          .catch(() => {
+            if (cancelled) return;
+            setStatsError('Sem estatísticas do servidor – a usar cálculo local');
+            setSeries(aggregateClient(data));
+          })
+          .finally(() => { if (!cancelled) setStatsLoading(false); });
+        return () => { cancelled = true; };
+      }, [guildId, period, data, aggregateClient, buildStatsQuery]);
 
       return (
         <div className="glass-card card-pad mt-12">
@@ -264,6 +309,8 @@
               ))}
             </div>
           </div>
+          {statsLoading && <div className="text-secondary text-sm mb-2"><i className="fas fa-spinner fa-spin mr-2"></i>A carregar estatísticas…</div>}
+          {statsError && <div className="text-secondary text-xs mb-2">{statsError}</div>}
           <div style={{height: 280}}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={series} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
@@ -342,11 +389,58 @@
       // Initial load
       useEffect(() => { fetchLogs({ append:false, resetOffset:true }); }, [guildId]);
 
-      // Auto-refresh polling
+      // Auto-refresh via SSE with incremental merge when filters are empty; fallback to polling otherwise
       useEffect(() => {
-        if (!autoRefresh) return;
-        const id = setInterval(() => fetchLogs({ append:false, resetOffset:true }), 15000);
-        return () => clearInterval(id);
+        if (!autoRefresh || !guildId) return;
+        let es = null; let pollId = null;
+
+        const startPolling = () => {
+          if (pollId) return;
+          pollId = setInterval(() => fetchLogs({ append:false, resetOffset:true }), 15000);
+        };
+
+        const filtersActive = !!(filters.type || filters.moderatorId || filters.channelId || filters.userId || filters.from || filters.to);
+        const dedupeMerge = (incoming) => {
+          if (!Array.isArray(incoming) || !incoming.length) return;
+          setItems(prev => {
+            const seen = new Set(prev.map(x => (x.id || x._id || x.timestamp)));
+            // server sends ascending; we want newest first -> reverse for prepend order
+            const add = [];
+            for (let i=incoming.length-1; i>=0; i--) {
+              const k = incoming[i]?.id || incoming[i]?._id || incoming[i]?.timestamp;
+              if (!seen.has(k)) add.push(incoming[i]);
+            }
+            const next = add.length ? [...add, ...prev] : prev;
+            // cap to 500
+            return next.slice(0, 500);
+          });
+        };
+
+        try {
+          es = new EventSource(`/api/guild/${guildId}/logs/stream`);
+          es.addEventListener('init', (ev) => {
+            try {
+              const payload = JSON.parse(ev.data||'{}');
+              if (!filtersActive && Array.isArray(payload.logs)) dedupeMerge(payload.logs);
+              else fetchLogs({ append:false, resetOffset:true });
+            } catch { fetchLogs({ append:false, resetOffset:true }); }
+          });
+          es.addEventListener('update', (ev) => {
+            try {
+              const payload = JSON.parse(ev.data||'{}');
+              if (!filtersActive && Array.isArray(payload.logs)) dedupeMerge(payload.logs);
+              else fetchLogs({ append:false, resetOffset:true });
+            } catch { fetchLogs({ append:false, resetOffset:true }); }
+          });
+          es.onerror = () => { try { es && es.close(); } catch {} startPolling(); };
+        } catch {
+          startPolling();
+        }
+
+        return () => {
+          if (es) { try { es.close(); } catch {} }
+          if (pollId) clearInterval(pollId);
+        };
       }, [autoRefresh, guildId, filters]);
 
       const onSearch = (f) => { setFilters(f); fetchLogs({ append:false, resetOffset:true }); };
@@ -388,7 +482,7 @@
             />
           </div>
 
-          <Charts data={items} period={period} onPeriod={setPeriod} />
+          <Charts guildId={guildId} filters={filters} data={items} period={period} onPeriod={setPeriod} />
 
           {error && <div className="mt-4 text-red-400">{error}</div>}
           {modal && <DetailsModal log={modal} onClose={()=>setModal(null)} />}
