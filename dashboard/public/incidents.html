@@ -29,7 +29,7 @@
         <div class="glass-card card-pad">
           <div class="grid grid-5 gap-8">
             <div>
-              <label>Tipo</label>
+              <label for="fltType">Tipo</label>
               <select id="fltType" class="input">
                 <option value="">Todos</option>
                 <option value="warn">Warn</option>
@@ -40,15 +40,15 @@
               </select>
             </div>
             <div>
-              <label>Utilizador</label>
+              <label for="fltUserId">Utilizador</label>
               <input id="fltUserId" class="input" placeholder="ID do utilizador" />
             </div>
             <div>
-              <label>Staff</label>
+              <label for="fltStaffId">Staff</label>
               <input id="fltStaffId" class="input" placeholder="ID do staff" />
             </div>
             <div>
-              <label>Estado</label>
+              <label for="fltStatus">Estado</label>
               <select id="fltStatus" class="input">
                 <option value="">Todos</option>
                 <option value="open">Aberto</option>
@@ -56,7 +56,7 @@
                 <option value="closed">Fechado</option>
               </select>
             </div>
-            <div style="align-self:end">
+            <div class="align-self-end">
               <button id="btnSearch" class="btn btn-primary"><i class="fas fa-search"></i> Filtrar</button>
             </div>
           </div>
@@ -70,6 +70,7 @@
   <style>
     .card-pad{padding:16px}
     .mt-12{margin-top:12px}
+    .align-self-end{align-self:end}
     .case-row{display:grid;grid-template-columns: 1fr 1fr 1fr 2fr 1fr 140px;gap:8px;align-items:center;padding:10px;border-radius:8px;background:rgba(255,255,255,0.04);margin-bottom:8px}
     .case-row .pill{padding:4px 8px;border-radius:999px;background:rgba(255,255,255,0.06);font-size:12px}
     .pill-red{background:#ef44441a;color:#ef4444}
