@@ -1,4 +1,27 @@
 (function(){
+  // Ensure guild context
+  try{
+    const params = new URLSearchParams(window.location.search);
+    const gid = params.get('guildId');
+    if(!gid){
+      const last = localStorage.getItem('IGNIS_LAST_GUILD');
+      if(last){
+        const q = new URLSearchParams(window.location.search);
+        q.set('guildId', last);
+        const next = `${window.location.pathname}?${q.toString()}${window.location.hash||''}`;
+        window.location.replace(next);
+        return;
+      } else {
+        window.location.href = '/dashboard';
+        return;
+      }
+    } else {
+      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch{}
+    }
+  }catch{}
+})();
+
+(function(){
   const params = new URLSearchParams(window.location.search);
   const guildId = params.get('guildId');
   const els = {
@@ -120,6 +143,33 @@
   n.innerHTML = '<i class="fas ' + (type==='error'?'fa-exclamation-circle': type==='success'?'fa-check-circle':'fa-info-circle') + '"></i><span>' + msg + '</span>';
     document.body.appendChild(n);
     setTimeout(()=>{n.style.animation='slideDown 0.3s ease-in'; setTimeout(()=>n.remove(),300);},2500);
+  }
+
+  // Discrete update status + progress bar wiring
+  let __pendingUpdates = 0;
+  function setUpdating(on){
+    try {
+      __pendingUpdates += on ? 1 : -1;
+      if (__pendingUpdates < 0) __pendingUpdates = 0;
+      const active = __pendingUpdates > 0;
+      const us = document.getElementById('updateStatus');
+      const gp = document.getElementById('globalProgress');
+      if (us) us.style.display = active ? 'inline-flex' : 'none';
+      if (gp) {
+        gp.setAttribute('aria-hidden', active ? 'false' : 'true');
+        const span = gp.querySelector('span');
+        if (span) {
+          if (active) {
+            // simple ramp animation
+            span.style.width = '30%';
+            setTimeout(()=>{ span.style.width = '65%'; }, 200);
+          } else {
+            span.style.width = '100%';
+            setTimeout(()=>{ span.style.width = '0%'; }, 200);
+          }
+        }
+      }
+    } catch {}
   }
 
   // Modal helpers and polished confirmation UI
@@ -244,6 +294,7 @@
   async function loadSummary(){
     if (!guildId) return; // guildId is required
     try {
+      setUpdating(true);
       const w = (els.window?.value||'24h');
       const u = new URL(`/api/guild/${guildId}/moderation/summary`, window.location.origin);
       u.searchParams.set('window', w);
@@ -311,6 +362,7 @@
         }
       } catch {}
     } catch(e){ console.error(e); }
+    finally { setUpdating(false); }
   }
   // Preference helpers
   function persistPrefs(){
@@ -505,6 +557,7 @@
   async function loadFeed(){
     if (!guildId) return notify('guildId em falta','error');
     els.feed.innerHTML = `<div class="loading"><span class="loading-spinner"></span> A carregar...</div>`;
+    setUpdating(true);
     try {
       const u = new URL(`/api/guild/${guildId}/logs`, window.location.origin);
       u.searchParams.set('type', buildTypeParam());
@@ -513,6 +566,7 @@
       const r = await fetch(u, { credentials: 'same-origin' });
       const d = await r.json();
       if (!r.ok || !d.success) throw new Error(d.error || `HTTP ${r.status}`);
+      try { window.__lastLogs = Array.isArray(d.logs)? d.logs.slice(): []; } catch {}
       renderFeed(d.logs||[]);
       renderActiveFilters();
       // Track head for live-append
@@ -520,7 +574,58 @@
         lastTopId = d.logs[0].id;
         lastTopTs = d.logs[0].timestamp;
       }
-    } catch(e){ console.error(e); notify(e.message,'error'); els.feed.innerHTML = `<div class="no-tickets">Erro ao carregar feed</div>`; }
+    } catch(e){ console.error(e); notify(e.message,'error'); els.feed.innerHTML = `<div class=\"no-tickets\">Erro ao carregar feed</div>`; }
+    finally { setUpdating(false); }
+  }
+
+  // Basic client-side paging (fetch up to page*perPage, slice the last page)
+  async function loadPaged(){
+    if (!guildId) return notify('guildId em falta','error');
+    // When grouped mode is active, pagination is disabled – render full set
+    const disablePaging = !!groupByMod;
+    const prevBtn = document.getElementById('pagePrev');
+    const nextBtn = document.getElementById('pageNext');
+    const pageIn = document.getElementById('pageInput');
+    const info = document.getElementById('pageInfo');
+    const perSel = document.getElementById('perPage');
+    if (disablePaging) { if(prevBtn) prevBtn.disabled=true; if(nextBtn) nextBtn.disabled=true; if(pageIn) pageIn.disabled=true; if(perSel) perSel.disabled=true; await loadFeed(); if(info) info.textContent = 'Agrupado por moderador (sem paginação)'; return; }
+    if(perSel) perSel.disabled=false; if(pageIn) pageIn.disabled=false;
+  const limit = Math.min(1000, Math.max(1, perPage));
+    els.feed.innerHTML = `<div class="loading"><span class="loading-spinner"></span> A carregar...</div>`;
+    setUpdating(true);
+    try {
+  const u = new URL(`/api/guild/${guildId}/logs`, window.location.origin);
+      u.searchParams.set('type', buildTypeParam());
+      buildRange(u);
+  u.searchParams.set('limit', String(limit));
+  u.searchParams.set('page', String(page));
+      const r = await fetch(u, { credentials: 'same-origin' });
+      const d = await r.json();
+      if (!r.ok || !d.success) throw new Error(d.error || (`HTTP ${r.status}`));
+      const items = Array.isArray(d.logs) ? d.logs : [];
+  window.__lastLogs = items.slice();
+  const view = items; // server-side paged
+  renderFeed(view);
+      if (pageIn) pageIn.value = String(page);
+      if (prevBtn) prevBtn.disabled = page <= 1;
+      // Fetch total count to compute total pages accurately (within storage cap)
+      try {
+        const cu = new URL(`/api/guild/${guildId}/logs/count`, window.location.origin);
+        cu.searchParams.set('type', buildTypeParam());
+        buildRange(cu);
+        const cr = await fetch(cu, { credentials:'same-origin' });
+        const cd = await cr.json();
+        if (cr.ok && cd && typeof cd.total === 'number') {
+          totalLogs = cd.total;
+        } else {
+          totalLogs = items.length; // fallback
+        }
+      } catch { totalLogs = items.length; }
+  const totalPages = Math.max(1, Math.ceil((totalLogs||0) / Math.max(1, perPage)));
+      if (nextBtn) nextBtn.disabled = page >= totalPages;
+  if (info) info.textContent = `Página ${page} de ${totalPages} • Itens ${view.length} de ${totalLogs}`;
+    } catch(e){ console.error(e); notify(e.message,'error'); els.feed.innerHTML = `<div class=\"no-tickets\">Erro ao carregar feed</div>`; }
+    finally { setUpdating(false); }
   }
 
   function formatDateGroup(ts){
@@ -1497,12 +1602,24 @@
   async function exportCsv(){
     const fmt = (els.exportFormat?.value||'csv');
     try {
-      const logs = await fetchAllForExport();
+      // Always use server endpoint as data source; paginate if applicable
+      let pageToSend = 1; let limitToSend = 1000;
+      const pagingActive = !groupByMod && document.getElementById('perPage');
+      if (pagingActive) { pageToSend = Math.max(1, page); limitToSend = Math.max(1, Math.min(1000, perPage)); }
+      const u = new URL('/api/guild/' + guildId + '/logs/export', window.location.origin);
+      u.searchParams.set('type', buildTypeParam());
+      buildRange(u);
+      u.searchParams.set('page', String(pageToSend));
+      u.searchParams.set('limit', String(limitToSend));
+      u.searchParams.set('format', 'json');
+      const r = await fetch(u, { credentials:'same-origin' });
+      const logs = await r.json();
+      if (!r.ok) throw new Error('Falha exportação: HTTP ' + r.status);
       if(fmt==='json'){
         const blob = new Blob([JSON.stringify(logs,null,2)], { type:'application/json' });
-  const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='logs-' + Date.now() + '.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){ URL.revokeObjectURL(url); },4000); return;
+        const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='logs-' + Date.now() + '.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(function(){ URL.revokeObjectURL(url); },4000); return;
       }
-      // CSV (refactored to use export configuration + optional raw column)
+      // CSV (use focused export configuration + optional raw column)
       const { headers, headerPretty, rows } = computeHeadersAndRows(logs);
       let finalHeaders = headerPretty.slice();
       let outRows = rows.map(function(r){ return r.slice(); });
@@ -1840,7 +1957,7 @@
   }
 
   // Events
-  els.btnRefresh?.addEventListener('click', async ()=>{ await loadSummary(); await loadFeed(); });
+  els.btnRefresh?.addEventListener('click', async ()=>{ await loadSummary(); await loadPaged(); });
   els.btnAuto?.addEventListener('click', toggleAuto);
   document.getElementById('btnStream')?.addEventListener('click', toggleStream);
   document.getElementById('btnLatency')?.addEventListener('click', toggleLatency);
@@ -2373,78 +2490,7 @@
   document.getElementById('cfgPresetSyncPushQuick')?.addEventListener('click', handleSyncPush);
   document.getElementById('cfgPresetSyncDeleteQuick')?.addEventListener('click', handleSyncDelete);
 
-  // ===== Role Manager Frontend =====
-  async function fetchRolesList(){
-    try {
-      const guildId = new URLSearchParams(location.search).get('guildId');
-      const r = await fetch('/api/guild/' + guildId + '/roles');
-      const j = await r.json(); if(!j.success) throw new Error(j.error||'falha');
-      return j.roles || [];
-    } catch(e){ notify('Falha ao obter cargos','error'); return []; }
-  }
-  function renderRoles(list){
-    const host = document.getElementById('rmRolesList'); if(!host) return;
-    const term = (document.getElementById('rmSearchRole')?.value||'').toLowerCase();
-    const tpl = document.getElementById('tplRoleItem');
-    host.innerHTML='';
-    list.filter(r=> !term || r.name.toLowerCase().includes(term) || r.id.includes(term)).forEach(r=>{
-      const node = tpl.content.firstElementChild.cloneNode(true);
-      node.dataset.roleId = r.id;
-      node.querySelector('.ri-name').textContent = r.name;
-      node.querySelector('.ri-pos').textContent = '#' + r.position;
-      node.querySelector('.ri-color').style.background = r.color || '#666';
-      node.querySelector('.ri-up').addEventListener('click', ()=> moveRole(r.id,'up',1));
-      node.querySelector('.ri-down').addEventListener('click', ()=> moveRole(r.id,'down',1));
-      node.querySelector('.ri-del').addEventListener('click', ()=> deleteRole(r.id, r.name));
-      host.appendChild(node);
-    });
-  }
-  async function refreshRoles(){
-    const roles = await fetchRolesList();
-    window.__rolesCache = roles;
-    renderRoles(roles);
-  }
-  async function createRole(){
-    const name = document.getElementById('rmNewRoleName')?.value.trim();
-    const colorRaw = document.getElementById('rmNewRoleColor')?.value.trim();
-    if(!name) return notify('Nome obrigatório','warn');
-    try {
-      const guildId = new URLSearchParams(location.search).get('guildId');
-      const r = await fetch('/api/guild/' + guildId + '/roles', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, color: colorRaw || undefined }) });
-      const j = await r.json(); if(!j.success) throw new Error(j.error||'Falha');
-      notify('Cargo criado','success');
-      document.getElementById('rmNewRoleName').value='';
-      document.getElementById('rmNewRoleColor').value='';
-      refreshRoles();
-    } catch(e){ notify('Erro a criar cargo','error'); }
-  }
-  async function deleteRole(id,name){
-    if(!confirm('Apagar cargo ' + name + '?')) return;
-    try {
-      const guildId = new URLSearchParams(location.search).get('guildId');
-      const r = await fetch('/api/guild/' + guildId + '/roles/' + id, { method:'DELETE' });
-      const j = await r.json(); if(!j.success) throw new Error(j.error||'Falha');
-      notify('Cargo apagado','success');
-      refreshRoles();
-    } catch(e){ notify('Erro ao apagar cargo','error'); }
-  }
-  async function moveRole(id,direction,delta){
-    try {
-      const guildId = new URLSearchParams(location.search).get('guildId');
-      const r = await fetch('/api/guild/' + guildId + '/roles/' + id + '/move', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ direction, delta }) });
-      const j = await r.json(); if(!j.success) throw new Error(j.error||'Falha');
-      refreshRoles();
-    } catch(e){ notify('Erro ao mover cargo','error'); }
-  }
-  (function initRoleManager(){
-    if(!document.getElementById('roleManagerPanel')) return;
-    document.getElementById('rmBtnCreateRole')?.addEventListener('click', createRole);
-    document.getElementById('rmBtnRefreshRoles')?.addEventListener('click', refreshRoles);
-    document.getElementById('rmSearchRole')?.addEventListener('input', ()=>{
-      if(window.__rolesCache) renderRoles(window.__rolesCache);
-    });
-    refreshRoles();
-  })();
+  // Removed legacy Role Manager panel (UI no longer present)
 
   attachAutocomplete(els.userId, 'members');
   attachAutocomplete(els.moderatorId, 'members');
@@ -2471,7 +2517,7 @@
 
   // Public API for socket-driven refreshes
   window.ModerationPage = {
-    refresh: async () => { await loadSummary(); await loadFeed(); },
+    refresh: async () => { await loadSummary(); await loadPaged(); },
     handleLiveEvent: async (_payload) => {
       // If auto is ON, let existing debounced full refresh handle it
       if (els.btnAuto.getAttribute('aria-pressed') === 'true') return false;
@@ -2608,7 +2654,7 @@
   // Initial load
   restorePrefs();
   loadSummary();
-  loadFeed();
+  loadPaged();
   renderActiveFilters();
   refreshPresetSelect();
   document.getElementById('btnSavePreset')?.addEventListener('click', ()=>{
@@ -2660,7 +2706,7 @@
       if (e.target === els.modal) closeModal();
     });
   } catch {}
-  // Hierarchy quick tools
+  // Hierarchy quick tools (legacy UI removed) - keep postAction helpers for quick actions/modals
   async function postAction(body){
   const r = await fetch('/api/guild/' + guildId + '/moderation/action', { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(body) });
   const d = await r.json(); if(!r.ok || !d.success) throw new Error(d.error||('HTTP ' + r.status)); return d;
@@ -2669,32 +2715,5 @@
     // Use modal-based confirmation everywhere
     return await showConfirmModal(plan, title || 'Confirmar alterações');
   }
-  const roleUp = document.getElementById('btnRoleUp');
-  const roleDown = document.getElementById('btnRoleDown');
-  const chanUp = document.getElementById('btnChanUp');
-  const chanDown = document.getElementById('btnChanDown');
-  const moveToCat = document.getElementById('btnMoveToCategory');
-  function bool(id){ return !!document.getElementById(id)?.checked; }
-  // Restore persisted state for hierarchy dry run
-  try {
-    const hierDry = document.getElementById('hierDryRun');
-    const val = localStorage.getItem('mod-hier-dryrun');
-    if (hierDry && (val === 'true' || val === 'false')) hierDry.checked = (val === 'true');
-    hierDry?.addEventListener('change', ()=>{ localStorage.setItem('mod-hier-dryrun', hierDry.checked ? 'true':'false'); });
-  } catch {}
-  roleUp?.addEventListener('click', async()=>{
-    try{ const roleId=(document.getElementById('roleIdQuick')?.value||'').trim(); if(!roleId) return notify('ID do cargo em falta','error'); const steps=parseInt(document.getElementById('roleSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_role_up', roleId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp, 'Confirmar mover cargo'); if(!ok) return; const resp2=await postAction({ action:'move_role_up', roleId, steps }); if(resp2.success) { notify('Cargo movido','success'); closeModal(); } } else { notify('Cargo movido','success'); } }catch(e){ notify(e.message,'error'); }
-  });
-  roleDown?.addEventListener('click', async()=>{
-    try{ const roleId=(document.getElementById('roleIdQuick')?.value||'').trim(); if(!roleId) return notify('ID do cargo em falta','error'); const steps=parseInt(document.getElementById('roleSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_role_down', roleId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp, 'Confirmar mover cargo'); if(!ok) return; const resp2=await postAction({ action:'move_role_down', roleId, steps }); if(resp2.success) { notify('Cargo movido','success'); closeModal(); } } else { notify('Cargo movido','success'); } }catch(e){ notify(e.message,'error'); }
-  });
-  chanUp?.addEventListener('click', async()=>{
-    try{ const channelId=(document.getElementById('channelIdQuick')?.value||'').trim(); if(!channelId) return notify('ID do canal em falta','error'); const steps=parseInt(document.getElementById('channelSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_channel_up', channelId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp, 'Confirmar mover canal'); if(!ok) return; const resp2=await postAction({ action:'move_channel_up', channelId, steps }); if(resp2.success) { notify('Canal movido','success'); closeModal(); } } else { notify('Canal movido','success'); } }catch(e){ notify(e.message,'error'); }
-  });
-  chanDown?.addEventListener('click', async()=>{
-    try{ const channelId=(document.getElementById('channelIdQuick')?.value||'').trim(); if(!channelId) return notify('ID do canal em falta','error'); const steps=parseInt(document.getElementById('channelSteps')?.value||'1',10)||1; const dry=bool('hierDryRun'); const payload={ action:'move_channel_down', channelId, steps }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp, 'Confirmar mover canal'); if(!ok) return; const resp2=await postAction({ action:'move_channel_down', channelId, steps }); if(resp2.success) { notify('Canal movido','success'); closeModal(); } } else { notify('Canal movido','success'); } }catch(e){ notify(e.message,'error'); }
-  });
-  moveToCat?.addEventListener('click', async()=>{
-    try{ const channelId=(document.getElementById('channelIdQuick')?.value||'').trim(); if(!channelId) return notify('ID do canal em falta','error'); const parentId=(document.getElementById('channelToCategory')?.value||'').trim(); const dry=bool('hierDryRun'); const payload={ action:'move_channel_to_category', channelId, parentId: parentId||null }; if(dry) payload.dryRun=true; const resp=await postAction(payload); if(dry){ const ok=await confirmPlan(resp, 'Confirmar mover canal para categoria'); if(!ok) return; const resp2=await postAction({ action:'move_channel_to_category', channelId, parentId: parentId||null }); if(resp2.success) { notify('Canal movido para categoria','success'); closeModal(); } } else { notify('Canal movido para categoria','success'); } }catch(e){ notify(e.message,'error'); }
-  });
+  // Note: Removed listeners for legacy role/channel quick actions to match the new UI
 })();

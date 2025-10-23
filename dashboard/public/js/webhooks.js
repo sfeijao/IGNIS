@@ -1,6 +1,24 @@
 (function() {
   const params = new URLSearchParams(window.location.search);
   const guildId = params.get('guildId');
+  // Ensure guild context
+  try{
+    if(!guildId){
+      const last = localStorage.getItem('IGNIS_LAST_GUILD');
+      if(last){
+        const q = new URLSearchParams(window.location.search);
+        q.set('guildId', last);
+        const next = `${window.location.pathname}?${q.toString()}${window.location.hash||''}`;
+        window.location.replace(next);
+        return;
+      } else {
+        window.location.href = '/dashboard';
+        return;
+      }
+    } else {
+      try{ localStorage.setItem('IGNIS_LAST_GUILD', guildId); }catch{}
+    }
+  }catch{}
   const listEl = document.getElementById('webhooksList');
   const typeEl = document.getElementById('whType');
   const nameEl = document.getElementById('whName');

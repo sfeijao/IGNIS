@@ -1,4 +1,16 @@
 (function(){
+	// Ensure guild context
+	try{
+		const p0=new URLSearchParams(window.location.search); const gid0=p0.get('guildId');
+		if(!gid0){
+			const last=localStorage.getItem('IGNIS_LAST_GUILD');
+			if(last){ const q=new URLSearchParams(window.location.search); q.set('guildId', last); const next=`${window.location.pathname}?${q.toString()}${window.location.hash||''}`; window.location.replace(next); return; }
+			else { window.location.href='/dashboard'; return; }
+		} else { try{ localStorage.setItem('IGNIS_LAST_GUILD', gid0); }catch{} }
+	}catch{}
+})();
+
+(function(){
 	const p=new URLSearchParams(window.location.search); const guildId=p.get('guildId');
 	const els={ name:document.getElementById('cmdName'), desc:document.getElementById('cmdDesc'), type:document.getElementById('cmdType'), content:document.getElementById('cmdContent'), preview:document.getElementById('preview'), save:document.getElementById('save'), list:document.getElementById('cmdsList'), modal:document.getElementById('modal'), modalBody:document.getElementById('modalBody'), modalOk:document.getElementById('modalOk'), modalCancel:document.getElementById('modalCancel') };
 	let all = [];

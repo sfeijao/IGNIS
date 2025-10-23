@@ -1,4 +1,26 @@
 // IGNIS Bot Settings UI
+(function(){
+  // Ensure guild context
+  try{
+    const params = new URLSearchParams(window.location.search);
+    const gid = params.get('guildId');
+    if(!gid){
+      const last = localStorage.getItem('IGNIS_LAST_GUILD');
+      if(last){
+        const q = new URLSearchParams(window.location.search);
+        q.set('guildId', last);
+        const next = `${window.location.pathname}?${q.toString()}${window.location.hash||''}`;
+        window.location.replace(next);
+        return;
+      } else {
+        window.location.href = '/dashboard';
+        return;
+      }
+    } else {
+      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch{}
+    }
+  }catch{}
+})();
 (function() {
   const qs = (s) => document.querySelector(s);
   const url = new URL(window.location.href);

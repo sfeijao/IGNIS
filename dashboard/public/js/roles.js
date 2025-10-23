@@ -1,4 +1,27 @@
 (function(){
+  // Ensure guild context
+  try{
+    const params = new URLSearchParams(window.location.search);
+    const gid = params.get('guildId');
+    if(!gid){
+      const last = localStorage.getItem('IGNIS_LAST_GUILD');
+      if(last){
+        const q = new URLSearchParams(window.location.search);
+        q.set('guildId', last);
+        const next = `${window.location.pathname}?${q.toString()}${window.location.hash||''}`;
+        window.location.replace(next);
+        return;
+      } else {
+        window.location.href = '/dashboard';
+        return;
+      }
+    } else {
+      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch{}
+    }
+  }catch{}
+})();
+
+(function(){
 	const p=new URLSearchParams(window.location.search); const guildId=p.get('guildId');
 	const els={ search:document.getElementById('search'), roleFilter:document.getElementById('roleFilter'), refresh:document.getElementById('refresh'), members:document.getElementById('members'), roles:document.getElementById('roles'), selectAll:document.getElementById('selectAllMembers'), clearSel:document.getElementById('clearMembers'), bulkRole:document.getElementById('bulkRole'), bulkAdd:document.getElementById('bulkAddRole'), bulkRemove:document.getElementById('bulkRemoveRole'), bulkProgress:document.getElementById('bulkProgress'), bulkPanel:document.getElementById('bulkPanel'), bulkResults:document.getElementById('bulkResults'), copyBulkSummary:document.getElementById('copyBulkSummary'), clearBulkResults:document.getElementById('clearBulkResults'), openOnFailOnly:document.getElementById('openOnFailOnly') };
 	let allRoles=[]; let members=[]; let selectedMember=null; let selectedRoles=new Set(); let multiSel=new Set();

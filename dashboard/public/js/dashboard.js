@@ -21,12 +21,29 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         try {
             await this.loadUser();
             await this.loadGuilds();
+            // Auto-seleciona o servidor a partir do URL ou última seleção persistida
+            this.autoSelectFromContext();
             this.setupEventListeners();
             console.log('✅ Dashboard inicializado com sucesso');
         } catch (error) {
             console.error('❌ Erro ao inicializar dashboard:', error);
             this.showError('Erro ao carregar dashboard');
         }
+    }
+
+    autoSelectFromContext() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const urlGuild = params.get('guildId');
+            const last = (!urlGuild && window.localStorage) ? localStorage.getItem('IGNIS_LAST_GUILD') : null;
+            const wanted = urlGuild || last;
+            if (!wanted) return;
+            const exists = Array.isArray(this.guilds) && this.guilds.some(g => `${g.id}` === `${wanted}`);
+            if (!exists) return;
+            const card = document.querySelector(`.server-card[data-guild-id="${wanted}"]`);
+            this.selectGuild(wanted, card || null);
+            try { localStorage.setItem('IGNIS_LAST_GUILD', wanted); } catch {}
+        } catch {}
     }
 
     async loadUser() {
@@ -246,6 +263,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         serverCards.forEach(card => {
             card.addEventListener('click', () => {
                 const guildId = card.dataset.guildId;
+                try { localStorage.setItem('IGNIS_LAST_GUILD', guildId); } catch {}
                 this.selectGuild(guildId, card);
             });
             // Create Panel shortcut (stop click bubbling)
@@ -255,6 +273,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                     e.stopPropagation();
                     const guildId = card.dataset.guildId;
                     this.currentGuild = guildId;
+                    try { localStorage.setItem('IGNIS_LAST_GUILD', guildId); } catch {}
                     window.location.href = `/panels.html?guildId=${encodeURIComponent(guildId)}#create`;
                 });
             }
@@ -273,6 +292,8 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             }
 
             this.currentGuild = guildId;
+            // Persist selection para uso em outras páginas
+            try { localStorage.setItem('IGNIS_LAST_GUILD', guildId); } catch {}
 
             // Hide server selection and show dashboard
             const serverSelection = document.getElementById('serverSelection');

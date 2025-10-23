@@ -2193,7 +2193,9 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
         const type = (req.query.type || '').toString().toLowerCase().trim();
         const from = req.query.from ? new Date(req.query.from) : null;
         const to = req.query.to ? new Date(req.query.to) : null;
-        const limit = Math.max(1, Math.min(1000, parseInt(String(req.query.limit || '200'), 10) || 200));
+    let limit = Math.max(1, Math.min(1000, parseInt(String(req.query.limit || '200'), 10) || 200));
+    let offset = Math.max(0, parseInt(String(req.query.offset || '0'), 10) || 0);
+    const page = Math.max(0, parseInt(String(req.query.page || '0'), 10) || 0);
     const all = await storage.getLogs(req.params.guildId, 1000);
         let filtered = Array.isArray(all) ? all.slice() : [];
         if (type) {
@@ -2228,7 +2230,11 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
             return hay.includes(q);
         });
         filtered.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-        const limited = filtered.slice(0, limit);
+        if (page > 0 && offset === 0) {
+            // page is 1-based; if both given, offset wins
+            offset = Math.max(0, (page - 1) * limit);
+        }
+        const limited = filtered.slice(offset, offset + limit);
         // Enrich with resolved names; prefer cache, fall back to one-off fetches (bounded by 'limit')
         try {
             const guild = check.guild;
@@ -2298,6 +2304,61 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
     }
 });
 
+// Logs count (for pagination UIs) — mirrors filters of list/export
+app.get('/api/guild/:guildId/logs/count', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const q = (req.query.q || '').toString().toLowerCase().trim();
+        const type = (req.query.type || '').toString().toLowerCase().trim();
+        const from = req.query.from ? new Date(req.query.from) : null;
+        const to = req.query.to ? new Date(req.query.to) : null;
+        const all = await storage.getLogs(req.params.guildId, 1000);
+        let filtered = Array.isArray(all) ? all.slice() : [];
+        if (type) {
+            const t = type.toLowerCase();
+            if (t.endsWith('*')) {
+                const prefix = t.slice(0, -1);
+                filtered = filtered.filter(l => (l.type || '').toLowerCase().startsWith(prefix));
+            } else {
+                filtered = filtered.filter(l => (l.type || '').toLowerCase() === t);
+            }
+        }
+        if (from && !Number.isNaN(from.getTime())) filtered = filtered.filter(l => new Date(l.timestamp) >= from);
+        if (to && !Number.isNaN(to.getTime())) filtered = filtered.filter(l => new Date(l.timestamp) <= to);
+        if (q) filtered = filtered.filter(l => {
+            const hay = [l.message, l.type, l.actor_id, l.ticket_id].map(x => (x ? String(x).toLowerCase() : '')).join(' ');
+            return hay.includes(q);
+        });
+        // Advanced filters
+        const userId = (req.query.userId || '').toString().trim();
+        const moderatorId = (req.query.moderatorId || '').toString().trim();
+        const channelId = (req.query.channelId || '').toString().trim();
+        if (userId) filtered = filtered.filter(l => {
+            const d = l.data || {};
+            return (`${d.userId||''}` === userId) || (`${l.actor_id||''}` === userId) || (`${d.authorId||''}` === userId);
+        });
+        if (moderatorId) filtered = filtered.filter(l => {
+            const d = l.data || {};
+            return (`${d.executorId||''}` === moderatorId) || (`${l.actor_id||''}` === moderatorId);
+        });
+        if (channelId) filtered = filtered.filter(l => {
+            const d = l.data || {};
+            return (`${d.channelId||''}` === channelId);
+        });
+        // Sort to match list ordering (newest first); not strictly needed for count
+        filtered.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+        return res.json({ success: true, total: filtered.length });
+    } catch (e) {
+        logger.error('Error counting logs:', e);
+        return res.status(500).json({ success: false, error: 'Failed to count logs' });
+    }
+});
+
 app.get('/api/guild/:guildId/logs/export', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -2312,6 +2373,10 @@ app.get('/api/guild/:guildId/logs/export', async (req, res) => {
         const from = req.query.from ? new Date(req.query.from) : null;
         const to = req.query.to ? new Date(req.query.to) : null;
     const format = (req.query.format || 'csv').toString().toLowerCase();
+        // Optional pagination for export: same semantics as list API
+        let limit = Math.max(1, Math.min(1000, parseInt(String(req.query.limit || '1000'), 10) || 1000));
+        let offset = Math.max(0, parseInt(String(req.query.offset || '0'), 10) || 0);
+        const page = Math.max(0, parseInt(String(req.query.page || '0'), 10) || 0);
         const all = await storage.getLogs(req.params.guildId, 1000);
         let filtered = Array.isArray(all) ? all.slice() : [];
         if (type) {
@@ -2346,16 +2411,21 @@ app.get('/api/guild/:guildId/logs/export', async (req, res) => {
             return (`${d.channelId||''}` === channelId);
         });
         filtered.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+        if (page > 0 && offset === 0) {
+            // page is 1-based; if both given, offset wins
+            offset = Math.max(0, (page - 1) * limit);
+        }
+        const limited = filtered.slice(offset, offset + limit);
         if (format === 'txt') {
             res.setHeader('Content-Type', 'text/plain; charset=utf-8');
             res.setHeader('Content-Disposition', `attachment; filename=logs-${req.params.guildId}.txt`);
-            const lines = filtered.map(l => `[${l.timestamp}] [${l.type||'log'}] ${l.message || ''}`);
+            const lines = limited.map(l => `[${l.timestamp}] [${l.type||'log'}] ${l.message || ''}`);
             return res.send(lines.join('\n'));
         }
         if (format === 'json') {
             res.setHeader('Content-Type', 'application/json; charset=utf-8');
             res.setHeader('Content-Disposition', `attachment; filename=logs-${req.params.guildId}.json`);
-            return res.send(JSON.stringify(filtered, null, 2));
+            return res.send(JSON.stringify(limited, null, 2));
         }
         // CSV default
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -2363,7 +2433,7 @@ app.get('/api/guild/:guildId/logs/export', async (req, res) => {
         const headers = ['timestamp','type','message','actor_id','ticket_id'];
         const escape = (s='') => '"' + String(s).replace(/"/g,'""') + '"';
         const lines = [headers.join(',')];
-        for (const l of filtered) {
+        for (const l of limited) {
             lines.push([l.timestamp||'', l.type||'', l.message||'', l.actor_id||'', l.ticket_id||''].map(escape).join(','));
         }
         return res.send(lines.join('\n'));
