@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Additional local styles */
+.fade-in { animation: fadeIn 250ms ease forwards; opacity: 0; }
+@keyframes fadeIn { to { opacity: 1; } }
+.scroll-area { max-height: calc(100vh - 220px); overflow: auto; }
