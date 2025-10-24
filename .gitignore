@@ -103,3 +103,8 @@ data/logs.json
 data/*.db
 data/**/*.db
 
+
+# Next.js build output (ignore everywhere)
+.next/
+dashboard/next/.next/
+
