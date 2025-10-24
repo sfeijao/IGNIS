@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  @apply bg-neutral-950 text-neutral-100 antialiased;
+}
+
+/* Reusable card styles reminiscent of MEE6 UI */
+.card {
+  @apply rounded-2xl bg-neutral-900/60 border border-neutral-800/80 shadow-lg shadow-black/30 backdrop-blur;
+}
+.card-gradient {
+  background: radial-gradient(1200px 300px at -10% -10%, rgba(124,58,237,0.25), rgba(0,0,0,0)),
+              radial-gradient(1000px 300px at 110% 10%, rgba(59,130,246,0.15), rgba(0,0,0,0));
+}
+
+.badge {
+  @apply inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium bg-neutral-800/80 border border-neutral-700/60;
+}
+.dot {
+  @apply inline-block w-2 h-2 rounded-full;
+}
+
+/* Sidebar compact mode */
+.sidebar-compact .sidebar { width: 4rem; }
+.sidebar-compact .sidebar .label { display: none; }
+.sidebar-compact .sidebar .icon { display: inline-block; }

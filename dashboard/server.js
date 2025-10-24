@@ -118,6 +118,13 @@ function requireAuth(req, res, next){
 app.use('/dashboard', express.static(CLASSIC_PUBLIC_DIR, { index: false, redirect: false }));
 // Serve the revamped website dashboard assets under /dashboard-new (separate entry point)
 app.use('/dashboard-new', express.static(WEBSITE_PUBLIC_DIR, { index: false, redirect: false }));
+// Serve the statically exported Next.js dashboard (when built) under /next
+try {
+    const NEXT_EXPORT_DIR = path.join(__dirname, 'public', 'next-export');
+    if (fs.existsSync(NEXT_EXPORT_DIR)) {
+        app.use('/next', express.static(NEXT_EXPORT_DIR, { index: 'index.html', redirect: false }));
+    }
+} catch {}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -425,6 +432,26 @@ app.get('/api/health', (req, res) => {
         return res.status(500).json({ success: false, error: 'health_failed' });
     }
 });
+
+// Dev-only helper: list bot guilds without requiring OAuth (local/testing only)
+try {
+    const IS_LOCAL = (process.env.NODE_ENV || 'development') !== 'production';
+    app.get('/api/dev/guilds', (req, res) => {
+        try {
+            if (!IS_LOCAL && !BYPASS_AUTH) return res.status(403).json({ success:false, error:'forbidden' });
+            const client = global.discordClient;
+            if (!client) return res.json({ success:true, guilds: [] });
+            const out = [];
+            for (const g of client.guilds.cache.values()) {
+                out.push({ id: g.id, name: g.name, memberCount: g.memberCount || 0 });
+            }
+            return res.json({ success:true, guilds: out });
+        } catch (e) {
+            logger.error('dev/guilds failed', e);
+            return res.status(500).json({ success:false, error:'dev_guilds_failed' });
+        }
+    });
+} catch {}
 
 // API Routes
 app.get('/api/user', (req, res) => {
@@ -2177,6 +2204,73 @@ app.post('/api/guild/:guildId/bot-settings', async (req, res) => {
     } catch (e) {
         logger.error('Error updating bot settings:', e);
         return res.status(500).json({ success: false, error: 'Failed to update bot settings' });
+    }
+});
+
+// Settings API used by Next dashboard (thin wrapper over bot-settings with a simpler shape)
+app.get('/api/guild/:guildId/settings', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const cfg = await storage.getGuildConfig(req.params.guildId) || {};
+        const s = cfg.botSettings || {};
+        return res.json({
+            success: true,
+            settings: {
+                prefix: s.prefix || '!',
+                locale: s.defaultLanguage || 'pt',
+                logsEnabled: typeof s.enableModerationLogs === 'boolean' ? s.enableModerationLogs : true,
+                modlogChannelId: s.modlogChannelId || ''
+            }
+        });
+    } catch (e) {
+        logger.error('Error fetching settings:', e);
+        return res.status(500).json({ success: false, error: 'Failed to fetch settings' });
+    }
+});
+
+app.post('/api/guild/:guildId/settings', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        // Validate incoming settings
+        const schema = Joi.object({
+            prefix: Joi.string().trim().max(5).allow(''),
+            locale: Joi.string().trim().max(16).allow(''),
+            logsEnabled: Joi.boolean().default(true),
+            modlogChannelId: Joi.string().trim().max(40).allow('')
+        }).unknown(false);
+        const { error, value } = schema.validate(req.body || {}, { abortEarly: false });
+        if (error) return res.status(400).json({ success: false, error: 'validation_failed', details: error.details.map(d => d.message) });
+
+        // Map to botSettings structure
+        const storage = require('../utils/storage');
+        const current = await storage.getGuildConfig(req.params.guildId) || {};
+        const bot = { ...(current.botSettings || {}) };
+        if (Object.prototype.hasOwnProperty.call(value, 'prefix')) bot.prefix = value.prefix;
+        if (Object.prototype.hasOwnProperty.call(value, 'locale')) bot.defaultLanguage = value.locale;
+        if (Object.prototype.hasOwnProperty.call(value, 'logsEnabled')) bot.enableModerationLogs = !!value.logsEnabled;
+        if (Object.prototype.hasOwnProperty.call(value, 'modlogChannelId')) bot.modlogChannelId = value.modlogChannelId || '';
+        const next = { ...current, botSettings: bot };
+        await storage.updateGuildConfig(req.params.guildId, next);
+
+        return res.json({ success: true, settings: {
+            prefix: bot.prefix || '!',
+            locale: bot.defaultLanguage || 'pt',
+            logsEnabled: typeof bot.enableModerationLogs === 'boolean' ? bot.enableModerationLogs : true,
+            modlogChannelId: bot.modlogChannelId || ''
+        }});
+    } catch (e) {
+        logger.error('Error updating settings:', e);
+        return res.status(500).json({ success: false, error: 'Failed to update settings' });
     }
 });
 
@@ -4043,6 +4137,55 @@ app.get('/api/guild/:guildId/tickets/:ticketId/logs/export', async (req, res) =>
     } catch (e) {
         logger.error('Error exporting ticket logs:', e);
         return res.status(500).json({ success: false, error: 'Failed to export ticket logs' });
+    }
+});
+
+// Paginated ticket messages (transcript) fetch
+app.get('/api/guild/:guildId/tickets/:ticketId/messages', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    try {
+        const { guildId, ticketId } = req.params;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+
+        const storage = require('../utils/storage');
+        const tickets = await storage.getTickets(guildId);
+        const ticket = tickets.find(t => `${t.id}` === `${ticketId}`);
+        if (!ticket) return res.status(404).json({ success: false, error: 'Ticket not found' });
+
+        const channel = guild.channels.cache.get(ticket.channel_id);
+        if (!channel || !channel.messages?.fetch) return res.status(404).json({ success: false, error: 'Channel not found' });
+        let limit = parseInt(String(req.query.limit||'100'), 10);
+        if (!Number.isFinite(limit) || limit <= 0) limit = 100;
+        limit = Math.max(1, Math.min(100, limit));
+        const before = (req.query.before || '').toString().trim() || undefined;
+        const fetched = await channel.messages.fetch(before ? { limit, before } : { limit }).catch(() => null);
+        const list = fetched ? Array.from(fetched.values()) : [];
+        // Sort ascending by time
+        list.sort((a,b) => a.createdTimestamp - b.createdTimestamp);
+        const messages = list.map(msg => ({
+            id: msg.id,
+            content: msg.content,
+            author: {
+                id: msg.author.id,
+                username: msg.author.username,
+                discriminator: msg.author.discriminator,
+                avatar: msg.author.displayAvatarURL({ size: 32 })
+            },
+            timestamp: msg.createdAt,
+            embeds: msg.embeds.map(embed => ({ title: embed.title, description: embed.description, color: embed.color }))
+        }));
+        const nextBefore = messages.length ? messages[0].id : null; // for fetching older pages
+        return res.json({ success: true, messages, nextBefore });
+    } catch (e) {
+        logger.error('Error fetching ticket messages:', e);
+        return res.status(500).json({ success: false, error: 'Failed to fetch ticket messages' });
     }
 });
 
