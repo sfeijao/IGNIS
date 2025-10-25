@@ -20,7 +20,7 @@ export default function DashboardStats() {
   const [summary, setSummary] = useState<string>('Dados serão carregados ao selecionar um servidor.')
   const [loading, setLoading] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const [refreshMinutes, setRefreshMinutes] = useState<number>(2)
+  const [refreshMinutes, setRefreshMinutes] = useState<number>(1)
   const [lastTicket, setLastTicket] = useState<string>('—')
 
   const formatTime = (d?: Date | null) => d ? d.toLocaleString() : '—'
@@ -106,7 +106,7 @@ export default function DashboardStats() {
         if (s.endsWith('s')) return Math.max(0, parseFloat(s.slice(0, -1)) / 60)
         if (s.endsWith('m')) return Math.max(0, parseFloat(s.slice(0, -1)))
         const n = parseFloat(s)
-        return isNaN(n) ? 2 : Math.max(0, n) // default minutes
+        return isNaN(n) ? 1 : Math.max(0, n) // default minutes
       }
       if (fromParam) initial = parseDur(fromParam)
       else if (ls) initial = Math.max(0, parseFloat(ls))
@@ -162,6 +162,7 @@ export default function DashboardStats() {
                   onChange={(e) => setRefreshMinutes(parseFloat(e.target.value))}
                 >
                   <option value={0}>Off</option>
+                  <option value={0.1667}>10s</option>
                   <option value={0.5}>30s</option>
                   <option value={1}>1m</option>
                   <option value={2}>2m</option>
