@@ -67,15 +67,14 @@ function pushPerfSample(guildId, sample){
 
 // Helper function for OAuth callback URL
 const getCallbackURL = () => {
-    if (process.env.CALLBACK_URL) {
-        return process.env.CALLBACK_URL;
+    const baseUrl = (config.getBaseUrl && config.getBaseUrl()) || (config.WEBSITE?.BASE_URL) || `http://localhost:${PORT}`;
+    const cb = (process.env.CALLBACK_URL || '').trim();
+    if (cb) {
+        // If absolute URL provided, use as-is; if relative, join with baseUrl
+        if (/^https?:\/\//i.test(cb)) return cb;
+        const rel = cb.startsWith('/') ? cb : `/${cb}`;
+        return `${baseUrl}${rel}`;
     }
-
-    // Auto-detect based on environment
-    const baseUrl = process.env.NODE_ENV === 'production'
-        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'ignisbot-alberto.up.railway.app'}`
-        : `http://localhost:${PORT}`;
-
     return `${baseUrl}/auth/discord/callback`;
 };
 

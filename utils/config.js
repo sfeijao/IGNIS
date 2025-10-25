@@ -22,7 +22,18 @@ const config = {
     
     // Website Configuration
     WEBSITE: {
-        BASE_URL: process.env.BASE_URL || (isProd ? 'https://ignisbot-alberto.up.railway.app' : 'http://localhost:4000'),
+        // Prefer explicit BASE_URL; otherwise, in production infer from Railway's public domain
+        // This keeps OAuth callback host aligned with the externally visible hostname
+        BASE_URL: (() => {
+            const explicit = process.env.BASE_URL && process.env.BASE_URL.trim();
+            if (explicit) return explicit.replace(/\/$/, '');
+            if (isProd) {
+                const publicDomain = (process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_URL || process.env.RAILWAY_STATIC_URL || '').trim();
+                if (publicDomain) return `https://${publicDomain.replace(/\/$/, '')}`;
+            }
+            // Dev fallback
+            return 'http://localhost:4000';
+        })(),
         SESSION_SECRET: process.env.SESSION_SECRET,
         PORT: parseInt(process.env.PORT) || 4000,
         CALLBACK_URL: process.env.CALLBACK_URL || '/auth/discord/callback',
@@ -104,7 +115,8 @@ if (!config.DISCORD.CLIENT_SECRET) {
 // Validações de produção
 if (isProd) {
     assert(config.WEBSITE.SESSION_SECRET.length >= 32, 'SESSION_SECRET deve ter pelo menos 32 caracteres em produção');
-    assert(config.WEBSITE.BASE_URL.startsWith('https://'), 'BASE_URL deve usar HTTPS em produção');
+    // Permitimos ambientes Railway auto-detectados, mas ainda exigimos HTTPS
+    assert(/^https:\/\//.test(config.WEBSITE.BASE_URL), 'BASE_URL deve usar HTTPS em produção');
 }
 
 // Log de inicialização (sem expor segredos)
