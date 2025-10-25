@@ -130,11 +130,7 @@ export default function DashboardStats() {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [refreshMinutes])
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  
 
   return (
     <div className="space-y-3">
@@ -160,6 +156,7 @@ export default function DashboardStats() {
                   className="text-xs rounded-md bg-neutral-900 border border-neutral-700 px-2 py-1"
                   value={refreshMinutes}
                   onChange={(e) => setRefreshMinutes(parseFloat(e.target.value))}
+                  aria-label="Frequência de atualização"
                 >
                   <option value={0}>Off</option>
                   <option value={0.1667}>10s</option>
