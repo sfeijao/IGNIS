@@ -1,6 +1,6 @@
 import React from 'react'
 
-type IconName = 'dashboard' | 'plugins' | 'settings' | 'tickets' | 'shield' | 'tag' | 'info'
+type IconName = 'dashboard' | 'plugins' | 'settings' | 'tickets' | 'shield' | 'tag' | 'info' | 'refresh' | 'clock'
 
 export function Icon({ name, className = 'h-5 w-5', stroke = 'currentColor' }: { name: IconName; className?: string; stroke?: string }) {
   switch (name) {
@@ -52,6 +52,20 @@ export function Icon({ name, className = 'h-5 w-5', stroke = 'currentColor' }: {
           <circle cx="12" cy="12" r="9" strokeWidth="1.6"/>
           <path d="M12 10v6" strokeWidth="1.6" strokeLinecap="round"/>
           <circle cx="12" cy="7" r="1.2" fill={stroke} />
+        </svg>
+      )
+    case 'refresh':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={className} stroke={stroke} xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 12a8 8 0 1 1-2.34-5.66" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M20 4v5h-5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )
+    case 'clock':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={className} stroke={stroke} xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="9" strokeWidth="1.6"/>
+          <path d="M12 7v6l4 2" strokeWidth="1.6" strokeLinecap="round"/>
         </svg>
       )
   }
