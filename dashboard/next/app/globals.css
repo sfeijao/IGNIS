@@ -12,6 +12,9 @@ html, body {
 
 body {
   @apply bg-neutral-950 text-neutral-100 antialiased;
+  background-image:
+    radial-gradient(1200px 600px at -10% -10%, rgba(124,58,237,0.10), rgba(0,0,0,0)),
+    radial-gradient(900px 500px at 110% 10%, rgba(37,99,235,0.08), rgba(0,0,0,0));
 }
 
 /* Reusable card styles reminiscent of MEE6 UI */
@@ -34,3 +37,24 @@ body {
 .sidebar-compact .sidebar { width: 4rem; }
 .sidebar-compact .sidebar .label { display: none; }
 .sidebar-compact .sidebar .icon { display: inline-block; }
+
+/* Simple tooltip helper */
+.tip {
+  position: relative;
+}
+.tip[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(100% + 6px);
+  white-space: nowrap;
+  background: rgba(23,23,23,0.95);
+  color: #e5e7eb;
+  border: 1px solid #374151;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  z-index: 20;
+  pointer-events: none;
+}

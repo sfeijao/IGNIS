@@ -39,6 +39,9 @@ export default function Topbar() {
         <div className="flex items-center gap-3">
           <GuildSelector />
           <ThemeToggle />
+          <div className="hidden sm:flex items-center gap-2">
+            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-brand-500 to-blue-500 flex items-center justify-center text-xs font-bold border border-neutral-700">IG</div>
+          </div>
         </div>
       </div>
     </header>
