@@ -17,7 +17,9 @@ export default function PluginCard({ name, desc, badge = 'Beta', icon = 'plugins
         <button className="px-3 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium transition-all hover:animate-glow">Configurar</button>
         <button className="px-3 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 transition-colors">Ver</button>
         {tip && (
-          <span className="tip ml-auto text-neutral-400 text-xs" data-tip={tip}>ⓘ</span>
+          <span className="tip ml-auto text-neutral-400 text-xs inline-flex items-center" data-tip={tip} aria-label="Info">
+            <Icon name="info" />
+          </span>
         )}
       </div>
     </article>
