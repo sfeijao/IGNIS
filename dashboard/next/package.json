@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "next dev -p 5175",
-    "build": "next build && next export -o ../public/next-export",
+  "build": "next build && node -e \"const fs=require('fs'); const path=require('path'); const src=path.join(__dirname,'out'); const dest=path.join(__dirname,'..','public','next-export'); fs.rmSync(dest,{recursive:true, force:true}); fs.mkdirSync(dest,{recursive:true}); fs.cpSync(src,dest,{recursive:true});\"",
     "start": "next start"
   },
   "dependencies": {
