@@ -26,7 +26,8 @@
         "lib/*"
       ]
     },
-    "ignoreDeprecations": "6.0",
+  // Note: TS 5.x in this environment rejects ignoreDeprecations values; remove to unblock Next type-check
+  // "ignoreDeprecations": "6.0",
     "incremental": true,
     "plugins": [
       {
