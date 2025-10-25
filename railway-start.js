@@ -96,6 +96,25 @@ async function railwayStart() {
             
         } else {
             logger.info('\n🤖 Iniciando modo BOT-ONLY...');
+            // No Railway, precisamos expor uma porta para o healthcheck mesmo em bot-only
+            if (process.env.RAILWAY_ENVIRONMENT_NAME) {
+                const express = require('express');
+                const app = express();
+                const port = process.env.PORT || 3000;
+
+                app.get('/health', (req, res) => {
+                    res.json({
+                        status: 'ok',
+                        timestamp: new Date().toISOString(),
+                        environment: process.env.RAILWAY_ENVIRONMENT_NAME,
+                        mode: 'bot-only'
+                    });
+                });
+
+                app.listen(port, () => {
+                    logger.info(`🏥 Health check (bot-only) ativo na porta ${port}`);
+                });
+            }
             
             // Iniciar apenas o bot
             const { startBotOnly } = require('./bot-only');
@@ -128,26 +147,6 @@ async function railwayStart() {
         
         process.exit(1);
     }
-}
-
-// Health check endpoint básico para Railway
-if (process.env.RAILWAY_ENVIRONMENT_NAME) {
-    const express = require('express');
-    const app = express();
-    const port = process.env.PORT || 3000;
-    
-    app.get('/health', (req, res) => {
-        res.json({
-            status: 'ok',
-            timestamp: new Date().toISOString(),
-            environment: process.env.RAILWAY_ENVIRONMENT_NAME,
-            mode: config.DISCORD.CLIENT_SECRET ? 'full' : 'bot-only'
-        });
-    });
-    
-    app.listen(port, () => {
-        logger.info(`🏥 Health check endpoint ativo na porta ${port}`);
-    });
 }
 
 // Iniciar se executado diretamente
