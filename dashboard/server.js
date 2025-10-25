@@ -123,6 +123,8 @@ try {
     const NEXT_EXPORT_DIR = path.join(__dirname, 'public', 'next-export');
     if (fs.existsSync(NEXT_EXPORT_DIR)) {
         app.use('/next', express.static(NEXT_EXPORT_DIR, { index: 'index.html', redirect: false }));
+        // Make the new dashboard the default landing page
+        app.get('/', (req, res) => res.redirect('/next/'));
     }
 } catch {}
 app.use(express.json());
