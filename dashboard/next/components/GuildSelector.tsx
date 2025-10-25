@@ -16,6 +16,11 @@ export default function GuildSelector() {
     setGuildId(value, true)
     setSaved(value || null)
   }
+  const clear = () => {
+    setGuildId('', true)
+    setValue('')
+    setSaved(null)
+  }
 
   return (
     <div className="flex items-center gap-2">
@@ -28,7 +33,10 @@ export default function GuildSelector() {
       <button onClick={save} className="rounded-xl border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm hover:bg-neutral-700">
         Save
       </button>
-      {saved && <span className="text-xs text-neutral-400">Saved</span>}
+      <button onClick={clear} className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs hover:bg-neutral-800">
+        Clear
+      </button>
+      {saved && <span className="text-xs text-neutral-400">Saved: {saved}</span>}
     </div>
   )
 }

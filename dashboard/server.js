@@ -125,6 +125,8 @@ try {
         app.use('/next', express.static(NEXT_EXPORT_DIR, { index: 'index.html', redirect: false }));
         // Make the new dashboard the default landing page
         app.get('/', (req, res) => res.redirect('/next/'));
+        // Redirect legacy dashboard entry points to the new Next dashboard
+        app.get(['/dashboard', '/dashboard/*', '/dashboard-new', '/dashboard-new/*'], (req, res) => res.redirect('/next/'));
     }
 } catch {}
 app.use(express.json());
