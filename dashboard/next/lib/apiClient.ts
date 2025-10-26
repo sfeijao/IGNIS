@@ -92,4 +92,139 @@ export const api = {
     if (!res.ok) throw new Error('Failed to perform ticket action')
     return res.json()
   }
+  ,
+  // Tickets Panels & Categories
+  async getPanels(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/panels`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch panels')
+    return res.json()
+  },
+  async scanPanels(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/panels/scan`, { method: 'POST', credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to scan panels')
+    return res.json()
+  },
+  async createPanel(guildId: string, payload: Record<string, any>) {
+    const res = await fetch(`/api/guild/${guildId}/panels/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) throw new Error('Failed to create panel')
+    return res.json()
+  },
+  async panelAction(guildId: string, panelId: string, action: string, data?: Record<string, any>) {
+    const res = await fetch(`/api/guild/${guildId}/panels/${panelId}/action`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ action, data })
+    })
+    if (!res.ok) throw new Error('Failed to perform panel action')
+    return res.json()
+  },
+  async getCategories(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/categories`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch categories')
+    return res.json()
+  },
+  async createCategory(guildId: string, payload: Record<string, any>) {
+    const res = await fetch(`/api/guild/${guildId}/categories/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) throw new Error('Failed to create category')
+    return res.json()
+  },
+  async getChannels(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/channels`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch channels')
+    return res.json()
+  },
+  // Tickets Config
+  async getTicketsConfig(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/tickets/config`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch tickets config')
+    return res.json()
+  },
+  async saveTicketsConfig(guildId: string, payload: Record<string, any>) {
+    const res = await fetch(`/api/guild/${guildId}/tickets/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) throw new Error('Failed to save tickets config')
+    return res.json()
+  },
+  // Commands Manager
+  async getCommands(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/commands`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch commands')
+    return res.json()
+  },
+  async postCommand(guildId: string, payload: Record<string, any>) {
+    const res = await fetch(`/api/guild/${guildId}/commands`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) throw new Error('Failed to execute command action')
+    return res.json()
+  },
+  // Automod Events
+  async getAutomodEvents(guildId: string, params?: Record<string, string | number | boolean>) {
+    const qs = params ? `?${new URLSearchParams(Object.entries(params).map(([k,v]) => [k, String(v)]))}` : ''
+    const res = await fetch(`/api/guild/${guildId}/mod/automod/events${qs}`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch automod events')
+    return res.json()
+  },
+  async reviewAutomodEvent(guildId: string, id: string, decision: string, reason?: string) {
+    const res = await fetch(`/api/guild/${guildId}/mod/automod/events/${id}/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ decision, reason })
+    })
+    if (!res.ok) throw new Error('Failed to review event')
+    return res.json()
+  },
+  // Appeals
+  async getAppeals(guildId: string, params?: Record<string, string | number | boolean>) {
+    const qs = params ? `?${new URLSearchParams(Object.entries(params).map(([k,v]) => [k, String(v)]))}` : ''
+    const res = await fetch(`/api/guild/${guildId}/mod/appeals${qs}`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch appeals')
+    return res.json()
+  },
+  async decideAppeal(guildId: string, id: string, decision: string, reason?: string) {
+    const res = await fetch(`/api/guild/${guildId}/mod/appeals/${id}/decision`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ decision, reason })
+    })
+    if (!res.ok) throw new Error('Failed to submit appeal decision')
+    return res.json()
+  },
+  // Verification metrics & logs
+  async getVerificationMetrics(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/verification/metrics`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch verification metrics')
+    return res.json()
+  },
+  async getVerificationLogs(guildId: string, params?: Record<string, string | number | boolean>) {
+    const qs = params ? `?${new URLSearchParams(Object.entries(params).map(([k,v]) => [k, String(v)]))}` : ''
+    const res = await fetch(`/api/guild/${guildId}/verification/logs${qs}`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch verification logs')
+    return res.json()
+  },
+  async purgeVerificationLogs(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/verification/logs`, { method: 'DELETE', credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to purge verification logs')
+    return res.json()
+  },
 }

@@ -7,8 +7,24 @@ import { Icon } from './icons'
 const nav = [
   { href: '/', label: 'Dashboard' },
   { href: '/plugins', label: 'Plugins' },
-  { href: '/settings', label: 'Settings' },
+  { href: '/logs', label: 'Logs' },
+  { href: '/logs/live', label: 'Logs ao vivo' },
+  { href: '/moderation', label: 'Moderação' },
+  { href: '/members', label: 'Membros' },
+  { href: '/roles', label: 'Cargos' },
+  { href: '/webhooks', label: 'Webhooks' },
+  { href: '/verification', label: 'Verificação' },
+  { href: '/verification/metrics', label: 'Verificação: métricas' },
+  { href: '/tags', label: 'Tags' },
   { href: '/tickets', label: 'Tickets' },
+  { href: '/tickets/config', label: 'Tickets: config' },
+  { href: '/tickets/panels', label: 'Tickets: painéis' },
+  { href: '/commands', label: 'Comandos' },
+  { href: '/automod', label: 'Automod' },
+  { href: '/appeals', label: 'Apelos' },
+  { href: '/settings', label: 'Settings' },
+  { href: '/diagnostics', label: 'Diagnósticos' },
+  { href: '/performance', label: 'Performance' },
 ]
 
 export default function Sidebar() {
