@@ -130,7 +130,7 @@ export default function DashboardStats() {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [refreshMinutes])
-  
+
 
   return (
     <div className="space-y-3">

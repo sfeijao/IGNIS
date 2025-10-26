@@ -71,7 +71,7 @@ body {
     line-height: 1.6;
     min-height: 100vh;
     overflow-x: hidden;
-    
+
     /* Animated gradient background */
     background: linear-gradient(-45deg,
         var(--bg-primary),
@@ -228,14 +228,14 @@ body {
 .neuro-card {
     background: var(--bg-secondary);
     border-radius: var(--radius-lg);
-    box-shadow: 
+    box-shadow:
         8px 8px 16px var(--neuro-shadow-dark),
         -8px -8px 16px var(--neuro-shadow-light);
     transition: all var(--transition-normal);
 }
 
 .neuro-card:hover {
-    box-shadow: 
+    box-shadow:
         12px 12px 24px var(--neuro-shadow-dark),
         -12px -12px 24px var(--neuro-shadow-light);
 }
@@ -748,21 +748,21 @@ select.form-select option:hover {
         --space-xl: 1.5rem;
         --space-2xl: 2rem;
     }
-    
+
     .navbar-container {
         padding: 0 var(--space-md);
         flex-direction: column;
         gap: var(--space-md);
     }
-    
+
     .server-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .control-grid {
         grid-template-columns: 1fr;
     }
@@ -772,7 +772,7 @@ select.form-select option:hover {
     .stats-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .server-info {
         flex-direction: column;
         text-align: center;
@@ -1225,15 +1225,15 @@ select.form-select option:hover {
     .ticket-details-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .tickets-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .ticket-stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .modal-content.ticket-modal {
         width: 95vw;
         margin: var(--space-sm);

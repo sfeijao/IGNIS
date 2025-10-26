@@ -1437,7 +1437,7 @@
         .join('');
       if(!pills) return '';
   return '<div class="group-types">' + pills + '</div>';
-    } catch { return '';} 
+    } catch { return '';}
   }
   function updateClearStreamBtn(){
     try {

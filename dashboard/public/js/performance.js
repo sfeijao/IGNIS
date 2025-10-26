@@ -18,7 +18,7 @@
 	const deltaToggle = document.getElementById('showDeltaCards');
 	let lastRendered = { metrics:null, history:[] };
 	let timer=null;
-	function notify(m,t='info'){const n=document.createElement('div'); n.className=`notification notification-${t} slide-up`; n.innerHTML=`<i class="fas ${t==='error'?'fa-exclamation-circle': t==='success'?'fa-check-circle':'fa-info-circle'}"></i><span>${m}</span>`; document.body.appendChild(n); setTimeout(()=>{n.style.animation='slideDown 0.3s ease-in'; setTimeout(()=>n.remove(),300);},2500);} 
+	function notify(m,t='info'){const n=document.createElement('div'); n.className=`notification notification-${t} slide-up`; n.innerHTML=`<i class="fas ${t==='error'?'fa-exclamation-circle': t==='success'?'fa-check-circle':'fa-info-circle'}"></i><span>${m}</span>`; document.body.appendChild(n); setTimeout(()=>{n.style.animation='slideDown 0.3s ease-in'; setTimeout(()=>n.remove(),300);},2500);}
 
 	function formatTime(ms){ try{ const d=new Date(ms||Date.now()); return d.toLocaleTimeString('pt-PT', { hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit' }); }catch{ return ''; } }
 	function showTip(html, clientX, clientY){ if(!tooltipEl) return; tooltipEl.innerHTML = html; tooltipEl.style.display = 'block'; tooltipEl.setAttribute('aria-hidden','false'); // position with viewport clamping
@@ -68,5 +68,5 @@
 	}
 	async function fetchPerf(){ try{ const r=await fetch(`/api/guild/${guildId}/performance`, {credentials:'same-origin'}); const d=await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`); render(d); }catch(e){console.error(e); notify(e.message,'error');} }
 	function setTimer(){ if(timer) clearInterval(timer); const sec=parseInt(sel?.value||'0',10); if(sec>0){ timer=setInterval(fetchPerf, sec*1000); } }
-	sel?.addEventListener('change', ()=>{ setTimer(); }); btn?.addEventListener('click', fetchPerf); if(deltaToggle){ deltaToggle.addEventListener('change', ()=>{ if(lastRendered && lastRendered.metrics){ render({ metrics: lastRendered.metrics, history: lastRendered.history }); } }); } fetchPerf(); setTimer(); 
+	sel?.addEventListener('change', ()=>{ setTimer(); }); btn?.addEventListener('click', fetchPerf); if(deltaToggle){ deltaToggle.addEventListener('change', ()=>{ if(lastRendered && lastRendered.metrics){ render({ metrics: lastRendered.metrics, history: lastRendered.history }); } }); } fetchPerf(); setTimer();
 })();

@@ -107,7 +107,7 @@
       }
     })();
   </script>
-  
+
   <script>
     (async () => {
       try { const r = await fetch('/api/user'); if (r.ok) { const d = await r.json(); if (d.success) { userName.textContent = d.user.username; if (d.user.avatar) userAvatar.src = d.user.avatar; } } } catch {}

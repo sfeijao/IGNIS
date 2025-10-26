@@ -2,7 +2,7 @@
 
 /**
  * 🚂 IGNIS Bot - Railway Smart Starter
- * 
+ *
  * Script inteligente para iniciar o bot no Railway com detecção automática
  * da configuração disponível e fallback para modo bot-only se necessário.
  */
@@ -42,20 +42,20 @@ async function railwayStart() {
         const hasToken = !!botToken;
         const hasClientId = !!config.DISCORD.CLIENT_ID;
         const hasClientSecret = !!config.DISCORD.CLIENT_SECRET;
-        
+
     logger.info(`   BOT_TOKEN: ${hasToken ? '✅ Presente' : '❌ AUSENTE'}`);
     logger.info(`   CLIENT_ID: ${hasClientId ? '✅ Presente' : '❌ AUSENTE'}`);
     logger.info(`   CLIENT_SECRET: ${hasClientSecret ? '✅ Presente' : '⚠️  Ausente'}`);
-        
+
         // 2. Validar configuração mínima
         if (!hasToken) {
             throw new Error('❌ TOKEN/BOT_TOKEN é obrigatório - Configure na Railway');
         }
-        
+
         if (!hasClientId) {
             throw new Error('❌ CLIENT_ID é obrigatório - Configure na Railway');
         }
-        
+
         // 3. Determinar modo de operação
         let startMode;
         if (hasClientSecret) {
@@ -66,7 +66,7 @@ async function railwayStart() {
             logger.info('\n🎯 Modo selecionado: BOT-ONLY (sem website)');
             logger.info('   ℹ️  CLIENT_SECRET não encontrado, website será desabilitado');
         }
-        
+
         // 4. Deploy dos comandos primeiro
     logger.info('\n⚙️  Deploying comandos slash...');
         try {
@@ -105,14 +105,14 @@ async function railwayStart() {
             logger.warn('⚠️  Erro ao deploy comandos:', { error: deployError && deployError.message ? deployError.message : deployError });
             logger.warn('   Continuando mesmo assim...');
         }
-        
+
         // 5. Iniciar modo apropriado
         if (startMode === 'full') {
             logger.info('\n🚀 Iniciando modo COMPLETO...');
-            
+
             // Iniciar o index.js principal (bot + website)
             require('./index.js');
-            
+
         } else {
             logger.info('\n🤖 Iniciando modo BOT-ONLY...');
             // No Railway, precisamos expor uma porta para o healthcheck mesmo em bot-only
@@ -134,21 +134,21 @@ async function railwayStart() {
                     logger.info(`🏥 Health check (bot-only) ativo na porta ${port}`);
                 });
             }
-            
+
             // Iniciar apenas o bot
             const { startBotOnly } = require('./bot-only');
             await startBotOnly();
         }
-        
+
         // 6. Log de sucesso
         logger.info('Railway startup completed', {
             mode: startMode,
             hasClientSecret,
             environment: process.env.RAILWAY_ENVIRONMENT_NAME
         });
-        
+
     logger.info(`\n🎉 Bot iniciado com sucesso em modo ${startMode.toUpperCase()}!`);
-        
+
     } catch (error) {
     logger.error('\n❌ === ERRO FATAL ===');
     logger.error(`❌ ${error.message}`);
@@ -157,13 +157,13 @@ async function railwayStart() {
     logger.error('   2. CLIENT_ID configurado na Railway');
     logger.error('   3. CLIENT_SECRET configurado na Railway (opcional para bot-only)');
     logger.error('\n📚 Consulte: RAILWAY_DEPLOYMENT.md');
-        
+
         logger.error('Railway startup failed', {
             error: error.message,
             stack: error.stack,
             environment: process.env.RAILWAY_ENVIRONMENT_NAME
         });
-        
+
         process.exit(1);
     }
 }

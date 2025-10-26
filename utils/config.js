@@ -11,7 +11,7 @@ const isProd = process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_EN
 const config = {
     NODE_ENV: process.env.NODE_ENV || 'development',
     IS_PRODUCTION: isProd,
-    
+
     // Discord Configuration
     DISCORD: {
         TOKEN: process.env.DISCORD_TOKEN,
@@ -19,7 +19,7 @@ const config = {
         CLIENT_SECRET: process.env.CLIENT_SECRET || process.env.DISCORD_CLIENT_SECRET || process.env.CLIENTSECRET, // Handle typo
         GUILD_ID: process.env.GUILD_ID || process.env.DISCORD_GUILD_ID,
     },
-    
+
     // Website Configuration
     WEBSITE: {
         // Prefer explicit BASE_URL; otherwise, in production infer from Railway's public domain
@@ -47,7 +47,7 @@ const config = {
         PORT: parseInt(process.env.PORT) || 4000,
         CALLBACK_URL: process.env.CALLBACK_URL || '/auth/discord/callback',
     },
-    
+
     // Channels Configuration
     CHANNELS: {
         UPDATES: process.env.UPDATES_CHANNEL_ID,
@@ -55,7 +55,7 @@ const config = {
         LOGS: process.env.LOGS_CHANNEL_ID,
         TICKETS: process.env.TICKETS_CHANNEL_ID,
     },
-    
+
     // Roles Configuration
     ROLES: {
         VERIFIED: process.env.VERIFIED_ROLE_ID,
@@ -63,19 +63,19 @@ const config = {
         ADMIN: process.env.ADMIN_ROLE_ID,
         OWNER: process.env.OWNER_ROLE_ID,
     },
-    
+
     // Database Configuration
     DATABASE: {
         PATH: process.env.DATABASE_PATH || './website/database/ignis_dashboard.db',
     },
-    
+
     // Webhooks Configuration
     WEBHOOKS: {
         LOGS: process.env.WEBHOOK_LOGS,
         UPDATES: process.env.WEBHOOK_UPDATES,
         TICKETS: process.env.WEBHOOK_TICKETS,
     },
-    
+
     // Rate Limiting
     RATE_LIMIT: {
         WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
