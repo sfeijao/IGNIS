@@ -23,22 +23,42 @@ const config = {
     // Website Configuration
     WEBSITE: {
         // Prefer explicit BASE_URL; otherwise, in production infer from Railway's public domain
-        // This keeps OAuth callback host aligned with the externally visible hostname
+        // Additionally, in production if an explicit BASE_URL host differs from Railway's public domain,
+        // auto-correct to the Railway domain to avoid OAuth host mismatch/redirect issues.
         BASE_URL: (() => {
             const explicit = process.env.BASE_URL && process.env.BASE_URL.trim();
-            if (explicit) return explicit.replace(/\/$/, '');
-            if (isProd) {
-                const raw = (process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_URL || process.env.RAILWAY_STATIC_URL || '').trim();
-                if (raw) {
-                    // If value already includes protocol, keep it; otherwise prefix https://
-                    let url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-                    // Normalize to protocol + hostname only, drop trailing slash
-                    try {
-                        const u = new URL(url);
-                        url = `${u.protocol}//${u.hostname}`;
-                    } catch { /* keep best-effort */ }
+            const railwayDomain = (process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_URL || process.env.RAILWAY_STATIC_URL || '').trim();
+
+            // Helper to normalize a domain or URL to https://host (no trailing slash)
+            const normalizeToHttpsHost = (val) => {
+                if (!val) return '';
+                let url = /^https?:\/\//i.test(val) ? val : `https://${val}`;
+                try {
+                    const u = new URL(url);
+                    return `${u.protocol}//${u.hostname}`.replace(/\/$/, '');
+                } catch {
                     return url.replace(/\/$/, '');
                 }
+            };
+
+            if (explicit) {
+                let base = explicit.replace(/\/$/, '');
+                if (isProd && railwayDomain) {
+                    try {
+                        const e = new URL(normalizeToHttpsHost(base));
+                        const r = new URL(normalizeToHttpsHost(railwayDomain));
+                        if (e.hostname !== r.hostname) {
+                            const corrected = `${r.protocol}//${r.hostname}`;
+                            console.warn(`[CONFIG WARNING] BASE_URL host (${e.hostname}) differs from Railway domain (${r.hostname}). Overriding BASE_URL to ${corrected}`);
+                            return corrected;
+                        }
+                    } catch { /* if parsing fails, fall through with explicit */ }
+                }
+                return base;
+            }
+
+            if (isProd && railwayDomain) {
+                return normalizeToHttpsHost(railwayDomain);
             }
             // Dev fallback
             return 'http://localhost:4000';
