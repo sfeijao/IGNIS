@@ -70,15 +70,34 @@ async function railwayStart() {
         // 4. Deploy dos comandos primeiro
     logger.info('\n⚙️  Deploying comandos slash...');
         try {
-            const deployCommands = require('./scripts/deploy-commands');
-            if (typeof deployCommands === 'function') {
-                await deployCommands();
+            const deployModule = require('./scripts/deploy-commands');
+
+            // Suportar diferentes formatos de export (função, classe, objeto com run)
+            const isClass = (fn) => {
+                try {
+                    const src = Function.prototype.toString.call(fn);
+                    return src.startsWith('class ');
+                } catch { return false; }
+            };
+
+            const defaultOptions = { scope: 'guild', list: false, clear: false };
+
+            if (typeof deployModule === 'function') {
+                if (isClass(deployModule)) {
+                    const instance = new deployModule();
+                    await instance.run(defaultOptions);
+                } else {
+                    // Export é uma função executável
+                    await deployModule(defaultOptions);
+                }
+            } else if (deployModule && typeof deployModule.run === 'function') {
+                await deployModule.run(defaultOptions);
             } else {
-                // Se o script não exporta função, execute via child_process
+                // Fallback: executar via processo filho
                 const { execSync } = require('child_process');
-                execSync('node scripts/deploy-commands.js', { 
+                execSync('node scripts/deploy-commands.js', {
                     stdio: 'inherit',
-                    cwd: __dirname 
+                    cwd: __dirname
                 });
             }
             logger.info('✅ Comandos deployados com sucesso');
