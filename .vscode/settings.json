@@ -15,5 +15,9 @@
     // Commit all by default when using smart commit
     "git.commitSmartCommitChanges": "all",
     // Allow passing --no-verify/-n from VS Code Git UI (if supported)
-    "git.allowNoVerifyCommit": true
+    "git.allowNoVerifyCommit": true,
+    // Silence Tailwind/PostCSS unknown at-rules warnings in Problems panel
+    "css.lint.unknownAtRules": "ignore",
+    "scss.lint.unknownAtRules": "ignore",
+    "less.lint.unknownAtRules": "ignore"
 }

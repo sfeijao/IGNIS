@@ -1,4 +1,4 @@
-name: Website smoke tests
+name: Website smoke tests (static)
 
 on:
   push:
@@ -7,16 +7,13 @@ on:
     branches: [ main ]
 
 jobs:
-  smoke:
+  smoke-static:
     runs-on: ubuntu-latest
-    env:
-      PORT: 4000
-      ALLOW_LOCAL_AUTH_BYPASS: 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
@@ -28,7 +25,6 @@ jobs:
         run: |
           set -e
           echo "Searching for unresolved template placeholders (\${...} or %24%7B) in website/public (excluding helpers/backups)..."
-          # Exclude runtime sanitizer helpers and backup/original files which intentionally check for placeholders
           EXCLUDES=("--exclude=frontend-helpers.js" "--exclude=script.js" "--exclude=*backup*.html" "--exclude=*original*.html" "--exclude=transcript.html")
           if grep -RIn "\${" ${EXCLUDES[*]} website/public || grep -RIn "%24%7B" ${EXCLUDES[*]} website/public; then
             echo "\nERROR: unresolved template placeholders found in website/public (excluding helpers/backups). Fix them before merging.\n"
@@ -39,19 +35,15 @@ jobs:
             echo "No unresolved template placeholders found (excluding helpers/backups)."
           fi
 
-      - name: Start website server
+      - name: Start static server and run smoke tests
         run: |
-          nohup npm run server > server.log 2>&1 &
-          # wait for the server to be responsive
-          for i in {1..30}; do
-            if curl -sSf http://localhost:4000/dashboard >/dev/null; then
-              echo "server ready"; break
-            fi
-            echo "waiting for server... ($i)"; sleep 1
-          done
-
-      - name: Run fetch-based smoke test
-        run: npm run smoke:fetch
-
-      - name: Run headless smoke test (Puppeteer)
-        run: npm run smoke:headless
+          nohup node website/tools/simple_static_server.js >/tmp/static-server.log 2>&1 &
+          # wait for server to be ready
+          sleep 3
+          echo "=== static server log ==="
+          tail -n +1 /tmp/static-server.log || true
+          echo "=== running fetch-based smoke test ==="
+          node website/tools/e2e-smoke-fetch.js
+          echo "=== running headless smoke test ==="
+          node website/tools/e2e-smoke-headless.js
+        timeout-minutes: 10

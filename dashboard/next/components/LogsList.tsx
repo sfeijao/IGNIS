@@ -58,23 +58,23 @@ export default function LogsList() {
       )}
       <div className="card p-4 grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
         <div className="md:col-span-2">
-          <label className="text-xs text-neutral-400">Pesquisa</label>
-          <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={q} onChange={e=>{ setPage(1); setQ(e.target.value) }} placeholder="ID, user, canal, razão…" />
+          <label htmlFor="logs-search" className="text-xs text-neutral-400">Pesquisa</label>
+          <input id="logs-search" aria-label="Pesquisar logs" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={q} onChange={e=>{ setPage(1); setQ(e.target.value) }} placeholder="ID, utilizador, canal, razão…" title="Pesquisar logs por ID, utilizador, canal ou razão" />
         </div>
         <div>
-          <label className="text-xs text-neutral-400">Tipo</label>
-          <select className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={type} onChange={e=>{ setPage(1); setType(e.target.value) }}>
+          <label htmlFor="logs-type" className="text-xs text-neutral-400">Tipo</label>
+          <select id="logs-type" aria-label="Filtrar por tipo de log" title="Tipo de log" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={type} onChange={e=>{ setPage(1); setType(e.target.value) }}>
             <option value="">Qualquer</option>
             {['warn','ban','kick','mute','unmute','timeout','note','ticket','message_delete','message_edit'].map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div>
-          <label className="text-xs text-neutral-400">User ID</label>
-          <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={user} onChange={e=>{ setPage(1); setUser(e.target.value) }} />
+          <label htmlFor="logs-user" className="text-xs text-neutral-400">User ID</label>
+          <input id="logs-user" aria-label="Filtrar por utilizador" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={user} onChange={e=>{ setPage(1); setUser(e.target.value) }} placeholder="ID do utilizador" title="Filtrar por utilizador" />
         </div>
         <div>
-          <label className="text-xs text-neutral-400">Mod ID</label>
-          <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={mod} onChange={e=>{ setPage(1); setMod(e.target.value) }} />
+          <label htmlFor="logs-mod" className="text-xs text-neutral-400">Mod ID</label>
+          <input id="logs-mod" aria-label="Filtrar por moderador" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={mod} onChange={e=>{ setPage(1); setMod(e.target.value) }} placeholder="ID do moderador" title="Filtrar por moderador" />
         </div>
         <div className="flex items-center gap-2">
           <button onClick={()=> window.open(exportUrl, '_blank')} className="mt-5 bg-neutral-800 hover:bg-neutral-700 text-sm px-3 py-2 rounded border border-neutral-700 disabled:opacity-50" disabled={!guildId}>Exportar</button>
@@ -107,7 +107,7 @@ export default function LogsList() {
             <button className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={page<=1} onClick={()=> setPage(p=>p-1)}>Prev</button>
             <span className="text-neutral-400">{page}</span>
             <button className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setPage(p=>p+1)}>Next</button>
-            <select className="ml-2 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={pageSize} onChange={e=>{ setPage(1); setPageSize(parseInt(e.target.value, 10)) }}>
+            <select id="logs-page-size" aria-label="Tamanho da página" title="Tamanho da página" className="ml-2 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={pageSize} onChange={e=>{ setPage(1); setPageSize(parseInt(e.target.value, 10)) }}>
               {[25,50,100,200].map(n => <option key={n} value={n}>{n}/page</option>)}
             </select>
           </div>
