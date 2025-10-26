@@ -28,8 +28,17 @@ const config = {
             const explicit = process.env.BASE_URL && process.env.BASE_URL.trim();
             if (explicit) return explicit.replace(/\/$/, '');
             if (isProd) {
-                const publicDomain = (process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_URL || process.env.RAILWAY_STATIC_URL || '').trim();
-                if (publicDomain) return `https://${publicDomain.replace(/\/$/, '')}`;
+                const raw = (process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_URL || process.env.RAILWAY_STATIC_URL || '').trim();
+                if (raw) {
+                    // If value already includes protocol, keep it; otherwise prefix https://
+                    let url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+                    // Normalize to protocol + hostname only, drop trailing slash
+                    try {
+                        const u = new URL(url);
+                        url = `${u.protocol}//${u.hostname}`;
+                    } catch { /* keep best-effort */ }
+                    return url.replace(/\/$/, '');
+                }
             }
             // Dev fallback
             return 'http://localhost:4000';
