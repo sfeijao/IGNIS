@@ -69,12 +69,12 @@ export default function RolesManager() {
       {!guildId && <div className="card p-4 text-sm text-neutral-400">Selecione um servidor para gerir cargos.</div>}
       <div className="card p-4 flex flex-wrap items-end gap-3">
         <div>
-          <label className="text-xs text-neutral-400">Nome</label>
-          <input className="mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={name} onChange={e=> setName(e.target.value)} placeholder="Nome do cargo" title="Nome do cargo" />
+          <label htmlFor="role-name" className="text-xs text-neutral-400">Nome</label>
+          <input id="role-name" className="mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={name} onChange={e=> setName(e.target.value)} placeholder="Nome do cargo" title="Nome do cargo" />
         </div>
         <div>
-          <label className="text-xs text-neutral-400">Cor (#RRGGBB)</label>
-          <input className="mt-1 w-40 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={color} onChange={e=> setColor(e.target.value)} placeholder="#ffffff" title="Cor em hexadecimal" />
+          <label htmlFor="role-color" className="text-xs text-neutral-400">Cor (#RRGGBB)</label>
+          <input id="role-color" className="mt-1 w-40 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={color} onChange={e=> setColor(e.target.value)} placeholder="#ffffff" title="Cor em hexadecimal" />
         </div>
         <button onClick={create} className="mt-5 px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 disabled:opacity-50" disabled={!guildId || loading}>Criar</button>
         <button onClick={load} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={!guildId || loading}>Atualizar</button>
@@ -86,14 +86,14 @@ export default function RolesManager() {
           {error && <div className="p-6 text-red-400">{error}</div>}
           {roles.map(r => (
             <div key={r.id} className="p-4 flex items-center gap-3">
-              <div className="h-4 w-4 rounded" style={{ background: r.color || '#888' }} />
+              <div className="h-4 w-4 rounded role-color-dot" style={{ ['--role-color' as any]: r.color || '#888' }} />
               <div className="flex-1 min-w-0">
                 <div className="text-neutral-200 truncate">{r.name}</div>
                 <div className="text-xs text-neutral-500">{r.id}</div>
               </div>
-              <button onClick={()=> move(r.id, 'up')} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">Up</button>
-              <button onClick={()=> move(r.id, 'down')} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">Down</button>
-              {!r.managed && <button onClick={()=> remove(r.id)} className="px-2 py-1 text-xs rounded bg-rose-600 hover:bg-rose-500">Remover</button>}
+              <button onClick={()=> move(r.id, 'up')} aria-label={`Subir ${r.name}`} title="Subir" className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">Up</button>
+              <button onClick={()=> move(r.id, 'down')} aria-label={`Descer ${r.name}`} title="Descer" className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">Down</button>
+              {!r.managed && <button onClick={()=> remove(r.id)} aria-label={`Remover ${r.name}`} title="Remover" className="px-2 py-1 text-xs rounded bg-rose-600 hover:bg-rose-500">Remover</button>}
             </div>
           ))}
         </div>

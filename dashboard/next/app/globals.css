@@ -33,6 +33,11 @@ body {
   @apply inline-block w-2 h-2 rounded-full;
 }
 
+/* Color indicator for RolesManager without inline background warnings */
+.role-color-dot {
+  background: var(--role-color, #888);
+}
+
 /* Sidebar compact mode */
 .sidebar-compact .sidebar { width: 4rem; }
 .sidebar-compact .sidebar .label { display: none; }
