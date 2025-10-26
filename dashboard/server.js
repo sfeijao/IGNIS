@@ -70,8 +70,25 @@ const getCallbackURL = () => {
     const baseUrl = (config.getBaseUrl && config.getBaseUrl()) || (config.WEBSITE?.BASE_URL) || `http://localhost:${PORT}`;
     const cb = (process.env.CALLBACK_URL || '').trim();
     if (cb) {
-        // If absolute URL provided, use as-is; if relative, join with baseUrl
-        if (/^https?:\/\//i.test(cb)) return cb;
+        // If absolute URL provided, normalize its host to the configured BASE_URL host.
+        // This prevents accidentally using a callback pointing at a different Railway app
+        // (e.g., copied from another environment), which causes 404 after OAuth.
+        if (/^https?:\/\//i.test(cb)) {
+            try {
+                const base = new URL(baseUrl);
+                const u = new URL(cb);
+                // If hosts differ, rebuild on base host but preserve path/query
+                if (u.host !== base.host) {
+                    const rebuilt = `${base.protocol}//${base.host}${u.pathname}${u.search || ''}`;
+                    logger.warn(`Normalized CALLBACK_URL host from ${u.host} -> ${base.host} (${rebuilt})`);
+                    return rebuilt;
+                }
+                return cb;
+            } catch {
+                // Fall through to relative handling if parsing fails
+            }
+        }
+        // Relative: join with base URL
         const rel = cb.startsWith('/') ? cb : `/${cb}`;
         return `${baseUrl}${rel}`;
     }
