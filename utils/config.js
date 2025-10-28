@@ -22,43 +22,68 @@ const config = {
 
     // Website Configuration
     WEBSITE: {
-        // Prefer explicit BASE_URL; otherwise, in production infer from Railway's public domain
-        // Additionally, in production if an explicit BASE_URL host differs from Railway's public domain,
-        // auto-correct to the Railway domain to avoid OAuth host mismatch/redirect issues.
+        // Prefer a "safe" Railway domain by default (RAILWAY_URL or RAILWAY_STATIC_URL),
+        // and only use the custom/public domain when explicitly forced. This avoids OAuth
+        // failures while a custom domain's DNS is pending or misconfigured.
         BASE_URL: (() => {
             const explicit = process.env.BASE_URL && process.env.BASE_URL.trim();
-            const railwayDomain = (process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_URL || process.env.RAILWAY_STATIC_URL || '').trim();
+            const forceCustom = (process.env.FORCE_CUSTOM_DOMAIN || '').toLowerCase() === 'true';
 
-            // Helper to normalize a domain or URL to https://host (no trailing slash)
+            // Railway provides multiple domain envs; prefer the app URL first as it's always valid
+            const railwayUrl = (process.env.RAILWAY_URL || '').trim();
+            const railwayStaticUrl = (process.env.RAILWAY_STATIC_URL || '').trim();
+            const railwayPublicDomain = (process.env.RAILWAY_PUBLIC_DOMAIN || '').trim();
+
+            // Helper to normalize a domain or URL to https://host (no trailing slash for host-only)
             const normalizeToHttpsHost = (val) => {
                 if (!val) return '';
                 let url = /^https?:\/\//i.test(val) ? val : `https://${val}`;
                 try {
                     const u = new URL(url);
+                    // Keep protocol+host only to avoid leaking paths from envs
                     return `${u.protocol}//${u.hostname}`.replace(/\/$/, '');
                 } catch {
                     return url.replace(/\/$/, '');
                 }
             };
 
+            // Determine the preferred Railway domain in production
+            const preferredRailway = (() => {
+                // Prefer the full app URL, then static URL, then the public domain
+                if (railwayUrl) return normalizeToHttpsHost(railwayUrl);
+                if (railwayStaticUrl) return normalizeToHttpsHost(railwayStaticUrl);
+                if (railwayPublicDomain) return normalizeToHttpsHost(railwayPublicDomain);
+                return '';
+            })();
+
             if (explicit) {
-                let base = explicit.replace(/\/$/, '');
-                if (isProd && railwayDomain) {
+                const base = explicit.replace(/\/$/, '');
+                if (isProd) {
                     try {
                         const e = new URL(normalizeToHttpsHost(base));
-                        const r = new URL(normalizeToHttpsHost(railwayDomain));
-                        if (e.hostname !== r.hostname) {
-                            const corrected = `${r.protocol}//${r.hostname}`;
-                            console.warn(`[CONFIG WARNING] BASE_URL host (${e.hostname}) differs from Railway domain (${r.hostname}). Overriding BASE_URL to ${corrected}`);
-                            return corrected;
+                        // If forced, honor the explicit custom domain regardless of Railway envs
+                        if (forceCustom) return `${e.protocol}//${e.hostname}`;
+                        // Otherwise, prefer the safe Railway-provided URL if available and hosts differ
+                        if (preferredRailway) {
+                            const r = new URL(preferredRailway);
+                            if (e.hostname !== r.hostname) {
+                                const corrected = `${r.protocol}//${r.hostname}`;
+                                console.warn(`[CONFIG WARNING] BASE_URL host (${e.hostname}) differs from Railway app URL (${r.hostname}). Using safe Railway URL: ${corrected} (set FORCE_CUSTOM_DOMAIN=true to keep custom domain)`);
+                                return corrected;
+                            }
                         }
-                    } catch { /* if parsing fails, fall through with explicit */ }
+                        return `${e.protocol}//${e.hostname}`;
+                    } catch {
+                        // If parsing explicit fails, fall back to preferred Railway or dev default
+                        if (isProd && preferredRailway) return preferredRailway;
+                        return 'http://localhost:4000';
+                    }
                 }
                 return base;
             }
 
-            if (isProd && railwayDomain) {
-                return normalizeToHttpsHost(railwayDomain);
+            if (isProd && preferredRailway) {
+                return preferredRailway;
             }
             // Dev fallback
             return 'http://localhost:4000';
@@ -151,6 +176,17 @@ if (isProd) {
 // Log de inicialização (sem expor segredos)
 console.log(`[CONFIG] Carregando configuração para ambiente: ${config.NODE_ENV}`);
 console.log(`[CONFIG] URL base: ${config.WEBSITE.BASE_URL}`);
+if (isProd) {
+    try {
+        const details = {
+            forceCustom: (process.env.FORCE_CUSTOM_DOMAIN || '').toLowerCase() === 'true',
+            railwayUrl: process.env.RAILWAY_URL || null,
+            railwayStaticUrl: process.env.RAILWAY_STATIC_URL || null,
+            railwayPublicDomain: process.env.RAILWAY_PUBLIC_DOMAIN || null
+        };
+        console.log('[CONFIG] Domain selection details:', details);
+    } catch {}
+}
 console.log(`[CONFIG] Porta: ${config.WEBSITE.PORT}`);
 console.log(`[CONFIG] Guild ID: ${config.DISCORD.GUILD_ID}`);
 

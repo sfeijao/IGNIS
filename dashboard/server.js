@@ -377,12 +377,19 @@ app.get('/auth/discord', passport.authenticate('discord'));
 
 // Debug endpoint para verificar configuração OAuth
 app.get('/auth/debug', (req, res) => {
+    const baseUrl = (config.getBaseUrl && config.getBaseUrl()) || (config.WEBSITE?.BASE_URL) || `http://localhost:${PORT}`;
     res.json({
         clientID: config.DISCORD.CLIENT_ID,
+        baseURL: baseUrl,
         callbackURL: getCallbackURL(),
         environment: process.env.NODE_ENV || 'development',
         port: PORT,
-        railwayDomain: process.env.RAILWAY_PUBLIC_DOMAIN,
+        forceCustomDomain: (process.env.FORCE_CUSTOM_DOMAIN || '').toLowerCase() === 'true',
+        railway: {
+            publicDomain: process.env.RAILWAY_PUBLIC_DOMAIN || null,
+            url: process.env.RAILWAY_URL || null,
+            staticUrl: process.env.RAILWAY_STATIC_URL || null
+        },
         hasClientSecret: !!config.DISCORD.CLIENT_SECRET
     });
 });
