@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { getGuildId } from '@/lib/guild'
 
 interface GuildInfo {
@@ -17,6 +18,7 @@ export default function GuildHero() {
   const [guildId, setGuildId] = useState<string | null>(null)
   const [info, setInfo] = useState<GuildInfo | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [stats, setStats] = useState<{ onlineCount?: number; channelCount?: number; roleCount?: number } | null>(null)
 
   useEffect(() => {
     const id = getGuildId()
@@ -42,6 +44,24 @@ export default function GuildHero() {
     return () => { aborted = true }
   }, [guildId])
 
+  // Live stats fetch + refresh
+  useEffect(() => {
+    let aborted = false
+    let timer: any
+    const fetchStats = async () => {
+      if (!guildId) { setStats(null); return }
+      try {
+        const r = await fetch(`/api/guild/${guildId}/stats`, { credentials: 'include' })
+        if (!r.ok) return
+        const d = await r.json()
+        if (!aborted && d && d.success && d.stats) setStats({ onlineCount: d.stats.onlineCount, channelCount: d.stats.channelCount, roleCount: d.stats.roleCount })
+      } catch {}
+    }
+    fetchStats()
+    timer = setInterval(fetchStats, 20000)
+    return () => { aborted = true; if (timer) clearInterval(timer) }
+  }, [guildId])
+
   const bgImage = useMemo(() => {
     if (!info?.bannerUrl && !info?.splashUrl) return null
     return info.bannerUrl || info.splashUrl
@@ -60,7 +80,8 @@ export default function GuildHero() {
         )}
       </div>
       <div className="absolute inset-0 flex items-end">
-        <div className="px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
+        <div className="px-4 sm:px-6 lg:px-8 py-3 flex w-full flex-col gap-3">
+          <div className="flex items-center gap-3">
           {info.iconUrl ? (
             <img src={info.iconUrl} alt={info.name} className="h-12 w-12 sm:h-14 sm:w-14 rounded-lg border border-neutral-700 object-cover bg-neutral-800" />
           ) : (
@@ -70,9 +91,18 @@ export default function GuildHero() {
           )}
           <div className="min-w-0">
             <h2 className="text-lg sm:text-xl md:text-2xl font-semibold truncate">{info.name || guildId}</h2>
-            {info.memberCount != null && (
-              <div className="text-xs text-neutral-400">{info.memberCount} membros</div>
-            )}
+            <div className="text-xs text-neutral-400 flex items-center gap-3">
+              {info.memberCount != null && <span>{info.memberCount} membros</span>}
+              {stats?.onlineCount != null && <span>• {stats.onlineCount} online</span>}
+              {stats?.channelCount != null && <span>• {stats.channelCount} canais</span>}
+              {stats?.roleCount != null && <span>• {stats.roleCount} cargos</span>}
+            </div>
+          </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/" className="px-3 py-1.5 rounded-lg bg-neutral-900/80 border border-neutral-700 hover:bg-neutral-800 text-sm">Visão geral</Link>
+            <Link href="/plugins" className="px-3 py-1.5 rounded-lg bg-neutral-900/80 border border-neutral-700 hover:bg-neutral-800 text-sm">Plugins</Link>
+            <Link href="/tickets" className="px-3 py-1.5 rounded-lg bg-neutral-900/80 border border-neutral-700 hover:bg-neutral-800 text-sm">Tickets</Link>
           </div>
         </div>
       </div>

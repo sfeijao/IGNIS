@@ -1,7 +1,16 @@
+"use client"
+
+import { useMemo, useState } from 'react'
 import PluginCard from '@/components/PluginCard'
 
+type Plugin = { name: string; desc: string; icon: any; tip?: string; href: string }
+type Category = { title: string; items: Plugin[] }
+
 export default function PluginsPage() {
-  const categories = [
+  const [query, setQuery] = useState('')
+  const [active, setActive] = useState<string>('Todas')
+
+  const categories: Category[] = [
     {
       title: 'Essenciais',
       items: [
@@ -25,19 +34,51 @@ export default function PluginsPage() {
     }
   ]
 
+  const flat = useMemo(() => {
+    return categories.flatMap(cat => cat.items.map(item => ({ ...item, category: cat.title })))
+  }, [])
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return flat.filter(p => {
+      const inCat = active === 'Todas' || p.category === active
+      if (!inCat) return false
+      if (!q) return true
+      return p.name.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q)
+    })
+  }, [flat, query, active])
+
+  const allCats = useMemo(() => ['Todas', ...categories.map(c => c.title)], [])
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Plugins</h1>
-      {categories.map(cat => (
-        <section key={cat.title} className="space-y-3">
-          <h2 className="text-lg font-semibold">{cat.title}</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {cat.items.map(p => (
-              <PluginCard key={p.name} name={p.name} desc={p.desc} icon={p.icon} tip={p.tip} href={p.href} />
-            ))}
-          </div>
-        </section>
-      ))}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h1 className="text-2xl font-bold">Plugins</h1>
+        <div className="flex items-center gap-2">
+          {allCats.map(c => (
+            <button
+              key={c}
+              onClick={() => setActive(c)}
+              className={`px-3 py-1.5 rounded-lg border text-sm ${active===c ? 'bg-brand-600 border-brand-500 text-white' : 'bg-neutral-900 border-neutral-700 hover:bg-neutral-800'}`}
+            >{c}</button>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          className="w-full sm:w-96 bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-sm"
+          placeholder="Buscar plugin…"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
+        <span className="text-xs text-neutral-400">{filtered.length} resultado(s)</span>
+      </div>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {filtered.map(p => (
+          <PluginCard key={`${p.category}:${p.name}`} name={p.name} desc={p.desc} icon={p.icon} tip={p.tip} href={p.href} />
+        ))}
+      </div>
     </div>
   )
 }
