@@ -554,6 +554,39 @@ app.get('/api/guilds', async (req, res) => {
     }
 });
 
+// Basic guild info (name, icon, banner) for hero/header UI
+app.get('/api/guild/:guildId/info', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    try {
+        const guildId = req.params.guildId;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        // Build CDN URLs manually (works without privileged fetch)
+        const iconUrl = guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.${String(guild.icon).startsWith('a_') ? 'gif' : 'png'}?size=256` : null;
+        const bannerUrl = guild.banner ? `https://cdn.discordapp.com/banners/${guild.id}/${guild.banner}.${String(guild.banner).startsWith('a_') ? 'gif' : 'png'}?size=1024` : null;
+        const splashUrl = guild.splash ? `https://cdn.discordapp.com/splashes/${guild.id}/${guild.splash}.${String(guild.splash).startsWith('a_') ? 'gif' : 'png'}?size=1024` : null;
+        return res.json({
+            success: true,
+            guild: {
+                id: guild.id,
+                name: guild.name,
+                description: guild.description || null,
+                iconUrl,
+                bannerUrl,
+                splashUrl,
+                memberCount: guild.memberCount || 0
+            }
+        });
+    } catch (e) {
+        logger.error('guild info error', e);
+        return res.status(500).json({ success: false, error: 'guild_info_failed' });
+    }
+});
+
 app.get('/api/guild/:guildId/stats', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });

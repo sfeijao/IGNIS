@@ -2,6 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import Sidebar from '@/components/Sidebar'
 import Topbar from '@/components/Topbar'
+import GuildHero from '@/components/GuildHero'
 
 export const metadata: Metadata = {
   title: 'IGNIS Dashboard',
@@ -16,6 +17,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Sidebar />
           <div className="flex-1 min-w-0">
             <Topbar />
+            {/* Server banner hero, shown when a guild is selected */}
+            <GuildHero />
             <main className="px-4 sm:px-6 lg:px-8 py-6">
               {children}
             </main>
