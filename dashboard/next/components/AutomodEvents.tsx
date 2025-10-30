@@ -17,7 +17,8 @@ export default function AutomodEvents() {
   const load = async (gid: string) => {
     setLoading(true); setError(null)
     try {
-      const res = await api.getAutomodEvents(gid, { status: 'pending', limit: 50 })
+      // Server supports filter by resolved boolean; pending == resolved=false
+      const res = await api.getAutomodEvents(gid, { resolved: false })
       setEvents(res?.events || res || [])
     } catch (e: any) { setError(e?.message || 'Erro ao carregar eventos') }
     finally { setLoading(false) }
@@ -28,7 +29,12 @@ export default function AutomodEvents() {
   const decide = async (id: string, decision: 'approve' | 'reject') => {
     if (!guildId) return
     setLoading(true)
-    try { await api.reviewAutomodEvent(guildId, id, decision) ; await load(guildId) } finally { setLoading(false) }
+    try {
+      // Map UI decisions to server actions
+      const action = decision === 'approve' ? 'confirm' : 'release'
+      await api.reviewAutomodEvent(guildId, id, action)
+      await load(guildId)
+    } finally { setLoading(false) }
   }
 
   return (

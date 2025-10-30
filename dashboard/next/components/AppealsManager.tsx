@@ -29,7 +29,12 @@ export default function AppealsManager() {
   const decide = async (id: string, decision: 'approve' | 'deny') => {
     if (!guildId) return
     setLoading(true)
-    try { await api.decideAppeal(guildId, id, decision, decisionReason[id]) ; await load(guildId) } finally { setLoading(false) }
+    try {
+      // Map UI decisions to server statuses
+      const status = decision === 'approve' ? 'accepted' : 'rejected'
+      await api.decideAppeal(guildId, id, status, decisionReason[id])
+      await load(guildId)
+    } finally { setLoading(false) }
   }
 
   return (

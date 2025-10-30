@@ -188,7 +188,8 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ decision, reason })
+      // Server expects { action: 'release'|'confirm' }
+      body: JSON.stringify({ action: decision })
     })
     if (!res.ok) throw new Error('Failed to review event')
     return res.json()
@@ -205,7 +206,8 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ decision, reason })
+      // Server expects { status: 'accepted'|'rejected', response: string }
+      body: JSON.stringify({ status: decision as any, response: reason || '' })
     })
     if (!res.ok) throw new Error('Failed to submit appeal decision')
     return res.json()
