@@ -41,6 +41,7 @@ export default function Topbar() {
           <GuildSelector />
           <ThemeToggle />
           <div className="hidden sm:flex items-center gap-2"><UserAvatar /></div>
+          <a href="/logout" className="rounded-xl border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm hover:bg-neutral-700" title="Terminar sessão">Logout</a>
         </div>
       </div>
     </header>
