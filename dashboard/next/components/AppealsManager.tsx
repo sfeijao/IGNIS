@@ -18,7 +18,8 @@ export default function AppealsManager() {
   const load = async (gid: string) => {
     setLoading(true); setError(null)
     try {
-      const res = await api.getAppeals(gid, { status: 'pending', limit: 50 })
+      // Server schema only accepts 'status' for filtering; unknown keys cause 400
+      const res = await api.getAppeals(gid, { status: 'pending' })
       setAppeals(res?.appeals || res || [])
     } catch (e: any) { setError(e?.message || 'Erro ao carregar apelos') }
     finally { setLoading(false) }

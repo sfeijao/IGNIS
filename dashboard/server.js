@@ -143,6 +143,15 @@ try {
         app.get('/', (req, res) => res.redirect('/next/'));
         // Redirect legacy dashboard entry points to the new Next dashboard
         app.get(['/dashboard', '/dashboard/*', '/dashboard-new', '/dashboard-new/*'], (req, res) => res.redirect('/next/'));
+        // Serve RSC index.txt for exported pages without basePath prefix (Next fetches /<route>/index.txt)
+        app.get(/^\/(.*)\/index\.txt$/, (req, res, next) => {
+            try {
+                const rel = req.params[0] || '';
+                const filePath = path.join(NEXT_EXPORT_DIR, rel, 'index.txt');
+                if (fs.existsSync(filePath)) return res.sendFile(filePath);
+            } catch {}
+            return next();
+        });
     }
 } catch {}
 app.use(express.json());
