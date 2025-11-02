@@ -16,6 +16,7 @@ export default function DashboardStats() {
     { label: 'Mod logs', value: '—', color: '#22d3ee' },
   ])
   const [lastUpdated, setLastUpdated] = useState<string>('—')
+  const [isRecent, setIsRecent] = useState<boolean>(false)
   const [lastActivity, setLastActivity] = useState<string>('—')
   const [summary, setSummary] = useState<string>('Dados serão carregados ao selecionar um servidor.')
   const [loading, setLoading] = useState(false)
@@ -75,8 +76,9 @@ export default function DashboardStats() {
         { label: 'Mod logs', value: String(data.totals?.logs ?? '—'), color: '#22d3ee' },
       ]
       setStats(s)
-      const ts = data.updatedAt ? new Date(data.updatedAt) : new Date()
-      setLastUpdated(ts.toLocaleString())
+  const ts = data.updatedAt ? new Date(data.updatedAt) : new Date()
+  setLastUpdated(ts.toLocaleString())
+  setIsRecent(Date.now() - ts.getTime() < 90_000)
       const w = data.totals?.warnings ?? 0
       const b = data.totals?.bans ?? 0
       const k = data.totals?.kicks ?? 0
@@ -181,7 +183,7 @@ export default function DashboardStats() {
       </div>
       <div className="grid grid-cols-3 gap-3">
         {stats.map((s) => (
-          <Stat key={s.label} label={s.label} value={s.value} dotColor={s.color} />
+          <Stat key={s.label} label={s.label} value={s.value} dotColor={s.color} subtle={isRecent ? 'recente' : undefined} />
         ))}
       </div>
     </div>

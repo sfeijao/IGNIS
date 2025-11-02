@@ -1,7 +1,8 @@
 "use client"
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import PluginCard from '@/components/PluginCard'
+import { getGuildId } from '@/lib/guild'
 
 type Plugin = { name: string; desc: string; icon: any; tip?: string; href: string }
 type Category = { title: string; items: Plugin[] }
@@ -9,6 +10,11 @@ type Category = { title: string; items: Plugin[] }
 export default function PluginsPage() {
   const [query, setQuery] = useState('')
   const [active, setActive] = useState<string>('Todas')
+  const [isGuildSelected, setIsGuildSelected] = useState<boolean>(false)
+
+  useEffect(() => {
+    setIsGuildSelected(!!getGuildId())
+  }, [])
 
   const categories: Category[] = [
     {
@@ -76,7 +82,15 @@ export default function PluginsPage() {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {filtered.map(p => (
-          <PluginCard key={`${p.category}:${p.name}`} name={p.name} desc={p.desc} icon={p.icon} tip={p.tip} href={p.href} />
+          <PluginCard
+            key={`${p.category}:${p.name}`}
+            name={p.name}
+            desc={p.desc}
+            icon={p.icon}
+            tip={p.tip}
+            href={p.href}
+            badge={isGuildSelected ? 'Ativo' : 'Offline'}
+          />
         ))}
       </div>
     </div>

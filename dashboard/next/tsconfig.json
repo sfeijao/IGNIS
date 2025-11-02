@@ -38,6 +38,7 @@
     "next-env.d.ts",
     "app/**/*",
     "components/**/*",
+    "services/**/*",
     "lib/**/*",
     "types/**/*",
     ".next/types/**/*.ts"

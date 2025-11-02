@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { getGuildId } from '@/lib/guild'
+import Skeleton from './Skeleton'
 
 interface GuildInfo {
   id: string
@@ -67,7 +68,33 @@ export default function GuildHero() {
     return info.bannerUrl || info.splashUrl
   }, [info])
 
-  if (!guildId || !loaded || !info) return null
+  if (!loaded) {
+    return (
+      <section className="relative overflow-hidden border-b border-neutral-800">
+        <div className="relative w-full">
+          <Skeleton className="h-40 sm:h-48 md:h-56 w-full" />
+        </div>
+        <div className="absolute inset-0 flex items-end">
+          <div className="px-4 sm:px-6 lg:px-8 py-3 flex w-full flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-12 w-12 sm:h-14 sm:w-14 rounded-lg" />
+              <div className="min-w-0 flex-1">
+                <Skeleton className="h-5 w-40 mb-2" />
+                <Skeleton className="h-3 w-64" />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-8 w-28 rounded-lg" />
+              <Skeleton className="h-8 w-28 rounded-lg" />
+              <Skeleton className="h-8 w-28 rounded-lg" />
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (!guildId || !info) return null
 
   return (
     <section className="relative overflow-hidden border-b border-neutral-800">
