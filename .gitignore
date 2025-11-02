@@ -108,3 +108,6 @@ data/**/*.db
 .next/
 dashboard/next/.next/
 
+# Next.js static export output (do not commit build artifacts)
+dashboard/next/out/
+
