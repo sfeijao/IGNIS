@@ -139,14 +139,34 @@ try {
     const NEXT_EXPORT_DIR = path.join(__dirname, 'public', 'next-export');
     if (fs.existsSync(NEXT_EXPORT_DIR)) {
         app.use('/next', express.static(NEXT_EXPORT_DIR, { index: 'index.html', redirect: false }));
+        // Backward-compat alias: map legacy "/next/logs" to diagnostics page
+        app.get(['/next/logs', '/next/logs/', '/next/logs/index.html'], (req, res, next) => {
+            try {
+                const filePath = path.join(NEXT_EXPORT_DIR, 'diagnostics', 'index.html');
+                if (fs.existsSync(filePath)) return res.sendFile(filePath);
+            } catch {}
+            return next();
+        });
+        app.get('/next/logs/index.txt', (req, res, next) => {
+            try {
+                const filePath = path.join(NEXT_EXPORT_DIR, 'diagnostics', 'index.txt');
+                if (fs.existsSync(filePath)) return res.sendFile(filePath);
+            } catch {}
+            return next();
+        });
         // Make the new dashboard the default landing page
         app.get('/', (req, res) => res.redirect('/next/'));
         // Redirect legacy dashboard entry points to the new Next dashboard
         app.get(['/dashboard', '/dashboard/*', '/dashboard-new', '/dashboard-new/*'], (req, res) => res.redirect('/next/'));
-        // Serve RSC index.txt for exported pages without basePath prefix (Next fetches /<route>/index.txt)
+        // Serve RSC index.txt for exported pages, accounting for basePath "/next"
+        // Next static export with basePath fetches /next/<route>/index.txt
         app.get(/^\/(.*)\/index\.txt$/, (req, res, next) => {
             try {
-                const rel = req.params[0] || '';
+                let rel = req.params[0] || '';
+                // Strip leading basePath when present (e.g. "next/logs" -> "logs")
+                if (rel.startsWith('next/')) rel = rel.slice('next/'.length);
+                // Handle exact basePath root (e.g. /next/index.txt)
+                if (rel === 'next') rel = '';
                 const filePath = path.join(NEXT_EXPORT_DIR, rel, 'index.txt');
                 if (fs.existsSync(filePath)) return res.sendFile(filePath);
             } catch {}
