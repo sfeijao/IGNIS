@@ -34,8 +34,24 @@ export default function Sidebar() {
     switch (label) {
       case 'Dashboard': return <Icon name="dashboard" />
       case 'Plugins': return <Icon name="plugins" />
-      case 'Settings': return <Icon name="settings" />
+      case 'Logs': return <Icon name="logs" />
+      case 'Logs ao vivo': return <Icon name="live" />
+      case 'Moderação': return <Icon name="shield" />
+      case 'Membros': return <Icon name="members" />
+      case 'Cargos': return <Icon name="roles" />
+      case 'Webhooks': return <Icon name="webhooks" />
+      case 'Verificação': return <Icon name="verification" />
+      case 'Verificação: métricas': return <Icon name="metrics" />
+      case 'Tags': return <Icon name="tag" />
       case 'Tickets': return <Icon name="tickets" />
+      case 'Tickets: config': return <Icon name="tickets" />
+      case 'Tickets: painéis': return <Icon name="tickets" />
+      case 'Comandos': return <Icon name="commands" />
+      case 'Automod': return <Icon name="automod" />
+      case 'Apelos': return <Icon name="appeals" />
+      case 'Settings': return <Icon name="settings" />
+      case 'Diagnósticos': return <Icon name="diagnostics" />
+      case 'Performance': return <Icon name="performance" />
       default: return <Icon name="info" />
     }
   }

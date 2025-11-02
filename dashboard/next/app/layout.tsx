@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Sidebar from '@/components/Sidebar'
 import Topbar from '@/components/Topbar'
 import GuildHero from '@/components/GuildHero'
+import { Poppins } from 'next/font/google'
 
 export const metadata: Metadata = {
   title: 'IGNIS Dashboard',
@@ -10,9 +11,10 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const poppins = Poppins({ subsets: ['latin'], weight: ['400','500','600','700'] })
   return (
     <html lang="en" className="dark">
-      <body className="min-h-screen bg-neutral-950">
+      <body className={`min-h-screen bg-neutral-950 ${poppins.className}`}>
         <div className="min-h-screen flex">
           <Sidebar />
           <div className="flex-1 min-w-0">
