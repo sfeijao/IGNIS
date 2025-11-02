@@ -12,8 +12,9 @@ export function useAuth() {
       try {
         const res = await fetch('/api/user', { credentials: 'include' })
         if (!res.ok) throw new Error('not-authenticated')
-        const data = await res.json()
-        if (mounted) setUser(data)
+  const data = await res.json()
+  // API shape: { success: true, user: { id, username, discriminator, avatar } }
+  if (mounted) setUser(data?.user ?? null)
       } catch {
         if (mounted) setUser(null)
       } finally {

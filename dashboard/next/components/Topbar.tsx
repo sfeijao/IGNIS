@@ -6,9 +6,11 @@ import MobileSidebar from './MobileSidebar'
 import { useEffect, useState } from 'react'
 import GuildSelector from './GuildSelector'
 import UserAvatar from './UserAvatar'
+import { useAuth } from '../hooks/useAuth'
 
 export default function Topbar() {
   const [compact, setCompact] = useState(false)
+  const { user, loading } = useAuth()
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-compact')
@@ -40,8 +42,19 @@ export default function Topbar() {
         <div className="flex items-center gap-3">
           <GuildSelector />
           <ThemeToggle />
-          <div className="hidden sm:flex items-center gap-2"><UserAvatar /></div>
-          <a href="/logout" className="rounded-xl border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm hover:bg-neutral-700" title="Terminar sessão">Logout</a>
+          {loading ? (
+            <div className="hidden sm:flex items-center gap-2">
+              <div className="h-9 w-9 rounded-full bg-neutral-800 border border-neutral-700 animate-pulse" aria-label="A carregar" />
+              <span className="sr-only">A carregar…</span>
+            </div>
+          ) : user ? (
+            <>
+              <div className="hidden sm:flex items-center gap-2"><UserAvatar /></div>
+              <a href="/logout" className="rounded-xl border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm hover:bg-neutral-700" title="Terminar sessão">Logout</a>
+            </>
+          ) : (
+            <a href="/auth/discord" className="rounded-xl border border-brand-600 bg-brand-600/90 hover:bg-brand-600 px-3 py-2 text-sm" title="Iniciar sessão">Entrar</a>
+          )}
         </div>
       </div>
     </header>
