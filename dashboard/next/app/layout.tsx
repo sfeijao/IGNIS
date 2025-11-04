@@ -11,8 +11,10 @@ export const metadata: Metadata = {
   description: 'Modern MEE6-like dashboard for IGNIS',
 }
 
+// Next.js font loaders must be called at module scope
+const poppins = Poppins({ subsets: ['latin'], weight: ['400','500','600','700'] })
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const poppins = Poppins({ subsets: ['latin'], weight: ['400','500','600','700'] })
   return (
     <html lang="en" className="dark">
       <body className={`min-h-screen bg-neutral-950 ${poppins.className}`}>
