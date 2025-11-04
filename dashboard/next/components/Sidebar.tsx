@@ -4,55 +4,57 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Icon } from './icons'
 import FeatureBadge from './FeatureBadge'
+import { useI18n } from '@/lib/i18n'
 
 const nav = [
-  { href: '/', label: 'Dashboard', flag: 'stable' },
-  { href: '/plugins', label: 'Plugins', flag: 'stable' },
-  { href: '/logs', label: 'Logs', flag: 'stable' },
-  { href: '/logs/live', label: 'Logs ao vivo', flag: 'stable' },
-  { href: '/moderation', label: 'Moderação', flag: 'stable' },
-  { href: '/members', label: 'Membros', flag: 'stable' },
-  { href: '/roles', label: 'Cargos', flag: 'stable' },
-  { href: '/webhooks', label: 'Webhooks', flag: 'rollout' },
-  { href: '/verification', label: 'Verificação', flag: 'stable' },
-  { href: '/verification/metrics', label: 'Verificação: métricas', flag: 'beta' },
-  { href: '/tags', label: 'Tags', flag: 'stable' },
-  { href: '/tickets', label: 'Tickets', flag: 'stable' },
-  { href: '/tickets/config', label: 'Tickets: config', flag: 'stable' },
-  { href: '/tickets/panels', label: 'Tickets: painéis', flag: 'stable' },
-  { href: '/commands', label: 'Comandos', flag: 'rollout' },
-  { href: '/automod', label: 'Automod', flag: 'beta' },
-  { href: '/appeals', label: 'Apelos', flag: 'beta' },
-  { href: '/settings', label: 'Settings', flag: 'stable' },
-  { href: '/diagnostics', label: 'Diagnósticos', flag: 'stable' },
-  { href: '/performance', label: 'Performance', flag: 'stable' },
+  { href: '/', key: 'nav.dashboard', flag: 'stable' },
+  { href: '/plugins', key: 'nav.plugins', flag: 'stable' },
+  { href: '/logs', key: 'nav.logs', flag: 'stable' },
+  { href: '/logs/live', key: 'nav.logs.live', flag: 'stable' },
+  { href: '/moderation', key: 'nav.moderation', flag: 'stable' },
+  { href: '/members', key: 'nav.members', flag: 'stable' },
+  { href: '/roles', key: 'nav.roles', flag: 'stable' },
+  { href: '/webhooks', key: 'nav.webhooks', flag: 'rollout' },
+  { href: '/verification', key: 'nav.verification', flag: 'stable' },
+  { href: '/verification/metrics', key: 'nav.verification.metrics', flag: 'beta' },
+  { href: '/tags', key: 'nav.tags', flag: 'stable' },
+  { href: '/tickets', key: 'nav.tickets', flag: 'stable' },
+  { href: '/tickets/config', key: 'nav.tickets.config', flag: 'stable' },
+  { href: '/tickets/panels', key: 'nav.tickets.panels', flag: 'stable' },
+  { href: '/commands', key: 'nav.commands', flag: 'rollout' },
+  { href: '/automod', key: 'nav.automod', flag: 'beta' },
+  { href: '/appeals', key: 'nav.appeals', flag: 'beta' },
+  { href: '/settings', key: 'nav.settings', flag: 'stable' },
+  { href: '/diagnostics', key: 'nav.diagnostics', flag: 'stable' },
+  { href: '/performance', key: 'nav.performance', flag: 'stable' },
 ]
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const { t } = useI18n()
 
-  const iconFor = (label: string) => {
-    switch (label) {
-      case 'Dashboard': return <Icon name="dashboard" />
-      case 'Plugins': return <Icon name="plugins" />
-      case 'Logs': return <Icon name="logs" />
-      case 'Logs ao vivo': return <Icon name="live" />
-      case 'Moderação': return <Icon name="shield" />
-      case 'Membros': return <Icon name="members" />
-      case 'Cargos': return <Icon name="roles" />
-      case 'Webhooks': return <Icon name="webhooks" />
-      case 'Verificação': return <Icon name="verification" />
-      case 'Verificação: métricas': return <Icon name="metrics" />
-      case 'Tags': return <Icon name="tag" />
-      case 'Tickets': return <Icon name="tickets" />
-      case 'Tickets: config': return <Icon name="tickets" />
-      case 'Tickets: painéis': return <Icon name="tickets" />
-      case 'Comandos': return <Icon name="commands" />
-      case 'Automod': return <Icon name="automod" />
-      case 'Apelos': return <Icon name="appeals" />
-      case 'Settings': return <Icon name="settings" />
-      case 'Diagnósticos': return <Icon name="diagnostics" />
-      case 'Performance': return <Icon name="performance" />
+  const iconFor = (key: string) => {
+    switch (key) {
+      case 'nav.dashboard': return <Icon name="dashboard" />
+      case 'nav.plugins': return <Icon name="plugins" />
+      case 'nav.logs': return <Icon name="logs" />
+      case 'nav.logs.live': return <Icon name="live" />
+      case 'nav.moderation': return <Icon name="shield" />
+      case 'nav.members': return <Icon name="members" />
+      case 'nav.roles': return <Icon name="roles" />
+      case 'nav.webhooks': return <Icon name="webhooks" />
+      case 'nav.verification': return <Icon name="verification" />
+      case 'nav.verification.metrics': return <Icon name="metrics" />
+      case 'nav.tags': return <Icon name="tag" />
+      case 'nav.tickets': return <Icon name="tickets" />
+      case 'nav.tickets.config': return <Icon name="tickets" />
+      case 'nav.tickets.panels': return <Icon name="tickets" />
+      case 'nav.commands': return <Icon name="commands" />
+      case 'nav.automod': return <Icon name="automod" />
+      case 'nav.appeals': return <Icon name="appeals" />
+      case 'nav.settings': return <Icon name="settings" />
+      case 'nav.diagnostics': return <Icon name="diagnostics" />
+      case 'nav.performance': return <Icon name="performance" />
       default: return <Icon name="info" />
     }
   }
@@ -71,13 +73,13 @@ export default function Sidebar() {
               key={n.href}
               href={n.href}
               className={`relative rounded-lg px-3 py-2 hover:bg-neutral-800/80 transition-colors tip ${active ? 'bg-neutral-800 text-white animate-glow' : ''}`}
-              data-tip={n.label}
-              title={n.label}
+              data-tip={t(n.key)}
+              title={t(n.key)}
             >
               <span className={`absolute left-0 top-1 bottom-1 w-1 rounded-full bg-gradient-to-b from-brand-500 to-blue-500 ${active ? 'opacity-100 animate-pulseLine' : 'opacity-0'}`} />
-              <span className="icon mr-2 inline-flex items-center">{iconFor(n.label)}</span>
+              <span className="icon mr-2 inline-flex items-center">{iconFor(n.key)}</span>
               <span className="label flex items-center gap-2">
-                {n.label}
+                {t(n.key)}
                 <FeatureBadge flag={n.flag as any} />
               </span>
             </Link>

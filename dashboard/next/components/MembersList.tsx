@@ -5,8 +5,10 @@ import { api } from '@/lib/apiClient'
 import { getGuildId } from '@/lib/guild'
 import MemberModal from './MemberModal'
 import { useToast } from './Toaster'
+import { useI18n } from '@/lib/i18n'
 
 export default function MembersList() {
+  const { t } = useI18n()
   const guildId = getGuildId()
   const [q, setQ] = useState('')
   const [role, setRole] = useState('')
@@ -42,35 +44,35 @@ export default function MembersList() {
 
   return (
     <div className="space-y-3">
-      {!guildId && <div className="card p-4 text-sm text-neutral-400">Selecione um servidor para listar membros.</div>}
+      {!guildId && <div className="card p-4 text-sm text-neutral-400">{t('members.selectGuild')}</div>}
       <div className="card p-4 grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
         <div className="md:col-span-2">
-          <label className="text-xs text-neutral-400">Pesquisar</label>
+          <label className="text-xs text-neutral-400">{t('members.search')}</label>
           <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" placeholder="Nome ou apelido" value={q} onChange={e=> setQ(e.target.value)} />
         </div>
         <div>
-          <label className="text-xs text-neutral-400">Cargo</label>
-          <select className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={role} onChange={e=> setRole(e.target.value)} title="Cargo">
+          <label className="text-xs text-neutral-400">{t('members.role')}</label>
+          <select className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={role} onChange={e=> setRole(e.target.value)} title={t('members.role')}>
             <option value="">Todos</option>
             {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="text-xs text-neutral-400">Limite</label>
-          <select className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={limit} onChange={e=> setLimit(parseInt(e.target.value, 10))} title="Limite de membros">
+          <label className="text-xs text-neutral-400">{t('members.limit')}</label>
+          <select className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={limit} onChange={e=> setLimit(parseInt(e.target.value, 10))} title={t('members.limit')}>
             {[25,50,100,150,200].map(n => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
         <div className="flex items-center gap-2">
           <label className="flex items-center gap-2 text-xs text-neutral-300 mt-5">
             <input type="checkbox" checked={refresh} onChange={e=> setRefresh(e.target.checked)} />
-            Refresh
+            {t('members.refresh')}
           </label>
         </div>
       </div>
       <div className="card p-0 overflow-hidden">
         <div className="divide-y divide-neutral-800">
-          {loading && <div className="p-6 text-neutral-400">A carregar…</div>}
+          {loading && <div className="p-6 text-neutral-400">{t('logs.loading')}</div>}
           {!loading && members.map((m: any) => (
             <div key={m.id} className="p-4 flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs">{String(m.username || 'U')[0]}</div>
@@ -79,9 +81,9 @@ export default function MembersList() {
                 <div className="text-xs text-neutral-500">{m.id}</div>
               </div>
               {!m.manageable ? (
-                <span className="text-xs text-neutral-500">não gerenciável</span>
+                <span className="text-xs text-neutral-500">{t('members.notManageable')}</span>
               ) : (
-                <button className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setSelected(m)} title="Gerir membro">Gerir</button>
+                <button className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setSelected(m)} title={t('members.manage')}>{t('members.manage')}</button>
               )}
             </div>
           ))}

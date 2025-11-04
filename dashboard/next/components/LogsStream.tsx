@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { getGuildId } from '../lib/guild'
+import { useI18n } from '@/lib/i18n'
 
 type StreamEvent = { type?: string; message?: string; [k: string]: any }
 
 export default function LogsStream() {
+  const { t } = useI18n()
   const [guildId, setGuildId] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
   const [filter, setFilter] = useState('')
@@ -47,11 +49,11 @@ export default function LogsStream() {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <h2 className="text-xl font-semibold">Logs ao vivo</h2>
-        <span className={`text-xs px-2 py-1 rounded ${connected ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{connected ? 'conectado' : 'desconectado'}</span>
-        <input className="input max-w-xs" placeholder="Filtrar tipo (ex: messageDelete)" value={filter} onChange={e => setFilter(e.target.value)} title="Filtro de tipo" />
-        <button className="btn btn-secondary" onClick={connect} title="Reconectar">Reconectar</button>
-        <button className="btn btn-danger" onClick={() => { setEvents([]) }} title="Limpar">Limpar</button>
+        <h2 className="text-xl font-semibold">{t('logs.live.title')}</h2>
+        <span className={`text-xs px-2 py-1 rounded ${connected ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{connected ? t('logs.live.connected') : t('logs.live.disconnected')}</span>
+        <input className="input max-w-xs" placeholder={t('logs.live.filter.placeholder')} value={filter} onChange={e => setFilter(e.target.value)} title={t('logs.type')} />
+        <button className="btn btn-secondary" onClick={connect} title={t('logs.live.reconnect')}>{t('logs.live.reconnect')}</button>
+        <button className="btn btn-danger" onClick={() => { setEvents([]) }} title={t('logs.clear')}>{t('logs.clear')}</button>
       </div>
       <div className="card">
         <div className="card-body text-xs font-mono max-h-[480px] overflow-auto">

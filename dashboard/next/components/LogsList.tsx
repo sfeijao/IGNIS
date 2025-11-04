@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/lib/apiClient'
+import { useI18n } from '@/lib/i18n'
 import { getGuildId } from '@/lib/guild'
 
 type LogItem = {
@@ -16,6 +17,7 @@ type LogItem = {
 }
 
 export default function LogsList() {
+  const { t } = useI18n()
   const guildId = getGuildId()
   const [q, setQ] = useState('')
   const [type, setType] = useState('')
@@ -54,42 +56,42 @@ export default function LogsList() {
   return (
     <div className="space-y-3">
       {!guildId && (
-        <div className="card p-4 text-sm text-neutral-400">Selecione um servidor para ver os logs.</div>
+        <div className="card p-4 text-sm text-neutral-400">{t('logs.selectGuild')}</div>
       )}
       <div className="card p-4 grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
         <div className="md:col-span-2">
-          <label htmlFor="logs-search" className="text-xs text-neutral-400">Pesquisa</label>
-          <input id="logs-search" aria-label="Pesquisar logs" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={q} onChange={e=>{ setPage(1); setQ(e.target.value) }} placeholder="ID, utilizador, canal, razão…" title="Pesquisar logs por ID, utilizador, canal ou razão" />
+          <label htmlFor="logs-search" className="text-xs text-neutral-400">{t('logs.search')}</label>
+          <input id="logs-search" aria-label={t('logs.search')} className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={q} onChange={e=>{ setPage(1); setQ(e.target.value) }} placeholder="ID, user, channel, reason…" title="Search logs by ID, user, channel or reason" />
         </div>
         <div>
-          <label htmlFor="logs-type" className="text-xs text-neutral-400">Tipo</label>
-          <select id="logs-type" aria-label="Filtrar por tipo de log" title="Tipo de log" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={type} onChange={e=>{ setPage(1); setType(e.target.value) }}>
+          <label htmlFor="logs-type" className="text-xs text-neutral-400">{t('logs.type')}</label>
+          <select id="logs-type" aria-label={t('logs.type')} title={t('logs.type')} className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={type} onChange={e=>{ setPage(1); setType(e.target.value) }}>
             <option value="">Qualquer</option>
             {['warn','ban','kick','mute','unmute','timeout','note','ticket','message_delete','message_edit'].map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div>
-          <label htmlFor="logs-user" className="text-xs text-neutral-400">User ID</label>
-          <input id="logs-user" aria-label="Filtrar por utilizador" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={user} onChange={e=>{ setPage(1); setUser(e.target.value) }} placeholder="ID do utilizador" title="Filtrar por utilizador" />
+          <label htmlFor="logs-user" className="text-xs text-neutral-400">{t('logs.user')}</label>
+          <input id="logs-user" aria-label={t('logs.user')} className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={user} onChange={e=>{ setPage(1); setUser(e.target.value) }} placeholder={t('logs.user')} title={t('logs.user')} />
         </div>
         <div>
-          <label htmlFor="logs-mod" className="text-xs text-neutral-400">Mod ID</label>
-          <input id="logs-mod" aria-label="Filtrar por moderador" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={mod} onChange={e=>{ setPage(1); setMod(e.target.value) }} placeholder="ID do moderador" title="Filtrar por moderador" />
+          <label htmlFor="logs-mod" className="text-xs text-neutral-400">{t('logs.mod')}</label>
+          <input id="logs-mod" aria-label={t('logs.mod')} className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={mod} onChange={e=>{ setPage(1); setMod(e.target.value) }} placeholder={t('logs.mod')} title={t('logs.mod')} />
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={()=> window.open(exportUrl, '_blank')} className="mt-5 bg-neutral-800 hover:bg-neutral-700 text-sm px-3 py-2 rounded border border-neutral-700 disabled:opacity-50" disabled={!guildId}>Exportar</button>
+          <button onClick={()=> window.open(exportUrl, '_blank')} className="mt-5 bg-neutral-800 hover:bg-neutral-700 text-sm px-3 py-2 rounded border border-neutral-700 disabled:opacity-50" disabled={!guildId}>{t('logs.export')}</button>
           {(q || type || user || mod) && (
-            <button onClick={()=>{ setQ(''); setType(''); setUser(''); setMod(''); setPage(1) }} className="mt-5 underline text-xs text-neutral-400 hover:text-neutral-200">Limpar</button>
+            <button onClick={()=>{ setQ(''); setType(''); setUser(''); setMod(''); setPage(1) }} className="mt-5 underline text-xs text-neutral-400 hover:text-neutral-200">{t('logs.clear')}</button>
           )}
         </div>
       </div>
 
       <div className="card p-0 overflow-hidden">
         <div className="divide-y divide-neutral-800">
-          {loading && <div className="p-6 text-neutral-400">Carregando…</div>}
+          {loading && <div className="p-6 text-neutral-400">{t('logs.loading')}</div>}
           {error && <div className="p-6 text-red-400">{error}</div>}
           {!loading && !error && rows.length === 0 && (
-            <div className="p-6 text-neutral-400">Sem resultados.</div>
+            <div className="p-6 text-neutral-400">{t('logs.none')}</div>
           )}
           {rows.map((r, i) => (
             <div key={i} className="p-4 flex flex-col md:flex-row md:items-center gap-3">
@@ -102,13 +104,13 @@ export default function LogsList() {
           ))}
         </div>
         <div className="flex items-center justify-between p-3 border-t border-neutral-800 text-sm">
-          <div className="text-neutral-400">Total: {count}</div>
+          <div className="text-neutral-400">{t('logs.total')}: {count}</div>
           <div className="flex items-center gap-2">
-            <button className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={page<=1} onClick={()=> setPage(p=>p-1)}>Prev</button>
+            <button className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={page<=1} onClick={()=> setPage(p=>p-1)}>{t('logs.prev')}</button>
             <span className="text-neutral-400">{page}</span>
-            <button className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setPage(p=>p+1)}>Next</button>
-            <select id="logs-page-size" aria-label="Tamanho da página" title="Tamanho da página" className="ml-2 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={pageSize} onChange={e=>{ setPage(1); setPageSize(parseInt(e.target.value, 10)) }}>
-              {[25,50,100,200].map(n => <option key={n} value={n}>{n}/page</option>)}
+            <button className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setPage(p=>p+1)}>{t('logs.next')}</button>
+            <select id="logs-page-size" aria-label="Page size" title="Page size" className="ml-2 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={pageSize} onChange={e=>{ setPage(1); setPageSize(parseInt(e.target.value, 10)) }}>
+              {[25,50,100,200].map(n => <option key={n} value={n}>{`${n}${t('logs.perPageSuffix')}`}</option>)}
             </select>
           </div>
         </div>
