@@ -127,7 +127,7 @@ export default function TicketsList() {
     })()
     return () => { aborted = true }
   }, [guildId, staffRole])
-  
+
   // Load tickets whenever filters/pagination change
   useEffect(() => {
     if (!guildId) return

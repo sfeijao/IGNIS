@@ -1,3 +1,5 @@
+"use client"
+
 import Link from 'next/link'
 import DashboardStats from '@/components/DashboardStats'
 import PluginCard from '@/components/PluginCard'
