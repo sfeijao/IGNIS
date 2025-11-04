@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { getGuildId } from '@/lib/guild'
+import { api } from '@/lib/apiClient'
+import { useToast } from './Toaster'
 
-type Webhook = { id: string; name?: string; channelId?: string; url?: string }
+type Webhook = { id: string; type?: string; name?: string; channelId?: string; url?: string; loaded?: boolean }
 
 export default function WebhooksManager() {
   const guildId = getGuildId()
@@ -12,16 +14,17 @@ export default function WebhooksManager() {
   const [error, setError] = useState<string | null>(null)
   const [channel, setChannel] = useState('')
   const [name, setName] = useState('IGNIS')
+  const [type, setType] = useState('logs')
+  const { toast } = useToast()
 
   const load = async () => {
     if (!guildId) return
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/guild/${guildId}/webhooks`, { credentials: 'include' })
-      if (!res.ok) throw new Error('Falha')
-      const data = await res.json()
-      setHooks(data.webhooks || data)
+      const data = await api.getWebhooks(guildId)
+      const list = (data.webhooks || data || []).map((w: any) => ({ id: String(w._id || w.id || `${w.type}:${w.channel_id || ''}`), type: w.type || 'logs', name: w.name, channelId: w.channel_id, url: w.url, loaded: !!w.loaded }))
+      setHooks(list)
     } catch (e: any) { setError(e?.message || 'Falha ao obter webhooks') } finally { setLoading(false) }
   }
 
@@ -31,30 +34,44 @@ export default function WebhooksManager() {
     if (!guildId || !channel) return
     setLoading(true)
     try {
-      await fetch(`/api/guild/${guildId}/webhooks`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ channelId: channel, name })
-      })
+      await api.createWebhookInChannel(guildId, { type, channel_id: channel, name })
+      toast({ type: 'success', title: 'Webhook criado', description: `Tipo ${type}` })
       await load()
+    } catch (e: any) {
+      toast({ type: 'error', title: 'Falha ao criar webhook', description: e?.message })
     } finally { setLoading(false) }
   }
 
-  const remove = async (id: string) => {
+  const remove = async (id: string, t?: string) => {
     if (!guildId) return
     if (!confirm('Remover webhook?')) return
     setLoading(true)
-    try { await fetch(`/api/guild/${guildId}/webhooks/${id}`, { method: 'DELETE', credentials: 'include' }); await load() } finally { setLoading(false) }
+    try {
+      await api.deleteWebhook(guildId, id, t)
+      toast({ type: 'success', title: 'Webhook removido' })
+      await load()
+    } catch (e: any) { toast({ type: 'error', title: 'Falha ao remover webhook', description: e?.message }) }
+    finally { setLoading(false) }
   }
 
-  const test = async (id: string) => {
+  const test = async (type?: string) => {
     if (!guildId) return
     setLoading(true)
-    try { await fetch(`/api/guild/${guildId}/webhooks/test`, { method: 'POST', headers: { 'Content-Type':'application/json' }, credentials: 'include', body: JSON.stringify({ id }) }) } finally { setLoading(false) }
+    try { await api.testWebhook(guildId, type || 'logs'); toast({ type: 'success', title: 'Teste enviado' }) } catch (e: any) { toast({ type:'error', title:'Falha no teste', description: e?.message }) } finally { setLoading(false) }
   }
 
   return (
     <div className="space-y-3">
       {!guildId && <div className="card p-4 text-sm text-neutral-400">Selecione um servidor para gerir webhooks.</div>}
       <div className="card p-4 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="text-xs text-neutral-400">Tipo</label>
+          <select className="mt-1 w-40 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={type} onChange={e=> setType(e.target.value)} title="Tipo de webhook">
+            <option value="logs">logs</option>
+            <option value="tickets">tickets</option>
+            <option value="updates">updates</option>
+          </select>
+        </div>
         <div>
           <label className="text-xs text-neutral-400">Channel ID</label>
           <input className="mt-1 w-56 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={channel} onChange={e=> setChannel(e.target.value)} placeholder="123…" />
@@ -64,6 +81,7 @@ export default function WebhooksManager() {
           <input className="mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={name} onChange={e=> setName(e.target.value)} placeholder="IGNIS" />
         </div>
         <button onClick={create} className="mt-5 px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 disabled:opacity-50" disabled={!guildId || !channel || loading}>Criar</button>
+        <button onClick={() => guildId && api.autoSetupWebhook(guildId).then(()=>{ toast({ type:'success', title:'Auto-setup concluído' }); load(); }).catch((e:any)=> toast({ type:'error', title:'Falha no auto-setup', description: e?.message }))} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={!guildId || loading}>Auto-setup logs</button>
         <button onClick={load} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={!guildId || loading}>Atualizar</button>
       </div>
       <div className="card p-0 overflow-hidden">
@@ -73,11 +91,11 @@ export default function WebhooksManager() {
           {hooks.map(h => (
             <div key={h.id} className="p-4 flex items-center gap-3">
               <div className="flex-1 min-w-0">
-                <div className="text-neutral-200 truncate">{h.name || 'Webhook'}</div>
+                <div className="text-neutral-200 truncate">{h.name || 'Webhook'} <span className="text-xs text-neutral-400">({h.type})</span> {h.loaded && <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full border border-emerald-700/60 text-emerald-300">ativo</span>}</div>
                 <div className="text-xs text-neutral-500">{h.id} • {h.channelId}</div>
               </div>
-              <button onClick={()=> test(h.id)} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">Testar</button>
-              <button onClick={()=> remove(h.id)} className="px-2 py-1 text-xs rounded bg-rose-600 hover:bg-rose-500">Remover</button>
+              <button onClick={()=> test(h.type)} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">Testar</button>
+              <button onClick={()=> remove(h.id, h.type)} className="px-2 py-1 text-xs rounded bg-rose-600 hover:bg-rose-500">Remover</button>
             </div>
           ))}
         </div>

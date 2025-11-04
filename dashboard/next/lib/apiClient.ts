@@ -35,6 +35,39 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch roles')
     return res.json()
   },
+  async getRole(guildId: string, roleId: string) {
+    const res = await fetch(`/api/guild/${guildId}/roles/${roleId}`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch role')
+    return res.json()
+  },
+  async updateRole(
+    guildId: string,
+    roleId: string,
+    payload: { name?: string; color?: string; hoist?: boolean; mentionable?: boolean; permissions?: string[] | string }
+  ) {
+    const res = await fetch(`/api/guild/${guildId}/roles/${roleId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) throw new Error('Failed to update role')
+    return res.json()
+  },
+  async moveRole(
+    guildId: string,
+    roleId: string,
+    options: { direction?: 'up'|'down'; delta?: number; position?: number }
+  ) {
+    const res = await fetch(`/api/guild/${guildId}/roles/${roleId}/move`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(options)
+    })
+    if (!res.ok) throw new Error('Failed to move role')
+    return res.json()
+  },
   async getMembers(
     guildId: string,
     params?: { role?: string; q?: string; limit?: number; refresh?: boolean }
@@ -44,6 +77,41 @@ export const api = {
     ).toString() : ''
     const res = await fetch(`/api/guild/${guildId}/members${query ? `?${query}` : ''}`, { credentials: 'include' })
     if (!res.ok) throw new Error('Failed to fetch members')
+    return res.json()
+  },
+  async updateMemberRoles(guildId: string, userId: string, payload: { add?: string[]; remove?: string[] }) {
+    const res = await fetch(`/api/guild/${guildId}/members/${userId}/roles`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload || {})
+    })
+    if (!res.ok) throw new Error('Failed to update member roles')
+    return res.json()
+  },
+  async setMemberNickname(guildId: string, userId: string, nick: string, reason?: string) {
+    const res = await fetch(`/api/guild/${guildId}/members/${userId}/nickname`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ nick, reason })
+    })
+    if (!res.ok) throw new Error('Failed to set nickname')
+    return res.json()
+  },
+  async timeoutMember(guildId: string, userId: string, seconds: number, reason?: string) {
+    const res = await fetch(`/api/guild/${guildId}/members/${userId}/timeout`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ seconds, reason })
+    })
+    if (!res.ok) throw new Error('Failed to timeout member')
+    return res.json()
+  },
+  async kickMember(guildId: string, userId: string, reason?: string) {
+    const res = await fetch(`/api/guild/${guildId}/members/${userId}/kick`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ reason })
+    })
+    if (!res.ok) throw new Error('Failed to kick member')
+    return res.json()
+  },
+  async banMember(guildId: string, userId: string, opts?: { reason?: string; deleteMessageSeconds?: number }) {
+    const res = await fetch(`/api/guild/${guildId}/members/${userId}/ban`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(opts || {})
+    })
+    if (!res.ok) throw new Error('Failed to ban member')
     return res.json()
   },
   async getCurrentUser() {
@@ -227,6 +295,35 @@ export const api = {
   async purgeVerificationLogs(guildId: string) {
     const res = await fetch(`/api/guild/${guildId}/verification/logs`, { method: 'DELETE', credentials: 'include' })
     if (!res.ok) throw new Error('Failed to purge verification logs')
+    return res.json()
+  },
+  // Webhooks
+  async getWebhooks(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/webhooks`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch webhooks')
+    return res.json()
+  },
+  async createWebhookInChannel(guildId: string, payload: { type: string; channel_id: string; name?: string }) {
+    const res = await fetch(`/api/guild/${guildId}/webhooks/create-in-channel`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
+    })
+    if (!res.ok) throw new Error('Failed to create webhook in channel')
+    return res.json()
+  },
+  async autoSetupWebhook(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/webhooks/auto-setup`, { method: 'POST', credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to auto-setup webhook')
+    return res.json()
+  },
+  async testWebhook(guildId: string, type: string) {
+    const res = await fetch(`/api/guild/${guildId}/webhooks/test`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ type }) })
+    if (!res.ok) throw new Error('Failed to test webhook')
+    return res.json()
+  },
+  async deleteWebhook(guildId: string, id: string, type?: string) {
+    const url = `/api/guild/${guildId}/webhooks/${id}${type ? `?type=${encodeURIComponent(type)}` : ''}`
+    const res = await fetch(url, { method: 'DELETE', credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to delete webhook')
     return res.json()
   },
 }

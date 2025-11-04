@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/lib/apiClient'
 import { getGuildId } from '@/lib/guild'
+import MemberModal from './MemberModal'
+import { useToast } from './Toaster'
 
 export default function MembersList() {
   const guildId = getGuildId()
@@ -13,6 +15,8 @@ export default function MembersList() {
   const [loading, setLoading] = useState(false)
   const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([])
   const [members, setMembers] = useState<Array<any>>([])
+  const [selected, setSelected] = useState<any | null>(null)
+  const { toast } = useToast()
 
   const params = useMemo(() => ({ q, role, limit, refresh }), [q, role, limit, refresh])
 
@@ -74,11 +78,18 @@ export default function MembersList() {
                 <div className="text-neutral-200 truncate">{m.nick ? `${m.nick} (${m.username}#${m.discriminator})` : `${m.username}#${m.discriminator}`}</div>
                 <div className="text-xs text-neutral-500">{m.id}</div>
               </div>
-              {!m.manageable && <span className="text-xs text-neutral-500">não gerenciável</span>}
+              {!m.manageable ? (
+                <span className="text-xs text-neutral-500">não gerenciável</span>
+              ) : (
+                <button className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setSelected(m)} title="Gerir membro">Gerir</button>
+              )}
             </div>
           ))}
         </div>
       </div>
+      {selected && guildId && (
+        <MemberModal guildId={guildId} member={selected} onClose={()=> setSelected(null)} onChanged={()=> { toast({ type:'success', title:'Alterações guardadas' }); setSelected(null); }} />
+      )}
     </div>
   )
 }

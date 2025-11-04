@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getGuildId } from '../lib/guild'
 import { api } from '../lib/apiClient'
+import { useToast } from './Toaster'
 
 type Panel = { id: string; name: string; channelId?: string; messageId?: string; categoryId?: string; createdAt?: string }
 type Category = { id: string; name: string }
@@ -15,6 +16,7 @@ export default function TicketPanels() {
   const [channels, setChannels] = useState<Channel[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
 
   const [newPanel, setNewPanel] = useState<{ name: string; channelId: string; categoryId?: string }>({ name: '', channelId: '' })
   const [newCategory, setNewCategory] = useState<{ name: string }>({ name: '' })
@@ -50,7 +52,12 @@ export default function TicketPanels() {
   const onScan = async () => {
     if (!guildId) return
     setLoading(true)
-    await api.scanPanels(guildId).catch(() => {})
+    try {
+      await api.scanPanels(guildId)
+      toast({ type: 'success', title: 'Varredura concluída' })
+    } catch (e: any) {
+      toast({ type: 'error', title: 'Falha ao escanear', description: e?.message })
+    }
     await loadAll(guildId)
   }
 
@@ -60,8 +67,11 @@ export default function TicketPanels() {
     setLoading(true)
     try {
       await api.createPanel(guildId, newPanel)
+      toast({ type: 'success', title: 'Painel criado' })
       setNewPanel({ name: '', channelId: '' })
       await loadAll(guildId)
+    } catch (e: any) {
+      toast({ type: 'error', title: 'Falha ao criar painel', description: e?.message })
     } finally {
       setLoading(false)
     }
@@ -73,8 +83,11 @@ export default function TicketPanels() {
     setLoading(true)
     try {
       await api.createCategory(guildId, newCategory)
+      toast({ type: 'success', title: 'Categoria criada' })
       setNewCategory({ name: '' })
       await loadAll(guildId)
+    } catch (e: any) {
+      toast({ type: 'error', title: 'Falha ao criar categoria', description: e?.message })
     } finally {
       setLoading(false)
     }
@@ -145,9 +158,9 @@ export default function TicketPanels() {
                   <td className="py-2 pr-4">{p.categoryName}</td>
                   <td className="py-2 pr-4">{p.messageId || '-'}</td>
                   <td className="py-2 flex gap-2">
-                    <button className="btn btn-secondary btn-xs" title="Sincronizar" onClick={() => guildId && api.panelAction(guildId, p.id, 'sync').then(() => loadAll(guildId))}>Sync</button>
-                    <button className="btn btn-secondary btn-xs" title="Atualizar mensagem" onClick={() => guildId && api.panelAction(guildId, p.id, 'refresh_message').then(() => loadAll(guildId))}>Msg</button>
-                    <button className="btn btn-danger btn-xs" title="Remover" onClick={() => guildId && api.panelAction(guildId, p.id, 'delete').then(() => loadAll(guildId))}>Del</button>
+                    <button className="btn btn-secondary btn-xs" title="Sincronizar" onClick={() => guildId && api.panelAction(guildId, p.id, 'sync').then(() => { toast({ type:'success', title:'Sincronizado' }); loadAll(guildId) }).catch((e:any)=> toast({ type:'error', title:'Falha', description:e?.message }))}>Sync</button>
+                    <button className="btn btn-secondary btn-xs" title="Atualizar mensagem" onClick={() => guildId && api.panelAction(guildId, p.id, 'refresh_message').then(() => { toast({ type:'success', title:'Mensagem atualizada' }); loadAll(guildId) }).catch((e:any)=> toast({ type:'error', title:'Falha', description:e?.message }))}>Msg</button>
+                    <button className="btn btn-danger btn-xs" title="Remover" onClick={() => guildId && api.panelAction(guildId, p.id, 'delete').then(() => { toast({ type:'success', title:'Removido' }); loadAll(guildId) }).catch((e:any)=> toast({ type:'error', title:'Falha', description:e?.message }))}>Del</button>
                   </td>
                 </tr>
               ))}

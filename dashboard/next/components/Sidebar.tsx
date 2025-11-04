@@ -3,28 +3,29 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Icon } from './icons'
+import FeatureBadge from './FeatureBadge'
 
 const nav = [
-  { href: '/', label: 'Dashboard' },
-  { href: '/plugins', label: 'Plugins' },
-  { href: '/logs', label: 'Logs' },
-  { href: '/logs/live', label: 'Logs ao vivo' },
-  { href: '/moderation', label: 'Moderação' },
-  { href: '/members', label: 'Membros' },
-  { href: '/roles', label: 'Cargos' },
-  { href: '/webhooks', label: 'Webhooks' },
-  { href: '/verification', label: 'Verificação' },
-  { href: '/verification/metrics', label: 'Verificação: métricas' },
-  { href: '/tags', label: 'Tags' },
-  { href: '/tickets', label: 'Tickets' },
-  { href: '/tickets/config', label: 'Tickets: config' },
-  { href: '/tickets/panels', label: 'Tickets: painéis' },
-  { href: '/commands', label: 'Comandos' },
-  { href: '/automod', label: 'Automod' },
-  { href: '/appeals', label: 'Apelos' },
-  { href: '/settings', label: 'Settings' },
-  { href: '/diagnostics', label: 'Diagnósticos' },
-  { href: '/performance', label: 'Performance' },
+  { href: '/', label: 'Dashboard', flag: 'stable' },
+  { href: '/plugins', label: 'Plugins', flag: 'stable' },
+  { href: '/logs', label: 'Logs', flag: 'stable' },
+  { href: '/logs/live', label: 'Logs ao vivo', flag: 'stable' },
+  { href: '/moderation', label: 'Moderação', flag: 'stable' },
+  { href: '/members', label: 'Membros', flag: 'stable' },
+  { href: '/roles', label: 'Cargos', flag: 'stable' },
+  { href: '/webhooks', label: 'Webhooks', flag: 'rollout' },
+  { href: '/verification', label: 'Verificação', flag: 'stable' },
+  { href: '/verification/metrics', label: 'Verificação: métricas', flag: 'beta' },
+  { href: '/tags', label: 'Tags', flag: 'stable' },
+  { href: '/tickets', label: 'Tickets', flag: 'stable' },
+  { href: '/tickets/config', label: 'Tickets: config', flag: 'stable' },
+  { href: '/tickets/panels', label: 'Tickets: painéis', flag: 'stable' },
+  { href: '/commands', label: 'Comandos', flag: 'rollout' },
+  { href: '/automod', label: 'Automod', flag: 'beta' },
+  { href: '/appeals', label: 'Apelos', flag: 'beta' },
+  { href: '/settings', label: 'Settings', flag: 'stable' },
+  { href: '/diagnostics', label: 'Diagnósticos', flag: 'stable' },
+  { href: '/performance', label: 'Performance', flag: 'stable' },
 ]
 
 export default function Sidebar() {
@@ -69,11 +70,16 @@ export default function Sidebar() {
             <Link
               key={n.href}
               href={n.href}
-              className={`relative rounded-lg px-3 py-2 hover:bg-neutral-800/80 transition-colors ${active ? 'bg-neutral-800 text-white animate-glow' : ''}`}
+              className={`relative rounded-lg px-3 py-2 hover:bg-neutral-800/80 transition-colors tip ${active ? 'bg-neutral-800 text-white animate-glow' : ''}`}
+              data-tip={n.label}
+              title={n.label}
             >
               <span className={`absolute left-0 top-1 bottom-1 w-1 rounded-full bg-gradient-to-b from-brand-500 to-blue-500 ${active ? 'opacity-100 animate-pulseLine' : 'opacity-0'}`} />
               <span className="icon mr-2 inline-flex items-center">{iconFor(n.label)}</span>
-              <span className="label">{n.label}</span>
+              <span className="label flex items-center gap-2">
+                {n.label}
+                <FeatureBadge flag={n.flag as any} />
+              </span>
             </Link>
           )
         })}

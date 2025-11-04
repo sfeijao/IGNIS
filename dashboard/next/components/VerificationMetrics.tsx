@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { getGuildId } from '../lib/guild'
 import { api } from '../lib/apiClient'
+import { useToast } from './Toaster'
 
 export default function VerificationMetrics() {
   const [guildId, setGuildId] = useState<string | null>(null)
@@ -10,6 +11,7 @@ export default function VerificationMetrics() {
   const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => { setGuildId(getGuildId()) }, [])
 
@@ -31,7 +33,7 @@ export default function VerificationMetrics() {
   const purge = async () => {
     if (!guildId) return
     setLoading(true)
-    try { await api.purgeVerificationLogs(guildId); await load(guildId) } finally { setLoading(false) }
+    try { await api.purgeVerificationLogs(guildId); toast({ type: 'success', title: 'Logs limpos' }); await load(guildId) } catch (e:any) { toast({ type:'error', title:'Falha ao limpar', description: e?.message }) } finally { setLoading(false) }
   }
 
   return (

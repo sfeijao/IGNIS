@@ -782,6 +782,87 @@ app.post('/api/guild/:guildId/roles/:roleId/move', async (req,res)=>{
     } catch(e){ logger.error('role move error', e); return res.status(500).json({ success:false, error:'role_move_failed' }); }
 });
 
+// Get role details (including permissions)
+app.get('/api/guild/:guildId/roles/:roleId', async (req,res)=>{
+    if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
+    try {
+        const guildId = req.params.guildId; const roleId = req.params.roleId;
+        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        const guild = client.guilds.cache.get(guildId); if(!guild) return res.status(404).json({ success:false, error:'Guild not found' });
+        const role = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(()=>null);
+        if(!role) return res.status(404).json({ success:false, error:'Role not found' });
+        const me = guild.members.me || guild.members.cache.get(client.user.id);
+        const myHighest = me?.roles?.highest?.position ?? 0;
+        const manageable = !role.managed && role.position < myHighest;
+        const out = {
+            id: role.id,
+            name: role.name,
+            color: role.hexColor,
+            position: role.position,
+            managed: role.managed,
+            hoist: role.hoist,
+            mentionable: role.mentionable,
+            permissions: role.permissions?.bitfield ? String(role.permissions.bitfield) : '0',
+            manageable
+        };
+        return res.json({ success:true, role: out });
+    } catch(e){ logger.error('role details error', e); return res.status(500).json({ success:false, error:'role_details_failed' }); }
+});
+
+// Update role properties (name/color/hoist/mentionable/permissions)
+app.patch('/api/guild/:guildId/roles/:roleId', async (req,res)=>{
+    if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
+    try {
+        const guildId = req.params.guildId; const roleId = req.params.roleId;
+        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        const guild = client.guilds.cache.get(guildId); if(!guild) return res.status(404).json({ success:false, error:'Guild not found' });
+        const role = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(()=>null);
+        if(!role) return res.status(404).json({ success:false, error:'Role not found' });
+        if(role.managed) return res.status(400).json({ success:false, error:'role_managed' });
+        const me = guild.members.me || guild.members.cache.get(client.user.id);
+        const myHighest = me?.roles?.highest?.position ?? 0;
+        if(role.position >= myHighest) return res.status(403).json({ success:false, error:'insufficient_role_hierarchy' });
+        // Validate input
+        const bodySchema = Joi.object({
+            name: Joi.string().min(1).max(100).optional(),
+            color: Joi.string().pattern(/^#?[0-9a-fA-F]{6}$/).optional(),
+            hoist: Joi.boolean().optional(),
+            mentionable: Joi.boolean().optional(),
+            permissions: Joi.alternatives().try(
+                Joi.array().items(Joi.string().min(1)).optional(),
+                Joi.string().pattern(/^\d+$/).optional(),
+                Joi.number().integer().min(0).optional()
+            ).optional()
+        }).unknown(false);
+        const { error: vErr, value } = bodySchema.validate(req.body || {}, { abortEarly:false });
+        if (vErr) return res.status(400).json({ success:false, error:'validation_failed', details: vErr.details.map(d=>d.message) });
+        const patch = {};
+        if (Object.prototype.hasOwnProperty.call(value,'name')) patch.name = value.name;
+        if (Object.prototype.hasOwnProperty.call(value,'color')) {
+            const hex = String(value.color||'').replace(/^#/,'');
+            patch.color = `#${hex}`;
+        }
+        if (Object.prototype.hasOwnProperty.call(value,'hoist')) patch.hoist = !!value.hoist;
+        if (Object.prototype.hasOwnProperty.call(value,'mentionable')) patch.mentionable = !!value.mentionable;
+        if (Object.prototype.hasOwnProperty.call(value,'permissions')) {
+            const { PermissionFlagsBits } = require('discord.js');
+            let bit = BigInt(0);
+            if (Array.isArray(value.permissions)) {
+                for (const key of value.permissions) {
+                    const v = PermissionFlagsBits[key];
+                    if (typeof v !== 'undefined') bit |= BigInt(v);
+                }
+            } else {
+                const str = String(value.permissions);
+                try { bit = BigInt(str); } catch {}
+            }
+            patch.permissions = bit;
+        }
+        await role.edit(patch);
+        return res.json({ success:true });
+    } catch(e){ logger.error('role update error', e); return res.status(500).json({ success:false, error:'role_update_failed' }); }
+});
+
 // ===== Mod Export Presets Sync Endpoints =====
 app.get('/api/guild/:guildId/mod-presets', (req,res)=>{
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
@@ -952,6 +1033,73 @@ app.post('/api/guild/:guildId/members/:userId/roles', async (req, res) => {
         logger.error('member roles update error', e);
         return res.status(500).json({ success: false, error: 'roles_update_failed' });
     }
+});
+
+// Member management: nickname
+app.post('/api/guild/:guildId/members/:userId/nickname', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const guild = check.guild;
+        const member = await guild.members.fetch(req.params.userId).catch(() => null);
+        if (!member) return res.status(404).json({ success: false, error: 'Member not found' });
+        const schema = Joi.object({ nick: Joi.string().trim().allow('', null).max(32).required(), reason: Joi.string().trim().max(200).allow('', null) });
+        const { error, value } = schema.validate(req.body || {}, { abortEarly: false });
+        if (error) return res.status(400).json({ success:false, error:'validation_failed', details: error.details.map(d=>d.message) });
+        await member.setNickname(value.nick || null, value.reason || 'Dashboard nickname update').catch(() => {});
+        return res.json({ success: true });
+    } catch (e) { logger.error('member nickname error', e); return res.status(500).json({ success: false, error: 'nickname_failed' }); }
+});
+
+// Member management: timeout (communication disabled)
+app.post('/api/guild/:guildId/members/:userId/timeout', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const guild = check.guild;
+        const member = await guild.members.fetch(req.params.userId).catch(() => null);
+        if (!member) return res.status(404).json({ success: false, error: 'Member not found' });
+        const schema = Joi.object({ seconds: Joi.number().integer().min(0).max(28*24*3600).required(), reason: Joi.string().trim().max(200).allow('', null) });
+        const { error, value } = schema.validate(req.body || {}, { abortEarly: false });
+        if (error) return res.status(400).json({ success:false, error:'validation_failed', details: error.details.map(d=>d.message) });
+        const ms = Math.max(0, value.seconds|0) * 1000;
+        await member.timeout(ms || null, value.reason || 'Dashboard timeout update').catch(() => {});
+        return res.json({ success: true });
+    } catch (e) { logger.error('member timeout error', e); return res.status(500).json({ success: false, error: 'timeout_failed' }); }
+});
+
+// Member management: kick
+app.post('/api/guild/:guildId/members/:userId/kick', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const guild = check.guild;
+        const member = await guild.members.fetch(req.params.userId).catch(() => null);
+        if (!member) return res.status(404).json({ success: false, error: 'Member not found' });
+        const schema = Joi.object({ reason: Joi.string().trim().max(200).allow('', null) });
+        const { error, value } = schema.validate(req.body || {}, { abortEarly: false });
+        if (error) return res.status(400).json({ success:false, error:'validation_failed', details: error.details.map(d=>d.message) });
+        await member.kick(value.reason || 'Dashboard kick').catch(() => {});
+        return res.json({ success: true });
+    } catch (e) { logger.error('member kick error', e); return res.status(500).json({ success: false, error: 'kick_failed' }); }
+});
+
+// Member management: ban
+app.post('/api/guild/:guildId/members/:userId/ban', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const guild = check.guild;
+        const schema = Joi.object({ reason: Joi.string().trim().max(200).allow('', null), deleteMessageSeconds: Joi.number().integer().min(0).max(7*24*3600).default(0) });
+        const { error, value } = schema.validate(req.body || {}, { abortEarly: false });
+        if (error) return res.status(400).json({ success:false, error:'validation_failed', details: error.details.map(d=>d.message) });
+        await guild.members.ban(req.params.userId, { deleteMessageSeconds: value.deleteMessageSeconds || 0, reason: value.reason || 'Dashboard ban' }).catch(() => {});
+        return res.json({ success: true });
+    } catch (e) { logger.error('member ban error', e); return res.status(500).json({ success: false, error: 'ban_failed' }); }
 });
 
 app.get('/api/guild/:guildId/tickets', async (req, res) => {
