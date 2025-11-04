@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import DashboardStats from '@/components/DashboardStats'
 import PluginCard from '@/components/PluginCard'
+import { useI18n } from '@/lib/i18n'
 
 export default function HomePage() {
+  const { t } = useI18n()
   return (
     <main className="space-y-8">
       <section className="grid md:grid-cols-2 gap-6 items-center">
@@ -15,15 +17,15 @@ export default function HomePage() {
           </p>
           <div className="flex gap-3">
             <Link href="/plugins" className="inline-flex items-center rounded-xl px-4 py-2 bg-brand-600 hover:bg-brand-700 transition text-white font-medium">Explorar plugins</Link>
-            <Link href="/tickets" className="inline-flex items-center rounded-xl px-4 py-2 bg-neutral-800 hover:bg-neutral-700 transition border border-neutral-700">Tickets</Link>
-            <a href="/moderation-react.html" className="inline-flex items-center rounded-xl px-4 py-2 bg-neutral-800 hover:bg-neutral-700 transition border border-neutral-700">Moderation Center</a>
+            <Link href="/tickets" className="inline-flex items-center rounded-xl px-4 py-2 bg-neutral-800 hover:bg-neutral-700 transition border border-neutral-700">{t('nav.tickets')}</Link>
+            <a href="/moderation-react.html" className="inline-flex items-center rounded-xl px-4 py-2 bg-neutral-800 hover:bg-neutral-700 transition border border-neutral-700">{t('nav.moderation.center')}</a>
           </div>
         </div>
         <DashboardStats />
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold">Plugins</h2>
+        <h2 className="text-xl font-semibold">{t('nav.plugins')}</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {[
             {name:'Moderação',desc:'Automod, logs, ações e auditoria.', icon:'shield' as const, tip:'Configure regras, mod-logs e automod.'},
@@ -36,7 +38,7 @@ export default function HomePage() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold">Tickets</h2>
+        <h2 className="text-xl font-semibold">{t('nav.tickets')}</h2>
         <div className="card p-5">
           <p className="text-neutral-300 text-sm">A nova interface de Tickets será conectada ao adaptador para o sistema atual. Esta é uma prévia do layout.</p>
         </div>

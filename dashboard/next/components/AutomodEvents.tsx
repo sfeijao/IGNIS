@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react'
 import { getGuildId } from '../lib/guild'
 import { api } from '../lib/apiClient'
+import { useI18n } from '../lib/i18n'
 
 type Event = { id: string; type?: string; userId?: string; content?: string; status?: string; createdAt?: string }
 
 export default function AutomodEvents() {
+  const { t } = useI18n()
   const [guildId, setGuildId] = useState<string | null>(null)
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(false)
@@ -40,21 +42,21 @@ export default function AutomodEvents() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-xl font-semibold">Eventos de Automod (pendentes)</h2>
-        <button className="btn btn-secondary" onClick={() => guildId && load(guildId)} title="Recarregar">Recarregar</button>
+        <h2 className="text-xl font-semibold">{t('automod.title')}</h2>
+        <button className="btn btn-secondary" onClick={() => guildId && load(guildId)} title={t('common.reload')}>{t('common.reload')}</button>
       </div>
       {error && <div className="text-red-400">{error}</div>}
       <section className="card">
-        <div className="card-header">Fila</div>
+        <div className="card-header">{t('automod.queue')}</div>
         <div className="card-body grid gap-3">
-          {events.length === 0 && <div className="opacity-70">Sem eventos</div>}
+          {events.length === 0 && <div className="opacity-70">{t('automod.empty')}</div>}
           {events.map(ev => (
             <div key={ev.id} className="p-3 rounded-lg bg-neutral-800/50 border border-neutral-800">
               <div className="text-sm opacity-70">{ev.type} • {ev.userId} • {new Date(ev.createdAt || Date.now()).toLocaleString()}</div>
-              <div className="mt-1">{ev.content || '(sem conteúdo)'}</div>
+              <div className="mt-1">{ev.content || t('automod.content.empty')}</div>
               <div className="mt-2 flex gap-2">
-                <button className="btn btn-primary btn-xs" onClick={() => decide(ev.id, 'approve')}>Aprovar</button>
-                <button className="btn btn-danger btn-xs" onClick={() => decide(ev.id, 'reject')}>Rejeitar</button>
+                <button className="btn btn-primary btn-xs" onClick={() => decide(ev.id, 'approve')}>{t('automod.approve')}</button>
+                <button className="btn btn-danger btn-xs" onClick={() => decide(ev.id, 'reject')}>{t('automod.reject')}</button>
               </div>
             </div>
           ))}

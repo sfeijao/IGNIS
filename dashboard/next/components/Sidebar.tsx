@@ -87,7 +87,7 @@ export default function Sidebar() {
         })}
         <a href="/moderation-react.html" className="relative rounded-lg px-3 py-2 hover:bg-neutral-800/80 transition-colors" target="_self">
           <span className="icon mr-2 inline-flex items-center"><Icon name="shield" /></span>
-          <span className="label">Moderation Center</span>
+          <span className="label">{t('nav.moderation.center')}</span>
         </a>
       </nav>
     </aside>

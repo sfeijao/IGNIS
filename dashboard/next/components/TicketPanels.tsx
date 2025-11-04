@@ -116,13 +116,13 @@ export default function TicketPanels() {
           <div className="card-header">{t('tickets.panel.create')}</div>
           <div className="card-body">
             <form onSubmit={onCreatePanel} className="flex flex-col gap-3">
-              <input value={newPanel.name} onChange={e => setNewPanel(v => ({ ...v, name: e.target.value }))} placeholder="Nome do painel" className="input" required />
+              <input value={newPanel.name} onChange={e => setNewPanel(v => ({ ...v, name: e.target.value }))} placeholder={t('tickets.panels.panelName.placeholder')} className="input" required />
               <select value={newPanel.channelId} onChange={e => setNewPanel(v => ({ ...v, channelId: e.target.value }))} className="input" required title="Canal do painel">
-                <option value="">Selecione o canal</option>
+                <option value="">{t('tickets.panels.selectChannel')}</option>
                 {channels.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
               </select>
               <select value={newPanel.categoryId || ''} onChange={e => setNewPanel(v => ({ ...v, categoryId: e.target.value || undefined }))} className="input" title="Categoria opcional">
-                <option value="">Sem categoria</option>
+                <option value="">{t('tickets.panels.noCategory')}</option>
                 {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
               </select>
               <button className="btn btn-primary" disabled={loading}>{t('tickets.panel.create')}</button>
@@ -133,7 +133,7 @@ export default function TicketPanels() {
           <div className="card-header">{t('tickets.category.create')}</div>
           <div className="card-body">
             <form onSubmit={onCreateCategory} className="flex flex-col gap-3">
-              <input value={newCategory.name} onChange={e => setNewCategory({ name: e.target.value })} placeholder="Nome da categoria" className="input" required />
+              <input value={newCategory.name} onChange={e => setNewCategory({ name: e.target.value })} placeholder={t('tickets.panels.categoryName.placeholder')} className="input" required />
               <button className="btn btn-primary" disabled={loading}>{t('tickets.category.create')}</button>
             </form>
           </div>
@@ -145,11 +145,11 @@ export default function TicketPanels() {
           <table className="min-w-full text-sm">
             <thead className="text-left">
               <tr className="border-b border-neutral-800">
-                <th className="py-2 pr-4">Nome</th>
-                <th className="py-2 pr-4">Canal</th>
-                <th className="py-2 pr-4">Categoria</th>
-                <th className="py-2 pr-4">Mensagem</th>
-                <th className="py-2">Ações</th>
+                <th className="py-2 pr-4">{t('tickets.table.name')}</th>
+                <th className="py-2 pr-4">{t('tickets.table.channel')}</th>
+                <th className="py-2 pr-4">{t('tickets.table.category')}</th>
+                <th className="py-2 pr-4">{t('tickets.table.message')}</th>
+                <th className="py-2">{t('tickets.table.actions')}</th>
               </tr>
             </thead>
             <tbody>

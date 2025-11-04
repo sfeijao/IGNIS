@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react'
 import { getGuildId } from '../lib/guild'
 import { api } from '../lib/apiClient'
+import { useI18n } from '../lib/i18n'
 
 type Appeal = { id: string; userId?: string; caseId?: string; reason?: string; status?: string; createdAt?: string }
 
 export default function AppealsManager() {
+  const { t } = useI18n()
   const [guildId, setGuildId] = useState<string | null>(null)
   const [appeals, setAppeals] = useState<Appeal[]>([])
   const [loading, setLoading] = useState(false)
@@ -41,26 +43,26 @@ export default function AppealsManager() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-xl font-semibold">Apelos (pendentes)</h2>
-        <button className="btn btn-secondary" onClick={() => guildId && load(guildId)} title="Recarregar">Recarregar</button>
+        <h2 className="text-xl font-semibold">{t('appeals.title')}</h2>
+        <button className="btn btn-secondary" onClick={() => guildId && load(guildId)} title={t('common.reload')}>{t('common.reload')}</button>
       </div>
       {error && <div className="text-red-400">{error}</div>}
       <section className="card">
-        <div className="card-header">Fila</div>
+        <div className="card-header">{t('appeals.queue')}</div>
         <div className="card-body grid gap-3">
-          {appeals.length === 0 && <div className="opacity-70">Sem apelos</div>}
+          {appeals.length === 0 && <div className="opacity-70">{t('appeals.empty')}</div>}
           {appeals.map(ap => (
             <div key={ap.id} className="p-3 rounded-lg bg-neutral-800/50 border border-neutral-800">
-              <div className="text-sm opacity-70">{ap.userId} • Caso {ap.caseId} • {new Date(ap.createdAt || Date.now()).toLocaleString()}</div>
-              <div className="mt-1">Motivo: {ap.reason || '(sem motivo)'}</div>
+              <div className="text-sm opacity-70">{ap.userId} • {t('appeals.case')} {ap.caseId} • {new Date(ap.createdAt || Date.now()).toLocaleString()}</div>
+              <div className="mt-1">{t('appeals.reason')}: {ap.reason || t('appeals.reason.empty')}</div>
               <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
                 <label className="flex flex-col gap-1 md:col-span-2">
-                  <span className="text-sm opacity-80">Justificativa da decisão</span>
-                  <input className="input" value={decisionReason[ap.id] || ''} onChange={e => setDecisionReason(s => ({ ...s, [ap.id]: e.target.value }))} placeholder="Opcional" title="Justificativa" />
+                  <span className="text-sm opacity-80">{t('appeals.decision.justification')}</span>
+                  <input className="input" value={decisionReason[ap.id] || ''} onChange={e => setDecisionReason(s => ({ ...s, [ap.id]: e.target.value }))} placeholder={t('appeals.decision.placeholder')} title={t('appeals.decision.title')} />
                 </label>
                 <div className="flex gap-2">
-                  <button className="btn btn-primary btn-xs" onClick={() => decide(ap.id, 'approve')}>Aprovar</button>
-                  <button className="btn btn-danger btn-xs" onClick={() => decide(ap.id, 'deny')}>Negar</button>
+                  <button className="btn btn-primary btn-xs" onClick={() => decide(ap.id, 'approve')}>{t('appeals.approve')}</button>
+                  <button className="btn btn-danger btn-xs" onClick={() => decide(ap.id, 'deny')}>{t('appeals.deny')}</button>
                 </div>
               </div>
             </div>

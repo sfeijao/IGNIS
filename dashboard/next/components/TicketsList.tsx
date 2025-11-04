@@ -222,20 +222,20 @@ export default function TicketsList() {
           <label className="text-xs text-neutral-400">{tr('tickets.status')}</label>
     <select className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" aria-label="Filter by status" title="Filter by status"
                     value={status} onChange={(e: ChangeEvent<HTMLSelectElement>)=>{ setPage(1); setStatus(e.target.value) }}>
-            {statuses.map(s => <option key={s} value={s}>{s || 'Any'}</option>)}
+            {statuses.map(s => <option key={s} value={s}>{s || tr('common.any')}</option>)}
           </select>
         </div>
         <div>
           <label className="text-xs text-neutral-400">{tr('tickets.priority')}</label>
     <select className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" aria-label="Filter by priority" title="Filter by priority"
                     value={priority} onChange={(e: ChangeEvent<HTMLSelectElement>)=>{ setPage(1); setPriority(e.target.value) }}>
-            {priorities.map(p => <option key={p} value={p}>{p || 'Any'}</option>)}
+            {priorities.map(p => <option key={p} value={p}>{p || tr('common.any')}</option>)}
           </select>
         </div>
         <div className="md:col-span-2">
           <label className="text-xs text-neutral-400">{tr('tickets.search')}</label>
-          <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1"
-                 placeholder="ID, subject, user, channel..."
+     <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1"
+       placeholder={tr('tickets.search.placeholder')}
                  value={q} onChange={e=>{ setPage(1); setQ(e.target.value) }} />
         </div>
         <div className="flex gap-2 md:col-span-3">
@@ -361,20 +361,20 @@ export default function TicketsList() {
               <div className="flex items-center gap-2">
                 <span className="text-neutral-400">{selectedIds.length} {tr('tickets.selectedSuffix')}</span>
                 <button onClick={bulkClose} className="px-3 py-1.5 rounded bg-rose-600 hover:bg-rose-500">{tr('tickets.close')}</button>
-                <button onClick={bulkAssign} className="px-3 py-1.5 rounded bg-neutral-700 hover:bg-neutral-600">Assign</button>
-                <button onClick={bulkNote} className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500">Add note</button>
+                <button onClick={bulkAssign} className="px-3 py-1.5 rounded bg-neutral-700 hover:bg-neutral-600">{tr('tickets.bulk.assign')}</button>
+                <button onClick={bulkNote} className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500">{tr('tickets.bulk.addNote')}</button>
               </div>
             )}
             <button
               className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50"
               disabled={(data?.pagination.page || page) <= 1}
               onClick={()=> setPage((data?.pagination.page || page) - 1)}
-            >Prev</button>
+            >{tr('common.prev')}</button>
             <button
               className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50"
               disabled={(data?.pagination.page || page) >= (data?.pagination.totalPages || 1)}
               onClick={()=> setPage((data?.pagination.page || page) + 1)}
-            >Next</button>
+            >{tr('common.next')}</button>
             <select
               className="ml-2 bg-neutral-900 border border-neutral-700 rounded px-2 py-1"
               aria-label="Items per page" title="Items per page"

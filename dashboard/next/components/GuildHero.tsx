@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useI18n } from '@/lib/i18n'
 import { getGuildId } from '@/lib/guild'
 import Skeleton from './Skeleton'
 
@@ -16,6 +17,7 @@ interface GuildInfo {
 }
 
 export default function GuildHero() {
+  const { t } = useI18n()
   const [guildId, setGuildId] = useState<string | null>(null)
   const [info, setInfo] = useState<GuildInfo | null>(null)
   const [loaded, setLoaded] = useState(false)
@@ -119,17 +121,17 @@ export default function GuildHero() {
           <div className="min-w-0">
             <h2 className="text-lg sm:text-xl md:text-2xl font-semibold truncate">{info.name || guildId}</h2>
             <div className="text-xs text-neutral-400 flex items-center gap-3">
-              {info.memberCount != null && <span>{info.memberCount} membros</span>}
-              {stats?.onlineCount != null && <span>• {stats.onlineCount} online</span>}
-              {stats?.channelCount != null && <span>• {stats.channelCount} canais</span>}
-              {stats?.roleCount != null && <span>• {stats.roleCount} cargos</span>}
+              {info.memberCount != null && <span>{info.memberCount} {t('guild.members')}</span>}
+              {stats?.onlineCount != null && <span>• {stats.onlineCount} {t('guild.online')}</span>}
+              {stats?.channelCount != null && <span>• {stats.channelCount} {t('guild.channels')}</span>}
+              {stats?.roleCount != null && <span>• {stats.roleCount} {t('guild.roles')}</span>}
             </div>
           </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/" className="px-3 py-1.5 rounded-lg bg-neutral-900/80 border border-neutral-700 hover:bg-neutral-800 text-sm">Visão geral</Link>
-            <Link href="/plugins" className="px-3 py-1.5 rounded-lg bg-neutral-900/80 border border-neutral-700 hover:bg-neutral-800 text-sm">Plugins</Link>
-            <Link href="/tickets" className="px-3 py-1.5 rounded-lg bg-neutral-900/80 border border-neutral-700 hover:bg-neutral-800 text-sm">Tickets</Link>
+            <Link href="/" className="px-3 py-1.5 rounded-lg bg-neutral-900/80 border border-neutral-700 hover:bg-neutral-800 text-sm">{t('nav.dashboard')}</Link>
+            <Link href="/plugins" className="px-3 py-1.5 rounded-lg bg-neutral-900/80 border border-neutral-700 hover:bg-neutral-800 text-sm">{t('nav.plugins')}</Link>
+            <Link href="/tickets" className="px-3 py-1.5 rounded-lg bg-neutral-900/80 border border-neutral-700 hover:bg-neutral-800 text-sm">{t('nav.tickets')}</Link>
           </div>
         </div>
       </div>
