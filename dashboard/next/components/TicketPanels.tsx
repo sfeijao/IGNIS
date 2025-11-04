@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getGuildId } from '../lib/guild'
 import { api } from '../lib/apiClient'
 import { useToast } from './Toaster'
+import { useI18n } from '@/lib/i18n'
 
 type Panel = { id: string; name: string; channelId?: string; messageId?: string; categoryId?: string; createdAt?: string }
 type Category = { id: string; name: string }
@@ -17,6 +18,7 @@ export default function TicketPanels() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
+  const { t } = useI18n()
 
   const [newPanel, setNewPanel] = useState<{ name: string; channelId: string; categoryId?: string }>({ name: '', channelId: '' })
   const [newCategory, setNewCategory] = useState<{ name: string }>({ name: '' })
@@ -54,9 +56,9 @@ export default function TicketPanels() {
     setLoading(true)
     try {
       await api.scanPanels(guildId)
-      toast({ type: 'success', title: 'Varredura concluída' })
+  toast({ type: 'success', title: t('tickets.scan.done') })
     } catch (e: any) {
-      toast({ type: 'error', title: 'Falha ao escanear', description: e?.message })
+  toast({ type: 'error', title: t('tickets.scan.fail'), description: e?.message })
     }
     await loadAll(guildId)
   }
@@ -67,11 +69,11 @@ export default function TicketPanels() {
     setLoading(true)
     try {
       await api.createPanel(guildId, newPanel)
-      toast({ type: 'success', title: 'Painel criado' })
+  toast({ type: 'success', title: t('tickets.panel.created') })
       setNewPanel({ name: '', channelId: '' })
       await loadAll(guildId)
     } catch (e: any) {
-      toast({ type: 'error', title: 'Falha ao criar painel', description: e?.message })
+  toast({ type: 'error', title: t('tickets.panel.createFail'), description: e?.message })
     } finally {
       setLoading(false)
     }
@@ -83,11 +85,11 @@ export default function TicketPanels() {
     setLoading(true)
     try {
       await api.createCategory(guildId, newCategory)
-      toast({ type: 'success', title: 'Categoria criada' })
+  toast({ type: 'success', title: t('tickets.category.created') })
       setNewCategory({ name: '' })
       await loadAll(guildId)
     } catch (e: any) {
-      toast({ type: 'error', title: 'Falha ao criar categoria', description: e?.message })
+  toast({ type: 'error', title: t('tickets.category.createFail'), description: e?.message })
     } finally {
       setLoading(false)
     }
@@ -104,14 +106,14 @@ export default function TicketPanels() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
-        <h2 className="text-xl font-semibold">Tickets: Painéis e Categorias</h2>
-        <button onClick={() => guildId && loadAll(guildId)} className="btn btn-secondary" title="Recarregar">Recarregar</button>
-        <button onClick={onScan} className="btn btn-primary" title="Escanear painéis">Escanear</button>
+        <h2 className="text-xl font-semibold">{t('tickets.panels.title')}</h2>
+        <button onClick={() => guildId && loadAll(guildId)} className="btn btn-secondary" title={t('tickets.reload')}>{t('tickets.reload')}</button>
+        <button onClick={onScan} className="btn btn-primary" title={t('tickets.scan')}>{t('tickets.scan')}</button>
       </div>
       {error && <div className="text-red-400">{error}</div>}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <section className="card">
-          <div className="card-header">Criar Painel</div>
+          <div className="card-header">{t('tickets.panel.create')}</div>
           <div className="card-body">
             <form onSubmit={onCreatePanel} className="flex flex-col gap-3">
               <input value={newPanel.name} onChange={e => setNewPanel(v => ({ ...v, name: e.target.value }))} placeholder="Nome do painel" className="input" required />
@@ -123,22 +125,22 @@ export default function TicketPanels() {
                 <option value="">Sem categoria</option>
                 {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
               </select>
-              <button className="btn btn-primary" disabled={loading}>Criar painel</button>
+              <button className="btn btn-primary" disabled={loading}>{t('tickets.panel.create')}</button>
             </form>
           </div>
         </section>
         <section className="card">
-          <div className="card-header">Criar Categoria</div>
+          <div className="card-header">{t('tickets.category.create')}</div>
           <div className="card-body">
             <form onSubmit={onCreateCategory} className="flex flex-col gap-3">
               <input value={newCategory.name} onChange={e => setNewCategory({ name: e.target.value })} placeholder="Nome da categoria" className="input" required />
-              <button className="btn btn-primary" disabled={loading}>Criar categoria</button>
+              <button className="btn btn-primary" disabled={loading}>{t('tickets.category.create')}</button>
             </form>
           </div>
         </section>
       </div>
       <section className="card">
-        <div className="card-header">Painéis</div>
+        <div className="card-header">{t('tickets.panels.list')}</div>
         <div className="card-body overflow-auto">
           <table className="min-w-full text-sm">
             <thead className="text-left">
@@ -158,9 +160,9 @@ export default function TicketPanels() {
                   <td className="py-2 pr-4">{p.categoryName}</td>
                   <td className="py-2 pr-4">{p.messageId || '-'}</td>
                   <td className="py-2 flex gap-2">
-                    <button className="btn btn-secondary btn-xs" title="Sincronizar" onClick={() => guildId && api.panelAction(guildId, p.id, 'sync').then(() => { toast({ type:'success', title:'Sincronizado' }); loadAll(guildId) }).catch((e:any)=> toast({ type:'error', title:'Falha', description:e?.message }))}>Sync</button>
-                    <button className="btn btn-secondary btn-xs" title="Atualizar mensagem" onClick={() => guildId && api.panelAction(guildId, p.id, 'refresh_message').then(() => { toast({ type:'success', title:'Mensagem atualizada' }); loadAll(guildId) }).catch((e:any)=> toast({ type:'error', title:'Falha', description:e?.message }))}>Msg</button>
-                    <button className="btn btn-danger btn-xs" title="Remover" onClick={() => guildId && api.panelAction(guildId, p.id, 'delete').then(() => { toast({ type:'success', title:'Removido' }); loadAll(guildId) }).catch((e:any)=> toast({ type:'error', title:'Falha', description:e?.message }))}>Del</button>
+                    <button className="btn btn-secondary btn-xs" title={t('tickets.action.sync')} onClick={() => guildId && api.panelAction(guildId, p.id, 'sync').then(() => { toast({ type:'success', title: t('tickets.synced') }); loadAll(guildId) }).catch((e:any)=> toast({ type:'error', title:'Falha', description:e?.message }))}>{t('tickets.action.sync')}</button>
+                    <button className="btn btn-secondary btn-xs" title={t('tickets.action.messageUpdate')} onClick={() => guildId && api.panelAction(guildId, p.id, 'refresh_message').then(() => { toast({ type:'success', title: t('tickets.action.messageUpdate') }); loadAll(guildId) }).catch((e:any)=> toast({ type:'error', title:'Falha', description:e?.message }))}>{t('tickets.action.messageUpdate')}</button>
+                    <button className="btn btn-danger btn-xs" title={t('tickets.action.delete')} onClick={() => guildId && api.panelAction(guildId, p.id, 'delete').then(() => { toast({ type:'success', title: t('tickets.removed') }); loadAll(guildId) }).catch((e:any)=> toast({ type:'error', title:'Falha', description:e?.message }))}>{t('tickets.action.delete')}</button>
                   </td>
                 </tr>
               ))}

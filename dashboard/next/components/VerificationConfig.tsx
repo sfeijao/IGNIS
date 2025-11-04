@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getGuildId } from '@/lib/guild'
+import { useI18n } from '@/lib/i18n'
 
 type VerifyConfig = { enabled?: boolean; channelId?: string; roleId?: string; method?: string }
 
@@ -10,6 +11,7 @@ export default function VerificationConfig() {
   const [cfg, setCfg] = useState<VerifyConfig>({ enabled: false, method: 'captcha', channelId: '', roleId: '' })
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState<'idle'|'saving'|'ok'|'err'>('idle')
+  const { t } = useI18n()
 
   useEffect(() => {
     if (!guildId) return
@@ -37,31 +39,31 @@ export default function VerificationConfig() {
 
   return (
     <div className="space-y-3">
-      {!guildId && <div className="card p-4 text-sm text-neutral-400">Selecione um servidor para configurar verificação.</div>}
+      {!guildId && <div className="card p-4 text-sm text-neutral-400">{t('verification.selectGuild')}</div>}
       <form className="card p-5 max-w-xl space-y-4" onSubmit={(e)=>{ e.preventDefault(); save() }}>
         <div className="flex items-center gap-2">
           <input id="v-enabled" type="checkbox" checked={!!cfg.enabled} onChange={e=> setCfg(c => ({ ...c, enabled: e.target.checked }))} />
-          <label htmlFor="v-enabled">Ativar verificação</label>
+          <label htmlFor="v-enabled">{t('verification.enable')}</label>
         </div>
         <div>
-          <label className="block text-sm mb-1">Método</label>
+          <label className="block text-sm mb-1">{t('verification.method')}</label>
           <select className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2" value={cfg.method} onChange={e=> setCfg(c=> ({ ...c, method: e.target.value }))} title="Método de verificação">
-            <option value="captcha">Captcha</option>
-            <option value="button">Botão</option>
+            <option value="captcha">{t('verification.method.captcha')}</option>
+            <option value="button">{t('verification.method.button')}</option>
           </select>
         </div>
         <div>
-          <label className="block text-sm mb-1">Canal</label>
+          <label className="block text-sm mb-1">{t('verification.channel')}</label>
           <input className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2" placeholder="Canal ID" value={cfg.channelId || ''} onChange={e=> setCfg(c=> ({ ...c, channelId: e.target.value }))} />
         </div>
         <div>
-          <label className="block text-sm mb-1">Cargo verificado</label>
+          <label className="block text-sm mb-1">{t('verification.role')}</label>
           <input className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2" placeholder="Role ID" value={cfg.roleId || ''} onChange={e=> setCfg(c=> ({ ...c, roleId: e.target.value }))} />
         </div>
         <div className="flex gap-2 pt-2">
-          <button disabled={loading} className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium disabled:opacity-60">{saved==='saving' ? 'Guardando…' : 'Guardar'}</button>
-          {saved==='ok' && <span className="text-emerald-400 text-sm">Guardado!</span>}
-          {saved==='err' && <span className="text-rose-400 text-sm">Falhou ao guardar</span>}
+          <button disabled={loading} className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium disabled:opacity-60">{saved==='saving' ? t('verification.saving') : t('verification.save')}</button>
+          {saved==='ok' && <span className="text-emerald-400 text-sm">{t('verification.saved')}</span>}
+          {saved==='err' && <span className="text-rose-400 text-sm">{t('verification.saveFailed')}</span>}
         </div>
       </form>
     </div>

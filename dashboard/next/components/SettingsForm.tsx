@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import type React from 'react'
 import { api } from '@/lib/apiClient'
 import { getGuildId } from '@/lib/guild'
+import { useI18n } from '@/lib/i18n'
 
 type Settings = {
   prefix: string
@@ -24,6 +25,7 @@ export default function SettingsForm() {
   const [saving, setSaving] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const guildId = typeof window !== 'undefined' ? getGuildId() : null
+  const { t } = useI18n()
 
   useEffect(() => {
     if (!guildId) return
@@ -57,27 +59,27 @@ export default function SettingsForm() {
   return (
     <form className="card p-5 max-w-xl space-y-4" onSubmit={(e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); save() }}>
       <div>
-        <label htmlFor="prefix" className="block text-sm mb-1">Prefix</label>
+        <label htmlFor="prefix" className="block text-sm mb-1">{t('settings.prefix')}</label>
         <input
           id="prefix"
-          title="Command prefix"
-          placeholder="!"
+          title={t('settings.prefix')}
+          placeholder={t('settings.prefix.placeholder')}
           className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
           value={settings.prefix}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings((s: Settings) => ({ ...s, prefix: e.target.value }))}
         />
       </div>
       <div>
-        <label htmlFor="locale" className="block text-sm mb-1">Locale</label>
+        <label htmlFor="locale" className="block text-sm mb-1">{t('settings.locale')}</label>
         <select
           id="locale"
-          title="Preferred language"
+          title={t('settings.locale')}
           className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
           value={settings.locale}
           onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings((s: Settings) => ({ ...s, locale: e.target.value }))}
         >
-          <option value="pt">Português</option>
-          <option value="en">English</option>
+          <option value="pt">{t('settings.locale.pt')}</option>
+          <option value="en">{t('settings.locale.en')}</option>
         </select>
       </div>
       <div className="flex items-center gap-2">
@@ -88,14 +90,14 @@ export default function SettingsForm() {
           checked={settings.logsEnabled}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings((s: Settings) => ({ ...s, logsEnabled: e.target.checked }))}
         />
-        <label htmlFor="logsEnabled" className="text-sm">Enable moderation logs</label>
+        <label htmlFor="logsEnabled" className="text-sm">{t('settings.logsEnabled')}</label>
       </div>
       <div>
-        <label htmlFor="modlog" className="block text-sm mb-1">Mod-log Channel ID</label>
+        <label htmlFor="modlog" className="block text-sm mb-1">{t('settings.modlogChannelId')}</label>
         <input
           id="modlog"
-          title="Channel ID for moderation logs"
-          placeholder="1234567890"
+          title={t('settings.modlogChannelId')}
+          placeholder={t('settings.modlogChannelId.placeholder')}
           className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
           value={settings.modlogChannelId}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings((s: Settings) => ({ ...s, modlogChannelId: e.target.value }))}
@@ -104,7 +106,7 @@ export default function SettingsForm() {
 
       <div className="flex gap-2 pt-2">
         <button disabled={saving} className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium disabled:opacity-60">
-          {saving ? 'Saving…' : (loaded ? 'Save settings' : 'Loading…')}
+          {saving ? t('settings.saving') : (loaded ? t('settings.save') : t('settings.loading'))}
         </button>
       </div>
     </form>
