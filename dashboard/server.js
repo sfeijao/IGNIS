@@ -3611,6 +3611,147 @@ app.post('/api/guild/:guildId/quick-tags', async (req, res) => {
     } catch (e) { logger.error('Error set quick-tags:', e); res.status(500).json({ success: false, error: 'Failed to update quick tags' }); }
 });
 
+// Advanced Tags (nickname prefixing & management)
+const tagSchema = Joi.object({
+    id: Joi.string().optional(),
+    name: Joi.string().trim().min(1).max(32).required(),
+    prefix: Joi.string().trim().max(64).required(),
+    color: Joi.string().trim().pattern(/^#?[0-9a-fA-F]{6}$/).allow('').default(''),
+    icon: Joi.string().trim().max(32).allow('').default(''),
+    roleIds: Joi.array().items(Joi.string().trim()).max(20).default([])
+});
+
+app.get('/api/guild/:guildId/tags', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const cfg = await storage.getGuildConfig(req.params.guildId) || {};
+        const list = Array.isArray(cfg.tags) ? cfg.tags : [];
+        return res.json({ success: true, tags: list });
+    } catch (e) { logger.error('Error get tags:', e); return res.status(500).json({ success: false, error: 'Failed to fetch tags' }); }
+});
+
+app.post('/api/guild/:guildId/tags', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const cfg = await storage.getGuildConfig(req.params.guildId) || {};
+        const existing = Array.isArray(cfg.tags) ? cfg.tags : [];
+        const body = req.body || {};
+        // Allow either full replace { tags: [...] } or upsert single tag { tag: {...} }
+        if (Array.isArray(body.tags)) {
+            const clean = [];
+            for (const t of body.tags) { const { error, value } = tagSchema.validate(t, { abortEarly: false, stripUnknown: true }); if (!error) clean.push({ id: value.id || (Date.now().toString(36)+Math.random().toString(36).slice(2,6)), ...value }); }
+            const next = { ...cfg, tags: clean };
+            await storage.updateGuildConfig(req.params.guildId, next);
+            return res.json({ success: true, tags: clean });
+        }
+        if (body.tag) {
+            const { error, value } = tagSchema.validate(body.tag, { abortEarly: false, stripUnknown: true });
+            if (error) return res.status(400).json({ success: false, error: 'validation_error', details: error.details.map(d=>d.message) });
+            const id = value.id || (Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+            const idx = existing.findIndex(x => x.id === id);
+            const rec = { id, ...value };
+            const nextList = existing.slice();
+            if (idx >= 0) nextList[idx] = rec; else nextList.push(rec);
+            const next = { ...cfg, tags: nextList };
+            await storage.updateGuildConfig(req.params.guildId, next);
+            return res.json({ success: true, tag: rec, tags: nextList });
+        }
+        return res.status(400).json({ success: false, error: 'invalid_payload' });
+    } catch (e) { logger.error('Error upsert tag:', e); return res.status(500).json({ success: false, error: 'Failed to upsert tag' }); }
+});
+
+app.delete('/api/guild/:guildId/tags/:id', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const storage = require('../utils/storage');
+        const cfg = await storage.getGuildConfig(req.params.guildId) || {};
+        const list = Array.isArray(cfg.tags) ? cfg.tags : [];
+        const next = list.filter(t => String(t.id) !== String(req.params.id));
+        await storage.updateGuildConfig(req.params.guildId, { ...cfg, tags: next });
+        return res.json({ success: true, tags: next });
+    } catch (e) { logger.error('Error delete tag:', e); return res.status(500).json({ success: false, error: 'Failed to delete tag' }); }
+});
+
+// Apply/remove tags to users (nickname prefixing)
+const applyTagsSchema = Joi.object({
+    tagId: Joi.string().required(),
+    userIds: Joi.array().items(Joi.string().trim()).min(1).max(100).required(),
+    reason: Joi.string().trim().allow('').max(200).default(''),
+    expireSeconds: Joi.number().integer().min(60).max(90*24*3600).optional()
+});
+
+app.post('/api/guild/:guildId/tags/apply', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const { error, value } = applyTagsSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
+        if (error) return res.status(400).json({ success: false, error: 'validation_error', details: error.details.map(d=>d.message) });
+        const storage = require('../utils/storage');
+        const cfg = await storage.getGuildConfig(req.params.guildId) || {};
+        const tags = Array.isArray(cfg.tags) ? cfg.tags : [];
+        const tag = tags.find(t => String(t.id) === String(value.tagId));
+        if (!tag) return res.status(404).json({ success: false, error: 'tag_not_found' });
+        const guild = await client.guilds.fetch(req.params.guildId);
+        const assignments = Array.isArray(cfg.tagsAssignments) ? cfg.tagsAssignments : [];
+        const results = [];
+        for (const uid of value.userIds) {
+            try {
+                const member = await guild.members.fetch(uid);
+                const prev = member.nickname || null;
+                const desired = `${tag.prefix}${member.user.username}`.slice(0, 32);
+                await member.setNickname(desired, value.reason || `Apply tag ${tag.name}`);
+                const rec = { userId: uid, tagId: tag.id, appliedAt: Date.now(), expireAt: value.expireSeconds ? (Date.now() + value.expireSeconds*1000) : null, previousNick: prev };
+                assignments.push(rec);
+                results.push({ userId: uid, ok: true });
+            } catch (e) {
+                logger.warn('apply tag failed', uid, e?.message || String(e));
+                results.push({ userId: uid, ok: false, error: e?.message || 'failed' });
+            }
+        }
+        await storage.updateGuildConfig(req.params.guildId, { ...cfg, tagsAssignments: assignments });
+        return res.json({ success: true, results });
+    } catch (e) { logger.error('Error apply tags:', e); return res.status(500).json({ success: false, error: 'Failed to apply tags' }); }
+});
+
+app.post('/api/guild/:guildId/tags/remove', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        const { error, value } = Joi.object({ tagId: Joi.string().required(), userIds: Joi.array().items(Joi.string().trim()).min(1).max(100).required(), reason: Joi.string().trim().allow('').max(200).default('') }).validate(req.body, { abortEarly: false, stripUnknown: true });
+        if (error) return res.status(400).json({ success: false, error: 'validation_error', details: error.details.map(d=>d.message) });
+        const storage = require('../utils/storage');
+        const cfg = await storage.getGuildConfig(req.params.guildId) || {};
+        const assignments = Array.isArray(cfg.tagsAssignments) ? cfg.tagsAssignments : [];
+        const guild = await client.guilds.fetch(req.params.guildId);
+        const results = [];
+        for (const uid of value.userIds) {
+            try {
+                const member = await guild.members.fetch(uid);
+                const recIdx = assignments.findIndex(a => a.userId === uid && String(a.tagId) === String(value.tagId));
+                let prev = null;
+                if (recIdx >= 0) { prev = assignments[recIdx]?.previousNick || null; assignments.splice(recIdx, 1); }
+                await member.setNickname(prev, value.reason || 'Remove tag');
+                results.push({ userId: uid, ok: true });
+            } catch (e) {
+                logger.warn('remove tag failed', uid, e?.message || String(e));
+                results.push({ userId: uid, ok: false, error: e?.message || 'failed' });
+            }
+        }
+        await storage.updateGuildConfig(req.params.guildId, { ...cfg, tagsAssignments: assignments });
+        return res.json({ success: true, results });
+    } catch (e) { logger.error('Error remove tags:', e); return res.status(500).json({ success: false, error: 'Failed to remove tags' }); }
+});
+
 // Commands API (custom slash-like commands rendered by bot)
 const commandSchema = Joi.object({
     name: Joi.string().trim().min(1).max(32).regex(/^[a-z0-9_\-]+$/i).required(),

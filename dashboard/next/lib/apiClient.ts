@@ -326,4 +326,32 @@ export const api = {
     if (!res.ok) throw new Error('Failed to delete webhook')
     return res.json()
   },
+  // Advanced Tags
+  async getTags(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/tags`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch tags')
+    return res.json()
+  },
+  async upsertTag(guildId: string, tag: { id?: string; name: string; prefix: string; color?: string; icon?: string; roleIds?: string[] }) {
+    const res = await fetch(`/api/guild/${guildId}/tags`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ tag })
+    })
+    if (!res.ok) throw new Error('Failed to save tag')
+    return res.json()
+  },
+  async deleteTag(guildId: string, id: string) {
+    const res = await fetch(`/api/guild/${guildId}/tags/${id}`, { method: 'DELETE', credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to delete tag')
+    return res.json()
+  },
+  async applyTag(guildId: string, payload: { tagId: string; userIds: string[]; reason?: string; expireSeconds?: number }) {
+    const res = await fetch(`/api/guild/${guildId}/tags/apply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) })
+    if (!res.ok) throw new Error('Failed to apply tag')
+    return res.json()
+  },
+  async removeTag(guildId: string, payload: { tagId: string; userIds: string[]; reason?: string }) {
+    const res = await fetch(`/api/guild/${guildId}/tags/remove`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) })
+    if (!res.ok) throw new Error('Failed to remove tag')
+    return res.json()
+  },
 }
