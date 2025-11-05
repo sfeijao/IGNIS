@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getGuildId } from '@/lib/guild'
 import { api } from '@/lib/apiClient'
 import { useToast } from './Toaster'
@@ -8,6 +8,22 @@ import { useI18n } from '@/lib/i18n'
 
 type Webhook = { id: string; type?: string; name?: string; channelId?: string; url?: string; loaded?: boolean }
 type TicketsConfig = { transcriptWebhook?: string }
+type Channel = { id: string; name: string; type?: any }
+
+const allowsWebhookChannel = (ch: Channel) => {
+  const t = (ch?.type ?? '').toString().toLowerCase()
+  // Allow common text-capable types for webhooks
+  return t === '' || t === '0' || t === 'text' || t === 'guild_text' || t === '5' || t === 'announcement' || t === 'guild_announcement'
+}
+
+const channelTypeLabel = (ch: Channel) => {
+  const t = (ch?.type ?? '').toString().toLowerCase()
+  if (t === '0' || t === 'text' || t === 'guild_text') return 'Text'
+  if (t === '2' || t === 'voice' || t === 'guild_voice') return 'Voice'
+  if (t === '4' || t === 'category' || t === 'guild_category') return 'Category'
+  if (t === '5' || t === 'announcement' || t === 'guild_announcement') return 'Announcement'
+  return 'Channel'
+}
 
 export default function WebhooksManager() {
   const guildId = getGuildId()
@@ -20,21 +36,26 @@ export default function WebhooksManager() {
   const { toast } = useToast()
   const { t } = useI18n()
   const [transcriptUrl, setTranscriptUrl] = useState<string>('')
+  const [channels, setChannels] = useState<Channel[]>([])
+  const [channelQuery, setChannelQuery] = useState('')
 
   const load = async () => {
     if (!guildId) return
     setLoading(true)
     setError(null)
     try {
-      const [hooksRes, cfgRes] = await Promise.all([
+      const [hooksRes, cfgRes, chRes] = await Promise.all([
         api.getWebhooks(guildId),
-        api.getTicketsConfig(guildId).catch(() => ({} as TicketsConfig))
+        api.getTicketsConfig(guildId).catch(() => ({} as TicketsConfig)),
+        api.getChannels(guildId).catch(() => ({ channels: [] as Channel[] }))
       ])
       const data = hooksRes
       const list = (data.webhooks || data || []).map((w: any) => ({ id: String(w._id || w.id || `${w.type}:${w.channel_id || ''}`), type: w.type || 'logs', name: w.name, channelId: w.channel_id, url: w.url, loaded: !!w.loaded }))
       setHooks(list)
       const cfg = (cfgRes as any)?.config || cfgRes || {}
       setTranscriptUrl(cfg.transcriptWebhook || '')
+      const ch = (chRes as any)?.channels || chRes || []
+      setChannels((ch as Channel[]).filter(c => c && c.id && c.name))
   } catch (e: any) { setError(e?.message || t('webhooks.error')) } finally { setLoading(false) }
   }
 
@@ -87,6 +108,12 @@ export default function WebhooksManager() {
     }
   }
 
+  const selectableChannels = useMemo(() => (
+    channels
+      .filter(ch => allowsWebhookChannel(ch))
+      .filter(ch => ch.name.toLowerCase().includes(channelQuery.toLowerCase()))
+  ), [channels, channelQuery])
+
   return (
     <div className="space-y-3">
       {!guildId && <div className="card p-4 text-sm text-neutral-400">{t('webhooks.selectGuild')}</div>}
@@ -101,7 +128,16 @@ export default function WebhooksManager() {
         </div>
         <div>
           <label className="text-xs text-neutral-400">{t('webhooks.channelId')}</label>
-          <input className="mt-1 w-56 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={channel} onChange={e=> setChannel(e.target.value)} placeholder="123…" />
+          <select className="mt-1 w-64 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={channel} onChange={e=> setChannel(e.target.value)} title="Canal para criar webhook">
+            <option value="">—</option>
+            {selectableChannels.map(ch => (
+              <option key={ch.id} value={ch.id}>{`#${ch.name} (${channelTypeLabel(ch)})`}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-neutral-400">Pesquisar</label>
+          <input className="mt-1 w-44 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={channelQuery} onChange={e=> setChannelQuery(e.target.value)} placeholder="nome do canal…" />
         </div>
         <div>
           <label className="text-xs text-neutral-400">{t('webhooks.name')}</label>
