@@ -3675,15 +3675,28 @@ app.post('/api/guild/:guildId/tags/apply', async (req, res) => {
         const guild = await client.guilds.fetch(req.params.guildId);
         const assignments = Array.isArray(cfg.tagsAssignments) ? cfg.tagsAssignments : [];
         const results = [];
+        // Determine role constraints for safety (bot hierarchy)
+        const me = guild.members.me || guild.members.cache.get(client.user.id);
+        const myHighest = me?.roles?.highest?.position ?? 0;
+        const roleId = Array.isArray(tag.roleIds) && tag.roleIds.length ? String(tag.roleIds[0]) : '';
+        const role = roleId ? guild.roles.cache.get(roleId) : null;
         for (const uid of value.userIds) {
             try {
                 const member = await guild.members.fetch(uid);
                 const prev = member.nickname || null;
                 const desired = `${tag.prefix}${member.user.username}`.slice(0, 32);
                 await member.setNickname(desired, value.reason || `Apply tag ${tag.name}`);
-                const rec = { userId: uid, tagId: tag.id, appliedAt: Date.now(), expireAt: value.expireSeconds ? (Date.now() + value.expireSeconds*1000) : null, previousNick: prev };
+                // Optionally assign role if configured and manageable
+                let roleAdded = false;
+                try {
+                    if (role && role.position < myHighest && !role.managed && !member.roles.cache.has(role.id)) {
+                        await member.roles.add(role, value.reason || `Apply tag ${tag.name}`);
+                        roleAdded = true;
+                    }
+                } catch (e) { logger.warn('apply tag: add role failed', uid, e?.message || String(e)); }
+                const rec = { userId: uid, tagId: tag.id, appliedAt: Date.now(), expireAt: value.expireSeconds ? (Date.now() + value.expireSeconds*1000) : null, previousNick: prev, roleId: roleAdded ? (role?.id || null) : (role?.id || null) };
                 assignments.push(rec);
-                results.push({ userId: uid, ok: true });
+                results.push({ userId: uid, ok: true, roleAdded: roleAdded });
             } catch (e) {
                 logger.warn('apply tag failed', uid, e?.message || String(e));
                 results.push({ userId: uid, ok: false, error: e?.message || 'failed' });
@@ -3706,6 +3719,15 @@ app.post('/api/guild/:guildId/tags/remove', async (req, res) => {
         const assignments = Array.isArray(cfg.tagsAssignments) ? cfg.tagsAssignments : [];
         const guild = await client.guilds.fetch(req.params.guildId);
         const results = [];
+        // Fetch bot hierarchy for role removal safety
+        const me = guild.members.me || guild.members.cache.get(client.user.id);
+        const myHighest = me?.roles?.highest?.position ?? 0;
+        // We'll infer roleId from tag config if present in assignments list is missing
+        // Load tags to find configured role
+        const gcfg = await storage.getGuildConfig(req.params.guildId) || {};
+        const tags = Array.isArray(gcfg.tags) ? gcfg.tags : [];
+        let confRoleId = null;
+        try { const tag = tags.find(t => String(t.id) === String(value.tagId)); confRoleId = (Array.isArray(tag?.roleIds) && tag.roleIds.length) ? String(tag.roleIds[0]) : null; } catch {}
         for (const uid of value.userIds) {
             try {
                 const member = await guild.members.fetch(uid);
@@ -3713,7 +3735,19 @@ app.post('/api/guild/:guildId/tags/remove', async (req, res) => {
                 let prev = null;
                 if (recIdx >= 0) { prev = assignments[recIdx]?.previousNick || null; assignments.splice(recIdx, 1); }
                 await member.setNickname(prev, value.reason || 'Remove tag');
-                results.push({ userId: uid, ok: true });
+                // Optionally remove role if configured and manageable
+                let roleRemoved = false;
+                const rid = confRoleId;
+                try {
+                    if (rid) {
+                        const role = guild.roles.cache.get(rid);
+                        if (role && member.roles.cache.has(rid) && role.position < myHighest && !role.managed) {
+                            await member.roles.remove(rid, value.reason || 'Remove tag');
+                            roleRemoved = true;
+                        }
+                    }
+                } catch (e) { logger.warn('remove tag: remove role failed', uid, e?.message || String(e)); }
+                results.push({ userId: uid, ok: true, roleRemoved });
             } catch (e) {
                 logger.warn('remove tag failed', uid, e?.message || String(e));
                 results.push({ userId: uid, ok: false, error: e?.message || 'failed' });
