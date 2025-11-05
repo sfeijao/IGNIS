@@ -113,7 +113,8 @@ export default function TicketPanels() {
     return panels.map((p) => {
       const ch = channels.find(c => c.id === p.channelId)
       const cat = categories.find(c => c.id === p.categoryId)
-      return { ...p, channelName: ch?.name || '-', categoryName: cat?.name || '-' }
+      const channelLabel = ch ? `#${ch.name} (${channelTypeLabel(ch)})` : '-'
+      return { ...p, channelName: channelLabel, categoryName: cat?.name || '-' }
     })
   }, [panels, channels, categories])
 
