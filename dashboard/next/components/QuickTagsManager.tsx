@@ -6,6 +6,7 @@ import { api } from '@/lib/apiClient'
 import { useI18n } from '@/lib/i18n'
 
 type Tag = { id: string; name: string; prefix: string; color?: string; icon?: string; roleIds?: string[] }
+type Role = { id: string; name: string; manageable?: boolean }
 
 export default function QuickTagsManager() {
   const guildId = getGuildId()
@@ -14,6 +15,7 @@ export default function QuickTagsManager() {
   const [editing, setEditing] = useState<Tag | null>(null)
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(false)
+  const [roles, setRoles] = useState<Role[]>([])
   const [applyOpen, setApplyOpen] = useState(false)
   const [applyTagId, setApplyTagId] = useState<string>('')
   const [memberQuery, setMemberQuery] = useState('')
@@ -29,6 +31,12 @@ export default function QuickTagsManager() {
     try {
       const res = await api.getTags(guildId)
       setTags(res.tags || [])
+      // Load roles for optional association
+      try {
+        const r = await api.getRoles(guildId)
+        const list: Role[] = (r.roles || r || []).map((x:any)=> ({ id: x.id, name: x.name, manageable: x.manageable }))
+        setRoles(list)
+      } catch { setRoles([]) }
     } finally { setLoading(false) }
   }
 
@@ -117,6 +125,24 @@ export default function QuickTagsManager() {
           <div>
             <label className="text-xs text-neutral-400">{t('tags.icon') || 'Ícone'}</label>
             <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={editing.icon||''} onChange={e=> setEditing({ ...editing, icon: e.target.value })} placeholder="⭐" />
+          </div>
+          <div>
+            <label htmlFor="quicktag-role" className="text-xs text-neutral-400">{t('tags.role') || 'Cargo (opcional)'}</label>
+            <select
+              id="quicktag-role"
+              title={t('tags.role') || 'Cargo (opcional)'}
+              className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1"
+              value={(editing.roleIds && editing.roleIds[0]) || ''}
+              onChange={e=> {
+                const val = e.target.value
+                setEditing(prev => ({ ...(prev as Tag), roleIds: val ? [val] : [] }))
+              }}
+            >
+              <option value="">—</option>
+              {roles.map(r => (
+                <option key={r.id} value={r.id} disabled={r.manageable===false}>{`@${r.name}`}{r.manageable===false ? ' (não gerenciável)' : ''}</option>
+              ))}
+            </select>
           </div>
           <div className="flex gap-2">
             <button onClick={save} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={loading}>{t('common.save') || 'Guardar'}</button>
