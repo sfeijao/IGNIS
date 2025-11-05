@@ -10,6 +10,20 @@ type Panel = { id: string; name: string; channelId?: string; messageId?: string;
 type Category = { id: string; name: string }
 type Channel = { id: string; name: string; type?: string }
 
+const isTextChannel = (ch: Channel) => {
+  const t = (ch?.type ?? '').toString().toLowerCase()
+  return t === '' || t === '0' || t === 'text' || t === 'guild_text' || t === '5' || t === 'announcement' || t === 'guild_announcement'
+}
+
+const channelTypeLabel = (ch: Channel) => {
+  const t = (ch?.type ?? '').toString().toLowerCase()
+  if (t === '0' || t === 'text' || t === 'guild_text') return 'Text'
+  if (t === '2' || t === 'voice' || t === 'guild_voice') return 'Voice'
+  if (t === '4' || t === 'category' || t === 'guild_category') return 'Category'
+  if (t === '5' || t === 'announcement' || t === 'guild_announcement') return 'Announcement'
+  return 'Channel'
+}
+
 export default function TicketPanels() {
   const [guildId, setGuildId] = useState<string | null>(null)
   const [panels, setPanels] = useState<Panel[]>([])
@@ -119,7 +133,7 @@ export default function TicketPanels() {
               <input value={newPanel.name} onChange={e => setNewPanel(v => ({ ...v, name: e.target.value }))} placeholder={t('tickets.panels.panelName.placeholder')} className="input" required />
               <select value={newPanel.channelId} onChange={e => setNewPanel(v => ({ ...v, channelId: e.target.value }))} className="input" required title="Canal do painel">
                 <option value="">{t('tickets.panels.selectChannel')}</option>
-                {channels.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+                {channels.filter(isTextChannel).map(ch => <option key={ch.id} value={ch.id}>{`#${ch.name} (${channelTypeLabel(ch)})`}</option>)}
               </select>
               <select value={newPanel.categoryId || ''} onChange={e => setNewPanel(v => ({ ...v, categoryId: e.target.value || undefined }))} className="input" title="Categoria opcional">
                 <option value="">{t('tickets.panels.noCategory')}</option>
