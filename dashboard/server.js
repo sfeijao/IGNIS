@@ -3698,7 +3698,7 @@ app.post('/api/guild/:guildId/tags/apply', async (req, res) => {
                 }
                 const rec = { userId: uid, tagId: tag.id, appliedAt: Date.now(), expireAt: value.expireSeconds ? (Date.now() + value.expireSeconds*1000) : null, previousNick: prev, roleIds: roleIds };
                 assignments.push(rec);
-                results.push({ userId: uid, ok: true, addedRoles });
+                results.push({ userId: uid, ok: true, addedRoles, roleAdded: addedRoles.length > 0 });
             } catch (e) {
                 logger.warn('apply tag failed', uid, e?.message || String(e));
                 results.push({ userId: uid, ok: false, error: e?.message || 'failed' });
@@ -3747,7 +3747,7 @@ app.post('/api/guild/:guildId/tags/remove', async (req, res) => {
                         }
                     } catch (e) { logger.warn('remove tag: remove role failed', uid, rid, e?.message || String(e)); }
                 }
-                results.push({ userId: uid, ok: true, removedRoles });
+                results.push({ userId: uid, ok: true, removedRoles, roleRemoved: removedRoles.length > 0 });
             } catch (e) {
                 logger.warn('remove tag failed', uid, e?.message || String(e));
                 results.push({ userId: uid, ok: false, error: e?.message || 'failed' });
