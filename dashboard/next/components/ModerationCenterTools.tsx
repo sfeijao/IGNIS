@@ -136,7 +136,7 @@ export default function ModerationCenterTools() {
           </div>
           <div className="flex items-center gap-2">
             <button className="btn btn-primary" onClick={run} disabled={busy}>{busy ? t('common.working') : t('mod.bulk.run')}</button>
-            <button className="btn btn-secondary" onClick={()=> { setUserIdsRaw(''); setResults([]) }} disabled={busy}>{t('logs.clear')}</button>
+            <button className="btn btn-secondary" onClick={()=> { setUserIdsRaw(''); setResults([]) }} disabled={busy}>{t('common.clear')}</button>
           </div>
         </div>
       </div>
