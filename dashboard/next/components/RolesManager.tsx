@@ -195,7 +195,10 @@ export default function RolesManager() {
                   <path d="M4 3h2v2H4V3zm6 0h2v2h-2V3zM4 7h2v2H4V7zm6 0h2v2h-2V7zM4 11h2v2H4v-2zm6 0h2v2h-2v-2z" fill="#aaa"/>
                 </svg>
               </button>
-              <div className="h-4 w-4 rounded role-color-dot" style={{ ['--role-color' as any]: r.color || '#888' }} />
+              {/* Color dot using SVG to avoid inline styles */}
+              <svg width="16" height="16" aria-hidden="true" className="shrink-0">
+                <circle cx="8" cy="8" r="7" fill={r.color || '#888'} stroke="#444" />
+              </svg>
               <div className="flex-1 min-w-0">
                 <div className="text-neutral-200 truncate">{r.name}</div>
                 <div className="text-xs text-neutral-500">{r.id}</div>

@@ -1,5 +1,3 @@
-LICENSE
-.webhintignore
-.eslintignore
 **/dashboard/next/out/**
 **/dashboard/public/next-export/**
+**/node_modules/**

@@ -1,0 +1,5 @@
+# Ignore generated Next.js exports and build artifacts
+/dashboard/next/out/
+/dashboard/public/next-export/
+/.next/
+/node_modules/
