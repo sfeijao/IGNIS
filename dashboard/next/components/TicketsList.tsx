@@ -36,6 +36,17 @@ interface TicketsResponse {
 const statuses = ['', 'open', 'claimed', 'closed', 'pending']
 const priorities = ['', 'low', 'normal', 'high', 'urgent']
 
+type Channel = { id: string; name: string; type?: any }
+const channelTypeLabel = (ch?: Channel) => {
+  if (!ch) return ''
+  const t = (ch?.type ?? '').toString().toLowerCase()
+  if (t === '0' || t === 'text' || t === 'guild_text') return 'Text'
+  if (t === '2' || t === 'voice' || t === 'guild_voice') return 'Voice'
+  if (t === '4' || t === 'category' || t === 'guild_category') return 'Category'
+  if (t === '5' || t === 'announcement' || t === 'guild_announcement') return 'Announcement'
+  return 'Channel'
+}
+
 export default function TicketsList() {
   const guildId = getGuildId()
   const { t: tr } = useI18n()
@@ -50,6 +61,7 @@ export default function TicketsList() {
   const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [viewId, setViewId] = useState<string | null>(null)
   const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([])
+  const [channels, setChannels] = useState<Channel[]>([])
   const [staffRole, setStaffRole] = useState<string>('')
   const [assignees, setAssignees] = useState<Array<{ id: string; username: string; discriminator: string; nick?: string | null }>>([])
   const [assignee, setAssignee] = useState<string>('')
@@ -110,6 +122,19 @@ export default function TicketsList() {
       try {
         const res = await api.getRoles(guildId)
         if (!aborted) setRoles((res.roles || []).map((r: any) => ({ id: String(r.id), name: String(r.name) })))
+      } catch {}
+    })()
+    return () => { aborted = true }
+  }, [guildId])
+
+  // Load channels to improve channel label formatting
+  useEffect(() => {
+    if (!guildId) return
+    let aborted = false
+    ;(async () => {
+      try {
+        const res = await api.getChannels(guildId)
+        if (!aborted) setChannels(((res.channels || res || []) as Channel[]).filter(c => c && c.id && c.name))
       } catch {}
     })()
     return () => { aborted = true }
@@ -328,7 +353,16 @@ export default function TicketsList() {
                   {tk.timeAgo && <span className="text-xs text-neutral-500">{tk.timeAgo}</span>}
                 </div>
                 <div className="mt-1 text-neutral-200 truncate">{tk.subject || tk.category || 'Ticket'}</div>
-                <div className="mt-1 text-xs text-neutral-400 truncate">{tk.ownerTag} • {tk.channelName}</div>
+                <div className="mt-1 text-xs text-neutral-400 truncate">
+                  {tk.ownerTag} • {
+                    (() => {
+                      const ch = channels.find(c => c.id === tk.channel_id)
+                      if (ch) return `#${ch.name} (${channelTypeLabel(ch)})`
+                      if (tk.channelName) return `#${tk.channelName}`
+                      return tk.channel_id
+                    })()
+                  }
+                </div>
                 {tk.claimedByTag && <div className="mt-1 text-xs text-neutral-400">{tr('tickets.claimedBy')} {tk.claimedByTag}</div>}
               </div>
               <div className="flex items-center gap-2">

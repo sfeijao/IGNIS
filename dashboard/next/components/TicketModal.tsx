@@ -30,6 +30,15 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
   const limit = 200
   const [messages, setMessages] = useState<any[]>([])
   const [nextBefore, setNextBefore] = useState<string | null>(null)
+  const [channels, setChannels] = useState<Array<{ id: string; name: string; type?: any }>>([])
+  const channelTypeLabel = (t?: any) => {
+    const tt = (t ?? '').toString().toLowerCase()
+    if (tt === '0' || tt === 'text' || tt === 'guild_text') return 'Text'
+    if (tt === '2' || tt === 'voice' || tt === 'guild_voice') return 'Voice'
+    if (tt === '4' || tt === 'category' || tt === 'guild_category') return 'Category'
+    if (tt === '5' || tt === 'announcement' || tt === 'guild_announcement') return 'Announcement'
+    return 'Channel'
+  }
 
   useEffect(() => {
     let aborted = false
@@ -39,10 +48,12 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
       try {
         const d = await api.getTicketDetails(guildId, ticketId)
         const l = await api.getTicketLogs(guildId, ticketId, { limit, offset: 0 })
+        const ch = await api.getChannels(guildId).catch(() => ({ channels: [] }))
         if (!aborted) {
           setDetails(d)
           setLogs(l)
           setOffset(l?.logs?.length || 0)
+          setChannels(((ch as any).channels || ch || []).filter((c: any) => c && c.id && c.name))
           // initial transcript page
           try {
             const m = await api.getTicketMessages(guildId, ticketId, { limit: 100 })
@@ -107,7 +118,12 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
                   <Field label="Priority" value={details.ticket.priority || 'normal'} />
                   <Field label="Owner" value={`${details.ticket.ownerTag} (${details.ticket.user_id})`} />
                   {details.ticket.claimedByTag && <Field label="Claimed by" value={details.ticket.claimedByTag} />}
-                  <Field label="Channel" value={`${details.ticket.channelName} (${details.ticket.channel_id})`} />
+                  <Field label="Channel" value={(() => {
+                    const ch = channels.find(c => c.id === details.ticket.channel_id)
+                    if (ch) return `#${ch.name} (${channelTypeLabel(ch.type)})`
+                    if (details.ticket.channelName) return `#${details.ticket.channelName}`
+                    return String(details.ticket.channel_id)
+                  })()} />
                   <Field label="Opened" value={details.ticket.timeAgo} />
                 </div>
                 <div className="p-4 md:col-span-2">
