@@ -127,18 +127,18 @@ export default function QuickTagsManager() {
             <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={editing.icon||''} onChange={e=> setEditing({ ...editing, icon: e.target.value })} placeholder="⭐" />
           </div>
           <div>
-            <label htmlFor="quicktag-role" className="text-xs text-neutral-400">{t('tags.role') || 'Cargo (opcional)'}</label>
+            <label htmlFor="quicktag-roles" className="text-xs text-neutral-400">{t('tags.roles') || t('tags.role') || 'Cargos (opcional)'}</label>
             <select
-              id="quicktag-role"
-              title={t('tags.role') || 'Cargo (opcional)'}
-              className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1"
-              value={(editing.roleIds && editing.roleIds[0]) || ''}
+              id="quicktag-roles"
+              title={t('tags.roles') || 'Cargos (opcional)'}
+              multiple
+              className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 h-28"
+              value={Array.isArray(editing.roleIds) ? editing.roleIds : []}
               onChange={e=> {
-                const val = e.target.value
-                setEditing(prev => ({ ...(prev as Tag), roleIds: val ? [val] : [] }))
+                const selected = Array.from(e.target.selectedOptions).map(o => o.value).filter(Boolean)
+                setEditing(prev => ({ ...(prev as Tag), roleIds: selected }))
               }}
             >
-              <option value="">—</option>
               {roles.map(r => (
                 <option key={r.id} value={r.id} disabled={r.manageable===false}>{`@${r.name}`}{r.manageable===false ? ' (não gerenciável)' : ''}</option>
               ))}
