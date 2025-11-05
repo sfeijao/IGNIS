@@ -22,8 +22,8 @@ app.get('/', (req, res) => {
 
 // Rota para health check
 app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
+    res.json({
+        status: 'OK',
         service: 'IGNIS Website',
         timestamp: new Date().toISOString()
     });
