@@ -139,21 +139,7 @@ try {
     const NEXT_EXPORT_DIR = path.join(__dirname, 'public', 'next-export');
     if (fs.existsSync(NEXT_EXPORT_DIR)) {
         app.use('/next', express.static(NEXT_EXPORT_DIR, { index: 'index.html', redirect: false }));
-        // Backward-compat alias: map legacy "/next/logs" to diagnostics page
-        app.get(['/next/logs', '/next/logs/', '/next/logs/index.html'], (req, res, next) => {
-            try {
-                const filePath = path.join(NEXT_EXPORT_DIR, 'diagnostics', 'index.html');
-                if (fs.existsSync(filePath)) return res.sendFile(filePath);
-            } catch {}
-            return next();
-        });
-        app.get('/next/logs/index.txt', (req, res, next) => {
-            try {
-                const filePath = path.join(NEXT_EXPORT_DIR, 'diagnostics', 'index.txt');
-                if (fs.existsSync(filePath)) return res.sendFile(filePath);
-            } catch {}
-            return next();
-        });
+        // Removed legacy "/next/logs" alias; route no longer available
         // Removed legacy "/next/logs/live" alias; route no longer available
         // Make the new dashboard the default landing page
         app.get('/', (req, res) => res.redirect('/next/'));
