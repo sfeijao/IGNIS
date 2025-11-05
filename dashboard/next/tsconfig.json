@@ -26,9 +26,12 @@
         "lib/*"
       ]
     },
-  // Silence TS 6.x deprecations (e.g., baseUrl) while we migrate paths before TS 7
-  "ignoreDeprecations": "6.0",
-  // Note: Previously avoided setting "ignoreDeprecations" due to potential Docker/CI TS mismatch
+  // Silence deprecation diagnostics on CI using TS 5.x compatible value.
+  // NOTE: Some deprecations (introduced after 5.0) may still show locally if using newer TS,
+  // but this avoids "Invalid value for --ignoreDeprecations" in Docker builds.
+  "ignoreDeprecations": "5.0",
+  // If your local TypeScript is 6.x and you still see noisy deprecation warnings,
+  // you may temporarily bump this to "6.0" locally, but keep "5.0" committed for CI compatibility.
     "incremental": true,
     "plugins": [
       {
