@@ -333,10 +333,26 @@ export const api = {
     return res.json()
   },
   async upsertTag(guildId: string, tag: { id?: string; name: string; prefix: string; color?: string; icon?: string; roleIds?: string[] }) {
-    const res = await fetch(`/api/guild/${guildId}/tags`, {
+    // Primary: modern API expects { tag }
+    let res = await fetch(`/api/guild/${guildId}/tags`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ tag })
     })
     if (!res.ok) {
+      // Fallback for legacy servers that only accept full replace { tags: [...] }
+      if (res.status === 400 || res.status === 404) {
+        const res2 = await fetch(`/api/guild/${guildId}/tags`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ tags: [tag] })
+        })
+        if (res2.ok) return res2.json()
+        // Try to provide useful details from fallback response
+        try {
+          const err2 = await res2.json()
+          const details2 = Array.isArray(err2?.details) ? `: ${err2.details.join('; ')}` : (err2?.error ? `: ${err2.error}` : '')
+          throw new Error(`Failed to save tag${details2}`)
+        } catch {
+          throw new Error('Failed to save tag')
+        }
+      }
       try {
         const err = await res.json()
         const details = Array.isArray(err?.details) ? `: ${err.details.join('; ')}` : (err?.error ? `: ${err.error}` : '')
