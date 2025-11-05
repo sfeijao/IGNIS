@@ -21,7 +21,6 @@ export default function PluginsPage() {
       title: 'Essenciais',
       items: [
         { name: 'Moderação', desc: 'Automod, logs, ações e auditoria.', icon: 'shield' as const, tip: 'Configure regras, mod-logs e automod.', href: '/moderation' },
-        { name: 'Logs', desc: 'Registos de moderação com filtros e export.', icon: 'info' as const, tip: 'Filtrar e exportar logs.', href: '/logs' },
       ]
     },
     {

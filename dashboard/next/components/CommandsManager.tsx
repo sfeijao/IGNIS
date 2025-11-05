@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getGuildId } from '../lib/guild'
 import { useI18n } from '../lib/i18n'
 import { api } from '../lib/apiClient'
@@ -18,6 +18,26 @@ export default function CommandsManager() {
   const [runName, setRunName] = useState('')
   const [runArgs, setRunArgs] = useState('')
   const [runChannelId, setRunChannelId] = useState('')
+  const [channels, setChannels] = useState<Array<{ id: string; name: string; type?: string }>>([])
+
+  const isTextChannel = (ch: { id: string; name: string; type?: string }) => {
+    const t = String(ch.type || '').toLowerCase()
+    return t.includes('text') || t.includes('announcement')
+  }
+  const channelTypeLabel = (ch: { type?: string } | string | undefined) => {
+    const t = typeof ch === 'string' ? ch : (ch?.type || '')
+    switch (String(t).toLowerCase()) {
+      case 'guild_text':
+      case 'text': return 'Text'
+      case 'guild_announcement':
+      case 'announcement': return 'Announcement'
+      case 'guild_voice':
+      case 'voice': return 'Voice'
+      case 'guild_category':
+      case 'category': return 'Category'
+      default: return 'Channel'
+    }
+  }
 
   useEffect(() => { setGuildId(getGuildId()) }, [])
 
@@ -36,7 +56,7 @@ export default function CommandsManager() {
     }
   }
 
-  useEffect(() => { if (guildId) load(guildId) }, [guildId])
+  useEffect(() => { if (guildId) { load(guildId); (async()=>{ try { const ch = await api.getChannels(guildId); setChannels(ch.channels || ch || []) } catch {} })() } }, [guildId])
 
   const action = async (payload: Record<string, any>) => {
     if (!guildId) return
@@ -75,7 +95,12 @@ export default function CommandsManager() {
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-sm opacity-80">{t('commands.form.channel')}</span>
-            <input className="input" value={runChannelId} onChange={e => setRunChannelId(e.target.value)} placeholder={t('commands.form.channel.placeholder')} title={t('commands.form.channel.title')} />
+            <select className="input" value={runChannelId} onChange={e => setRunChannelId(e.target.value)} title={t('commands.form.channel.title')}>
+              <option value="">—</option>
+              {channels.filter(isTextChannel).map(ch => (
+                <option key={ch.id} value={ch.id}>{`#${ch.name} (${channelTypeLabel(ch)})`}</option>
+              ))}
+            </select>
           </label>
           <div className="flex items-end">
             <button className="btn btn-primary" onClick={() => action({ action: 'run', name: runName, args: runArgs, channelId: runChannelId || undefined })} disabled={!runName}>{t('commands.runButton')}</button>
