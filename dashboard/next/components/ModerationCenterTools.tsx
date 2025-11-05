@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getGuildId } from '@/lib/guild'
 import { api } from '@/lib/apiClient'
 import { useToast } from './Toaster'
@@ -16,8 +16,53 @@ export default function ModerationCenterTools() {
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<Array<{ userId: string; ok: boolean; error?: string }>>([])
+  const [channels, setChannels] = useState<Array<{ id: string; name: string; type?: string }>>([])
+  const [contextChannelId, setContextChannelId] = useState<string>('')
 
-  const parseUserIds = () => Array.from(new Set(userIdsRaw.split(/[,\n\s]+/).map(s => s.trim()).filter(Boolean)))
+  // Helpers to filter/label channels consistently
+  const isTextChannel = (ch: { id: string; name: string; type?: string }) => {
+    const t = String(ch.type || '').toLowerCase()
+    return t.includes('text') || t.includes('announcement')
+  }
+  const channelTypeLabel = (ch: { type?: string } | string | undefined) => {
+    const t = typeof ch === 'string' ? ch : (ch?.type || '')
+    switch (String(t).toLowerCase()) {
+      case 'guild_text':
+      case 'text': return 'Text'
+      case 'guild_announcement':
+      case 'announcement': return 'Announcement'
+      case 'guild_voice':
+      case 'voice': return 'Voice'
+      case 'guild_category':
+      case 'category': return 'Category'
+      default: return 'Channel'
+    }
+  }
+
+  useEffect(() => {
+    if (!guildId) return
+    ;(async () => {
+      try {
+        const ch = await api.getChannels(guildId)
+        const list = ch.channels || ch || []
+        setChannels(list)
+      } catch {}
+    })()
+  }, [guildId])
+
+  // Persist optional context channel selection
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const saved = localStorage.getItem('moderationContextChannelId')
+    if (saved) setContextChannelId(saved)
+  }, [])
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (contextChannelId) localStorage.setItem('moderationContextChannelId', contextChannelId)
+    else localStorage.removeItem('moderationContextChannelId')
+  }, [contextChannelId])
+
+  const parseUserIds = () => Array.from(new Set(userIdsRaw.split(/[\,\n\s]+/).map(s => s.trim()).filter(Boolean)))
 
   const run = async () => {
     if (!guildId) return toast({ type: 'error', title: 'Guild missing' })
@@ -43,9 +88,9 @@ export default function ModerationCenterTools() {
         }
       }
       setResults(r)
-  const ok = r.filter(x => x.ok).length
-  const fail = r.length - ok
-  toast({ type: fail ? 'info' : 'success', title: t('mod.bulk.done'), description: `${ok}/${r.length}` })
+      const ok = r.filter(x => x.ok).length
+      const fail = r.length - ok
+      toast({ type: fail ? 'info' : 'success', title: t('mod.bulk.done'), description: `${ok}/${r.length}` })
     } finally {
       setBusy(false)
     }
@@ -54,6 +99,18 @@ export default function ModerationCenterTools() {
   return (
     <div className="card p-4 space-y-3">
       <div className="text-lg font-semibold">{t('nav.moderation')} – {t('mod.bulk.title')}</div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <label className="text-xs text-neutral-400" htmlFor="context-channel">{t('mod.context.channel')}</label>
+          <select id="context-channel" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={contextChannelId} onChange={e=> setContextChannelId(e.target.value)}>
+            <option value="">—</option>
+            {channels.filter(isTextChannel).map((ch) => (
+              <option key={ch.id} value={ch.id}>{`#${ch.name} (${channelTypeLabel(ch)})`}</option>
+            ))}
+          </select>
+          <div className="text-[11px] text-neutral-500 mt-1">{t('mod.context.hint')}</div>
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="md:col-span-2">
           <label className="text-xs text-neutral-400" htmlFor="user-ids">{t('mod.bulk.userIds')}</label>

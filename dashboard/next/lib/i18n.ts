@@ -43,6 +43,8 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'mod.bulk.results': 'Resultados',
   'mod.bulk.noUsers': 'Sem utilizadores',
   'mod.bulk.done': 'Concluído',
+  'mod.context.channel': 'Canal de contexto (opcional)',
+  'mod.context.hint': 'Algumas ações podem usar este canal como contexto de execução.',
   // Sidebar labels
   'nav.dashboard': 'Dashboard',
   'nav.plugins': 'Plugins',
@@ -754,6 +756,8 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     'mod.bulk.results': 'Results',
     'mod.bulk.noUsers': 'No users',
     'mod.bulk.done': 'Done',
+    'mod.context.channel': 'Context channel (optional)',
+    'mod.context.hint': 'Some actions may use this channel as execution context.',
   }
 }
 
