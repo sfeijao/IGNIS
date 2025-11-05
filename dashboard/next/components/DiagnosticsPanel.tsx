@@ -53,8 +53,8 @@ export default function DiagnosticsPanel() {
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Diagnósticos</h3>
         <div className="flex items-center gap-2">
-          <button onClick={copyReport} className="rounded-lg px-3 py-1.5 text-sm bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">Copiar relatório</button>
-          <button onClick={() => guildId && setData(null) || undefined} className="rounded-lg px-3 py-1.5 text-sm bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">Limpar</button>
+          <button type="button" onClick={copyReport} className="rounded-lg px-3 py-1.5 text-sm bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">Copiar relatório</button>
+          <button type="button" onClick={() => guildId && setData(null) || undefined} className="rounded-lg px-3 py-1.5 text-sm bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">Limpar</button>
         </div>
       </div>
       {loading && <div className="text-neutral-400">A carregar…</div>}

@@ -66,14 +66,14 @@ export default function MemberModal({ guildId, member, onClose, onChanged }: Pro
             <div className="text-sm text-neutral-400">Gerir</div>
             <div className="text-lg font-semibold">{member?.nick ? `${member.nick} (${member.username}#${member.discriminator})` : `${member.username}#${member.discriminator}`}</div>
           </div>
-          <button onClick={onClose} className="px-2 py-1 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">Fechar</button>
+          <button type="button" onClick={onClose} className="px-2 py-1 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">Fechar</button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
           <section className="card p-3">
             <div className="text-sm font-medium mb-2">Nickname</div>
             <div className="flex items-center gap-2">
               <input className="flex-1 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={nick} onChange={e=> setNick(e.target.value)} placeholder="Sem nickname" />
-              <button onClick={saveNickname} className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" disabled={loading}>Guardar</button>
+              <button type="button" onClick={saveNickname} className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" disabled={loading}>Guardar</button>
             </div>
           </section>
           <section className="card p-3">
@@ -81,15 +81,15 @@ export default function MemberModal({ guildId, member, onClose, onChanged }: Pro
             <div className="flex items-center gap-2">
               <input type="number" min={0} className="w-32 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={timeoutMins} onChange={e=> setTimeoutMins(parseInt(e.target.value||'0',10))} aria-label="Minutos" />
               <span className="text-sm">min</span>
-              <button onClick={applyTimeout} className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" disabled={loading}>Aplicar</button>
+              <button type="button" onClick={applyTimeout} className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" disabled={loading}>Aplicar</button>
             </div>
           </section>
           <section className="card p-3 md:col-span-2">
             <div className="flex items-center justify-between mb-2">
               <div className="text-sm font-medium">Cargos</div>
               <div className="flex items-center gap-2">
-                <button onClick={()=> setSelectedRoles(new Set())} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">Limpar</button>
-                <button onClick={saveRoles} className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" disabled={loading}>Guardar</button>
+                <button type="button" onClick={()=> setSelectedRoles(new Set())} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">Limpar</button>
+                <button type="button" onClick={saveRoles} className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" disabled={loading}>Guardar</button>
               </div>
             </div>
             <div className="max-h-60 overflow-auto grid grid-cols-2 gap-2">
@@ -104,8 +104,8 @@ export default function MemberModal({ guildId, member, onClose, onChanged }: Pro
           <section className="card p-3">
             <div className="text-sm font-medium mb-2">Ações</div>
             <div className="flex items-center gap-2">
-              <button onClick={kick} className="px-3 py-1.5 rounded bg-amber-600/30 border border-amber-700/60 hover:bg-amber-600/40" disabled={loading}>Kick</button>
-              <button onClick={ban} className="px-3 py-1.5 rounded bg-rose-600/40 hover:bg-rose-600/50" disabled={loading}>Ban</button>
+              <button type="button" onClick={kick} className="px-3 py-1.5 rounded bg-amber-600/30 border border-amber-700/60 hover:bg-amber-600/40" disabled={loading}>Kick</button>
+              <button type="button" onClick={ban} className="px-3 py-1.5 rounded bg-rose-600/40 hover:bg-rose-600/50" disabled={loading}>Ban</button>
             </div>
           </section>
         </div>

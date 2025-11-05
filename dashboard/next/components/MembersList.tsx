@@ -83,7 +83,7 @@ export default function MembersList() {
               {!m.manageable ? (
                 <span className="text-xs text-neutral-500">{t('members.notManageable')}</span>
               ) : (
-                <button className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setSelected(m)} title={t('members.manage')}>{t('members.manage')}</button>
+                <button type="button" className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setSelected(m)} title={t('members.manage')}>{t('members.manage')}</button>
               )}
             </div>
           ))}

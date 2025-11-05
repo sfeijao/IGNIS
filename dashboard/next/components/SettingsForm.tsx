@@ -133,7 +133,7 @@ export default function SettingsForm() {
       </div>
 
       <div className="flex gap-2 pt-2">
-        <button disabled={saving} className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium disabled:opacity-60">
+        <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium disabled:opacity-60">
           {saving ? t('settings.saving') : (loaded ? t('settings.save') : t('settings.loading'))}
         </button>
       </div>

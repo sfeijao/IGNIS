@@ -122,8 +122,8 @@ export default function TicketPanels() {
     <div className="space-y-6">
       <div className="flex items-center gap-2">
         <h2 className="text-xl font-semibold">{t('tickets.panels.title')}</h2>
-        <button onClick={() => guildId && loadAll(guildId)} className="btn btn-secondary" title={t('tickets.reload')}>{t('tickets.reload')}</button>
-        <button onClick={onScan} className="btn btn-primary" title={t('tickets.scan')}>{t('tickets.scan')}</button>
+  <button type="button" onClick={() => guildId && loadAll(guildId)} className="btn btn-secondary" title={t('tickets.reload')}>{t('tickets.reload')}</button>
+  <button type="button" onClick={onScan} className="btn btn-primary" title={t('tickets.scan')}>{t('tickets.scan')}</button>
       </div>
       {error && <div className="text-red-400">{error}</div>}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -140,7 +140,7 @@ export default function TicketPanels() {
                 <option value="">{t('tickets.panels.noCategory')}</option>
                 {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
               </select>
-              <button className="btn btn-primary" disabled={loading}>{t('tickets.panel.create')}</button>
+              <button type="submit" className="btn btn-primary" disabled={loading}>{t('tickets.panel.create')}</button>
             </form>
           </div>
         </section>
@@ -149,7 +149,7 @@ export default function TicketPanels() {
           <div className="card-body">
             <form onSubmit={onCreateCategory} className="flex flex-col gap-3">
               <input value={newCategory.name} onChange={e => setNewCategory({ name: e.target.value })} placeholder={t('tickets.panels.categoryName.placeholder')} className="input" required />
-              <button className="btn btn-primary" disabled={loading}>{t('tickets.category.create')}</button>
+              <button type="submit" className="btn btn-primary" disabled={loading}>{t('tickets.category.create')}</button>
             </form>
           </div>
         </section>
@@ -175,9 +175,9 @@ export default function TicketPanels() {
                   <td className="py-2 pr-4">{p.categoryName}</td>
                   <td className="py-2 pr-4">{p.messageId || '-'}</td>
                   <td className="py-2 flex gap-2">
-                    <button className="btn btn-secondary btn-xs" title={t('tickets.action.sync')} onClick={() => guildId && api.panelAction(guildId, p.id, 'sync').then(() => { toast({ type:'success', title: t('tickets.synced') }); loadAll(guildId) }).catch((e:any)=> toast({ type:'error', title:'Falha', description:e?.message }))}>{t('tickets.action.sync')}</button>
-                    <button className="btn btn-secondary btn-xs" title={t('tickets.action.messageUpdate')} onClick={() => guildId && api.panelAction(guildId, p.id, 'refresh_message').then(() => { toast({ type:'success', title: t('tickets.action.messageUpdate') }); loadAll(guildId) }).catch((e:any)=> toast({ type:'error', title:'Falha', description:e?.message }))}>{t('tickets.action.messageUpdate')}</button>
-                    <button className="btn btn-danger btn-xs" title={t('tickets.action.delete')} onClick={() => guildId && api.panelAction(guildId, p.id, 'delete').then(() => { toast({ type:'success', title: t('tickets.removed') }); loadAll(guildId) }).catch((e:any)=> toast({ type:'error', title:'Falha', description:e?.message }))}>{t('tickets.action.delete')}</button>
+                    <button type="button" className="btn btn-secondary btn-xs" title={t('tickets.action.sync')} onClick={() => guildId && api.panelAction(guildId, p.id, 'sync').then(() => { toast({ type:'success', title: t('tickets.synced') }); loadAll(guildId) }).catch((e:any)=> toast({ type:'error', title:'Falha', description:e?.message }))}>{t('tickets.action.sync')}</button>
+                    <button type="button" className="btn btn-secondary btn-xs" title={t('tickets.action.messageUpdate')} onClick={() => guildId && api.panelAction(guildId, p.id, 'refresh_message').then(() => { toast({ type:'success', title: t('tickets.action.messageUpdate') }); loadAll(guildId) }).catch((e:any)=> toast({ type:'error', title:'Falha', description:e?.message }))}>{t('tickets.action.messageUpdate')}</button>
+                    <button type="button" className="btn btn-danger btn-xs" title={t('tickets.action.delete')} onClick={() => guildId && api.panelAction(guildId, p.id, 'delete').then(() => { toast({ type:'success', title: t('tickets.removed') }); loadAll(guildId) }).catch((e:any)=> toast({ type:'error', title:'Falha', description:e?.message }))}>{t('tickets.action.delete')}</button>
                   </td>
                 </tr>
               ))}

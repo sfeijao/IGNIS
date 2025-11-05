@@ -135,8 +135,8 @@ export default function ModerationCenterTools() {
             <input id="reason" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" placeholder={t('mod.reason.placeholder')} value={reason} onChange={e=> setReason(e.target.value)} />
           </div>
           <div className="flex items-center gap-2">
-            <button className="btn btn-primary" onClick={run} disabled={busy}>{busy ? t('common.working') : t('mod.bulk.run')}</button>
-            <button className="btn btn-secondary" onClick={()=> { setUserIdsRaw(''); setResults([]) }} disabled={busy}>{t('common.clear')}</button>
+            <button type="button" className="btn btn-primary" onClick={run} disabled={busy}>{busy ? t('common.working') : t('mod.bulk.run')}</button>
+            <button type="button" className="btn btn-secondary" onClick={()=> { setUserIdsRaw(''); setResults([]) }} disabled={busy}>{t('common.clear')}</button>
           </div>
         </div>
       </div>

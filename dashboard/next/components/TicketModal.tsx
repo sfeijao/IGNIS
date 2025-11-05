@@ -96,16 +96,16 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
       <div className="relative z-10 w-full max-w-5xl card p-0 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-800">
           <div className="font-semibold">Ticket #{ticketId}</div>
-          <button onClick={onClose} className="text-neutral-400 hover:text-white">✕</button>
+          <button type="button" onClick={onClose} className="text-neutral-400 hover:text-white">✕</button>
         </div>
         {loading && <div className="p-6 text-neutral-400">Carregando…</div>}
         {error && <div className="p-6 text-red-400">{error}</div>}
         {!loading && !error && details && (
           <div>
             <div className="px-5 pt-3 flex items-center gap-2 border-b border-neutral-800">
-              <button className={`px-3 py-2 text-sm rounded-t ${tab==='overview' ? 'bg-neutral-800 border border-neutral-700 border-b-neutral-800' : 'text-neutral-400 hover:text-white'}`} onClick={()=> setTab('overview')}>Overview</button>
-              <button className={`px-3 py-2 text-sm rounded-t ${tab==='logs' ? 'bg-neutral-800 border border-neutral-700 border-b-neutral-800' : 'text-neutral-400 hover:text-white'}`} onClick={()=> setTab('logs')}>Logs</button>
-              <button className={`px-3 py-2 text-sm rounded-t ${tab==='transcript' ? 'bg-neutral-800 border border-neutral-700 border-b-neutral-800' : 'text-neutral-400 hover:text-white'}`} onClick={()=> setTab('transcript')}>Transcript</button>
+              <button type="button" className={`px-3 py-2 text-sm rounded-t ${tab==='overview' ? 'bg-neutral-800 border border-neutral-700 border-b-neutral-800' : 'text-neutral-400 hover:text-white'}`} onClick={()=> setTab('overview')}>Overview</button>
+              <button type="button" className={`px-3 py-2 text-sm rounded-t ${tab==='logs' ? 'bg-neutral-800 border border-neutral-700 border-b-neutral-800' : 'text-neutral-400 hover:text-white'}`} onClick={()=> setTab('logs')}>Logs</button>
+              <button type="button" className={`px-3 py-2 text-sm rounded-t ${tab==='transcript' ? 'bg-neutral-800 border border-neutral-700 border-b-neutral-800' : 'text-neutral-400 hover:text-white'}`} onClick={()=> setTab('transcript')}>Transcript</button>
               {tab==='transcript' && (
                 <a className="ml-auto mr-5 text-sm text-blue-400 hover:text-blue-300 underline" href={`/api/guild/${guildId}/tickets/${ticketId}?download=transcript`} target="_blank" rel="noreferrer">Download transcript</a>
               )}
@@ -142,7 +142,7 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
                   <Timeline items={logs?.logs || []} />
                 </div>
                 <div className="mt-3">
-                  <button onClick={loadMore} disabled={busyMore} className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50 text-sm">{busyMore ? 'Loading…' : 'Load more'}</button>
+                  <button type="button" onClick={loadMore} disabled={busyMore} className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50 text-sm">{busyMore ? 'Loading…' : 'Load more'}</button>
                 </div>
               </div>
             )}
@@ -163,7 +163,7 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
                   )}
                 </div>
                 <div className="mt-3 flex items-center gap-2">
-                  <button onClick={loadMoreMessages} disabled={!nextBefore} className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50 text-sm">{nextBefore ? 'Load older messages' : 'No more messages'}</button>
+                  <button type="button" onClick={loadMoreMessages} disabled={!nextBefore} className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50 text-sm">{nextBefore ? 'Load older messages' : 'No more messages'}</button>
                 </div>
               </div>
             )}

@@ -250,7 +250,7 @@ export default function VerificationConfig() {
           <FormBuilder value={cfg.form?.questions || []} onChange={(questions)=> setCfg(c=> ({ ...c, form: { questions } }))} />
         )}
         <div className="flex gap-2 pt-2">
-          <button disabled={loading} className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium disabled:opacity-60">{saved==='saving' ? t('verification.saving') : t('verification.save')}</button>
+          <button type="submit" disabled={loading} className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium disabled:opacity-60">{saved==='saving' ? t('verification.saving') : t('verification.save')}</button>
           {saved==='ok' && <span className="text-emerald-400 text-sm">{t('verification.saved')}</span>}
           {saved==='err' && <span className="text-rose-400 text-sm">{t('verification.saveFailed')}</span>}
         </div>
@@ -287,8 +287,8 @@ export default function VerificationConfig() {
           <textarea title={t('verification.panel.description')} placeholder={t('verification.panel.description')} className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2" rows={3} value={panelDefaults.description || ''} onChange={e=> setPanelDefaults(p=> ({ ...p, description: e.target.value }))} />
         </div>
         <div className="flex gap-2">
-          <button onClick={saveDefaults} className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700">{t('verification.panel.saveDefaults')}</button>
-          <button onClick={resetDefaults} className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700">{t('verification.panel.resetDefaults')}</button>
+          <button type="button" onClick={saveDefaults} className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700">{t('verification.panel.saveDefaults')}</button>
+          <button type="button" onClick={resetDefaults} className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700">{t('verification.panel.resetDefaults')}</button>
         </div>
       </div>
 
@@ -315,10 +315,10 @@ export default function VerificationConfig() {
           </div>
         </div>
         <div>
-          <button onClick={createPanel} disabled={!panelChannelId} className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium disabled:opacity-60">
+          <button type="button" onClick={createPanel} disabled={!panelChannelId} className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium disabled:opacity-60">
             {t('verification.panel.createButton')}
           </button>
-          <button onClick={testPanel} className="ml-2 px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700">
+          <button type="button" onClick={testPanel} className="ml-2 px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700">
             {t('verification.panel.test')}
           </button>
           {testing==='sending' && <span className="ml-2 text-sm opacity-70">{t('common.working')}</span>}

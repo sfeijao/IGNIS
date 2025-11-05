@@ -108,7 +108,7 @@ export default function TicketsConfigForm() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <h2 className="text-xl font-semibold">{t('tickets.config.title')}</h2>
-        <button onClick={() => guildId && setGuildId(guildId)} className="btn btn-secondary" title={t('tickets.reload')}>{t('tickets.reload')}</button>
+  <button type="button" onClick={() => guildId && setGuildId(guildId)} className="btn btn-secondary" title={t('tickets.reload')}>{t('tickets.reload')}</button>
       </div>
       {error && <div className="text-red-400">{error}</div>}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -166,7 +166,7 @@ export default function TicketsConfigForm() {
               <label className="text-sm opacity-80">{t('tickets.enabled')}</label>
               <input type="checkbox" checked={!!config.enabled} onChange={e => setConfig((c:any) => ({ ...c, enabled: e.target.checked }))} title={t('tickets.enabled')} />
             </div>
-            <button className="btn btn-primary w-fit" onClick={save} disabled={loading}>{t('common.save')}</button>
+            <button type="button" className="btn btn-primary w-fit" onClick={save} disabled={loading}>{t('common.save')}</button>
             {saved && <span className="text-green-400">{t('tickets.saved')}</span>}
           </div>
         </section>
@@ -175,8 +175,8 @@ export default function TicketsConfigForm() {
           <div className="card-body">
             <textarea className="input min-h-[280px] font-mono" value={json} onChange={e => setJson(e.target.value)} title="Editor JSON" />
             <div className="mt-3 flex gap-2">
-              <button className="btn btn-secondary" onClick={() => setJson(JSON.stringify(config, null, 2))}>{t('tickets.json.revert')}</button>
-              <button className="btn btn-primary" onClick={save} disabled={loading}>{t('tickets.json.save')}</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setJson(JSON.stringify(config, null, 2))}>{t('tickets.json.revert')}</button>
+              <button type="button" className="btn btn-primary" onClick={save} disabled={loading}>{t('tickets.json.save')}</button>
             </div>
           </div>
         </section>

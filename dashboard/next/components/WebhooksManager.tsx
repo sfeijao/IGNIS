@@ -143,9 +143,9 @@ export default function WebhooksManager() {
           <label className="text-xs text-neutral-400">{t('webhooks.name')}</label>
           <input className="mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={name} onChange={e=> setName(e.target.value)} placeholder="IGNIS" />
         </div>
-        <button onClick={create} className="mt-5 px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 disabled:opacity-50" disabled={!guildId || !channel || loading}>{t('webhooks.create')}</button>
-        <button onClick={() => guildId && api.autoSetupWebhook(guildId).then(()=>{ toast({ type:'success', title: t('webhooks.autosetup.ok') }); load(); }).catch((e:any)=> toast({ type:'error', title: t('webhooks.autosetup.fail'), description: e?.message }))} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={!guildId || loading}>{t('webhooks.autosetup')}</button>
-        <button onClick={load} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={!guildId || loading}>{t('webhooks.refresh')}</button>
+  <button type="button" onClick={create} className="mt-5 px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 disabled:opacity-50" disabled={!guildId || !channel || loading}>{t('webhooks.create')}</button>
+  <button type="button" onClick={() => guildId && api.autoSetupWebhook(guildId).then(()=>{ toast({ type:'success', title: t('webhooks.autosetup.ok') }); load(); }).catch((e:any)=> toast({ type:'error', title: t('webhooks.autosetup.fail'), description: e?.message }))} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={!guildId || loading}>{t('webhooks.autosetup')}</button>
+  <button type="button" onClick={load} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={!guildId || loading}>{t('webhooks.refresh')}</button>
       </div>
       <div className="card p-0 overflow-hidden">
         <div className="divide-y divide-neutral-800">
@@ -160,9 +160,9 @@ export default function WebhooksManager() {
                 </div>
                 <div className="text-xs text-neutral-500">{h.id} • {h.channelId}</div>
               </div>
-              <button onClick={()=> test(h.type)} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('webhooks.test')}</button>
-              {h.url && <button onClick={()=> setAsTranscript(h.url)} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('webhooks.setAsTranscript')}</button>}
-              <button onClick={()=> remove(h.id, h.type)} className="px-2 py-1 text-xs rounded bg-rose-600 hover:bg-rose-500">{t('webhooks.remove')}</button>
+              <button type="button" onClick={()=> test(h.type)} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('webhooks.test')}</button>
+              {h.url && <button type="button" onClick={()=> setAsTranscript(h.url)} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('webhooks.setAsTranscript')}</button>}
+              <button type="button" onClick={()=> remove(h.id, h.type)} className="px-2 py-1 text-xs rounded bg-rose-600 hover:bg-rose-500">{t('webhooks.remove')}</button>
             </div>
           ))}
         </div>

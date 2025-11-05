@@ -154,8 +154,8 @@ export default function RolesManager() {
           <label htmlFor="role-color" className="text-xs text-neutral-400">{t('roles.color')}</label>
           <input id="role-color" className="mt-1 w-40 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={color} onChange={e=> setColor(e.target.value)} placeholder="#ffffff" title={t('roles.color')} />
         </div>
-        <button onClick={create} className="mt-5 px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 disabled:opacity-50" disabled={!guildId || loading}>{t('roles.create')}</button>
-        <button onClick={load} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={!guildId || loading}>{t('roles.refresh')}</button>
+  <button type="button" onClick={create} className="mt-5 px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 disabled:opacity-50" disabled={!guildId || loading}>{t('roles.create')}</button>
+  <button type="button" onClick={load} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={!guildId || loading}>{t('roles.refresh')}</button>
         <div className="ml-auto flex items-end gap-2">
           <label className="text-xs text-neutral-400">Lang</label>
           <select className="mt-5 bg-neutral-900 border border-neutral-700 rounded px-2 py-2 text-sm" value={lang} onChange={e=> setLang(e.target.value as any)} aria-label="Language">
@@ -182,7 +182,7 @@ export default function RolesManager() {
               {dragOverId===r.id && dragOverPos==='above' && <div className="absolute left-0 right-0 top-0 h-0.5 bg-brand-600" />}
               {dragOverId===r.id && dragOverPos==='below' && <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-brand-600" />}
               {/* Drag handle */}
-              <button
+              <button type="button"
                 className="cursor-grab p-1 rounded hover:bg-neutral-800 border border-transparent hover:border-neutral-700"
                 draggable
                 onDragStart={()=> onDragStart(r.id)}
@@ -203,9 +203,9 @@ export default function RolesManager() {
                 <div className="text-neutral-200 truncate">{r.name}</div>
                 <div className="text-xs text-neutral-500">{r.id}</div>
               </div>
-              <button onClick={(e)=> { e.stopPropagation(); move(r.id, 'up') }} aria-label={`${t('roles.up')} ${r.name}`} title={t('roles.up')} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('roles.up')}</button>
-              <button onClick={(e)=> { e.stopPropagation(); move(r.id, 'down') }} aria-label={`${t('roles.down')} ${r.name}`} title={t('roles.down')} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('roles.down')}</button>
-              {!r.managed && <button onClick={(e)=> { e.stopPropagation(); remove(r.id) }} aria-label={`${t('roles.remove')} ${r.name}`} title={t('roles.remove')} className="px-2 py-1 text-xs rounded bg-rose-600 hover:bg-rose-500">{t('roles.remove')}</button>}
+              <button type="button" onClick={(e)=> { e.stopPropagation(); move(r.id, 'up') }} aria-label={`${t('roles.up')} ${r.name}`} title={t('roles.up')} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('roles.up')}</button>
+              <button type="button" onClick={(e)=> { e.stopPropagation(); move(r.id, 'down') }} aria-label={`${t('roles.down')} ${r.name}`} title={t('roles.down')} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('roles.down')}</button>
+              {!r.managed && <button type="button" onClick={(e)=> { e.stopPropagation(); remove(r.id) }} aria-label={`${t('roles.remove')} ${r.name}`} title={t('roles.remove')} className="px-2 py-1 text-xs rounded bg-rose-600 hover:bg-rose-500">{t('roles.remove')}</button>}
             </div>
           ))}
           </div>
@@ -230,8 +230,8 @@ export default function RolesManager() {
                 <div className="flex items-center gap-2 mb-2">
                   <div className="text-sm font-medium">{t('roles.permissions')}</div>
                   <div className="ml-auto flex items-center gap-2">
-                    <button className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setPermSet(new Set(PERMISSION_KEYS.map(p=>p.key)))}>{t('roles.permissions.selectAll')}</button>
-                    <button className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setPermSet(new Set())}>{t('roles.permissions.clearAll')}</button>
+                    <button type="button" className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setPermSet(new Set(PERMISSION_KEYS.map(p=>p.key)))}>{t('roles.permissions.selectAll')}</button>
+                    <button type="button" className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setPermSet(new Set())}>{t('roles.permissions.clearAll')}</button>
                   </div>
                 </div>
                 <input
@@ -256,7 +256,7 @@ export default function RolesManager() {
                 <div className="text-xs text-neutral-500 mt-2">{t('roles.permissions.note')}</div>
               </div>
               <div className="flex gap-2">
-                <button onClick={saveProps} className="px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" disabled={loading}>{t('roles.save')}</button>
+                <button type="button" onClick={saveProps} className="px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" disabled={loading}>{t('roles.save')}</button>
               </div>
             </div>
           )}
