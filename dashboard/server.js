@@ -4118,6 +4118,7 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
     const type = (req.body?.type === 'verification') ? 'verification' : 'tickets';
     let { channel_id, theme = 'dark' } = req.body || {};
     const options = (req.body && typeof req.body.options === 'object') ? req.body.options : {};
+    const dryRun = (req.body && (req.body.dryRun === true || String(req.body.dryRun).toLowerCase() === 'true')) ? true : false;
     // Fallback: if no channel_id provided and type is tickets, use configured panelChannelId
     if (!channel_id && type === 'tickets') {
         const fallback = cfg?.tickets?.panelChannelId;
@@ -4130,6 +4131,67 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
         if (!['minimal','rich'].includes(template)) template = 'minimal';
     } else {
         if (!['classic','compact','premium','minimal','gamer'].includes(template)) template = 'classic';
+    }
+    if (dryRun) {
+        try {
+            const guild = check.guild;
+            // Build verification panel preview payload only (no persistence)
+            const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+            const parseColor = (c) => {
+                if (typeof c === 'number') return c;
+                if (typeof c === 'string') { const s = c.trim(); if (/^#?[0-9a-fA-F]{6}$/.test(s)) return parseInt(s.replace('#',''),16); }
+                return null;
+            };
+            const vPanelDefaults = (type === 'verification') ? (cfg?.verification?.panelDefaults || {}) : {};
+            const effOptions = { ...vPanelDefaults, ...(options || {}) };
+            const resolvedColor = parseColor(effOptions.color) ?? (theme === 'light' ? 0x60A5FA : 0x7C3AED);
+            let embed = new EmbedBuilder().setColor(resolvedColor);
+            let rows = [];
+            if (type === 'verification') {
+                const vcfg = cfg?.verification || {};
+                const method = (vcfg.method || 'button');
+                const isReaction = method === 'reaction';
+                const isImage = method === 'image';
+                const defaultTitle = '🔒 Verificação do Servidor';
+                const defaultDesc = isReaction
+                    ? (effOptions.template === 'rich'
+                        ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, reage com ✅ nesta mensagem para concluir a verificação.`
+                        : 'Reage com ✅ nesta mensagem para te verificares.'
+                      )
+                    : isImage
+                        ? (effOptions.template === 'rich'
+                            ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nCarrega em Verificar para receberes um captcha por imagem e concluir a verificação.`
+                            : 'Carrega em Verificar para resolveres o captcha por imagem.'
+                          )
+                        : (effOptions.template === 'rich'
+                            ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, conclui a verificação clicando no botão abaixo.`
+                            : 'Clica em Verificar para concluir e ganhar acesso aos canais.'
+                          );
+                const title = (typeof effOptions.title === 'string' && effOptions.title.trim()) ? effOptions.title.trim().slice(0,100) : defaultTitle;
+                const description = (typeof effOptions.description === 'string' && effOptions.description.trim()) ? effOptions.description.trim().slice(0,2000) : defaultDesc;
+                embed.setTitle(title).setDescription(description).setThumbnail(guild.iconURL({ size: 256 })).setFooter({ text: 'IGNIS COMMUNITY™ • Sistema de verificação' }).setTimestamp();
+                if (effOptions.template === 'rich') {
+                    embed.addFields({ name: '⚠️ Importante', value: 'Segue as regras do servidor e mantém um perfil adequado.' });
+                }
+                if (!isReaction) {
+                    const row = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder().setCustomId('verify_user').setLabel((typeof effOptions.buttonLabel === 'string' && effOptions.buttonLabel.trim()) ? effOptions.buttonLabel.trim().slice(0,80) : 'Verificar').setEmoji('✅').setStyle(ButtonStyle.Primary)
+                    );
+                    rows = [row];
+                }
+            } else {
+                embed.setTitle('Pré-visualização de painel').setDescription('Este é um envio de teste (DM).');
+            }
+            const payload = { embeds: [embed], components: rows };
+            const user = await (client && client.users && client.users.fetch ? client.users.fetch(req.user.id).catch(() => null) : null);
+            if (!user) return res.status(400).json({ success: false, error: 'cannot_dm_user' });
+            const dm = await user.send(payload).catch(() => null);
+            if (!dm) return res.status(400).json({ success: false, error: 'dm_failed' });
+            return res.json({ success: true, message: 'dry_run_sent' });
+        } catch (e) {
+            logger.warn('Dry run panel DM failed:', e?.message || String(e));
+            return res.status(500).json({ success: false, error: 'dry_run_failed' });
+        }
     }
     if (!channel_id) return res.status(400).json({ success: false, error: 'Missing channel_id' });
         // Idempotency/lock: avoid duplicate sends for same (guild, channel, type) within a short window
