@@ -42,8 +42,8 @@ export default function VerificationMetrics() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <h2 className="text-xl font-semibold">{t('verification.metrics.title')}</h2>
-        <button className="btn btn-secondary" onClick={() => guildId && load(guildId)} title={t('verification.metrics.reload')}>{t('verification.metrics.reload')}</button>
-        <button className="btn btn-danger" onClick={purge} title={t('verification.metrics.clearLogs')}>{t('verification.metrics.clearLogs')}</button>
+  <button type="button" className="btn btn-secondary" onClick={() => guildId && load(guildId)} title={t('verification.metrics.reload')}>{t('verification.metrics.reload')}</button>
+  <button type="button" className="btn btn-danger" onClick={purge} title={t('verification.metrics.clearLogs')}>{t('verification.metrics.clearLogs')}</button>
       </div>
       {error && <div className="text-red-400">{error}</div>}
       <section className="card">

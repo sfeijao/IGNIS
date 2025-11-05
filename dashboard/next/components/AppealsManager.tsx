@@ -44,7 +44,7 @@ export default function AppealsManager() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <h2 className="text-xl font-semibold">{t('appeals.title')}</h2>
-        <button className="btn btn-secondary" onClick={() => guildId && load(guildId)} title={t('common.reload')}>{t('common.reload')}</button>
+  <button type="button" className="btn btn-secondary" onClick={() => guildId && load(guildId)} title={t('common.reload')}>{t('common.reload')}</button>
       </div>
       {error && <div className="text-red-400">{error}</div>}
       <section className="card">
@@ -61,8 +61,8 @@ export default function AppealsManager() {
                   <input className="input" value={decisionReason[ap.id] || ''} onChange={e => setDecisionReason(s => ({ ...s, [ap.id]: e.target.value }))} placeholder={t('appeals.decision.placeholder')} title={t('appeals.decision.title')} />
                 </label>
                 <div className="flex gap-2">
-                  <button className="btn btn-primary btn-xs" onClick={() => decide(ap.id, 'approve')}>{t('appeals.approve')}</button>
-                  <button className="btn btn-danger btn-xs" onClick={() => decide(ap.id, 'deny')}>{t('appeals.deny')}</button>
+                  <button type="button" className="btn btn-primary btn-xs" onClick={() => decide(ap.id, 'approve')}>{t('appeals.approve')}</button>
+                  <button type="button" className="btn btn-danger btn-xs" onClick={() => decide(ap.id, 'deny')}>{t('appeals.deny')}</button>
                 </div>
               </div>
             </div>

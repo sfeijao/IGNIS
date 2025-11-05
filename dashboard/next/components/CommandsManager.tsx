@@ -75,10 +75,10 @@ export default function CommandsManager() {
     <div className="space-y-6">
       <div className="flex items-center gap-2">
         <h2 className="text-xl font-semibold">{t('commands.title')}</h2>
-        <button className="btn btn-secondary" onClick={() => guildId && load(guildId)} title={t('common.reload')}>{t('common.reload')}</button>
-        <button className="btn btn-primary" onClick={() => action({ action: 'deploy' })} title={t('commands.redeploy')}>{t('commands.redeploy')}</button>
-        <button className="btn btn-secondary" onClick={() => action({ action: 'sync' })} title={t('commands.sync')}>{t('commands.sync')}</button>
-        <button className="btn btn-danger" onClick={() => action({ action: 'clear' })} title={t('commands.clear.title')}>{t('commands.clear')}</button>
+  <button type="button" className="btn btn-secondary" onClick={() => guildId && load(guildId)} title={t('common.reload')}>{t('common.reload')}</button>
+  <button type="button" className="btn btn-primary" onClick={() => action({ action: 'deploy' })} title={t('commands.redeploy')}>{t('commands.redeploy')}</button>
+  <button type="button" className="btn btn-secondary" onClick={() => action({ action: 'sync' })} title={t('commands.sync')}>{t('commands.sync')}</button>
+  <button type="button" className="btn btn-danger" onClick={() => action({ action: 'clear' })} title={t('commands.clear.title')}>{t('commands.clear')}</button>
       </div>
       {error && <div className="text-red-400">{error}</div>}
       {result && <pre className="text-xs opacity-70 max-h-40 overflow-auto">{result}</pre>}
@@ -103,7 +103,7 @@ export default function CommandsManager() {
             </select>
           </label>
           <div className="flex items-end">
-            <button className="btn btn-primary" onClick={() => action({ action: 'run', name: runName, args: runArgs, channelId: runChannelId || undefined })} disabled={!runName}>{t('commands.runButton')}</button>
+            <button type="button" className="btn btn-primary" onClick={() => action({ action: 'run', name: runName, args: runArgs, channelId: runChannelId || undefined })} disabled={!runName}>{t('commands.runButton')}</button>
           </div>
         </div>
       </section>

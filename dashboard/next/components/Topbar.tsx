@@ -32,7 +32,7 @@ export default function Topbar() {
       <div className="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <MobileSidebar />
-          <button
+          <button type="button"
             onClick={toggleCompact}
             className="rounded-xl border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm hover:bg-neutral-700"
             title={t('common.toggleCompact')}

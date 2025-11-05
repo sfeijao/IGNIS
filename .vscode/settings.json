@@ -19,5 +19,17 @@
     // Silence Tailwind/PostCSS unknown at-rules warnings in Problems panel
     "css.lint.unknownAtRules": "ignore",
     "scss.lint.unknownAtRules": "ignore",
-    "less.lint.unknownAtRules": "ignore"
+    "less.lint.unknownAtRules": "ignore",
+    // Hide generated static export folders from the explorer and searches
+    "files.exclude": {
+        "dashboard/next/out": true,
+        "dashboard/public/next-export": true
+    },
+    "search.exclude": {
+        "dashboard/next/out": true,
+        "dashboard/public/next-export": true
+    },
+    // Reduce HTML lint noise from generated static files
+    "html.validate.scripts": false,
+    "html.validate.styles": false
 }

@@ -171,6 +171,7 @@ export default function DashboardStats() {
                 </select>
               </label>
               <button
+                type="button"
                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-xs"
                 onClick={() => fetchStats()}
                 disabled={loading}

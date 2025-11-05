@@ -49,7 +49,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   // Sidebar labels
   'nav.dashboard': 'Dashboard',
   'nav.plugins': 'Plugins',
-  
+
   'nav.moderation': 'Moderação',
   'nav.members': 'Membros',
   'nav.roles': 'Cargos',
@@ -586,7 +586,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     // Sidebar labels
     'nav.dashboard': 'Dashboard',
     'nav.plugins': 'Plugins',
-    
+
     'nav.moderation': 'Moderation',
     'nav.members': 'Members',
     'nav.roles': 'Roles',

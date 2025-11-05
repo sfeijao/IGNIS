@@ -20,6 +20,7 @@ export default function MobileSidebar() {
   return (
     <>
       <button
+        type="button"
         className="md:hidden rounded-xl border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm hover:bg-neutral-700"
         onClick={() => setOpen(true)}
         aria-label={t('nav.openMenu')}
@@ -33,6 +34,7 @@ export default function MobileSidebar() {
             <div className="flex items-center justify-between mb-4">
               <div className="font-bold">IGNIS</div>
               <button
+                type="button"
                 className="rounded-lg border border-neutral-700 px-2 py-1 text-sm hover:bg-neutral-800"
                 onClick={() => setOpen(false)}
                 aria-label={t('nav.closeMenu')}

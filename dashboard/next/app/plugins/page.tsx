@@ -62,6 +62,7 @@ export default function PluginsPage() {
         <div className="flex items-center gap-2">
           {allCats.map(c => (
             <button
+              type="button"
               key={c}
               onClick={() => setActive(c)}
               className={`px-3 py-1.5 rounded-lg border text-sm ${active===c ? 'bg-brand-600 border-brand-500 text-white' : 'bg-neutral-900 border-neutral-700 hover:bg-neutral-800'}`}

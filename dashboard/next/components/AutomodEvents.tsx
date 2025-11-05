@@ -43,7 +43,7 @@ export default function AutomodEvents() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <h2 className="text-xl font-semibold">{t('automod.title')}</h2>
-        <button className="btn btn-secondary" onClick={() => guildId && load(guildId)} title={t('common.reload')}>{t('common.reload')}</button>
+  <button type="button" className="btn btn-secondary" onClick={() => guildId && load(guildId)} title={t('common.reload')}>{t('common.reload')}</button>
       </div>
       {error && <div className="text-red-400">{error}</div>}
       <section className="card">
@@ -55,8 +55,8 @@ export default function AutomodEvents() {
               <div className="text-sm opacity-70">{ev.type} • {ev.userId} • {new Date(ev.createdAt || Date.now()).toLocaleString()}</div>
               <div className="mt-1">{ev.content || t('automod.content.empty')}</div>
               <div className="mt-2 flex gap-2">
-                <button className="btn btn-primary btn-xs" onClick={() => decide(ev.id, 'approve')}>{t('automod.approve')}</button>
-                <button className="btn btn-danger btn-xs" onClick={() => decide(ev.id, 'reject')}>{t('automod.reject')}</button>
+                <button type="button" className="btn btn-primary btn-xs" onClick={() => decide(ev.id, 'approve')}>{t('automod.approve')}</button>
+                <button type="button" className="btn btn-danger btn-xs" onClick={() => decide(ev.id, 'reject')}>{t('automod.reject')}</button>
               </div>
             </div>
           ))}

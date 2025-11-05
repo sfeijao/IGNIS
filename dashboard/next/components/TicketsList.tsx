@@ -264,7 +264,7 @@ export default function TicketsList() {
                  value={q} onChange={e=>{ setPage(1); setQ(e.target.value) }} />
         </div>
         <div className="flex gap-2 md:col-span-3">
-          <button onClick={onExport} className="mt-5 bg-neutral-800 hover:bg-neutral-700 text-sm px-3 py-2 rounded border border-neutral-700">{tr('tickets.export')}</button>
+          <button type="button" onClick={onExport} className="mt-5 bg-neutral-800 hover:bg-neutral-700 text-sm px-3 py-2 rounded border border-neutral-700">{tr('tickets.export')}</button>
           <div className="ml-auto flex items-end gap-2">
             <div>
               <label className="text-xs text-neutral-400">{tr('tickets.staffRole')}</label>
@@ -366,22 +366,22 @@ export default function TicketsList() {
                 {tk.claimedByTag && <div className="mt-1 text-xs text-neutral-400">{tr('tickets.claimedBy')} {tk.claimedByTag}</div>}
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={()=> setViewId(tk.id)} className="bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 rounded text-sm border border-neutral-700">{tr('tickets.view')}</button>
+                <button type="button" onClick={()=> setViewId(tk.id)} className="bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 rounded text-sm border border-neutral-700">{tr('tickets.view')}</button>
                 {tk.status === 'open' && (
                   <>
-                    <button onClick={()=>doAction(tk.id, 'claim')} className="bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded text-sm">{tr('tickets.claim')}</button>
-                    <button onClick={()=>doAction(tk.id, 'claim')} className="bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded text-sm">{tr('tickets.assignToMe')}</button>
+                    <button type="button" onClick={()=>doAction(tk.id, 'claim')} className="bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded text-sm">{tr('tickets.claim')}</button>
+                    <button type="button" onClick={()=>doAction(tk.id, 'claim')} className="bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded text-sm">{tr('tickets.assignToMe')}</button>
                   </>
                 )}
                 {tk.status === 'claimed' && (
                   <>
-                    <button onClick={()=>doAction(tk.id, 'release')} className="bg-neutral-700 hover:bg-neutral-600 px-3 py-1.5 rounded text-sm">{tr('tickets.release')}</button>
-                    <button onClick={()=>doAction(tk.id, 'close')} className="bg-rose-600 hover:bg-rose-500 px-3 py-1.5 rounded text-sm">{tr('tickets.close')}</button>
-                    {currentUserId && <button onClick={()=> api.ticketAction(guildId!, tk.id, 'assign', { userId: currentUserId }).then(()=> api.getTickets(guildId!, params).then(setData))} className="bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded text-sm">{tr('tickets.assignToMe')}</button>}
+                    <button type="button" onClick={()=>doAction(tk.id, 'release')} className="bg-neutral-700 hover:bg-neutral-600 px-3 py-1.5 rounded text-sm">{tr('tickets.release')}</button>
+                    <button type="button" onClick={()=>doAction(tk.id, 'close')} className="bg-rose-600 hover:bg-rose-500 px-3 py-1.5 rounded text-sm">{tr('tickets.close')}</button>
+                    {currentUserId && <button type="button" onClick={()=> api.ticketAction(guildId!, tk.id, 'assign', { userId: currentUserId }).then(()=> api.getTickets(guildId!, params).then(setData))} className="bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded text-sm">{tr('tickets.assignToMe')}</button>}
                   </>
                 )}
                 {tk.status === 'open' && (
-                  <button onClick={()=>doAction(tk.id, 'close')} className="bg-rose-600 hover:bg-rose-500 px-3 py-1.5 rounded text-sm">{tr('tickets.close')}</button>
+                  <button type="button" onClick={()=>doAction(tk.id, 'close')} className="bg-rose-600 hover:bg-rose-500 px-3 py-1.5 rounded text-sm">{tr('tickets.close')}</button>
                 )}
               </div>
             </div>
@@ -394,17 +394,19 @@ export default function TicketsList() {
             {selectedIds.length > 0 && (
               <div className="flex items-center gap-2">
                 <span className="text-neutral-400">{selectedIds.length} {tr('tickets.selectedSuffix')}</span>
-                <button onClick={bulkClose} className="px-3 py-1.5 rounded bg-rose-600 hover:bg-rose-500">{tr('tickets.close')}</button>
-                <button onClick={bulkAssign} className="px-3 py-1.5 rounded bg-neutral-700 hover:bg-neutral-600">{tr('tickets.bulk.assign')}</button>
-                <button onClick={bulkNote} className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500">{tr('tickets.bulk.addNote')}</button>
+                <button type="button" onClick={bulkClose} className="px-3 py-1.5 rounded bg-rose-600 hover:bg-rose-500">{tr('tickets.close')}</button>
+                <button type="button" onClick={bulkAssign} className="px-3 py-1.5 rounded bg-neutral-700 hover:bg-neutral-600">{tr('tickets.bulk.assign')}</button>
+                <button type="button" onClick={bulkNote} className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500">{tr('tickets.bulk.addNote')}</button>
               </div>
             )}
             <button
+              type="button"
               className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50"
               disabled={(data?.pagination.page || page) <= 1}
               onClick={()=> setPage((data?.pagination.page || page) - 1)}
             >{tr('common.prev')}</button>
             <button
+              type="button"
               className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50"
               disabled={(data?.pagination.page || page) >= (data?.pagination.totalPages || 1)}
               onClick={()=> setPage((data?.pagination.page || page) + 1)}

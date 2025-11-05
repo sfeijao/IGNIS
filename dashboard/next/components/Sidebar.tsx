@@ -35,7 +35,7 @@ export default function Sidebar() {
     switch (key) {
       case 'nav.dashboard': return <Icon name="dashboard" />
       case 'nav.plugins': return <Icon name="plugins" />
-      
+
       case 'nav.moderation': return <Icon name="shield" />
       case 'nav.members': return <Icon name="members" />
       case 'nav.roles': return <Icon name="roles" />

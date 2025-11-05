@@ -471,7 +471,7 @@ function PanelPreview({ title, description, buttonLabel, color, hideButton }: { 
       <div className="text-sm opacity-90 whitespace-pre-line">{description || 'Clica em Verificar para concluir e ganhar acesso aos canais.'}</div>
       {!hideButton && (
         <div className="mt-3">
-          <button className="px-4 py-2 rounded bg-brand-600 hover:bg-brand-700"><span className="mr-1">✅</span>{buttonLabel || 'Verificar'}</button>
+          <button type="button" className="px-4 py-2 rounded bg-brand-600 hover:bg-brand-700"><span className="mr-1">✅</span>{buttonLabel || 'Verificar'}</button>
         </div>
       )}
     </div>

@@ -67,6 +67,7 @@ export default function GuildSelector() {
   return (
     <div className="relative" ref={popRef}>
       <button
+        type="button"
         className="flex items-center gap-2 rounded-xl border border-neutral-700 bg-neutral-900 hover:bg-neutral-800 px-3 py-1.5 text-sm min-w-[200px]"
         onClick={() => setOpen(v => !v)}
         title={current ? `Servidor: ${current}` : 'Selecionar servidor'}
@@ -100,6 +101,7 @@ export default function GuildSelector() {
             )}
             {filtered.map(g => (
               <button
+                type="button"
                 key={g.id}
                 className={`w-full text-left px-3 py-2 flex items-center gap-3 hover:bg-neutral-900 ${current===g.id ? 'bg-neutral-900' : ''}`}
                 onClick={() => select(g)}
@@ -115,7 +117,7 @@ export default function GuildSelector() {
             ))}
           </div>
           <div className="p-2 border-t border-neutral-800 flex items-center gap-2">
-            <button className="px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-xs" onClick={clear}>Limpar</button>
+            <button type="button" className="px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-xs" onClick={clear}>Limpar</button>
             {current && <span className="text-xs text-neutral-500 truncate">Atual: {current}</span>}
           </div>
         </div>
