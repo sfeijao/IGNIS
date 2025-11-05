@@ -54,6 +54,8 @@ export default function QuickTagsManager() {
       await api.upsertTag(guildId, editing)
       setEditing(null)
       await load()
+    } catch (e: any) {
+      toast({ type: 'error', title: t('common.saveFailed') || 'Falha ao guardar', description: e?.message || 'Erro desconhecido' })
     } finally { setLoading(false) }
   }
 

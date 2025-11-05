@@ -3584,11 +3584,30 @@ app.post('/api/guild/:guildId/quick-tags', async (req, res) => {
 });
 
 // Advanced Tags (nickname prefixing & management)
+// Helper to normalize hex colors (accepts 3 or 6 hex, with/without '#')
+function normalizeHexColor(input) {
+    if (typeof input !== 'string') return '';
+    const v = input.trim(); if (!v) return '';
+    const m3 = v.match(/^#?([0-9a-fA-F]{3})$/);
+    const m6 = v.match(/^#?([0-9a-fA-F]{6})$/);
+    if (m3) {
+        const [r,g,b] = m3[1].split('');
+        return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+    }
+    if (m6) return `#${m6[1].toLowerCase()}`;
+    return '';
+}
+
 const tagSchema = Joi.object({
     id: Joi.string().optional(),
     name: Joi.string().trim().min(1).max(32).required(),
     prefix: Joi.string().trim().max(64).required(),
-    color: Joi.string().trim().pattern(/^#?[0-9a-fA-F]{6}$/).allow('').default(''),
+    color: Joi.string().allow('').custom((value, helpers) => {
+        const out = normalizeHexColor(value);
+        // Allow empty string or normalized #RRGGBB
+        if (out === '' && String(value || '').trim() !== '') return helpers.error('any.invalid');
+        return out;
+    }, 'hex color normalization').default(''),
     icon: Joi.string().trim().max(32).allow('').default(''),
     roleIds: Joi.array().items(Joi.string().trim()).max(20).default([])
 });
@@ -3623,6 +3642,25 @@ app.post('/api/guild/:guildId/tags', async (req, res) => {
             return res.json({ success: true, tags: clean });
         }
         if (body.tag) {
+            // Backward compatibility: accept singular roleId and coerce to roleIds
+            try {
+                if (body.tag && !Array.isArray(body.tag.roleIds) && body.tag.roleId) {
+                    body.tag.roleIds = [String(body.tag.roleId)].filter(Boolean);
+                }
+                // Ensure roleIds are strings if provided
+                if (Array.isArray(body.tag.roleIds)) {
+                    body.tag.roleIds = body.tag.roleIds.map(x => String(x)).filter(Boolean).slice(0, 20);
+                }
+                // Normalize color early if provided
+                if (typeof body.tag.color === 'string') {
+                    const norm = normalizeHexColor(body.tag.color);
+                    body.tag.color = norm; // schema will re-check
+                }
+                if (typeof body.tag.icon !== 'undefined' && body.tag.icon !== null) {
+                    body.tag.icon = String(body.tag.icon).trim();
+                }
+            } catch {}
+
             const { error, value } = tagSchema.validate(body.tag, { abortEarly: false, stripUnknown: true });
             if (error) return res.status(400).json({ success: false, error: 'validation_error', details: error.details.map(d=>d.message) });
             const id = value.id || (Date.now().toString(36)+Math.random().toString(36).slice(2,6));

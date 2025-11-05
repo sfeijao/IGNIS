@@ -336,7 +336,15 @@ export const api = {
     const res = await fetch(`/api/guild/${guildId}/tags`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ tag })
     })
-    if (!res.ok) throw new Error('Failed to save tag')
+    if (!res.ok) {
+      try {
+        const err = await res.json()
+        const details = Array.isArray(err?.details) ? `: ${err.details.join('; ')}` : (err?.error ? `: ${err.error}` : '')
+        throw new Error(`Failed to save tag${details}`)
+      } catch {
+        throw new Error('Failed to save tag')
+      }
+    }
     return res.json()
   },
   async deleteTag(guildId: string, id: string) {
