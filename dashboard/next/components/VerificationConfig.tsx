@@ -7,6 +7,7 @@ import { api } from '@/lib/apiClient'
 
 type VerifyConfig = { enabled?: boolean; channelId?: string; roleId?: string; method?: string }
 type Channel = { id: string; name: string; type?: string }
+type Role = { id: string; name: string }
 
 // Helpers – keep consistent with other components
 const isTextChannel = (ch: Channel) => {
@@ -34,6 +35,7 @@ export default function VerificationConfig() {
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState<'idle'|'saving'|'ok'|'err'>('idle')
   const [channels, setChannels] = useState<Channel[]>([])
+  const [roles, setRoles] = useState<Role[]>([])
   const { t } = useI18n()
 
   useEffect(() => {
@@ -50,6 +52,10 @@ export default function VerificationConfig() {
       try {
         const list = await api.getChannels(guildId)
         if (!aborted) setChannels(list.channels || list || [])
+      } catch {}
+      try {
+        const rs = await api.getRoles(guildId)
+        if (!aborted) setRoles(rs.roles || rs || [])
       } catch {}
     })()
     return () => { aborted = true }
@@ -92,7 +98,12 @@ export default function VerificationConfig() {
         </div>
         <div>
           <label className="block text-sm mb-1">{t('verification.role')}</label>
-          <input className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2" placeholder="Role ID" value={cfg.roleId || ''} onChange={e=> setCfg(c=> ({ ...c, roleId: e.target.value }))} />
+          <select className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2" value={cfg.roleId || ''} onChange={e=> setCfg(c=> ({ ...c, roleId: e.target.value }))} title={t('verification.role')}>
+            <option value="">—</option>
+            {roles.map(r => (
+              <option key={r.id} value={r.id}>{`@${r.name}`}</option>
+            ))}
+          </select>
         </div>
         <div className="flex gap-2 pt-2">
           <button disabled={loading} className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium disabled:opacity-60">{saved==='saving' ? t('verification.saving') : t('verification.save')}</button>
