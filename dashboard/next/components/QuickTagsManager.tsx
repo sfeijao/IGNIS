@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getGuildId } from '@/lib/guild'
 import { api } from '@/lib/apiClient'
 import { useI18n } from '@/lib/i18n'
+import { useToast } from '@/components/Toaster'
 
 type Tag = { id: string; name: string; prefix: string; color?: string; icon?: string; roleIds?: string[] }
 type Role = { id: string; name: string; manageable?: boolean }
@@ -11,6 +12,7 @@ type Role = { id: string; name: string; manageable?: boolean }
 export default function QuickTagsManager() {
   const guildId = getGuildId()
   const { t } = useI18n()
+  const { toast } = useToast()
   const [tags, setTags] = useState<Tag[]>([])
   const [editing, setEditing] = useState<Tag | null>(null)
   const [q, setQ] = useState('')
@@ -91,9 +93,17 @@ export default function QuickTagsManager() {
     if (!guildId || !applyTagId || selectedUserIds.size === 0) return
     setLoading(true)
     try {
-      await api.applyTag(guildId, { tagId: applyTagId, userIds: Array.from(selectedUserIds), expireSeconds: typeof expireSeconds === 'number' ? expireSeconds : undefined })
+      const res = await api.applyTag(guildId, { tagId: applyTagId, userIds: Array.from(selectedUserIds), expireSeconds: typeof expireSeconds === 'number' ? expireSeconds : undefined })
+      try {
+        const results = Array.isArray(res?.results) ? res.results : []
+        const ok = results.filter((r:any)=> r?.ok).length
+        const rolesAdded = results.reduce((acc:number, r:any)=> acc + (Array.isArray(r?.addedRoles) ? r.addedRoles.length : (r?.roleAdded ? 1 : 0)), 0)
+        toast({ type: 'success', title: t('tags.apply.done') || 'Tag applied', description: `${ok} ${t('guild.members') || 'members'}; ${rolesAdded} ${t('guild.roles') || 'roles'}` })
+      } catch {}
       setApplyOpen(false)
       setSelectedUserIds(new Set())
+    } catch (e: any) {
+      toast({ type: 'error', title: t('common.saveFailed') || 'Failed', description: e?.message })
     } finally { setLoading(false) }
   }
 
@@ -143,6 +153,7 @@ export default function QuickTagsManager() {
                 <option key={r.id} value={r.id} disabled={r.manageable===false}>{`@${r.name}`}{r.manageable===false ? ' (não gerenciável)' : ''}</option>
               ))}
             </select>
+            <div className="text-[11px] text-neutral-500 mt-1">{t('tags.roles.hint') || 'Note: roles at/above the bot’s highest role or managed roles are skipped automatically.'}</div>
           </div>
           <div className="flex gap-2">
             <button onClick={save} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={loading}>{t('common.save') || 'Guardar'}</button>

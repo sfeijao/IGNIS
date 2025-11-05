@@ -383,6 +383,8 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     'tags.expireSeconds': 'Expiração (segundos, opcional)',
     'tags.applyNow': 'Aplicar agora',
     'tags.remove.confirm': 'Remover tag?',
+  'tags.apply.done': 'Tag aplicada',
+  'tags.roles.hint': 'Dica: cargos no mesmo nível ou acima do cargo mais alto do bot, ou cargos geridos, são ignorados automaticamente.',
     // Automod
     'automod.title': 'Eventos de Automod (pendentes)',
     'automod.queue': 'Fila',
@@ -536,6 +538,8 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     'tags.expireSeconds': 'Expiration (seconds, optional)',
     'tags.applyNow': 'Apply now',
     'tags.remove.confirm': 'Remove tag?',
+  'tags.apply.done': 'Tag applied',
+  'tags.roles.hint': 'Note: roles at/above the bot’s highest role or managed roles are skipped automatically.',
     // Automod
     'automod.title': 'Automod Events (pending)',
     'automod.queue': 'Queue',
