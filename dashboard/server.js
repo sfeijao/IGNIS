@@ -154,21 +154,7 @@ try {
             } catch {}
             return next();
         });
-        // Backward-compat alias: map legacy "/next/logs/live" to diagnostics as well
-        app.get(['/next/logs/live', '/next/logs/live/','/next/logs/live/index.html'], (req, res, next) => {
-            try {
-                const filePath = path.join(NEXT_EXPORT_DIR, 'diagnostics', 'index.html');
-                if (fs.existsSync(filePath)) return res.sendFile(filePath);
-            } catch {}
-            return next();
-        });
-        app.get('/next/logs/live/index.txt', (req, res, next) => {
-            try {
-                const filePath = path.join(NEXT_EXPORT_DIR, 'diagnostics', 'index.txt');
-                if (fs.existsSync(filePath)) return res.sendFile(filePath);
-            } catch {}
-            return next();
-        });
+        // Removed legacy "/next/logs/live" alias; route no longer available
         // Make the new dashboard the default landing page
         app.get('/', (req, res) => res.redirect('/next/'));
         // Redirect legacy dashboard entry points to the new Next dashboard
