@@ -19,10 +19,19 @@ type VerificationConfig = {
 type Channel = { id: string; name: string; type?: string }
 type Role = { id: string; name: string }
 
-// Helpers – keep consistent with other components
+// Helpers – keep consistent with other components (treat missing type as text)
 const isTextChannel = (ch: Channel) => {
-  const t = String(ch.type || '').toLowerCase()
-  return t.includes('text') || t.includes('announcement')
+  const t = (ch?.type ?? '').toString().toLowerCase()
+  // accept unknown/empty (API may omit type), classic numeric codes, and string labels
+  return (
+    t === '' ||
+    t === '0' ||
+    t === 'text' ||
+    t === 'guild_text' ||
+    t === '5' ||
+    t === 'announcement' ||
+    t === 'guild_announcement'
+  )
 }
 const channelTypeLabel = (ch: Channel | string | undefined) => {
   const t = typeof ch === 'string' ? ch : (ch?.type || '')
