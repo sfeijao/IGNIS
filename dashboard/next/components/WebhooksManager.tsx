@@ -7,6 +7,7 @@ import { useToast } from './Toaster'
 import { useI18n } from '@/lib/i18n'
 
 type Webhook = { id: string; type?: string; name?: string; channelId?: string; url?: string; loaded?: boolean }
+type TicketsConfig = { transcriptWebhook?: string }
 
 export default function WebhooksManager() {
   const guildId = getGuildId()
@@ -18,15 +19,22 @@ export default function WebhooksManager() {
   const [type, setType] = useState('logs')
   const { toast } = useToast()
   const { t } = useI18n()
+  const [transcriptUrl, setTranscriptUrl] = useState<string>('')
 
   const load = async () => {
     if (!guildId) return
     setLoading(true)
     setError(null)
     try {
-      const data = await api.getWebhooks(guildId)
+      const [hooksRes, cfgRes] = await Promise.all([
+        api.getWebhooks(guildId),
+        api.getTicketsConfig(guildId).catch(() => ({} as TicketsConfig))
+      ])
+      const data = hooksRes
       const list = (data.webhooks || data || []).map((w: any) => ({ id: String(w._id || w.id || `${w.type}:${w.channel_id || ''}`), type: w.type || 'logs', name: w.name, channelId: w.channel_id, url: w.url, loaded: !!w.loaded }))
       setHooks(list)
+      const cfg = (cfgRes as any)?.config || cfgRes || {}
+      setTranscriptUrl(cfg.transcriptWebhook || '')
   } catch (e: any) { setError(e?.message || t('webhooks.error')) } finally { setLoading(false) }
   }
 
@@ -62,6 +70,23 @@ export default function WebhooksManager() {
     try { await api.testWebhook(guildId, type || 'logs'); toast({ type: 'success', title: t('webhooks.test.sent') }) } catch (e: any) { toast({ type:'error', title: t('webhooks.test.fail'), description: e?.message }) } finally { setLoading(false) }
   }
 
+  const setAsTranscript = async (url?: string) => {
+    if (!guildId || !url) return
+    setLoading(true)
+    try {
+      const current = await api.getTicketsConfig(guildId).catch(() => ({} as any))
+      const base = current?.config || current || {}
+      const updated = { ...base, transcriptWebhook: url }
+      await api.saveTicketsConfig(guildId, updated)
+      setTranscriptUrl(url)
+      toast({ type: 'success', title: t('webhooks.setAsTranscript.ok') })
+    } catch (e: any) {
+      toast({ type: 'error', title: t('webhooks.setAsTranscript.fail'), description: e?.message })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-3">
       {!guildId && <div className="card p-4 text-sm text-neutral-400">{t('webhooks.selectGuild')}</div>}
@@ -93,10 +118,14 @@ export default function WebhooksManager() {
           {hooks.map(h => (
             <div key={h.id} className="p-4 flex items-center gap-3">
               <div className="flex-1 min-w-0">
-                <div className="text-neutral-200 truncate">{h.name || 'Webhook'} <span className="text-xs text-neutral-400">({h.type})</span> {h.loaded && <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full border border-emerald-700/60 text-emerald-300">{t('webhooks.active')}</span>}</div>
+                <div className="text-neutral-200 truncate">{h.name || 'Webhook'} <span className="text-xs text-neutral-400">({h.type})</span>
+                  {h.loaded && <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full border border-emerald-700/60 text-emerald-300">{t('webhooks.active')}</span>}
+                  {h.url && transcriptUrl && h.url === transcriptUrl && <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full border border-sky-700/60 text-sky-300">{t('webhooks.transcript')}</span>}
+                </div>
                 <div className="text-xs text-neutral-500">{h.id} • {h.channelId}</div>
               </div>
               <button onClick={()=> test(h.type)} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('webhooks.test')}</button>
+              {h.url && <button onClick={()=> setAsTranscript(h.url)} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('webhooks.setAsTranscript')}</button>}
               <button onClick={()=> remove(h.id, h.type)} className="px-2 py-1 text-xs rounded bg-rose-600 hover:bg-rose-500">{t('webhooks.remove')}</button>
             </div>
           ))}
