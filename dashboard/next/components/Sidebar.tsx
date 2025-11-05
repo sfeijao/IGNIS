@@ -9,7 +9,6 @@ import { useI18n } from '@/lib/i18n'
 const nav = [
   { href: '/', key: 'nav.dashboard', flag: 'stable' },
   { href: '/plugins', key: 'nav.plugins', flag: 'stable' },
-  { href: '/logs', key: 'nav.logs', flag: 'stable' },
   { href: '/logs/live', key: 'nav.logs.live', flag: 'stable' },
   { href: '/moderation', key: 'nav.moderation', flag: 'stable' },
   { href: '/members', key: 'nav.members', flag: 'stable' },

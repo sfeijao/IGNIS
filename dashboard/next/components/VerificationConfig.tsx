@@ -1,16 +1,39 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getGuildId } from '@/lib/guild'
 import { useI18n } from '@/lib/i18n'
+import { api } from '@/lib/apiClient'
 
 type VerifyConfig = { enabled?: boolean; channelId?: string; roleId?: string; method?: string }
+type Channel = { id: string; name: string; type?: string }
+
+// Helpers – keep consistent with other components
+const isTextChannel = (ch: Channel) => {
+  const t = String(ch.type || '').toLowerCase()
+  return t.includes('text') || t.includes('announcement')
+}
+const channelTypeLabel = (ch: Channel | string | undefined) => {
+  const t = typeof ch === 'string' ? ch : (ch?.type || '')
+  switch (String(t).toLowerCase()) {
+    case 'guild_text':
+    case 'text': return 'Text'
+    case 'guild_announcement':
+    case 'announcement': return 'Announcement'
+    case 'guild_voice':
+    case 'voice': return 'Voice'
+    case 'guild_category':
+    case 'category': return 'Category'
+    default: return 'Channel'
+  }
+}
 
 export default function VerificationConfig() {
   const guildId = getGuildId()
   const [cfg, setCfg] = useState<VerifyConfig>({ enabled: false, method: 'captcha', channelId: '', roleId: '' })
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState<'idle'|'saving'|'ok'|'err'>('idle')
+  const [channels, setChannels] = useState<Channel[]>([])
   const { t } = useI18n()
 
   useEffect(() => {
@@ -24,9 +47,15 @@ export default function VerificationConfig() {
           if (!aborted) setCfg({ enabled: !!data.enabled, channelId: data.channelId || '', roleId: data.roleId || '', method: data.method || 'captcha' })
         }
       } catch {}
+      try {
+        const list = await api.getChannels(guildId)
+        if (!aborted) setChannels(list.channels || list || [])
+      } catch {}
     })()
     return () => { aborted = true }
   }, [guildId])
+
+  const selectableChannels = useMemo(() => channels.filter(isTextChannel), [channels])
 
   const save = async () => {
     if (!guildId) return
@@ -54,7 +83,12 @@ export default function VerificationConfig() {
         </div>
         <div>
           <label className="block text-sm mb-1">{t('verification.channel')}</label>
-          <input className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2" placeholder="Canal ID" value={cfg.channelId || ''} onChange={e=> setCfg(c=> ({ ...c, channelId: e.target.value }))} />
+          <select className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2" value={cfg.channelId || ''} onChange={e=> setCfg(c=> ({ ...c, channelId: e.target.value }))} title={t('verification.channel')}>
+            <option value="">—</option>
+            {selectableChannels.map(ch => (
+              <option key={ch.id} value={ch.id}>{`#${ch.name} (${channelTypeLabel(ch)})`}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-sm mb-1">{t('verification.role')}</label>

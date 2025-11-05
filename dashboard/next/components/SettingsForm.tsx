@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type React from 'react'
 import { api } from '@/lib/apiClient'
 import { getGuildId } from '@/lib/guild'
@@ -26,6 +26,26 @@ export default function SettingsForm() {
   const [loaded, setLoaded] = useState(false)
   const guildId = typeof window !== 'undefined' ? getGuildId() : null
   const { t } = useI18n()
+  const [channels, setChannels] = useState<Array<{ id: string; name: string; type?: string }>>([])
+
+  const isTextChannel = (ch: { id: string; name: string; type?: string }) => {
+    const t = String(ch.type || '').toLowerCase()
+    return t.includes('text') || t.includes('announcement')
+  }
+  const channelTypeLabel = (ch: { type?: string } | string | undefined) => {
+    const t = typeof ch === 'string' ? ch : (ch?.type || '')
+    switch (String(t).toLowerCase()) {
+      case 'guild_text':
+      case 'text': return 'Text'
+      case 'guild_announcement':
+      case 'announcement': return 'Announcement'
+      case 'guild_voice':
+      case 'voice': return 'Voice'
+      case 'guild_category':
+      case 'category': return 'Category'
+      default: return 'Channel'
+    }
+  }
 
   useEffect(() => {
     if (!guildId) return
@@ -41,6 +61,10 @@ export default function SettingsForm() {
             modlogChannelId: data.modlogChannelId ?? defaults.modlogChannelId,
           })
         }
+      } catch {}
+      try {
+        const ch = await api.getChannels(guildId)
+        setChannels(ch.channels || ch || [])
       } catch {}
       setLoaded(true)
     })()
@@ -94,14 +118,18 @@ export default function SettingsForm() {
       </div>
       <div>
         <label htmlFor="modlog" className="block text-sm mb-1">{t('settings.modlogChannelId')}</label>
-        <input
+        <select
           id="modlog"
           title={t('settings.modlogChannelId')}
-          placeholder={t('settings.modlogChannelId.placeholder')}
           className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
           value={settings.modlogChannelId}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings((s: Settings) => ({ ...s, modlogChannelId: e.target.value }))}
-        />
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings((s: Settings) => ({ ...s, modlogChannelId: e.target.value }))}
+        >
+          <option value="">—</option>
+          {channels.filter(isTextChannel).map(ch => (
+            <option key={ch.id} value={ch.id}>{`#${ch.name} (${channelTypeLabel(ch)})`}</option>
+          ))}
+        </select>
       </div>
 
       <div className="flex gap-2 pt-2">
