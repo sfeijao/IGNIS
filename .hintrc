@@ -1,0 +1,17 @@
+{
+  "connector": {
+    "name": "local"
+  },
+  "extends": [
+    "development"
+  ],
+  "hints": {
+    "button-type": "off",
+    "compat-api/html": "off",
+    "no-inline-styles": "off"
+  },
+  "ignoredUrls": [
+    "dashboard/next/out/**",
+    "dashboard/public/next-export/**"
+  ]
+}
