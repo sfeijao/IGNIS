@@ -46,12 +46,34 @@ export default function QuickTagsManager() {
 
   const startNew = () => setEditing({ id: '', name: '', prefix: '', color: '', icon: '', roleIds: [] })
 
+  function normalizeHexColor(input?: string) {
+    const v = (input || '').trim();
+    if (!v) return '';
+    const m3 = v.match(/^#?([0-9a-fA-F]{3})$/);
+    const m6 = v.match(/^#?([0-9a-fA-F]{6})$/);
+    if (m3) {
+      const [r, g, b] = m3[1].split('');
+      return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+    }
+    if (m6) return `#${m6[1].toLowerCase()}`;
+    return ''; // invalid -> clear it
+  }
+
   const save = async () => {
     if (!guildId || !editing) return
-    if (!editing.name || !editing.prefix) return
+    const name = (editing.name || '').trim()
+    const prefix = (editing.prefix || '').trim()
+    if (!name || !prefix) {
+      toast({ type: 'error', title: t('common.saveFailed') || 'Falha ao guardar', description: t('tags.validation.namePrefix') || 'Nome e prefixo são obrigatórios.' })
+      return
+    }
+    const color = normalizeHexColor(editing.color)
+    const icon = (editing.icon || '').slice(0, 32)
+    const roleIds = Array.isArray(editing.roleIds) ? editing.roleIds.map(String).filter(Boolean).slice(0, 20) : []
+    const payload = { id: editing.id || undefined, name, prefix, color, icon, roleIds }
     setLoading(true)
     try {
-      await api.upsertTag(guildId, editing)
+      await api.upsertTag(guildId, payload)
       setEditing(null)
       await load()
     } catch (e: any) {
