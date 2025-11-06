@@ -4186,7 +4186,7 @@ app.post('/api/guild/:guildId/webhooks/test', async (req, res) => {
 // Simple uploads endpoint for guild-scoped images (e.g., banners)
 // Accepts JSON: { filename?: string, contentBase64: string }
 // Returns: { success: true, url }
-app.post('/api/guild/:guildId/uploads', express.json({ limit: '3mb' }), async (req, res) => {
+app.post('/api/guild/:guildId/uploads', express.json({ limit: '25mb' }), async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
         const client = global.discordClient;
@@ -4210,7 +4210,7 @@ app.post('/api/guild/:guildId/uploads', express.json({ limit: '3mb' }), async (r
         }
         let buf;
         try { buf = Buffer.from(base64Data, 'base64'); } catch { return res.status(400).json({ success: false, error: 'invalid_base64' }); }
-        const MAX_BYTES = 2.5 * 1024 * 1024; // ~2.5MB
+        const MAX_BYTES = 12 * 1024 * 1024; // ~12MB to allow larger GIFs
         if (!buf || buf.length === 0 || buf.length > MAX_BYTES) {
             return res.status(400).json({ success: false, error: 'invalid_size' });
         }

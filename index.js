@@ -1,7 +1,7 @@
-﻿const { 
-    Client, 
-    Collection, 
-    GatewayIntentBits, 
+﻿const {
+    Client,
+    Collection,
+    GatewayIntentBits,
     Partials,
     REST,
     Routes
@@ -113,7 +113,7 @@ const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('
 for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
     const command = require(filePath);
-    
+
     if ('data' in command && 'execute' in command) {
         client.commands.set(command.data.name, command);
     logger.info(`✅ Comando carregado: ${command.data.name}`);
@@ -129,7 +129,7 @@ const eventFiles = fs.readdirSync(eventsPath)
 for (const file of eventFiles) {
     const filePath = path.join(eventsPath, file);
     const event = require(filePath);
-    
+
     if (event.once) {
         client.once(event.name, (...args) => event.execute(...args, client));
     } else {
@@ -194,10 +194,10 @@ client.once('ready', () => {
     logger.info(`✅ Bot logado como ${client.user.tag}`);
     logger.info(`🏠 Servidores: ${client.guilds.cache.size}`);
     logger.info(`👥 Usuários: ${client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0)}`);
-    
+
     // Update bot status
     client.user.setActivity('🤖 Bot ativo | /ajuda', { type: 'WATCHING' });
-    
+
     // Tornar cliente disponível globalmente para o dashboard
     global.discordClient = client;
     // Disponibilizar client no manager e hidratar webhooks do DB
