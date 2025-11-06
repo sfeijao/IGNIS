@@ -212,6 +212,9 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'settings.bot.banner.sizeError': 'Imagem demasiado grande',
   'settings.bot.banner.cropToFill': 'Cortar para preencher (1600×400)',
   'settings.bot.banner.cropHint': 'Quando ativo, a imagem será recortada ao centro para preencher exatamente 1600×400.',
+  // Settings save toasts
+  'settings.saveSuccess': 'Definições guardadas',
+  'settings.saveError': 'Falha ao guardar definições',
   // Settings: Bot icon
   'settings.bot.icon': 'Ícone (URL)',
   'settings.bot.icon.placeholder': 'https://…',
@@ -807,6 +810,9 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'settings.bot.banner.sizeError': 'Image too large',
   'settings.bot.banner.cropToFill': 'Crop to fill (1600×400)',
   'settings.bot.banner.cropHint': 'When enabled, the image will be center-cropped to exactly 1600×400.',
+  // Settings save toasts
+  'settings.saveSuccess': 'Settings saved',
+  'settings.saveError': 'Failed to save settings',
   // Settings: Bot icon
   'settings.bot.icon': 'Icon (URL)',
   'settings.bot.icon.placeholder': 'https://…',

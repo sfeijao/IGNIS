@@ -104,6 +104,25 @@ export default function SettingsForm() {
     })()
   }, [guildId])
 
+  // Load persisted banner crop preference (per guild)
+  useEffect(() => {
+    if (!guildId || typeof window === 'undefined') return
+    try {
+      const key = `ignis:bannerCropToFill:${guildId}`
+      const raw = window.localStorage.getItem(key)
+      if (raw != null) setBannerCropToFill(raw === '1')
+    } catch {}
+  }, [guildId])
+
+  // Persist banner crop preference when toggled
+  useEffect(() => {
+    if (!guildId || typeof window === 'undefined') return
+    try {
+      const key = `ignis:bannerCropToFill:${guildId}`
+      window.localStorage.setItem(key, bannerCropToFill ? '1' : '0')
+    } catch {}
+  }, [guildId, bannerCropToFill])
+
   const save = async () => {
     if (!guildId) return
     setSaving(true)
@@ -119,6 +138,9 @@ export default function SettingsForm() {
       if (botSettings.bannerUrl) payload.bannerUrl = botSettings.bannerUrl
       if (botSettings.iconUrl) payload.iconUrl = botSettings.iconUrl
       await api.postBotSettings?.(guildId, payload)
+      toast({ type: 'success', title: t('settings.saveSuccess') })
+    } catch (err) {
+      toast({ type: 'error', title: t('settings.saveError') })
     } finally {
       setSaving(false)
     }
