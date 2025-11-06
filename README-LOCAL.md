@@ -64,6 +64,18 @@ irm http://localhost:4000/api/health?dev=1 | ConvertTo-Json -Depth 5
 
 - For SQLite you should see `storage.backend` = `sqlite`. For Mongo, `mongo` should be `connected`.
 
+Ticket panels restore on restart
+
+- The bot used to auto-recreate ticket/verification panels on startup. This is now DISABLED by default to prevent duplicate panels.
+- To enable it temporarily for all guilds, set the environment variable before starting:
+
+```powershell
+$env:AUTO_RESTORE_PANELS = 'true'; node index.js
+```
+
+- To enable it per guild only, set in the guild config the key `autoRestorePanels: true` (this can be toggled later in the dashboard UI; for now it’s only via storage/DB).
+- Related legacy keys that also enable it if present: `autoResendTicketPanel`, `restorePanelsOnReady`, `autoRecreatePanels`.
+
 MongoDB (persistência)
 
 - Opção B (URI sem DB no path + nome via variável):
@@ -122,7 +134,7 @@ npm run env:check
 
 Confirm these before deploying:
 
-- BASE_URL points to your public dashboard URL (e.g., https://ignis.example.com)
+- BASE_URL points to your public dashboard URL (e.g., <https://ignis.example.com>)
 - OAUTH_CALLBACK (or CALLBACK_URL) matches the Discord application settings exactly
 - DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET are set and valid
 - DISCORD_TOKEN is the production bot token; bot is in the target guild(s)

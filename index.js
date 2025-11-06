@@ -207,8 +207,18 @@ client.once('ready', () => {
     } catch {}
 
     // Restaurar painéis de tickets e verificação do storage (Mongo/SQLite)
+    // Agora DESATIVADO por padrão. Só ativa se:
+    //  - process.env.AUTO_RESTORE_PANELS === 'true' (global)
+    //  - OU config do servidor tiver autoRestorePanels === true
     (async () => {
         try {
+            const globalRestoreEnabled = String(process.env.AUTO_RESTORE_PANELS || '').toLowerCase() === 'true';
+            if (!globalRestoreEnabled) {
+                // Verificação por-guild será feita dentro do loop; aqui apenas informação inicial
+                logger.info('🧩 Restauração automática de painéis no arranque: DESATIVADA por padrão (use AUTO_RESTORE_PANELS=true para forçar globalmente)');
+            } else {
+                logger.info('🧩 Restauração automática de painéis no arranque: ATIVADA globalmente via AUTO_RESTORE_PANELS=true');
+            }
             const isSqlite = (process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite';
             let panels = [];
             if (isSqlite) {
@@ -225,10 +235,41 @@ client.once('ready', () => {
                 const { PanelModel } = require('./utils/db/models');
                 panels = await PanelModel.find({ type: { $in: ['tickets','verification'] } }).lean();
             }
+            // Cache de configurações por guild para evitar acessos repetidos
+            const guildCfgCache = new Map();
+
             for (const p of panels) {
                 try {
                     const guild = client.guilds.cache.get(p.guild_id) || await client.guilds.fetch(p.guild_id);
                     const channel = guild.channels.cache.get(p.channel_id) || await client.channels.fetch(p.channel_id);
+                    // Gate por guild: só restaurar se ativado explicitamente no servidor OU se o global estiver ligado
+                    let guildRestore = false;
+                    try {
+                        if (globalRestoreEnabled) {
+                            guildRestore = true;
+                        } else {
+                            const cacheHit = guildCfgCache.get(p.guild_id);
+                            const cfg = cacheHit || await (async () => {
+                                try {
+                                    const s = require('./utils/storage');
+                                    const c = await s.getGuildConfig(p.guild_id).catch(() => ({}));
+                                    guildCfgCache.set(p.guild_id, c || {});
+                                    return c || {};
+                                } catch { return {}; }
+                            })();
+                            // Novo sinal canónico: apenas esta chave ativa a restauração por-guild
+                            if (cfg && cfg.autoRestorePanels === true) guildRestore = true;
+                        }
+                    } catch {}
+
+                    if (!guildRestore) {
+                        // Skip silencioso por padrão; log leve por guild uma vez
+                        if (!guildCfgCache.get(`__logged_${p.guild_id}`)) {
+                            logger.info(`⏭️  [${guild.name}] Restauração de painéis no arranque DESATIVADA para este servidor.`);
+                            guildCfgCache.set(`__logged_${p.guild_id}`, true);
+                        }
+                        continue;
+                    }
                     // Se a mensagem existir, não fazer nada; se não, recriar painel simples
                     let existing = null;
                     if (channel && channel.messages?.fetch) {
