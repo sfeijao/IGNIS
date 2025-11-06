@@ -1747,16 +1747,22 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 // Rebuild payload using existing theme for consistency
                 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
                 const visualAssets = require('../assets/visual-assets');
-                // Guild-branded banner override (falls back to default visual asset)
+                // Guild-branded banner/icon override (falls back to defaults)
                 let brandedBanner = null; try {
                     const storage = require('../utils/storage');
                     const cfg = await storage.getGuildConfig(req.params.guildId) || {};
                     const bu = (cfg.botSettings && typeof cfg.botSettings.bannerUrl === 'string') ? cfg.botSettings.bannerUrl.trim() : '';
                     if (bu) brandedBanner = bu;
                 } catch {}
+                let brandedIcon = null; try {
+                    const storage = require('../utils/storage');
+                    const cfg = await storage.getGuildConfig(req.params.guildId) || {};
+                    const iu = (cfg.botSettings && typeof cfg.botSettings.iconUrl === 'string') ? cfg.botSettings.iconUrl.trim() : '';
+                    if (iu) brandedIcon = iu;
+                } catch {}
                 const embed = new EmbedBuilder()
                     .setColor((panel.theme || 'dark') === 'light' ? 0x60A5FA : 0x7C3AED)
-                    .setThumbnail(visualAssets.realImages.supportIcon)
+                    .setThumbnail(brandedIcon || visualAssets.realImages.supportIcon)
                     .setImage(brandedBanner || visualAssets.realImages.supportBanner);
                 let rows = [];
                 if (tpl === 'compact') {
@@ -2401,6 +2407,7 @@ app.post('/api/guild/:guildId/bot-settings', async (req, res) => {
             ephemeralByDefault: Joi.boolean().default(false),
             enableModerationLogs: Joi.boolean().default(true),
             bannerUrl: Joi.string().uri({ allowRelative: false }).max(2048).allow(''),
+            iconUrl: Joi.string().uri({ allowRelative: false }).max(2048).allow(''),
             // allow arbitrary extra keys for future
         }).unknown(true);
         const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: false });
@@ -4285,7 +4292,7 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             const vPanelDefaults = (type === 'verification') ? (cfg?.verification?.panelDefaults || {}) : {};
             const effOptions = { ...vPanelDefaults, ...(options || {}) };
             const resolvedColor = parseColor(effOptions.color) ?? (theme === 'light' ? 0x60A5FA : 0x7C3AED);
-            let embed = new EmbedBuilder().setColor(resolvedColor);
+        let embed = new EmbedBuilder().setColor(resolvedColor);
             let rows = [];
             if (type === 'verification') {
                 const vcfg = cfg?.verification || {};
@@ -4309,7 +4316,9 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
                           );
                 const title = (typeof effOptions.title === 'string' && effOptions.title.trim()) ? effOptions.title.trim().slice(0,100) : defaultTitle;
                 const description = (typeof effOptions.description === 'string' && effOptions.description.trim()) ? effOptions.description.trim().slice(0,2000) : defaultDesc;
-                embed.setTitle(title).setDescription(description).setThumbnail(guild.iconURL({ size: 256 })).setFooter({ text: 'IGNIS COMMUNITY™ • Sistema de verificação' }).setTimestamp();
+                // Thumbnail: prefer per-guild icon override
+                let thumbUrl = null; try { const iu = (cfg?.botSettings && typeof cfg.botSettings.iconUrl === 'string') ? cfg.botSettings.iconUrl.trim() : '' ; if (iu) thumbUrl = iu; } catch {}
+                embed.setTitle(title).setDescription(description).setThumbnail(thumbUrl || guild.iconURL({ size: 256 })).setFooter({ text: 'IGNIS COMMUNITY™ • Sistema de verificação' }).setTimestamp();
                 if (effOptions.template === 'rich') {
                     embed.addFields({ name: '⚠️ Importante', value: 'Segue as regras do servidor e mantém um perfil adequado.' });
                 }
@@ -4415,7 +4424,8 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             embed
                 .setTitle('🎫 Tickets • Compacto')
         .setDescription('Escolhe abaixo e abre um ticket privado.')
-        .setThumbnail(check.guild?.iconURL({ size: 256, dynamic: true }) || null);
+                // prefer per-guild icon override
+                .setThumbnail(((cfg?.botSettings && typeof cfg.botSettings.iconUrl === 'string' && cfg.botSettings.iconUrl.trim()) ? cfg.botSettings.iconUrl.trim() : (check.guild?.iconURL({ size: 256, dynamic: true }) || null)));
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('ticket:create:support').setLabel('Suporte').setEmoji('🎫').setStyle(ButtonStyle.Primary),
                 new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger)
@@ -4425,7 +4435,7 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             embed
                 .setTitle('🎫 Abrir ticket')
         .setDescription('Carrega num botão para abrir um ticket.')
-        .setThumbnail(check.guild?.iconURL({ size: 256, dynamic: true }) || null);
+                .setThumbnail(((cfg?.botSettings && typeof cfg.botSettings.iconUrl === 'string' && cfg.botSettings.iconUrl.trim()) ? cfg.botSettings.iconUrl.trim() : (check.guild?.iconURL({ size: 256, dynamic: true }) || null)));
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Abrir Ticket').setEmoji('🎟️').setStyle(ButtonStyle.Primary)
             );
@@ -4434,7 +4444,7 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             embed
                 .setTitle('🎫 Centro de Suporte • Premium')
                 .setDescription('Serviço prioritário, acompanhamento dedicado e histórico guardado.')
-        .setThumbnail(check.guild?.iconURL({ size: 256, dynamic: true }) || null)
+    .setThumbnail(((cfg?.botSettings && typeof cfg.botSettings.iconUrl === 'string' && cfg.botSettings.iconUrl.trim()) ? cfg.botSettings.iconUrl.trim() : (check.guild?.iconURL({ size: 256, dynamic: true }) || null)))
                 .addFields(
                     { name: '• Resposta express', value: 'Prioridade máxima', inline: true },
                     { name: '• Privado & seguro', value: 'Só tu e equipa', inline: true },

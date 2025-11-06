@@ -5,6 +5,7 @@ import type React from 'react'
 import { api } from '@/lib/apiClient'
 import { getGuildId } from '@/lib/guild'
 import { useI18n } from '@/lib/i18n'
+import { useToast } from '@/components/Toaster'
 
 type Settings = {
   prefix: string
@@ -19,6 +20,7 @@ type BotSettings = {
   statusType?: 'PLAYING' | 'LISTENING' | 'WATCHING' | 'COMPETING' | 'CUSTOM'
   statusText?: string
   bannerUrl?: string
+  iconUrl?: string
 }
 
 const defaults: Settings = {
@@ -35,14 +37,18 @@ export default function SettingsForm() {
     presenceStatus: 'online',
     statusType: 'CUSTOM',
     statusText: '',
-    bannerUrl: ''
+    bannerUrl: '',
+    iconUrl: ''
   })
   const [uploading, setUploading] = useState(false)
+  const [uploadingIcon, setUploadingIcon] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const guildId = typeof window !== 'undefined' ? getGuildId() : null
   const { t } = useI18n()
+  const { toast } = useToast()
   const [channels, setChannels] = useState<Array<{ id: string; name: string; type?: string }>>([])
+  const [bannerCropToFill, setBannerCropToFill] = useState(false)
 
   const isTextChannel = (ch: { id: string; name: string; type?: string }) => {
     const t = String(ch.type || '').toLowerCase()
@@ -86,7 +92,8 @@ export default function SettingsForm() {
           presenceStatus: (s.presenceStatus as any) || 'online',
           statusType: (s.statusType as any) || 'CUSTOM',
           statusText: typeof s.statusText === 'string' ? s.statusText : '',
-          bannerUrl: typeof s.bannerUrl === 'string' ? s.bannerUrl : ''
+          bannerUrl: typeof s.bannerUrl === 'string' ? s.bannerUrl : '',
+          iconUrl: typeof s.iconUrl === 'string' ? s.iconUrl : ''
         }))
       } catch {}
       try {
@@ -110,6 +117,7 @@ export default function SettingsForm() {
         statusText: botSettings.statusText || '',
       }
       if (botSettings.bannerUrl) payload.bannerUrl = botSettings.bannerUrl
+      if (botSettings.iconUrl) payload.iconUrl = botSettings.iconUrl
       await api.postBotSettings?.(guildId, payload)
     } finally {
       setSaving(false)
@@ -119,12 +127,12 @@ export default function SettingsForm() {
   const onSelectBannerFile = async (file: File) => {
     if (!guildId || !file) return
     if (!/^image\//i.test(file.type)) {
-      alert(t('settings.bot.banner.typeError'))
+      toast({ type: 'error', title: t('settings.bot.banner.typeError') })
       return
     }
     // ~2.4MB cap client-side to match server
     if (file.size > 2.5 * 1024 * 1024) {
-      alert(t('settings.bot.banner.sizeError'))
+      toast({ type: 'error', title: t('settings.bot.banner.sizeError') })
       return
     }
     setUploading(true)
@@ -140,27 +148,50 @@ export default function SettingsForm() {
       const maybeResize = async (src: string, f: File) => {
         // Skip animated GIFs to keep animation intact
         if (/image\/gif/i.test(f.type)) return src
-        // Draw into canvas and fit within 1600x400 preserving aspect ratio
+        // Draw into canvas: either crop-to-fill 1600×400, or fit-inside preserving aspect ratio
         const img = await new Promise<HTMLImageElement>((resolve, reject) => {
           const im = new Image()
           im.onload = () => resolve(im)
           im.onerror = reject
           im.src = src
         })
-        const maxW = 1600, maxH = 400
+        const targetW = 1600, targetH = 400
         let w = img.naturalWidth || img.width
         let h = img.naturalHeight || img.height
         if (!w || !h) return src
-        const scale = Math.min(1, Math.min(maxW / w, maxH / h))
-        if (scale >= 1) return src // already within bounds
-        const nw = Math.max(1, Math.floor(w * scale))
-        const nh = Math.max(1, Math.floor(h * scale))
         const canvas = document.createElement('canvas')
-        canvas.width = nw
-        canvas.height = nh
         const ctx = canvas.getContext('2d')
         if (!ctx) return src
-        ctx.drawImage(img, 0, 0, nw, nh)
+
+        if (bannerCropToFill) {
+          // Avoid aggressive upscaling for tiny images
+          if (w < targetW && h < targetH) return src
+          // Center crop to target aspect ratio (4:1)
+          const targetRatio = targetW / targetH
+          const srcRatio = w / h
+          let sx = 0, sy = 0, sw = w, sh = h
+          if (srcRatio > targetRatio) {
+            // source wider -> crop width
+            sw = Math.floor(h * targetRatio)
+            sx = Math.floor((w - sw) / 2)
+          } else if (srcRatio < targetRatio) {
+            // source taller -> crop height
+            sh = Math.floor(w / targetRatio)
+            sy = Math.floor((h - sh) / 2)
+          }
+          canvas.width = targetW
+          canvas.height = targetH
+          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH)
+        } else {
+          // Fit-inside without upscaling
+          const scale = Math.min(1, Math.min(targetW / w, targetH / h))
+          if (scale >= 1) return src // already within bounds
+          const nw = Math.max(1, Math.floor(w * scale))
+          const nh = Math.max(1, Math.floor(h * scale))
+          canvas.width = nw
+          canvas.height = nh
+          ctx.drawImage(img, 0, 0, nw, nh)
+        }
         // Prefer WEBP for size; fallback to JPEG if not supported
         const targetType = 'image/webp'
         const quality = 0.85
@@ -175,14 +206,49 @@ export default function SettingsForm() {
       const resp = await api.uploadGuildImage(guildId, file.name, dataUrl)
       if (resp && resp.success && resp.url) {
         setBotSettings((s) => ({ ...s, bannerUrl: resp.url }))
+        toast({ type: 'success', title: t('settings.bot.banner.uploaded') })
       } else {
-        alert(t('settings.bot.banner.uploadFail'))
+        toast({ type: 'error', title: t('settings.bot.banner.uploadFail') })
       }
     } catch {
-      alert(t('settings.bot.banner.uploadFail'))
+      toast({ type: 'error', title: t('settings.bot.banner.uploadFail') })
     } finally {
       setUploading(false)
     }
+  }
+
+  const onSelectIconFile = async (file: File) => {
+    if (!guildId || !file) return
+  if (!/^image\//i.test(file.type)) { toast({ type: 'error', title: t('settings.bot.icon.typeError') }); return }
+  if (file.size > 2.5 * 1024 * 1024) { toast({ type: 'error', title: t('settings.bot.icon.sizeError') }); return }
+    setUploadingIcon(true)
+    try {
+      const toDataUrl = (f: File) => new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result||'')); r.onerror = reject; r.readAsDataURL(f) })
+      const original = await toDataUrl(file)
+      const maybeResize = async (src: string, f: File) => {
+        if (/image\/gif/i.test(f.type)) return src
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => { const im = new Image(); im.onload = () => resolve(im); im.onerror = reject; im.src = src })
+        const max = 256
+        let w = img.naturalWidth || img.width
+        let h = img.naturalHeight || img.height
+        if (!w || !h) return src
+        const scale = Math.min(1, Math.min(max / w, max / h))
+        if (scale >= 1) return src
+        const nw = Math.max(1, Math.floor(w * scale))
+        const nh = Math.max(1, Math.floor(h * scale))
+        const canvas = document.createElement('canvas')
+        canvas.width = nw
+        canvas.height = nh
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return src
+        ctx.drawImage(img, 0, 0, nw, nh)
+        try { return canvas.toDataURL('image/webp', 0.9) } catch { return canvas.toDataURL('image/jpeg', 0.9) }
+      }
+      const dataUrl = await maybeResize(original, file)
+      const resp = await api.uploadGuildImage(guildId, file.name, dataUrl)
+      if (resp?.success && resp.url) { setBotSettings((s) => ({ ...s, iconUrl: resp.url })); toast({ type: 'success', title: t('settings.bot.icon.uploaded') }) }
+      else toast({ type: 'error', title: t('settings.bot.icon.uploadFail') })
+    } catch { toast({ type: 'error', title: t('settings.bot.icon.uploadFail') }) } finally { setUploadingIcon(false) }
   }
 
   return (
@@ -317,6 +383,12 @@ export default function SettingsForm() {
               </label>
               <span className="text-xs text-neutral-400">{t('settings.bot.banner.hint')}</span>
             </div>
+            {/* Crop toggle */}
+            <div className="mt-2 flex items-center gap-2">
+              <input id="bannerCropToFill" type="checkbox" className="h-4 w-4" checked={bannerCropToFill} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBannerCropToFill(e.target.checked)} />
+              <label htmlFor="bannerCropToFill" className="text-sm">{t('settings.bot.banner.cropToFill')}</label>
+            </div>
+            <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.banner.cropHint')}</p>
             {/* Drop zone */}
             <div
               onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
@@ -334,6 +406,43 @@ export default function SettingsForm() {
                 {/* Basic preview */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={botSettings.bannerUrl} alt={t('settings.bot.banner.previewAlt')} className="w-full h-40 object-cover" />
+              </div>
+            ) : null}
+          </div>
+
+          {/* Icon */}
+          <div>
+            <label htmlFor="iconUrl" className="block text-sm mb-1">{t('settings.bot.icon')}</label>
+            <input
+              id="iconUrl"
+              placeholder={t('settings.bot.icon.placeholder')}
+              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+              value={botSettings.iconUrl || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBotSettings((s) => ({ ...s, iconUrl: e.target.value }))}
+            />
+            <div className="flex items-center gap-2 mt-2">
+              <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 cursor-pointer">
+                <input type="file" accept="image/*" className="hidden" onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) onSelectIconFile(f); (e.target as HTMLInputElement).value = '' }} />
+                <span>{uploadingIcon ? t('settings.bot.icon.uploading') : t('settings.bot.icon.upload')}</span>
+              </label>
+              <span className="text-xs text-neutral-400">{t('settings.bot.icon.hint')}</span>
+            </div>
+            {/* Drop zone */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onDrop={(e) => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer?.files?.[0]; if (f) onSelectIconFile(f) }}
+              className="mt-3 rounded-lg border-2 border-dashed border-neutral-700 hover:border-neutral-500 transition-colors p-4 text-center text-sm text-neutral-300 cursor-pointer"
+              onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (ev: any) => { const f = ev.target?.files?.[0]; if (f) onSelectIconFile(f); }; input.click(); }}
+              aria-label={t('settings.bot.icon.dropHint')}
+              title={t('settings.bot.icon.dropHint')}
+            >
+              <div className="opacity-90">{t('settings.bot.icon.dropHint')}</div>
+              <div className="text-xs text-neutral-500 mt-1">{t('settings.bot.icon.limit')}</div>
+            </div>
+            {botSettings.iconUrl ? (
+              <div className="mt-3 inline-flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={botSettings.iconUrl} alt={t('settings.bot.icon.previewAlt')} className="w-16 h-16 rounded object-cover border border-neutral-800" />
               </div>
             ) : null}
           </div>
