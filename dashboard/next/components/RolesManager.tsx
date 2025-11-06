@@ -74,12 +74,13 @@ export default function RolesManager() {
     if (!guildId) return
     setLoading(true)
     try {
-      await fetch(`/api/guild/${guildId}/roles`, {
+      const res = await fetch(`/api/guild/${guildId}/roles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ name, color, hoist: false, mentionable: false })
       })
+      if (res.ok) { toast({ type:'success', title: t('roles.updated') }) } else { toast({ type:'error', title: t('common.saveFailed') }) }
       await load()
     } finally { setLoading(false) }
   }
@@ -89,7 +90,9 @@ export default function RolesManager() {
     if (!confirm(t('roles.remove.confirm'))) return
     setLoading(true)
     try {
-      await fetch(`/api/guild/${guildId}/roles/${id}`, { method: 'DELETE', credentials: 'include' })
+      const res = await fetch(`/api/guild/${guildId}/roles/${id}`, { method: 'DELETE', credentials: 'include' })
+      if (res.ok) toast({ type:'success', title: t('roles.updated') })
+      else toast({ type:'error', title: t('common.saveFailed') })
       await load()
     } finally { setLoading(false) }
   }
@@ -99,6 +102,7 @@ export default function RolesManager() {
     setLoading(true)
     try {
       await api.moveRole(guildId, id, { direction, delta: 1 })
+      toast({ type:'success', title: t('roles.updated') })
       await load()
     } finally { setLoading(false) }
   }

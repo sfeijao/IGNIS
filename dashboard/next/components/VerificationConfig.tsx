@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getGuildId } from '@/lib/guild'
 import { useI18n } from '@/lib/i18n'
+import { useToast } from '@/components/Toaster'
 import { api } from '@/lib/apiClient'
 
 type VerificationConfig = {
@@ -60,6 +61,7 @@ export default function VerificationConfig() {
   const [roles, setRoles] = useState<Role[]>([])
   const [testing, setTesting] = useState<'idle'|'sending'|'ok'|'err'>('idle')
   const { t } = useI18n()
+  const { toast } = useToast()
 
   useEffect(() => {
     if (!guildId) return
@@ -123,8 +125,9 @@ export default function VerificationConfig() {
         payload.form = { questions: cfg.form.questions }
       }
       const res = await fetch(`/api/guild/${guildId}/verification/config`, { method: 'POST', headers: { 'Content-Type':'application/json' }, credentials: 'include', body: JSON.stringify(payload) })
-      setSaved(res.ok ? 'ok' : 'err')
-    } catch { setSaved('err') } finally { setLoading(false); setTimeout(()=> setSaved('idle'), 1500) }
+      if (res.ok) { setSaved('ok'); toast({ type:'success', title: t('verification.saved') }) }
+      else { setSaved('err'); toast({ type:'error', title: t('verification.saveFailed') }) }
+    } catch { setSaved('err'); toast({ type:'error', title: t('verification.saveFailed') }) } finally { setLoading(false); setTimeout(()=> setSaved('idle'), 1500) }
   }
 
   const saveDefaults = async () => {
@@ -139,8 +142,9 @@ export default function VerificationConfig() {
         color: (panelDefaults.color || '').trim()
       }}
       const res = await fetch(`/api/guild/${guildId}/verification/config`, { method: 'POST', headers: { 'Content-Type':'application/json' }, credentials: 'include', body: JSON.stringify(body) })
-      setSaved(res.ok ? 'ok' : 'err')
-    } catch { setSaved('err') } finally { setLoading(false); setTimeout(()=> setSaved('idle'), 1500) }
+      if (res.ok) { setSaved('ok'); toast({ type:'success', title: t('verification.saved') }) }
+      else { setSaved('err'); toast({ type:'error', title: t('verification.saveFailed') }) }
+    } catch { setSaved('err'); toast({ type:'error', title: t('verification.saveFailed') }) } finally { setLoading(false); setTimeout(()=> setSaved('idle'), 1500) }
   }
 
   const resetDefaults = async () => {
@@ -148,8 +152,9 @@ export default function VerificationConfig() {
     setLoading(true); setSaved('saving')
     try {
       const res = await fetch(`/api/guild/${guildId}/verification/config`, { method: 'POST', headers: { 'Content-Type':'application/json' }, credentials: 'include', body: JSON.stringify({ panelDefaults: { clear: true } }) })
-      setSaved(res.ok ? 'ok' : 'err')
-    } catch { setSaved('err') } finally { setLoading(false); setTimeout(()=> setSaved('idle'), 1500) }
+      if (res.ok) { setSaved('ok'); toast({ type:'success', title: t('verification.saved') }) }
+      else { setSaved('err'); toast({ type:'error', title: t('verification.saveFailed') }) }
+    } catch { setSaved('err'); toast({ type:'error', title: t('verification.saveFailed') }) } finally { setLoading(false); setTimeout(()=> setSaved('idle'), 1500) }
   }
 
   const createPanel = async () => {
@@ -167,8 +172,9 @@ export default function VerificationConfig() {
         }
       }
       const res = await api.createPanel(guildId, payload)
-      setSaved(res?.success ? 'ok' : 'err')
-    } catch { setSaved('err') } finally { setLoading(false); setTimeout(()=> setSaved('idle'), 1500) }
+      if (res?.success) { setSaved('ok'); toast({ type:'success', title: t('verification.saved') }) }
+      else { setSaved('err'); toast({ type:'error', title: t('verification.saveFailed') }) }
+    } catch { setSaved('err'); toast({ type:'error', title: t('verification.saveFailed') }) } finally { setLoading(false); setTimeout(()=> setSaved('idle'), 1500) }
   }
 
   const testPanel = async () => {
@@ -186,8 +192,9 @@ export default function VerificationConfig() {
         }
       }
       const res = await api.createPanel(guildId, payload)
-      setTesting(res?.success ? 'ok' : 'err')
-    } catch { setTesting('err') } finally { setTimeout(()=> setTesting('idle'), 2000) }
+      if (res?.success) { setTesting('ok'); toast({ type:'success', title: t('verification.panel.test.sent') }) }
+      else { setTesting('err'); toast({ type:'error', title: t('verification.panel.test.fail') }) }
+    } catch { setTesting('err'); toast({ type:'error', title: t('verification.panel.test.fail') }) } finally { setTimeout(()=> setTesting('idle'), 2000) }
   }
 
   return (

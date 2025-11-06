@@ -75,6 +75,7 @@ export default function QuickTagsManager() {
     try {
       await api.upsertTag(guildId, payload)
       setEditing(null)
+      toast({ type:'success', title: t('common.saved') || 'Guardado!' })
       await load()
     } catch (e: any) {
       toast({ type: 'error', title: t('common.saveFailed') || 'Falha ao guardar', description: e?.message || 'Erro desconhecido' })
@@ -87,6 +88,7 @@ export default function QuickTagsManager() {
     setLoading(true)
     try {
       await api.deleteTag(guildId, id)
+      toast({ type:'success', title: t('common.saved') || 'Guardado!' })
       await load()
     } finally { setLoading(false) }
   }
