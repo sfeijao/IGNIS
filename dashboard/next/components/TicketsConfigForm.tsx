@@ -89,11 +89,32 @@ export default function TicketsConfigForm() {
     setError(null)
     setSaved(false)
     try {
-      // Try to parse edited JSON; fallback to current config
-      let payload = config
-      try { payload = JSON.parse(json) } catch {}
-      const res = await api.saveTicketsConfig(guildId, payload)
-      const obj = res?.config || payload
+      // Try to parse edited JSON; if it contains a `tickets` object use that, otherwise
+      // if it looks like tickets-only shape, wrap into { tickets: ... }.
+      let updates: any = {}
+      try {
+        const parsed = JSON.parse(json)
+        if (parsed && typeof parsed === 'object') {
+          if (parsed.tickets && typeof parsed.tickets === 'object') {
+            updates = { tickets: parsed.tickets }
+          } else if (
+            'panelChannelId' in parsed || 'staffRoleId' in parsed || 'archiveCategoryId' in parsed || 'logChannelId' in parsed || 'enabled' in parsed
+          ) {
+            updates = { tickets: parsed }
+          } else {
+            // fallback: merge current config.tickets
+            updates = { tickets: { ...(config.tickets || {}) } }
+          }
+        }
+      } catch {
+        // JSON invalid -> fall back to current form state
+        updates = { tickets: { ...(config.tickets || {}) } }
+      }
+      // Ensure we at least send current tickets selection if empty
+      if (!updates.tickets) updates.tickets = { ...(config.tickets || {}) }
+
+      const res = await api.saveTicketsConfig(guildId, updates)
+      const obj = res?.config ? { ...(res.config || {}) } : { ...config, ...(updates || {}) }
       setConfig(obj)
       setJson(JSON.stringify(obj, null, 2))
       setSaved(true)
@@ -102,6 +123,57 @@ export default function TicketsConfigForm() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const tickets = useMemo(() => (config?.tickets || {}), [config])
+
+  // Quick validations to surface missing references
+  const panelChannelMissing = !!tickets.panelChannelId && !channels.some(ch => ch.id === tickets.panelChannelId)
+  const logChannelMissing = !!tickets.logChannelId && !channels.some(ch => ch.id === tickets.logChannelId)
+  const staffRoleMissing = !!tickets.staffRoleId && !roles.some(r => r.id === tickets.staffRoleId)
+  const archiveCategoryMissing = !!tickets.archiveCategoryId && !categories.some(c => c.id === tickets.archiveCategoryId)
+
+  // Auto-fill sensible defaults
+  const autoFill = () => {
+    const pickByName = (arr: Array<{ id: string; name: string }>, patterns: RegExp[], fallback?: (arr: any[]) => any) => {
+      const lower = (s: string) => (s || '').toLowerCase()
+      for (const ptn of patterns) {
+        const hit = arr.find(x => ptn.test(lower(x.name)))
+        if (hit) return hit
+      }
+      return fallback ? fallback(arr) : undefined
+    }
+    const txt = channels.filter(isTextChannel)
+    const panel = pickByName(
+      txt,
+      [/ticket/, /suporte|support/, /help|ajuda/],
+      (arr) => arr[0]
+    )
+    const log = pickByName(
+      txt,
+      [/log/, /ticket/],
+      (arr) => arr[1] || arr[0]
+    )
+    const cat = pickByName(
+      categories,
+      [/arquiv|archive/, /fechad|closed/],
+      (arr) => arr[0]
+    )
+    const role = pickByName(
+      roles,
+      [/staff|equipa/, /mod/],
+      (arr) => arr.find(r => /admin|gestor|manager/.test(r.name.toLowerCase())) || arr[0]
+    )
+    setConfig((c: any) => ({
+      ...c,
+      tickets: {
+        ...(c.tickets || {}),
+        panelChannelId: panel?.id || (c.tickets?.panelChannelId || ''),
+        logChannelId: log?.id || (c.tickets?.logChannelId || ''),
+        archiveCategoryId: cat?.id || (c.tickets?.archiveCategoryId || ''),
+        staffRoleId: role?.id || (c.tickets?.staffRoleId || ''),
+      }
+    }))
   }
 
   return (
@@ -117,8 +189,8 @@ export default function TicketsConfigForm() {
           <div className="card-body grid grid-cols-1 gap-3">
             <LabeledSelectWithSearch
               label={t('tickets.panelChannelId')}
-              value={config.panelChannelId || ''}
-              onChange={v => setConfig((c:any) => ({ ...c, panelChannelId: v }))}
+              value={tickets.panelChannelId || ''}
+              onChange={v => setConfig((c:any) => ({ ...c, tickets: { ...(c.tickets || {}), panelChannelId: v } }))}
               query={panelQuery}
               setQuery={setPanelQuery}
               options={useMemo(() => channels
@@ -126,10 +198,11 @@ export default function TicketsConfigForm() {
                 .map(ch => ({ value: ch.id, label: `#${ch.name} (${channelTypeLabel(ch)})` })), [channels, panelQuery])}
               placeholder="—"
             />
+            {panelChannelMissing && <div className="text-amber-400 text-xs">{t('tickets.warn.missingChannel')}</div>}
             <LabeledSelectWithSearch
               label={t('tickets.staffRoleId')}
-              value={config.staffRoleId || ''}
-              onChange={v => setConfig((c:any) => ({ ...c, staffRoleId: v }))}
+              value={tickets.staffRoleId || ''}
+              onChange={v => setConfig((c:any) => ({ ...c, tickets: { ...(c.tickets || {}), staffRoleId: v } }))}
               query={roleQuery}
               setQuery={setRoleQuery}
               options={useMemo(() => roles
@@ -137,10 +210,11 @@ export default function TicketsConfigForm() {
                 .map(r => ({ value: r.id, label: r.name })), [roles, roleQuery])}
               placeholder="—"
             />
+            {staffRoleMissing && <div className="text-amber-400 text-xs">{t('tickets.warn.missingRole')}</div>}
             <LabeledSelectWithSearch
               label={t('tickets.archiveCategoryId')}
-              value={config.archiveCategoryId || ''}
-              onChange={v => setConfig((c:any) => ({ ...c, archiveCategoryId: v }))}
+              value={tickets.archiveCategoryId || ''}
+              onChange={v => setConfig((c:any) => ({ ...c, tickets: { ...(c.tickets || {}), archiveCategoryId: v } }))}
               query={archiveQuery}
               setQuery={setArchiveQuery}
               options={useMemo(() => categories
@@ -148,10 +222,11 @@ export default function TicketsConfigForm() {
                 .map(cat => ({ value: cat.id, label: cat.name })), [categories, archiveQuery])}
               placeholder="—"
             />
+            {archiveCategoryMissing && <div className="text-amber-400 text-xs">{t('tickets.warn.missingCategory')}</div>}
             <LabeledSelectWithSearch
               label={t('tickets.logChannelId')}
-              value={config.logChannelId || ''}
-              onChange={v => setConfig((c:any) => ({ ...c, logChannelId: v }))}
+              value={tickets.logChannelId || ''}
+              onChange={v => setConfig((c:any) => ({ ...c, tickets: { ...(c.tickets || {}), logChannelId: v } }))}
               query={logChannelQuery}
               setQuery={setLogChannelQuery}
               options={useMemo(() => channels
@@ -159,15 +234,19 @@ export default function TicketsConfigForm() {
                 .map(ch => ({ value: ch.id, label: `#${ch.name} (${channelTypeLabel(ch)})` })), [channels, logChannelQuery])}
               placeholder="—"
             />
+            {logChannelMissing && <div className="text-amber-400 text-xs">{t('tickets.warn.missingChannel')}</div>}
             <div className="text-xs text-neutral-400">
               {t('tickets.transcriptManagedInWebhooks')}
             </div>
             <div className="flex items-center gap-3">
               <label className="text-sm opacity-80">{t('tickets.enabled')}</label>
-              <input type="checkbox" checked={!!config.enabled} onChange={e => setConfig((c:any) => ({ ...c, enabled: e.target.checked }))} title={t('tickets.enabled')} />
+              <input type="checkbox" checked={!!tickets.enabled} onChange={e => setConfig((c:any) => ({ ...c, tickets: { ...(c.tickets || {}), enabled: e.target.checked } }))} title={t('tickets.enabled')} />
             </div>
-            <button type="button" className="btn btn-primary w-fit" onClick={save} disabled={loading}>{t('common.save')}</button>
-            {saved && <span className="text-green-400">{t('tickets.saved')}</span>}
+            <div className="flex gap-2 items-center">
+              <button type="button" className="btn btn-secondary" onClick={autoFill} disabled={loading}>{t('tickets.config.autofill')}</button>
+              <button type="button" className="btn btn-primary" onClick={save} disabled={loading}>{t('common.save')}</button>
+              {saved && <span className="text-green-400">{t('tickets.saved')}</span>}
+            </div>
           </div>
         </section>
         <section className="card">

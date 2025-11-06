@@ -1747,10 +1747,17 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 // Rebuild payload using existing theme for consistency
                 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
                 const visualAssets = require('../assets/visual-assets');
+                // Guild-branded banner override (falls back to default visual asset)
+                let brandedBanner = null; try {
+                    const storage = require('../utils/storage');
+                    const cfg = await storage.getGuildConfig(req.params.guildId) || {};
+                    const bu = (cfg.botSettings && typeof cfg.botSettings.bannerUrl === 'string') ? cfg.botSettings.bannerUrl.trim() : '';
+                    if (bu) brandedBanner = bu;
+                } catch {}
                 const embed = new EmbedBuilder()
                     .setColor((panel.theme || 'dark') === 'light' ? 0x60A5FA : 0x7C3AED)
                     .setThumbnail(visualAssets.realImages.supportIcon)
-                    .setImage(visualAssets.realImages.supportBanner);
+                    .setImage(brandedBanner || visualAssets.realImages.supportBanner);
                 let rows = [];
                 if (tpl === 'compact') {
                     embed.setTitle('🎫 Tickets • Compacto').setDescription('Escolhe abaixo e abre um ticket privado.');
@@ -2393,6 +2400,7 @@ app.post('/api/guild/:guildId/bot-settings', async (req, res) => {
             prefix: Joi.string().trim().max(5).allow(''),
             ephemeralByDefault: Joi.boolean().default(false),
             enableModerationLogs: Joi.boolean().default(true),
+            bannerUrl: Joi.string().uri({ allowRelative: false }).max(2048).allow(''),
             // allow arbitrary extra keys for future
         }).unknown(true);
         const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: false });
@@ -4147,16 +4155,76 @@ app.post('/api/guild/:guildId/webhooks/test', async (req, res) => {
         const info = wm.getWebhookInfo(req.params.guildId, type);
         if (!info || !info.webhook?.url) return res.status(404).json({ success: false, error: `Webhook type '${type}' not configured` });
         const { EmbedBuilder } = require('discord.js');
+        // Try to brand the test embed with guild banner
+        let brandedBanner = null; try {
+            const storage = require('../utils/storage');
+            const cfg = await storage.getGuildConfig(req.params.guildId) || {};
+            const bu = (cfg.botSettings && typeof cfg.botSettings.bannerUrl === 'string') ? cfg.botSettings.bannerUrl.trim() : '';
+            if (bu) brandedBanner = bu;
+        } catch {}
         const embed = new EmbedBuilder()
             .setTitle('🔔 Teste de Webhook')
             .setDescription(`Mensagem de teste enviada pelo dashboard (${type}).`)
             .setColor(type === 'tickets' ? 0x60A5FA : type === 'updates' ? 0xF59E0B : 0x7C3AED)
             .setTimestamp();
+        if (brandedBanner) try { embed.setImage(brandedBanner); } catch {}
         await info.webhook.send({ embeds: [embed], username: `IGNIS • ${type}` });
         return res.json({ success: true, message: 'Test sent' });
     } catch (e) {
         logger.error('Error testing webhook:', e);
         res.status(500).json({ success: false, error: 'Failed to test webhook' });
+    }
+});
+
+// Simple uploads endpoint for guild-scoped images (e.g., banners)
+// Accepts JSON: { filename?: string, contentBase64: string }
+// Returns: { success: true, url }
+app.post('/api/guild/:guildId/uploads', express.json({ limit: '3mb' }), async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        const { filename, contentBase64 } = req.body || {};
+        if (!contentBase64 || typeof contentBase64 !== 'string') {
+            return res.status(400).json({ success: false, error: 'missing_content' });
+        }
+
+        // Parse data URL or raw base64
+        let mime = 'application/octet-stream';
+        let base64Data = contentBase64;
+        const m = /^data:([^;]+);base64,(.+)$/i.exec(contentBase64);
+        if (m) { mime = m[1]; base64Data = m[2]; }
+        const allowed = new Set(['image/png','image/jpeg','image/webp','image/gif']);
+        if (!allowed.has(mime)) {
+            return res.status(400).json({ success: false, error: 'unsupported_type' });
+        }
+        let buf;
+        try { buf = Buffer.from(base64Data, 'base64'); } catch { return res.status(400).json({ success: false, error: 'invalid_base64' }); }
+        const MAX_BYTES = 2.5 * 1024 * 1024; // ~2.5MB
+        if (!buf || buf.length === 0 || buf.length > MAX_BYTES) {
+            return res.status(400).json({ success: false, error: 'invalid_size' });
+        }
+
+        const extMap = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/gif': '.gif' };
+        const safeExt = extMap[mime] || '';
+        const safeNameRaw = (typeof filename === 'string' && filename.trim()) ? filename.trim() : 'upload';
+        const safeName = safeNameRaw.replace(/[^a-z0-9_\-\. ]/gi, '_').slice(0, 64) || 'upload';
+        const fname = `${Date.now()}_${safeName}${safeExt}`;
+        const outDir = path.join(__dirname, 'public', 'uploads', 'guilds', String(req.params.guildId));
+        try { fs.mkdirSync(outDir, { recursive: true }); } catch {}
+        const outPath = path.join(outDir, fname);
+        try { fs.writeFileSync(outPath, buf); } catch (e) {
+            logger.error('Upload write failed:', e);
+            return res.status(500).json({ success: false, error: 'write_failed' });
+        }
+        const url = `/uploads/guilds/${encodeURIComponent(String(req.params.guildId))}/${encodeURIComponent(fname)}`;
+        return res.json({ success: true, url });
+    } catch (e) {
+        logger.error('Upload error:', e);
+        return res.status(500).json({ success: false, error: 'upload_failed' });
     }
 });
 
@@ -4254,6 +4322,11 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             } else {
                 embed.setTitle('Pré-visualização de painel').setDescription('Este é um envio de teste (DM).');
             }
+            // Guild-branded banner override for preview
+            try {
+                const bu = (cfg?.botSettings && typeof cfg.botSettings.bannerUrl === 'string') ? cfg.botSettings.bannerUrl.trim() : '';
+                if (bu) embed.setImage(bu);
+            } catch {}
             const payload = { embeds: [embed], components: rows };
             const user = await (client && client.users && client.users.fetch ? client.users.fetch(req.user.id).catch(() => null) : null);
             if (!user) return res.status(400).json({ success: false, error: 'cannot_dm_user' });
@@ -4296,7 +4369,7 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
     const vPanelDefaults = (type === 'verification') ? (cfg?.verification?.panelDefaults || {}) : {};
     const effOptions = { ...vPanelDefaults, ...(options || {}) };
     const resolvedColor = parseColor(effOptions.color) ?? (theme === 'light' ? 0x60A5FA : 0x7C3AED);
-        let embed = new EmbedBuilder().setColor(resolvedColor);
+    let embed = new EmbedBuilder().setColor(resolvedColor);
         let rows = [];
         if (type === 'verification') {
             // Unified minimal verification panel
@@ -4415,6 +4488,11 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             );
             rows = [row1, row2];
         }
+        // Guild-branded banner override
+        try {
+            const bu = (cfg?.botSettings && typeof cfg.botSettings.bannerUrl === 'string') ? cfg.botSettings.bannerUrl.trim() : '';
+            if (bu) embed.setImage(bu);
+        } catch {}
         const payload = { embeds: [embed], components: rows };
         const msg = await channel.send(payload);
         // If method=reaction, add the ✅ reaction to guide users

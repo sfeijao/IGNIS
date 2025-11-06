@@ -13,6 +13,14 @@ type Settings = {
   modlogChannelId: string
 }
 
+type BotSettings = {
+  nickname?: string
+  presenceStatus?: 'online' | 'idle' | 'dnd' | 'invisible'
+  statusType?: 'PLAYING' | 'LISTENING' | 'WATCHING' | 'COMPETING' | 'CUSTOM'
+  statusText?: string
+  bannerUrl?: string
+}
+
 const defaults: Settings = {
   prefix: '!',
   locale: 'pt',
@@ -22,6 +30,14 @@ const defaults: Settings = {
 
 export default function SettingsForm() {
   const [settings, setSettings] = useState<Settings>(defaults)
+  const [botSettings, setBotSettings] = useState<BotSettings>({
+    nickname: '',
+    presenceStatus: 'online',
+    statusType: 'CUSTOM',
+    statusText: '',
+    bannerUrl: ''
+  })
+  const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const guildId = typeof window !== 'undefined' ? getGuildId() : null
@@ -63,6 +79,17 @@ export default function SettingsForm() {
         }
       } catch {}
       try {
+        const b = await api.getBotSettings?.(guildId)
+        const s = (b && b.settings) || b || {}
+        setBotSettings((prev) => ({
+          nickname: typeof s.nickname === 'string' ? s.nickname : '',
+          presenceStatus: (s.presenceStatus as any) || 'online',
+          statusType: (s.statusType as any) || 'CUSTOM',
+          statusText: typeof s.statusText === 'string' ? s.statusText : '',
+          bannerUrl: typeof s.bannerUrl === 'string' ? s.bannerUrl : ''
+        }))
+      } catch {}
+      try {
         const ch = await api.getChannels(guildId)
         setChannels(ch.channels || ch || [])
       } catch {}
@@ -75,8 +102,86 @@ export default function SettingsForm() {
     setSaving(true)
     try {
       await api.postSettings?.(guildId, settings)
+      // Map UI to API payload
+      const payload: Record<string, any> = {
+        nickname: botSettings.nickname || '',
+        presenceStatus: botSettings.presenceStatus || 'online',
+        statusType: botSettings.statusType || 'CUSTOM',
+        statusText: botSettings.statusText || '',
+      }
+      if (botSettings.bannerUrl) payload.bannerUrl = botSettings.bannerUrl
+      await api.postBotSettings?.(guildId, payload)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const onSelectBannerFile = async (file: File) => {
+    if (!guildId || !file) return
+    if (!/^image\//i.test(file.type)) {
+      alert(t('settings.bot.banner.typeError'))
+      return
+    }
+    // ~2.4MB cap client-side to match server
+    if (file.size > 2.5 * 1024 * 1024) {
+      alert(t('settings.bot.banner.sizeError'))
+      return
+    }
+    setUploading(true)
+    try {
+      const toDataUrl = (f: File) => new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result || ''))
+        reader.onerror = reject
+        reader.readAsDataURL(f)
+      })
+      const originalDataUrl = await toDataUrl(file)
+
+      const maybeResize = async (src: string, f: File) => {
+        // Skip animated GIFs to keep animation intact
+        if (/image\/gif/i.test(f.type)) return src
+        // Draw into canvas and fit within 1600x400 preserving aspect ratio
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const im = new Image()
+          im.onload = () => resolve(im)
+          im.onerror = reject
+          im.src = src
+        })
+        const maxW = 1600, maxH = 400
+        let w = img.naturalWidth || img.width
+        let h = img.naturalHeight || img.height
+        if (!w || !h) return src
+        const scale = Math.min(1, Math.min(maxW / w, maxH / h))
+        if (scale >= 1) return src // already within bounds
+        const nw = Math.max(1, Math.floor(w * scale))
+        const nh = Math.max(1, Math.floor(h * scale))
+        const canvas = document.createElement('canvas')
+        canvas.width = nw
+        canvas.height = nh
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return src
+        ctx.drawImage(img, 0, 0, nw, nh)
+        // Prefer WEBP for size; fallback to JPEG if not supported
+        const targetType = 'image/webp'
+        const quality = 0.85
+        try {
+          return canvas.toDataURL(targetType, quality)
+        } catch {
+          return canvas.toDataURL('image/jpeg', quality)
+        }
+      }
+
+      const dataUrl = await maybeResize(originalDataUrl, file)
+      const resp = await api.uploadGuildImage(guildId, file.name, dataUrl)
+      if (resp && resp.success && resp.url) {
+        setBotSettings((s) => ({ ...s, bannerUrl: resp.url }))
+      } else {
+        alert(t('settings.bot.banner.uploadFail'))
+      }
+    } catch {
+      alert(t('settings.bot.banner.uploadFail'))
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -130,6 +235,109 @@ export default function SettingsForm() {
             <option key={ch.id} value={ch.id}>{`#${ch.name} (${channelTypeLabel(ch)})`}</option>
           ))}
         </select>
+      </div>
+
+      {/* Personalization */}
+      <div className="mt-6 pt-4 border-t border-neutral-800">
+        <h2 className="text-lg font-semibold mb-3">{t('settings.bot.title')}</h2>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="nickname" className="block text-sm mb-1">{t('settings.bot.nickname')}</label>
+            <input
+              id="nickname"
+              placeholder={t('settings.bot.nickname.placeholder')}
+              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+              value={botSettings.nickname || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBotSettings((s) => ({ ...s, nickname: e.target.value }))}
+            />
+            <p className="text-xs text-neutral-400 mt-1">{t('settings.bot.nickname.hint')}</p>
+          </div>
+          <div>
+            <label htmlFor="presenceStatus" className="block text-sm mb-1">{t('settings.bot.presence')}</label>
+            <select
+              id="presenceStatus"
+              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+              value={botSettings.presenceStatus || 'online'}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings((s) => ({ ...s, presenceStatus: e.target.value as any }))}
+            >
+              <option value="online">{t('settings.bot.presence.online')}</option>
+              <option value="idle">{t('settings.bot.presence.idle')}</option>
+              <option value="dnd">{t('settings.bot.presence.dnd')}</option>
+              <option value="invisible">{t('settings.bot.presence.offline')}</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="statusType" className="block text-sm mb-1">{t('settings.bot.activityType')}</label>
+            <select
+              id="statusType"
+              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+              value={botSettings.statusType || 'CUSTOM'}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings((s) => ({ ...s, statusType: e.target.value as any }))}
+            >
+              <option value="PLAYING">{t('settings.bot.activityType.playing')}</option>
+              <option value="LISTENING">{t('settings.bot.activityType.listening')}</option>
+              <option value="WATCHING">{t('settings.bot.activityType.watching')}</option>
+              <option value="COMPETING">{t('settings.bot.activityType.competing')}</option>
+              <option value="CUSTOM">{t('settings.bot.activityType.custom')}</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="statusText" className="block text-sm mb-1">{t('settings.bot.activityText')}</label>
+            <input
+              id="statusText"
+              placeholder={t('settings.bot.activityText.placeholder')}
+              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+              value={botSettings.statusText || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBotSettings((s) => ({ ...s, statusText: e.target.value }))}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label htmlFor="bannerUrl" className="block text-sm mb-1">{t('settings.bot.banner')}</label>
+            <input
+              id="bannerUrl"
+              placeholder={t('settings.bot.banner.placeholder')}
+              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+              value={botSettings.bannerUrl || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBotSettings((s) => ({ ...s, bannerUrl: e.target.value }))}
+            />
+            <div className="flex items-center gap-2 mt-2">
+              <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const f = e.target.files && e.target.files[0]
+                    if (f) onSelectBannerFile(f)
+                    // reset value so selecting same file again re-triggers
+                    ;(e.target as HTMLInputElement).value = ''
+                  }}
+                />
+                <span>{uploading ? t('settings.bot.banner.uploading') : t('settings.bot.banner.upload')}</span>
+              </label>
+              <span className="text-xs text-neutral-400">{t('settings.bot.banner.hint')}</span>
+            </div>
+            {/* Drop zone */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onDrop={(e) => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer?.files?.[0]; if (f) onSelectBannerFile(f) }}
+              className="mt-3 rounded-lg border-2 border-dashed border-neutral-700 hover:border-neutral-500 transition-colors p-4 text-center text-sm text-neutral-300 cursor-pointer"
+              onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (ev: any) => { const f = ev.target?.files?.[0]; if (f) onSelectBannerFile(f); }; input.click(); }}
+              aria-label={t('settings.bot.banner.dropHint')}
+              title={t('settings.bot.banner.dropHint')}
+            >
+              <div className="opacity-90">{t('settings.bot.banner.dropHint')}</div>
+              <div className="text-xs text-neutral-500 mt-1">{t('settings.bot.banner.limit')}</div>
+            </div>
+            {botSettings.bannerUrl ? (
+              <div className="mt-3 border border-neutral-800 rounded-lg overflow-hidden">
+                {/* Basic preview */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={botSettings.bannerUrl} alt={t('settings.bot.banner.previewAlt')} className="w-full h-40 object-cover" />
+              </div>
+            ) : null}
+          </div>
+        </div>
       </div>
 
       <div className="flex gap-2 pt-2">

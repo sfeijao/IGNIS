@@ -30,6 +30,32 @@ export const api = {
     if (!res.ok) throw new Error('Failed to save settings')
     return res.json()
   },
+  // Bot personalization (guild-scoped)
+  async getBotSettings(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/bot-settings`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch bot settings')
+    return res.json()
+  },
+  async postBotSettings(guildId: string, payload: Record<string, any>) {
+    const res = await fetch(`/api/guild/${guildId}/bot-settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) throw new Error('Failed to save bot settings')
+    return res.json()
+  },
+  async uploadGuildImage(guildId: string, filename: string, contentBase64: string) {
+    const res = await fetch(`/api/guild/${guildId}/uploads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ filename, contentBase64 })
+    })
+    if (!res.ok) throw new Error('Failed to upload image')
+    return res.json()
+  },
   async getRoles(guildId: string) {
     const res = await fetch(`/api/guild/${guildId}/roles`, { credentials: 'include' })
     if (!res.ok) throw new Error('Failed to fetch roles')
