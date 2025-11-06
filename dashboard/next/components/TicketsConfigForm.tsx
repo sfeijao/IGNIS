@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getGuildId } from '../lib/guild'
 import { api } from '../lib/apiClient'
 import { useI18n } from '@/lib/i18n'
+import { useToast } from '@/components/Toaster'
 
 type AnyChannel = { id: string; name: string; type?: any }
 const isTextChannel = (ch: AnyChannel) => {
@@ -31,6 +32,7 @@ export default function TicketsConfigForm() {
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState<boolean>(false)
   const { t } = useI18n()
+  const { toast } = useToast()
 
   // Data sources for selectors
   const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([])
@@ -118,8 +120,11 @@ export default function TicketsConfigForm() {
       setConfig(obj)
       setJson(JSON.stringify(obj, null, 2))
       setSaved(true)
+      toast({ type: 'success', title: t('tickets.saved') })
     } catch (e: any) {
-      setError(e?.message || 'Erro ao salvar config')
+      const msg = e?.message || t('common.saveFailed')
+      setError(msg)
+      toast({ type: 'error', title: t('common.saveFailed'), description: e?.message })
     } finally {
       setLoading(false)
     }
