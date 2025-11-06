@@ -207,7 +207,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'settings.bot.banner.uploaded': 'Imagem carregada',
   'settings.bot.banner.uploadFail': 'Falha ao carregar imagem',
   'settings.bot.banner.dropHint': 'Arraste uma imagem aqui ou clique para carregar',
-  'settings.bot.banner.limit': 'Limite ~12MB. Redimensionamos para 1600×400 (GIF não é comprimido).',
+  'settings.bot.banner.limit': 'Limite ~20MB. Redimensionamos para 1600×400 (GIF não é comprimido).',
   'settings.bot.banner.typeError': 'Tipo de imagem não suportado',
   'settings.bot.banner.sizeError': 'Imagem demasiado grande',
   'settings.bot.banner.cropToFill': 'Cortar para preencher (1600×400)',
@@ -225,7 +225,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'settings.bot.icon.uploaded': 'Ícone carregado',
   'settings.bot.icon.uploadFail': 'Falha ao carregar ícone',
   'settings.bot.icon.dropHint': 'Arraste um ícone aqui ou clique para carregar',
-  'settings.bot.icon.limit': 'Limite ~12MB. Redimensionamos até 256×256 (GIF não é comprimido).',
+  'settings.bot.icon.limit': 'Limite ~20MB. Redimensionamos até 256×256 (GIF não é comprimido).',
   'settings.bot.icon.typeError': 'Tipo de imagem não suportado',
   'settings.bot.icon.sizeError': 'Ícone demasiado grande',
   // Commands

@@ -4210,7 +4210,7 @@ app.post('/api/guild/:guildId/uploads', express.json({ limit: '25mb' }), async (
         }
         let buf;
         try { buf = Buffer.from(base64Data, 'base64'); } catch { return res.status(400).json({ success: false, error: 'invalid_base64' }); }
-        const MAX_BYTES = 12 * 1024 * 1024; // ~12MB to allow larger GIFs
+    const MAX_BYTES = 20 * 1024 * 1024; // ~20MB to allow even larger animated GIFs
         if (!buf || buf.length === 0 || buf.length > MAX_BYTES) {
             return res.status(400).json({ success: false, error: 'invalid_size' });
         }

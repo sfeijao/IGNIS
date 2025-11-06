@@ -152,8 +152,8 @@ export default function SettingsForm() {
       toast({ type: 'error', title: t('settings.bot.banner.typeError') })
       return
     }
-    // ~12MB cap client-side (GIFs allowed without compression)
-    if (file.size > 12 * 1024 * 1024) {
+    // ~20MB cap client-side (GIFs allowed without compression)
+    if (file.size > 20 * 1024 * 1024) {
       toast({ type: 'error', title: t('settings.bot.banner.sizeError') })
       return
     }
@@ -242,7 +242,7 @@ export default function SettingsForm() {
   const onSelectIconFile = async (file: File) => {
     if (!guildId || !file) return
   if (!/^image\//i.test(file.type)) { toast({ type: 'error', title: t('settings.bot.icon.typeError') }); return }
-  if (file.size > 12 * 1024 * 1024) { toast({ type: 'error', title: t('settings.bot.icon.sizeError') }); return }
+  if (file.size > 20 * 1024 * 1024) { toast({ type: 'error', title: t('settings.bot.icon.sizeError') }); return }
     setUploadingIcon(true)
     try {
       const toDataUrl = (f: File) => new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result||'')); r.onerror = reject; r.readAsDataURL(f) })
