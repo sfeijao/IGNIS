@@ -30,11 +30,11 @@ export default function HomePage() {
         <h2 className="text-xl font-semibold">{t('nav.plugins')}</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {[
-            {name:'Moderação',desc:'Automod, logs, ações e auditoria.', icon:'shield' as const, tip:'Configure regras, mod-logs e automod.'},
-            {name:'Tickets',desc:'Gestão de tickets e painéis.', icon:'tickets' as const, tip:'Crie painéis e gerencie filas.'},
-            {name:'Tags',desc:'Respostas rápidas e painéis.', icon:'tag' as const, tip:'Defina atalhos e coleções.'},
+            {name:'Moderação',desc:'Automod, logs, ações e auditoria.', icon:'shield' as const, tip:'Configure regras, mod-logs e automod.', href: '/moderation'},
+            {name:'Tickets',desc:'Gestão de tickets e painéis.', icon:'tickets' as const, tip:'Crie painéis e gerencie filas.', href: '/tickets'},
+            {name:'Tags',desc:'Respostas rápidas e painéis.', icon:'tag' as const, tip:'Defina atalhos e coleções.', href: '/tags'},
           ].map((p) => (
-            <PluginCard key={p.name} name={p.name} desc={p.desc} icon={p.icon} tip={p.tip} />
+            <PluginCard key={p.name} name={p.name} desc={p.desc} icon={p.icon} tip={p.tip} href={p.href} />
           ))}
         </div>
       </section>
