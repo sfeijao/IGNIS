@@ -59,6 +59,8 @@ export default function SettingsForm() {
   const { toast } = useToast()
   const [channels, setChannels] = useState<Array<{ id: string; name: string; type?: string }>>([])
   const [roles, setRoles] = useState<Role[]>([])
+  const [rolesLoading, setRolesLoading] = useState(false)
+  const [rolesError, setRolesError] = useState<string | null>(null)
   const [bannerCropToFill, setBannerCropToFill] = useState(false)
 
   const isTextChannel = (ch: { id: string; name: string; type?: string }) => {
@@ -125,12 +127,34 @@ export default function SettingsForm() {
         setChannels(ch.channels || ch || [])
       } catch {}
       try {
+        setRolesLoading(true)
+        setRolesError(null)
         const rs = await api.getRoles(guildId)
         setRoles(rs.roles || rs || [])
-      } catch {}
+      } catch (e:any) {
+        setRoles([])
+        setRolesError(e?.message || 'roles_failed')
+      } finally {
+        setRolesLoading(false)
+      }
       setLoaded(true)
     })()
   }, [guildId])
+
+  const retryLoadRoles = async () => {
+    if (!guildId) return
+    try {
+      setRolesLoading(true)
+      setRolesError(null)
+      const rs = await api.getRoles(guildId)
+      setRoles(rs.roles || rs || [])
+    } catch (e:any) {
+      setRoles([])
+      setRolesError(e?.message || 'roles_failed')
+    } finally {
+      setRolesLoading(false)
+    }
+  }
 
   // Load persisted banner crop preference (per guild)
   useEffect(() => {
@@ -419,6 +443,22 @@ export default function SettingsForm() {
                 {t('settings.bot.systemRoles.warn.missing')} {missingRoles.join(', ')}
               </div>
             )}
+            {/* Fallback / diagnostic when roles failed to load */}
+            {rolesError && (
+              <div className="mb-3 rounded-md border border-rose-600 bg-rose-900/40 text-rose-200 text-xs p-2 flex items-center gap-3">
+                <span>{t('settings.bot.systemRoles.loadingFailed')}</span>
+                <button type="button" onClick={retryLoadRoles} className="px-2 py-1 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-rose-100 text-xs">
+                  {t('settings.bot.systemRoles.retry')}
+                </button>
+              </div>
+            )}
+            {!rolesError && roles.length === 0 && loaded && (
+              <div className="mb-3 rounded-md border border-neutral-700 bg-neutral-800/60 text-neutral-300 text-xs p-2">
+                {!guildId && t('settings.bot.systemRoles.noGuild')}
+                {guildId && rolesLoading && t('settings.bot.systemRoles.loading')}
+                {guildId && !rolesLoading && t('settings.bot.systemRoles.rolesEmpty')}
+              </div>
+            )}
             <h3 className="text-md font-semibold mb-3">{t('settings.bot.systemRoles.title')}</h3>
             <p className="text-xs text-neutral-400 mb-4">{t('settings.bot.systemRoles.help')}</p>
             <div className="grid md:grid-cols-2 gap-4">
@@ -431,7 +471,9 @@ export default function SettingsForm() {
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, staffRoleId: e.target.value }))}
                 >
                   <option value="">—</option>
-                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                  {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
+                  {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                  {!rolesLoading && roles.length === 0 && !rolesError && <option disabled value="">{guildId ? t('settings.bot.systemRoles.selectGuildFirst') : t('settings.bot.systemRoles.selectGuildFirst')}</option>}
                 </select>
                 <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.staff.hint')}</p>
               </div>
@@ -444,7 +486,9 @@ export default function SettingsForm() {
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, adminRoleId: e.target.value }))}
                 >
                   <option value="">—</option>
-                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                  {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
+                  {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                  {!rolesLoading && roles.length === 0 && !rolesError && <option disabled value="">{guildId ? t('settings.bot.systemRoles.selectGuildFirst') : t('settings.bot.systemRoles.selectGuildFirst')}</option>}
                 </select>
                 <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.admin.hint')}</p>
               </div>
@@ -457,7 +501,9 @@ export default function SettingsForm() {
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, verifiedRoleId: e.target.value }))}
                 >
                   <option value="">—</option>
-                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                  {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
+                  {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                  {!rolesLoading && roles.length === 0 && !rolesError && <option disabled value="">{guildId ? t('settings.bot.systemRoles.selectGuildFirst') : t('settings.bot.systemRoles.selectGuildFirst')}</option>}
                 </select>
                 <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.verified.hint')}</p>
               </div>
@@ -470,7 +516,9 @@ export default function SettingsForm() {
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, unverifiedRoleId: e.target.value }))}
                 >
                   <option value="">—</option>
-                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                  {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
+                  {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                  {!rolesLoading && roles.length === 0 && !rolesError && <option disabled value="">{guildId ? t('settings.bot.systemRoles.selectGuildFirst') : t('settings.bot.systemRoles.selectGuildFirst')}</option>}
                 </select>
                 <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.unverified.hint')}</p>
               </div>

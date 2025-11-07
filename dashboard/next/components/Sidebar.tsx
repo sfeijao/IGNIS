@@ -10,6 +10,7 @@ const nav = [
   { href: '/', key: 'nav.dashboard', flag: 'stable' },
   { href: '/plugins', key: 'nav.plugins', flag: 'stable' },
   { href: '/moderation', key: 'nav.moderation', flag: 'stable' },
+  { href: '/moderation/center', key: 'nav.moderation.center', flag: 'beta' },
   { href: '/members', key: 'nav.members', flag: 'stable' },
   { href: '/roles', key: 'nav.roles', flag: 'stable' },
   { href: '/webhooks', key: 'nav.webhooks', flag: 'rollout' },
@@ -82,10 +83,7 @@ export default function Sidebar() {
             </Link>
           )
         })}
-        <a href="/moderation-react.html" className="relative rounded-lg px-3 py-2 hover:bg-neutral-800/80 transition-colors" target="_self">
-          <span className="icon mr-2 inline-flex items-center"><Icon name="shield" /></span>
-          <span className="label">{t('nav.moderation.center')}</span>
-        </a>
+        {/* Legacy moderation center link removed; integrated into /moderation */}
       </nav>
     </aside>
   )
