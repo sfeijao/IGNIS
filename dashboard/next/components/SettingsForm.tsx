@@ -187,8 +187,9 @@ export default function SettingsForm() {
         statusType: botSettings.statusType || 'CUSTOM',
         statusText: botSettings.statusText || '',
       }
-      if (botSettings.bannerUrl) payload.bannerUrl = botSettings.bannerUrl
-      if (botSettings.iconUrl) payload.iconUrl = botSettings.iconUrl
+      // Always send banner/icon so clearing the field persists removal server-side
+      payload.bannerUrl = botSettings.bannerUrl || ''
+      payload.iconUrl = botSettings.iconUrl || ''
       // Role mappings (only send if present to avoid wiping existing settings inadvertently)
       if (botSettings.staffRoleId) payload.staffRoleId = botSettings.staffRoleId
       if (botSettings.adminRoleId) payload.adminRoleId = botSettings.adminRoleId
@@ -558,6 +559,14 @@ export default function SettingsForm() {
                 />
                 <span>{uploading ? t('settings.bot.banner.uploading') : t('settings.bot.banner.upload')}</span>
               </label>
+              {/* Clear banner button */}
+              <button
+                type="button"
+                className="px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 border border-neutral-700"
+                onClick={() => { setBotSettings((s) => ({ ...s, bannerUrl: '' })); toast({ type: 'success', title: t('settings.bot.banner.removed') }) }}
+              >
+                {t('settings.bot.banner.remove')}
+              </button>
               <span className="text-xs text-neutral-400">{t('settings.bot.banner.hint')}</span>
             </div>
             {/* Crop toggle */}
@@ -610,6 +619,14 @@ export default function SettingsForm() {
                 <input type="file" accept="image/*" className="hidden" onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) onSelectIconFile(f); (e.target as HTMLInputElement).value = '' }} />
                 <span>{uploadingIcon ? t('settings.bot.icon.uploading') : t('settings.bot.icon.upload')}</span>
               </label>
+              {/* Clear icon button */}
+              <button
+                type="button"
+                className="px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 border border-neutral-700"
+                onClick={() => { setBotSettings((s) => ({ ...s, iconUrl: '' })); toast({ type: 'success', title: t('settings.bot.icon.removed') }) }}
+              >
+                {t('settings.bot.icon.remove')}
+              </button>
               <span className="text-xs text-neutral-400">{t('settings.bot.icon.hint')}</span>
             </div>
             {/* Drop zone */}
