@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { getGuildId } from '@/lib/guild'
 import useGiveawaySocket from '@/lib/useGiveawaySocket'
 import { useGiveawaysI18n } from '@/lib/useI18nGiveaways'
+import GuildSelector from '@/components/GuildSelector'
 
 export default function GiveawaysList(){
   const [items, setItems] = useState<any[]>([])
@@ -47,6 +48,17 @@ export default function GiveawaysList(){
   }
 
   useEffect(()=>{ fetchList() }, [guildId, status])
+
+  if (!guildId) {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4">
+          <div className="text-sm opacity-80 mb-2">Selecione um servidor para ver os sorteios.</div>
+          <GuildSelector />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-3">
