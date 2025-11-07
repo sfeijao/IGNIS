@@ -12,6 +12,7 @@ export default function GiveawayWizard(){
   const [durationMinutes, setDurationMinutes] = useState(60)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string|null>(null)
+  const [activeCount, setActiveCount] = useState<number|null>(null)
   const triggerRef = useRef<HTMLButtonElement|null>(null)
   const firstFieldRef = useRef<HTMLInputElement|null>(null)
   const t = useGiveawaysI18n()
@@ -39,6 +40,14 @@ export default function GiveawayWizard(){
     if (open) {
       // focus first field when opening
       setTimeout(() => { try { firstFieldRef.current?.focus() } catch {} }, 0)
+      // Prefetch quick context (active giveaways count) to aid decisions and avoid extra request later
+      const gid = guildId
+      if (gid) {
+        fetch(`/api/guilds/${gid}/giveaways?status=active`, { credentials: 'include' })
+          .then(r => r.json().then(j => ({ ok: r.ok, data: j })))
+          .then(({ ok, data }) => { if (ok && data && Array.isArray(data.giveaways)) setActiveCount(data.giveaways.length) })
+          .catch(()=>{})
+      }
     }
   }, [open])
 
@@ -60,6 +69,9 @@ export default function GiveawayWizard(){
             <div id="create-giveaway-title" className="text-lg font-semibold mb-3">{t('giveaways.action.create')}</div>
             {error && <div className="text-sm text-red-400 mb-2">{error}</div>}
             <div className="grid gap-3">
+              {activeCount != null && (
+                <div className="text-xs opacity-70">{t('giveaways.meta.activeCount','Ativos')}: {activeCount}</div>
+              )}
               <label className="grid gap-1">
                 <span className="text-sm opacity-80">{t('giveaways.field.title')}</span>
                 <input ref={firstFieldRef} value={title} onChange={e=>setTitle(e.target.value)} className="px-3 py-2 rounded bg-neutral-800 border border-neutral-700" placeholder="Nitro semanal" />

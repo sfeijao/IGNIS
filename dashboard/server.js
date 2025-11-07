@@ -1,4 +1,6 @@
 const express = require('express');
+const http = require('http');
+const { spawn } = require('child_process');
 const session = require('express-session');
 let MongoStore = null; try { MongoStore = require('connect-mongo'); } catch {}
 const passport = require('passport');
@@ -112,6 +114,21 @@ try {
     }
 } catch {}
 
+// Basic Cache-Control for static assets and html-like files
+app.use((req, res, next) => {
+    try {
+        if (req.method === 'GET') {
+            if (/\.(?:css|js|png|jpg|jpeg|gif|svg|webp|ico|woff2?|ttf|eot)$/i.test(req.path)) {
+                res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            } else if (/\.(?:html|txt|json|xml|map)$/i.test(req.path)) {
+                // Short cache for documents
+                res.setHeader('Cache-Control', 'public, max-age=60');
+            }
+        }
+    } catch {}
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 // Canonicalize repeated "/next" path segments to prevent double basePath issues from clients
 app.use((req, res, next) => {
@@ -147,25 +164,69 @@ function requireAuth(req, res, next){
 app.use('/dashboard', express.static(CLASSIC_PUBLIC_DIR, { index: false, redirect: false }));
 // Serve the revamped website dashboard assets under /dashboard-new (separate entry point)
 app.use('/dashboard-new', express.static(WEBSITE_PUBLIC_DIR, { index: false, redirect: false }));
-// Serve the statically exported Next.js dashboard (when built) under /next
+// Serve Next.js dashboard from standalone server if available; otherwise fall back to static export
 try {
+    const NEXT_STANDALONE_DIR = path.join(__dirname, 'next', '.next', 'standalone');
     const NEXT_EXPORT_DIR = path.join(__dirname, 'public', 'next-export');
-    if (fs.existsSync(NEXT_EXPORT_DIR)) {
-    app.use('/next', express.static(NEXT_EXPORT_DIR, { index: 'index.html', redirect: false }));
-        // Removed legacy "/next/logs" alias; route no longer available
-        // Removed legacy "/next/logs/live" alias; route no longer available
+    const hasStandalone = fs.existsSync(NEXT_STANDALONE_DIR) && fs.existsSync(path.join(NEXT_STANDALONE_DIR, 'server.js'));
+    if (hasStandalone) {
+        const NEXT_PORT = parseInt(process.env.NEXT_PORT || process.env.PORT_NEXT || '5175', 10);
+        // Spawn Next standalone server
+        const nextEnv = Object.assign({}, process.env, {
+            PORT: String(NEXT_PORT),
+            HOSTNAME: '127.0.0.1',
+            NODE_ENV: 'production'
+        });
+        try {
+            const child = spawn(process.execPath, ['server.js'], { cwd: NEXT_STANDALONE_DIR, env: nextEnv, stdio: 'inherit' });
+            process.on('exit', () => { try { child.kill('SIGTERM'); } catch {} });
+        } catch (e) {
+            logger.warn('Failed to start Next standalone server:', e?.message || String(e));
+        }
+
+        // Extra cache-control for Next static assets
+        app.use('/next/_next/static', (req, res, next) => { try { res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); } catch {} next(); });
+
+        // Minimal HTTP proxy to Next standalone for /next/*
+        const NEXT_TARGET = `http://127.0.0.1:${NEXT_PORT}`;
+        app.use('/next', (req, res) => {
+            try {
+                const targetUrl = new URL(req.url, NEXT_TARGET);
+                const opts = {
+                    method: req.method,
+                    headers: Object.assign({}, req.headers, { host: `127.0.0.1:${NEXT_PORT}` })
+                };
+                const proxyReq = http.request(targetUrl, opts, (proxyRes) => {
+                    // Pass through status and headers
+                    try { res.writeHead(proxyRes.statusCode || 502, proxyRes.headers); } catch {}
+                    proxyRes.pipe(res);
+                });
+                req.pipe(proxyReq);
+                proxyReq.on('error', (err) => {
+                    try { logger.warn('Proxy to Next failed:', err?.message || String(err)); } catch {}
+                    if (!res.headersSent) res.status(502);
+                    res.end('Next server unavailable');
+                });
+            } catch (e) {
+                if (!res.headersSent) res.status(500);
+                res.end('Proxy error');
+            }
+        });
+
         // Make the new dashboard the default landing page
         app.get('/', (req, res) => res.redirect('/next/'));
         // Redirect legacy dashboard entry points to the new Next dashboard
         app.get(['/dashboard', '/dashboard/*', '/dashboard-new', '/dashboard-new/*'], (req, res) => res.redirect('/next/'));
+    } else if (fs.existsSync(NEXT_EXPORT_DIR)) {
+        app.use('/next', express.static(NEXT_EXPORT_DIR, { index: 'index.html', redirect: false }));
+        // Make the new dashboard the default landing page
+        app.get('/', (req, res) => res.redirect('/next/'));
+        app.get(['/dashboard', '/dashboard/*', '/dashboard-new', '/dashboard-new/*'], (req, res) => res.redirect('/next/'));
         // Serve RSC index.txt for exported pages, accounting for basePath "/next"
-        // Next static export with basePath fetches /next/<route>/index.txt
         app.get(/^\/(.*)\/index\.txt$/, (req, res, next) => {
             try {
                 let rel = req.params[0] || '';
-                // Strip any repeated leading basePath segments (e.g. "next/next/logs" -> "logs")
                 while (rel.startsWith('next/')) rel = rel.slice('next/'.length);
-                // Handle exact basePath root (e.g. /next/index.txt)
                 if (rel === 'next') rel = '';
                 const filePath = path.join(NEXT_EXPORT_DIR, rel, 'index.txt');
                 if (fs.existsSync(filePath)) return res.sendFile(filePath);

@@ -15,6 +15,15 @@
 
 ## 🚀 Funcionalidades
 
+### 🎁 Giveaways (Sorteios)
+
+- Criação de sorteios com duração e número de vencedores
+- Entradas em tempo real com atualização ao vivo via Socket.io
+- Encerramento automático com anúncio de vencedores (Discord)
+- Re-roll, exportação de entradas (CSV) e logs
+- Permissões e rate-limits por servidor
+
+Documentação detalhada: veja `README-GIVEAWAYS.md`.
 ### 🔐 **Sistema de Verificação Automática**
 
 - ✅ Painel de verificação com botão interativo
@@ -43,7 +52,6 @@
 - 👥 Logs de entrada/saída de membros
 - ⚡ Logs de ações administrativas
 - 🕒 Timestamps e informações detalhadas
-
 ## 🎮 Comandos Disponíveis
 
 ### 📌 **Comandos Básicos**
@@ -53,7 +61,6 @@
 | `/ping` | Testa a latência do bot | `/ping` |
 | `/ajuda` | Lista completa de comandos | `/ajuda` |
 | `/info-servidor` | Informações do servidor | `/info-servidor` |
-
 
 ### ⚙️ **Comandos de Configuração** (Apenas Admins)
 
