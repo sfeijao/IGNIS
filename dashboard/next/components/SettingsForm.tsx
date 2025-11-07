@@ -403,6 +403,66 @@ export default function SettingsForm() {
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBotSettings((s) => ({ ...s, statusText: e.target.value }))}
             />
           </div>
+          {/* System Roles Section (moved up for visibility) */}
+          <div className="md:col-span-2 mb-6 pb-4 border-b border-neutral-800">
+            <h3 className="text-md font-semibold mb-3">{t('settings.bot.systemRoles.title')}</h3>
+            <p className="text-xs text-neutral-400 mb-4">{t('settings.bot.systemRoles.help')}</p>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="staffRoleId" className="block text-sm mb-1">{t('settings.bot.systemRoles.staff')}</label>
+                <select
+                  id="staffRoleId"
+                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+                  value={botSettings.staffRoleId || ''}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, staffRoleId: e.target.value }))}
+                >
+                  <option value="">—</option>
+                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                </select>
+                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.staff.hint')}</p>
+              </div>
+              <div>
+                <label htmlFor="adminRoleId" className="block text-sm mb-1">{t('settings.bot.systemRoles.admin')}</label>
+                <select
+                  id="adminRoleId"
+                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+                  value={botSettings.adminRoleId || ''}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, adminRoleId: e.target.value }))}
+                >
+                  <option value="">—</option>
+                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                </select>
+                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.admin.hint')}</p>
+              </div>
+              <div>
+                <label htmlFor="verifiedRoleId" className="block text-sm mb-1">{t('verification.verifiedRole')}</label>
+                <select
+                  id="verifiedRoleId"
+                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+                  value={botSettings.verifiedRoleId || ''}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, verifiedRoleId: e.target.value }))}
+                >
+                  <option value="">—</option>
+                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                </select>
+                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.verified.hint')}</p>
+              </div>
+              <div>
+                <label htmlFor="unverifiedRoleId" className="block text-sm mb-1">{t('verification.unverifiedRole')}</label>
+                <select
+                  id="unverifiedRoleId"
+                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+                  value={botSettings.unverifiedRoleId || ''}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, unverifiedRoleId: e.target.value }))}
+                >
+                  <option value="">—</option>
+                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                </select>
+                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.unverified.hint')}</p>
+              </div>
+            </div>
+            <p className="text-xs text-neutral-500 mt-2">{t('settings.bot.systemRoles.note')}</p>
+          </div>
           <div className="md:col-span-2">
             <label htmlFor="bannerUrl" className="block text-sm mb-1">{t('settings.bot.banner')}</label>
             <input
@@ -510,66 +570,6 @@ export default function SettingsForm() {
             ) : null}
           </div>
 
-          {/* System Roles Section */}
-          <div className="md:col-span-2 mt-6 pt-4 border-t border-neutral-800">
-            <h3 className="text-md font-semibold mb-3">{t('settings.bot.systemRoles.title')}</h3>
-            <p className="text-xs text-neutral-400 mb-4">{t('settings.bot.systemRoles.help')}</p>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="staffRoleId" className="block text-sm mb-1">{t('settings.bot.systemRoles.staff')}</label>
-                <select
-                  id="staffRoleId"
-                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
-                  value={botSettings.staffRoleId || ''}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, staffRoleId: e.target.value }))}
-                >
-                  <option value="">—</option>
-                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
-                </select>
-                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.staff.hint')}</p>
-              </div>
-              <div>
-                <label htmlFor="adminRoleId" className="block text-sm mb-1">{t('settings.bot.systemRoles.admin')}</label>
-                <select
-                  id="adminRoleId"
-                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
-                  value={botSettings.adminRoleId || ''}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, adminRoleId: e.target.value }))}
-                >
-                  <option value="">—</option>
-                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
-                </select>
-                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.admin.hint')}</p>
-              </div>
-              <div>
-                <label htmlFor="verifiedRoleId" className="block text-sm mb-1">{t('verification.verifiedRole')}</label>
-                <select
-                  id="verifiedRoleId"
-                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
-                  value={botSettings.verifiedRoleId || ''}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, verifiedRoleId: e.target.value }))}
-                >
-                  <option value="">—</option>
-                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
-                </select>
-                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.verified.hint')}</p>
-              </div>
-              <div>
-                <label htmlFor="unverifiedRoleId" className="block text-sm mb-1">{t('verification.unverifiedRole')}</label>
-                <select
-                  id="unverifiedRoleId"
-                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
-                  value={botSettings.unverifiedRoleId || ''}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, unverifiedRoleId: e.target.value }))}
-                >
-                  <option value="">—</option>
-                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
-                </select>
-                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.unverified.hint')}</p>
-              </div>
-            </div>
-            <p className="text-xs text-neutral-500 mt-2">{t('settings.bot.systemRoles.note')}</p>
-          </div>
         </div>
       </div>
 
