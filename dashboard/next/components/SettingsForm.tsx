@@ -410,7 +410,16 @@ export default function SettingsForm() {
               placeholder={t('settings.bot.banner.placeholder')}
               className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
               value={botSettings.bannerUrl || ''}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBotSettings((s) => ({ ...s, bannerUrl: e.target.value }))}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const v = (e.target.value || '').trim()
+                // Block local file paths (file:// or Windows drive letters) to avoid browser errors
+                if (/^file:\/\//i.test(v) || /^[a-zA-Z]:\\/.test(v)) {
+                  toast({ type: 'error', title: t('settings.bot.banner.localPathError') })
+                  setBotSettings((s) => ({ ...s, bannerUrl: '' }))
+                } else {
+                  setBotSettings((s) => ({ ...s, bannerUrl: v }))
+                }
+              }}
             />
             <div className="flex items-center gap-2 mt-2">
               <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 cursor-pointer">
@@ -464,7 +473,15 @@ export default function SettingsForm() {
               placeholder={t('settings.bot.icon.placeholder')}
               className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
               value={botSettings.iconUrl || ''}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBotSettings((s) => ({ ...s, iconUrl: e.target.value }))}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const v = (e.target.value || '').trim()
+                if (/^file:\/\//i.test(v) || /^[a-zA-Z]:\\/.test(v)) {
+                  toast({ type: 'error', title: t('settings.bot.icon.localPathError') })
+                  setBotSettings((s) => ({ ...s, iconUrl: '' }))
+                } else {
+                  setBotSettings((s) => ({ ...s, iconUrl: v }))
+                }
+              }}
             />
             <div className="flex items-center gap-2 mt-2">
               <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 cursor-pointer">

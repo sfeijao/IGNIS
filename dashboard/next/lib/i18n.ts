@@ -210,6 +210,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'settings.bot.banner.limit': 'Limite ~20MB. Redimensionamos para 1600×400 (GIF não é comprimido).',
   'settings.bot.banner.typeError': 'Tipo de imagem não suportado',
   'settings.bot.banner.sizeError': 'Imagem demasiado grande',
+  'settings.bot.banner.localPathError': 'Use Carregar imagem ou um URL público (http/https). Caminho local não suportado.',
   'settings.bot.banner.cropToFill': 'Cortar para preencher (1600×400)',
   'settings.bot.banner.cropHint': 'Quando ativo, a imagem será recortada ao centro para preencher exatamente 1600×400.',
   // Settings: System roles (bot settings)
@@ -238,6 +239,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'settings.bot.icon.limit': 'Limite ~20MB. Redimensionamos até 256×256 (GIF não é comprimido).',
   'settings.bot.icon.typeError': 'Tipo de imagem não suportado',
   'settings.bot.icon.sizeError': 'Ícone demasiado grande',
+  'settings.bot.icon.localPathError': 'Use Carregar ícone ou um URL público (http/https). Caminho local não suportado.',
   // Commands
   'commands.redeploy': 'Publicar novamente',
   'commands.sync': 'Sincronizar',
@@ -818,6 +820,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'settings.bot.banner.limit': 'Limit ~2.5MB. We will resize to fit 1600×400.',
   'settings.bot.banner.typeError': 'Unsupported image type',
   'settings.bot.banner.sizeError': 'Image too large',
+  'settings.bot.banner.localPathError': 'Use Upload image or a public URL (http/https). Local file path is not supported.',
   'settings.bot.banner.cropToFill': 'Crop to fill (1600×400)',
   'settings.bot.banner.cropHint': 'When enabled, the image will be center-cropped to exactly 1600×400.',
   // Settings: System roles (bot settings)
@@ -846,6 +849,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'settings.bot.icon.limit': 'Limit ~2.5MB. We resize to 256×256 (GIF not compressed).',
   'settings.bot.icon.typeError': 'Unsupported image type',
   'settings.bot.icon.sizeError': 'Icon too large',
+  'settings.bot.icon.localPathError': 'Use Upload icon or a public URL (http/https). Local file path is not supported.',
   'settings.save': 'Save settings',
   'settings.saving': 'Saving…',
   'settings.loading': 'Loading…',
