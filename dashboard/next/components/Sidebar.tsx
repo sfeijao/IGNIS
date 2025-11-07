@@ -9,6 +9,7 @@ import { useI18n } from '@/lib/i18n'
 const nav = [
   { href: '/', key: 'nav.dashboard', flag: 'stable' },
   { href: '/plugins', key: 'nav.plugins', flag: 'stable' },
+  { href: '/giveaways', key: 'nav.giveaways', flag: 'stable' },
   { href: '/moderation', key: 'nav.moderation', flag: 'stable' },
   { href: '/moderation/center', key: 'nav.moderation.center', flag: 'stable' },
   { href: '/members', key: 'nav.members', flag: 'stable' },
@@ -36,6 +37,7 @@ export default function Sidebar() {
     switch (key) {
       case 'nav.dashboard': return <Icon name="dashboard" />
       case 'nav.plugins': return <Icon name="plugins" />
+  case 'nav.giveaways': return <span style={{fontSize:'1.05rem'}}>🎉</span>
 
       case 'nav.moderation': return <Icon name="shield" />
       case 'nav.members': return <Icon name="members" />

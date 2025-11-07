@@ -3,11 +3,10 @@
  * We export to dashboard/public/next-export for simple hosting via Express static.
  */
 const nextConfig = {
-  output: 'export',
+  // Switch to standalone to allow dynamic routes without static params
+  output: 'standalone',
   distDir: '.next',
-  // Serve under /next when hosted by Express
   basePath: '/next',
-  // Ensure assets resolve correctly when nested
   assetPrefix: '/next/',
   trailingSlash: true,
 };

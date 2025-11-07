@@ -128,13 +128,19 @@ const config = {
     },
 };
 
-// Validações críticas com debugging detalhado
-console.log('[CONFIG DEBUG] Validating environment variables...');
-console.log('[CONFIG DEBUG] DISCORD_TOKEN present:', !!config.DISCORD.TOKEN);
-console.log('[CONFIG DEBUG] CLIENT_ID present:', !!config.DISCORD.CLIENT_ID);
-console.log('[CONFIG DEBUG] CLIENT_SECRET present:', !!config.DISCORD.CLIENT_SECRET);
-console.log('[CONFIG DEBUG] Environment:', config.NODE_ENV);
-console.log('[CONFIG DEBUG] Available env vars:', Object.keys(process.env).filter(key => key.includes('CLIENT') || key.includes('DISCORD')));
+// Função de debug condicional: silêncio completo em ambiente de teste
+function debugLog(){
+    if (config.NODE_ENV === 'test') return; // suprime ruído nos testes
+    console.log.apply(console, arguments);
+}
+
+// Validações críticas com debugging detalhado (silenciadas em test)
+debugLog('[CONFIG DEBUG] Validating environment variables...');
+debugLog('[CONFIG DEBUG] DISCORD_TOKEN present:', !!config.DISCORD.TOKEN);
+debugLog('[CONFIG DEBUG] CLIENT_ID present:', !!config.DISCORD.CLIENT_ID);
+debugLog('[CONFIG DEBUG] CLIENT_SECRET present:', !!config.DISCORD.CLIENT_SECRET);
+debugLog('[CONFIG DEBUG] Environment:', config.NODE_ENV);
+debugLog('[CONFIG DEBUG] Available env vars:', Object.keys(process.env).filter(key => key.includes('CLIENT') || key.includes('DISCORD')));
 
 // Validações obrigatórias para funcionamento básico do bot
 assert(config.DISCORD.TOKEN, 'DISCORD_TOKEN é obrigatório');
@@ -163,7 +169,7 @@ if (!config.DISCORD.CLIENT_SECRET) {
     config.DISCORD.CLIENT_SECRET = 'bot_only';
     }
 } else {
-    console.log('[CONFIG DEBUG] CLIENT_SECRET encontrado - dashboard habilitado');
+    debugLog('[CONFIG DEBUG] CLIENT_SECRET encontrado - dashboard habilitado');
 }
 
 // Validações de produção
@@ -174,8 +180,8 @@ if (isProd) {
 }
 
 // Log de inicialização (sem expor segredos)
-console.log(`[CONFIG] Carregando configuração para ambiente: ${config.NODE_ENV}`);
-console.log(`[CONFIG] URL base: ${config.WEBSITE.BASE_URL}`);
+debugLog(`[CONFIG] Carregando configuração para ambiente: ${config.NODE_ENV}`);
+debugLog(`[CONFIG] URL base: ${config.WEBSITE.BASE_URL}`);
 if (isProd) {
     try {
         const details = {
@@ -184,11 +190,11 @@ if (isProd) {
             railwayStaticUrl: process.env.RAILWAY_STATIC_URL || null,
             railwayPublicDomain: process.env.RAILWAY_PUBLIC_DOMAIN || null
         };
-        console.log('[CONFIG] Domain selection details:', details);
+    debugLog('[CONFIG] Domain selection details:', details);
     } catch {}
 }
-console.log(`[CONFIG] Porta: ${config.WEBSITE.PORT}`);
-console.log(`[CONFIG] Guild ID: ${config.DISCORD.GUILD_ID}`);
+debugLog(`[CONFIG] Porta: ${config.WEBSITE.PORT}`);
+debugLog(`[CONFIG] Guild ID: ${config.DISCORD.GUILD_ID}`);
 
 // Helper to return base URL in a stable way for callers
 config.getBaseUrl = function() {

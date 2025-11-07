@@ -7,6 +7,18 @@ const PORT = process.env.WEBSITE_PORT || 3001;
 // Middleware para servir arquivos estáticos
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Normaliza caminhos duplicados /next/next/... para /next/... (previne 404 em prefetch do Next)
+app.use((req, _res, next) => {
+    try {
+        if (typeof req.url === 'string' && req.url.startsWith('/next/next/')) {
+            let rest = req.url.slice(1); // remove '/'
+            while (rest.startsWith('next/')) rest = rest.slice('next/'.length);
+            req.url = '/next/' + rest;
+        }
+    } catch {}
+    next();
+});
+
 // Servir o dashboard Next.js exportado estaticamente sob /next
 // O export final é gerado em dashboard/public/next-export
 try {

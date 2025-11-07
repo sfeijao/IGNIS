@@ -113,6 +113,19 @@ try {
 } catch {}
 
 app.use(express.static(path.join(__dirname, 'public')));
+// Canonicalize repeated "/next" path segments to prevent double basePath issues from clients
+app.use((req, res, next) => {
+    try {
+        // Only normalize for paths that start with /next and have duplicates like /next/next/...
+        if (typeof req.url === 'string' && req.url.startsWith('/next/next/')) {
+            // Strip all repeated leading 'next/' segments down to a single '/next/'
+            let rest = req.url.slice(1); // remove leading '/'
+            while (rest.startsWith('next/')) rest = rest.slice('next/'.length);
+            req.url = '/next/' + rest;
+        }
+    } catch {}
+    next();
+});
 // Paths for classic dashboard (rich features) and the revamped website UI
 const WEBSITE_PUBLIC_DIR = path.join(__dirname, '..', 'website', 'public');
 const CLASSIC_PUBLIC_DIR = path.join(__dirname, 'public');
@@ -138,7 +151,7 @@ app.use('/dashboard-new', express.static(WEBSITE_PUBLIC_DIR, { index: false, red
 try {
     const NEXT_EXPORT_DIR = path.join(__dirname, 'public', 'next-export');
     if (fs.existsSync(NEXT_EXPORT_DIR)) {
-        app.use('/next', express.static(NEXT_EXPORT_DIR, { index: 'index.html', redirect: false }));
+    app.use('/next', express.static(NEXT_EXPORT_DIR, { index: 'index.html', redirect: false }));
         // Removed legacy "/next/logs" alias; route no longer available
         // Removed legacy "/next/logs/live" alias; route no longer available
         // Make the new dashboard the default landing page
@@ -163,6 +176,18 @@ try {
 } catch {}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Mount giveaway API router
+try {
+    const giveawayRoutes = require('./routes/giveawayRoutes');
+    app.use('/api', giveawayRoutes);
+} catch (e) {
+    try { console.warn('Giveaway routes not mounted:', e.message); } catch {}
+}
+// Start giveaway background worker (Mongo dependent)
+try {
+    const { initGiveawayWorker } = require('../utils/giveaways/worker');
+    initGiveawayWorker();
+} catch (e) { try { console.warn('Giveaway worker not started:', e.message); } catch {} }
 
 // Reusable helper to call Discord OAuth user-scoped endpoints with session cache and backoff
 async function oauthFetchWithSessionCache(req, url, opts={}){
