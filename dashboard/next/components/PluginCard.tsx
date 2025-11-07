@@ -3,7 +3,7 @@ import { Icon, IconName } from './icons'
 
 type Props = { name: string; desc: string; badge?: string; icon?: IconName; tip?: string; href?: string }
 
-export default function PluginCard({ name, desc, badge = 'Beta', icon = 'plugins', tip, href }: Props) {
+export default function PluginCard({ name, desc, badge, icon = 'plugins', tip, href }: Props) {
   return (
     <article className="card p-5 flex flex-col gap-3 transition-transform hover:-translate-y-0.5 hover:shadow-xl">
       <div className="flex items-center justify-between">
@@ -11,7 +11,7 @@ export default function PluginCard({ name, desc, badge = 'Beta', icon = 'plugins
           <span className="text-lg inline-flex items-center" aria-hidden><Icon name={icon} /></span>
           <h3 className="font-semibold">{name}</h3>
         </div>
-        <span className="badge">{badge}</span>
+        {badge ? <span className="badge">{badge}</span> : null}
       </div>
       <p className="text-neutral-300 text-sm flex-1">{desc}</p>
       <div className="flex gap-2">
