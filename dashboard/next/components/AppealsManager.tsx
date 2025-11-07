@@ -110,7 +110,7 @@ export default function AppealsManager() {
       {error && <div className="text-red-400">{error}</div>}
       <section className="card">
         <div className="card-header">{t('appeals.queue')}</div>
-        <div className="card-body grid gap-3">
+        <div className="card-body grid gap-3" role="status" aria-live="polite" aria-busy={loading}>
           {loading && <div className="grid md:grid-cols-2 gap-3">{skeletonCards}</div>}
           {!loading && paged.length === 0 && <div className="opacity-70">{t('appeals.empty')}</div>}
           {!loading && paged.map(ap => (

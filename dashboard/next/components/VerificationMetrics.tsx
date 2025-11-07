@@ -45,6 +45,22 @@ export default function VerificationMetrics() {
     return logs.filter((l:any) => (l.message ? String(l.message).toLowerCase() : JSON.stringify(l).toLowerCase()).includes(q))
   }, [logs, logSearch])
 
+  // Simple derived success rate & failure trend (if metrics provide counts)
+  const successRate = useMemo(() => {
+    if (!metrics) return null
+    const success = metrics.successCount || metrics.verified || metrics.verificationsPassed || 0
+    const failed = metrics.failCount || metrics.failed || metrics.verificationsFailed || 0
+    const total = success + failed
+    if (!total) return null
+    return (success / total)
+  }, [metrics])
+  const totalAttempts = useMemo(() => {
+    if (!metrics) return 0
+    const success = metrics.successCount || metrics.verified || metrics.verificationsPassed || 0
+    const failed = metrics.failCount || metrics.failed || metrics.verificationsFailed || 0
+    return success + failed
+  }, [metrics])
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -73,13 +89,22 @@ export default function VerificationMetrics() {
             </div>
           )) : (!loading && <div className="opacity-70">{t('verification.metrics.noData')}</div>)}
         </div>
+        {successRate !== null && (
+          <div className="mt-4 space-y-2">
+            <div className="text-sm font-medium">{t('verification.metrics.successRate')} ({Math.round(successRate*100)}%)</div>
+            <div className="h-3 w-full bg-neutral-800 rounded overflow-hidden">
+              <div className="h-full bg-green-500/70" style={{ width: `${successRate*100}%` }} />
+            </div>
+            <div className="text-xs opacity-70">{t('verification.metrics.totalAttempts')}: {totalAttempts}</div>
+          </div>
+        )}
       </section>
       <section className="card">
         <div className="card-header flex items-center justify-between gap-2">
           <span>{t('verification.metrics.recentLogs')}</span>
-          <input className="input w-48" placeholder={t('common.search')} value={logSearch} onChange={e=>setLogSearch(e.target.value)} />
+          <input className="input w-48" placeholder={t('common.search')} aria-label={t('common.search')} value={logSearch} onChange={e=>setLogSearch(e.target.value)} />
         </div>
-        <div className="card-body text-xs max-h-[360px] overflow-auto">
+        <div className="card-body text-xs max-h-[360px] overflow-auto" role="status" aria-live="polite" aria-busy={loading}>
           {loading && <div className="opacity-70">{t('common.loading')}</div>}
           {!loading && filteredLogs.length === 0 && <div className="opacity-70">{t('verification.metrics.noLogs')}</div>}
           {!loading && filteredLogs.map((l:any, idx:number) => (

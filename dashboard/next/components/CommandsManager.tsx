@@ -117,7 +117,7 @@ export default function CommandsManager() {
       </section>
       <section className="card">
         <div className="card-header">{t('commands.registered')}</div>
-        <div className="card-body grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="card-body grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" role="status" aria-live="polite" aria-busy={loading}>
           {loading && Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="p-3 rounded-lg bg-neutral-800/40 border border-neutral-800 animate-pulse h-20" />
           ))}

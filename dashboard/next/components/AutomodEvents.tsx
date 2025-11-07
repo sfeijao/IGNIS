@@ -25,7 +25,7 @@ export default function AutomodEvents() {
       // Server supports filter by resolved boolean; pending == resolved=false
       const res = await api.getAutomodEvents(gid, { resolved: false })
       setEvents(res?.events || res || [])
-    } catch (e: any) { setError(e?.message || 'Erro ao carregar eventos') }
+    } catch (e: any) { setError(e?.message || t('automod.loadFailed')) }
     finally { setLoading(false) }
   }
 
@@ -66,7 +66,7 @@ export default function AutomodEvents() {
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => guildId && load(guildId)} title={t('common.reload')}>{t('common.reload')}</button>
         </div>
         <div className="flex items-center gap-2">
-          <input className="input w-48" placeholder={t('common.search')} value={search} onChange={e=>{ setSearch(e.target.value); setPage(0) }} />
+          <input className="input w-48" placeholder={t('common.search')} aria-label={t('common.search')} value={search} onChange={e=>{ setSearch(e.target.value); setPage(0) }} />
           <div className="flex items-center gap-1 text-xs">
             <button type="button" className="btn btn-secondary btn-xs" disabled={page===0} onClick={() => setPage(p=>Math.max(0,p-1))}>&lt;</button>
             <span className="opacity-70">{page+1}/{totalPages}</span>
@@ -77,7 +77,7 @@ export default function AutomodEvents() {
       {error && <div className="text-red-400">{error}</div>}
       <section className="card">
         <div className="card-header">{t('automod.queue')}</div>
-        <div className="card-body grid gap-3">
+        <div className="card-body grid gap-3" role="status" aria-live="polite" aria-busy={loading}>
           {loading && <div className="grid md:grid-cols-2 gap-3">{skeletonCards}</div>}
           {!loading && paged.length === 0 && <div className="opacity-70">{t('automod.empty')}</div>}
           {!loading && paged.map(ev => (
