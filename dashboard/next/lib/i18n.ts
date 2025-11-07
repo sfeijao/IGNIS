@@ -223,6 +223,10 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'settings.bot.systemRoles.verified.hint': 'Atribuído quando o utilizador conclui verificação.',
   'settings.bot.systemRoles.unverified.hint': 'Opcional: aplicado antes da verificação.',
   'settings.bot.systemRoles.note': 'Selecione os cargos pretendidos. Também configurável na aba Verificação.',
+  'settings.bot.systemRoles.warn.missing': 'Defina pelo menos Staff, Admin e Cargo verificado para funcionamento completo.',
+  'settings.bot.systemRoles.warn.staff': 'Cargo Staff em falta.',
+  'settings.bot.systemRoles.warn.admin': 'Cargo Admin em falta.',
+  'settings.bot.systemRoles.warn.verified': 'Cargo verificado em falta.',
   // Settings save toasts
   'settings.saveSuccess': 'Definições guardadas',
   'settings.saveError': 'Falha ao guardar definições',
@@ -833,6 +837,10 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'settings.bot.systemRoles.verified.hint': 'Assigned after user completes verification.',
   'settings.bot.systemRoles.unverified.hint': 'Optional: applied before verification.',
   'settings.bot.systemRoles.note': 'Select desired roles. Also configurable under Verification tab.',
+  'settings.bot.systemRoles.warn.missing': 'Define at least Staff, Admin and Verified roles for full functionality.',
+  'settings.bot.systemRoles.warn.staff': 'Staff role missing.',
+  'settings.bot.systemRoles.warn.admin': 'Admin role missing.',
+  'settings.bot.systemRoles.warn.verified': 'Verified role missing.',
   // Settings save toasts
   'settings.saveSuccess': 'Settings saved',
   'settings.saveError': 'Failed to save settings',

@@ -80,6 +80,15 @@ export default function SettingsForm() {
     }
   }
 
+  // Computed: which roles are missing (unverified is optional)
+  const missingRoles = useMemo(() => {
+    const missing: string[] = []
+    if (!botSettings.staffRoleId) missing.push(t('settings.bot.systemRoles.staff'))
+    if (!botSettings.adminRoleId) missing.push(t('settings.bot.systemRoles.admin'))
+    if (!botSettings.verifiedRoleId) missing.push(t('verification.verifiedRole'))
+    return missing
+  }, [botSettings.staffRoleId, botSettings.adminRoleId, botSettings.verifiedRoleId, t])
+
   useEffect(() => {
     if (!guildId) return
     // attempt load; if endpoint not ready, keep defaults silently
@@ -405,6 +414,11 @@ export default function SettingsForm() {
           </div>
           {/* System Roles Section (moved up for visibility) */}
           <div className="md:col-span-2 mb-6 pb-4 border-b border-neutral-800">
+            {missingRoles.length > 0 && (
+              <div className="mb-3 rounded-md border border-amber-500/50 bg-amber-500/10 text-amber-200 text-sm p-2">
+                {t('settings.bot.systemRoles.warn.missing')} {missingRoles.join(', ')}
+              </div>
+            )}
             <h3 className="text-md font-semibold mb-3">{t('settings.bot.systemRoles.title')}</h3>
             <p className="text-xs text-neutral-400 mb-4">{t('settings.bot.systemRoles.help')}</p>
             <div className="grid md:grid-cols-2 gap-4">
@@ -412,7 +426,7 @@ export default function SettingsForm() {
                 <label htmlFor="staffRoleId" className="block text-sm mb-1">{t('settings.bot.systemRoles.staff')}</label>
                 <select
                   id="staffRoleId"
-                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+                  className={`w-full rounded-lg bg-neutral-900 border px-3 py-2 ${!botSettings.staffRoleId ? 'border-rose-600' : 'border-neutral-800'}`}
                   value={botSettings.staffRoleId || ''}
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, staffRoleId: e.target.value }))}
                 >
@@ -425,7 +439,7 @@ export default function SettingsForm() {
                 <label htmlFor="adminRoleId" className="block text-sm mb-1">{t('settings.bot.systemRoles.admin')}</label>
                 <select
                   id="adminRoleId"
-                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+                  className={`w-full rounded-lg bg-neutral-900 border px-3 py-2 ${!botSettings.adminRoleId ? 'border-rose-600' : 'border-neutral-800'}`}
                   value={botSettings.adminRoleId || ''}
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, adminRoleId: e.target.value }))}
                 >
@@ -438,7 +452,7 @@ export default function SettingsForm() {
                 <label htmlFor="verifiedRoleId" className="block text-sm mb-1">{t('verification.verifiedRole')}</label>
                 <select
                   id="verifiedRoleId"
-                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+                  className={`w-full rounded-lg bg-neutral-900 border px-3 py-2 ${!botSettings.verifiedRoleId ? 'border-rose-600' : 'border-neutral-800'}`}
                   value={botSettings.verifiedRoleId || ''}
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, verifiedRoleId: e.target.value }))}
                 >
