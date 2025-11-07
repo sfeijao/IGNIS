@@ -212,6 +212,16 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'settings.bot.banner.sizeError': 'Imagem demasiado grande',
   'settings.bot.banner.cropToFill': 'Cortar para preencher (1600×400)',
   'settings.bot.banner.cropHint': 'Quando ativo, a imagem será recortada ao centro para preencher exatamente 1600×400.',
+  // Settings: System roles (bot settings)
+  'settings.bot.systemRoles.title': 'Cargos do sistema',
+  'settings.bot.systemRoles.help': 'Defina cargos chave usados pelo sistema: staff, admin e verificação.',
+  'settings.bot.systemRoles.staff': 'Cargo Staff',
+  'settings.bot.systemRoles.staff.hint': 'Usado para tickets e permissões internas.',
+  'settings.bot.systemRoles.admin': 'Cargo Admin',
+  'settings.bot.systemRoles.admin.hint': 'Acesso avançado e configuração do sistema.',
+  'settings.bot.systemRoles.verified.hint': 'Atribuído quando o utilizador conclui verificação.',
+  'settings.bot.systemRoles.unverified.hint': 'Opcional: aplicado antes da verificação.',
+  'settings.bot.systemRoles.note': 'Selecione os cargos pretendidos. Também configurável na aba Verificação.',
   // Settings save toasts
   'settings.saveSuccess': 'Definições guardadas',
   'settings.saveError': 'Falha ao guardar definições',
@@ -810,6 +820,16 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'settings.bot.banner.sizeError': 'Image too large',
   'settings.bot.banner.cropToFill': 'Crop to fill (1600×400)',
   'settings.bot.banner.cropHint': 'When enabled, the image will be center-cropped to exactly 1600×400.',
+  // Settings: System roles (bot settings)
+  'settings.bot.systemRoles.title': 'System roles',
+  'settings.bot.systemRoles.help': 'Define key system roles: staff, admin and verification.',
+  'settings.bot.systemRoles.staff': 'Staff role',
+  'settings.bot.systemRoles.staff.hint': 'Used for tickets and internal permissions.',
+  'settings.bot.systemRoles.admin': 'Admin role',
+  'settings.bot.systemRoles.admin.hint': 'Advanced access and system configuration.',
+  'settings.bot.systemRoles.verified.hint': 'Assigned after user completes verification.',
+  'settings.bot.systemRoles.unverified.hint': 'Optional: applied before verification.',
+  'settings.bot.systemRoles.note': 'Select desired roles. Also configurable under Verification tab.',
   // Settings save toasts
   'settings.saveSuccess': 'Settings saved',
   'settings.saveError': 'Failed to save settings',

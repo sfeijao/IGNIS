@@ -2408,6 +2408,11 @@ app.post('/api/guild/:guildId/bot-settings', async (req, res) => {
             enableModerationLogs: Joi.boolean().default(true),
             bannerUrl: Joi.string().uri({ allowRelative: false }).max(2048).allow(''),
             iconUrl: Joi.string().uri({ allowRelative: false }).max(2048).allow(''),
+            // System roles (optional)
+            staffRoleId: Joi.string().trim().pattern(/^\d+$/).allow(''),
+            adminRoleId: Joi.string().trim().pattern(/^\d+$/).allow(''),
+            verifiedRoleId: Joi.string().trim().pattern(/^\d+$/).allow(''),
+            unverifiedRoleId: Joi.string().trim().pattern(/^\d+$/).allow(''),
             // allow arbitrary extra keys for future
         }).unknown(true);
         const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: false });
@@ -2416,6 +2421,17 @@ app.post('/api/guild/:guildId/bot-settings', async (req, res) => {
         const storage = require('../utils/storage');
         const current = await storage.getGuildConfig(req.params.guildId) || {};
         const next = { ...current, botSettings: { ...(current.botSettings || {}), ...value } };
+
+        // Mirror system roles to canonical locations for backward-compat components
+        next.roles = { ...(next.roles || {}) };
+        if (Object.prototype.hasOwnProperty.call(value, 'staffRoleId')) next.roles.staff = value.staffRoleId || '';
+        if (Object.prototype.hasOwnProperty.call(value, 'adminRoleId')) next.roles.admin = value.adminRoleId || '';
+        // Also wire verification roles into verification config (if present)
+        if (Object.prototype.hasOwnProperty.call(value, 'verifiedRoleId') || Object.prototype.hasOwnProperty.call(value, 'unverifiedRoleId')) {
+            next.verification = { ...(next.verification || {}) };
+            if (Object.prototype.hasOwnProperty.call(value, 'verifiedRoleId')) next.verification.verifiedRoleId = value.verifiedRoleId || '';
+            if (Object.prototype.hasOwnProperty.call(value, 'unverifiedRoleId')) next.verification.unverifiedRoleId = value.unverifiedRoleId || '';
+        }
         await storage.updateGuildConfig(req.params.guildId, next);
 
         // Best-effort live apply: nickname and presence

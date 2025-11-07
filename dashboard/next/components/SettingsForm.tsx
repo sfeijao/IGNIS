@@ -21,7 +21,13 @@ type BotSettings = {
   statusText?: string
   bannerUrl?: string
   iconUrl?: string
+  staffRoleId?: string
+  adminRoleId?: string
+  verifiedRoleId?: string
+  unverifiedRoleId?: string
 }
+
+type Role = { id: string; name: string }
 
 const defaults: Settings = {
   prefix: '!',
@@ -38,7 +44,11 @@ export default function SettingsForm() {
     statusType: 'CUSTOM',
     statusText: '',
     bannerUrl: '',
-    iconUrl: ''
+    iconUrl: '',
+    staffRoleId: '',
+    adminRoleId: '',
+    verifiedRoleId: '',
+    unverifiedRoleId: ''
   })
   const [uploading, setUploading] = useState(false)
   const [uploadingIcon, setUploadingIcon] = useState(false)
@@ -48,6 +58,7 @@ export default function SettingsForm() {
   const { t } = useI18n()
   const { toast } = useToast()
   const [channels, setChannels] = useState<Array<{ id: string; name: string; type?: string }>>([])
+  const [roles, setRoles] = useState<Role[]>([])
   const [bannerCropToFill, setBannerCropToFill] = useState(false)
 
   const isTextChannel = (ch: { id: string; name: string; type?: string }) => {
@@ -93,12 +104,20 @@ export default function SettingsForm() {
           statusType: (s.statusType as any) || 'CUSTOM',
           statusText: typeof s.statusText === 'string' ? s.statusText : '',
           bannerUrl: typeof s.bannerUrl === 'string' ? s.bannerUrl : '',
-          iconUrl: typeof s.iconUrl === 'string' ? s.iconUrl : ''
+          iconUrl: typeof s.iconUrl === 'string' ? s.iconUrl : '',
+          staffRoleId: typeof s.staffRoleId === 'string' ? s.staffRoleId : (s.roles?.staff || ''),
+          adminRoleId: typeof s.adminRoleId === 'string' ? s.adminRoleId : (s.roles?.admin || ''),
+          verifiedRoleId: typeof s.verifiedRoleId === 'string' ? s.verifiedRoleId : (s.verification?.verifiedRoleId || ''),
+          unverifiedRoleId: typeof s.unverifiedRoleId === 'string' ? s.unverifiedRoleId : (s.verification?.unverifiedRoleId || '')
         }))
       } catch {}
       try {
         const ch = await api.getChannels(guildId)
         setChannels(ch.channels || ch || [])
+      } catch {}
+      try {
+        const rs = await api.getRoles(guildId)
+        setRoles(rs.roles || rs || [])
       } catch {}
       setLoaded(true)
     })()
@@ -137,6 +156,11 @@ export default function SettingsForm() {
       }
       if (botSettings.bannerUrl) payload.bannerUrl = botSettings.bannerUrl
       if (botSettings.iconUrl) payload.iconUrl = botSettings.iconUrl
+      // Role mappings (only send if present to avoid wiping existing settings inadvertently)
+      if (botSettings.staffRoleId) payload.staffRoleId = botSettings.staffRoleId
+      if (botSettings.adminRoleId) payload.adminRoleId = botSettings.adminRoleId
+      if (botSettings.verifiedRoleId) payload.verifiedRoleId = botSettings.verifiedRoleId
+      if (botSettings.unverifiedRoleId) payload.unverifiedRoleId = botSettings.unverifiedRoleId
       await api.postBotSettings?.(guildId, payload)
       toast({ type: 'success', title: t('settings.saveSuccess') })
     } catch (err) {
@@ -467,6 +491,67 @@ export default function SettingsForm() {
                 <img src={botSettings.iconUrl} alt={t('settings.bot.icon.previewAlt')} className="w-16 h-16 rounded object-cover border border-neutral-800" />
               </div>
             ) : null}
+          </div>
+
+          {/* System Roles Section */}
+          <div className="md:col-span-2 mt-6 pt-4 border-t border-neutral-800">
+            <h3 className="text-md font-semibold mb-3">{t('settings.bot.systemRoles.title')}</h3>
+            <p className="text-xs text-neutral-400 mb-4">{t('settings.bot.systemRoles.help')}</p>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="staffRoleId" className="block text-sm mb-1">{t('settings.bot.systemRoles.staff')}</label>
+                <select
+                  id="staffRoleId"
+                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+                  value={botSettings.staffRoleId || ''}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, staffRoleId: e.target.value }))}
+                >
+                  <option value="">—</option>
+                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                </select>
+                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.staff.hint')}</p>
+              </div>
+              <div>
+                <label htmlFor="adminRoleId" className="block text-sm mb-1">{t('settings.bot.systemRoles.admin')}</label>
+                <select
+                  id="adminRoleId"
+                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+                  value={botSettings.adminRoleId || ''}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, adminRoleId: e.target.value }))}
+                >
+                  <option value="">—</option>
+                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                </select>
+                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.admin.hint')}</p>
+              </div>
+              <div>
+                <label htmlFor="verifiedRoleId" className="block text-sm mb-1">{t('verification.verifiedRole')}</label>
+                <select
+                  id="verifiedRoleId"
+                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+                  value={botSettings.verifiedRoleId || ''}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, verifiedRoleId: e.target.value }))}
+                >
+                  <option value="">—</option>
+                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                </select>
+                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.verified.hint')}</p>
+              </div>
+              <div>
+                <label htmlFor="unverifiedRoleId" className="block text-sm mb-1">{t('verification.unverifiedRole')}</label>
+                <select
+                  id="unverifiedRoleId"
+                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+                  value={botSettings.unverifiedRoleId || ''}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, unverifiedRoleId: e.target.value }))}
+                >
+                  <option value="">—</option>
+                  {roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                </select>
+                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.unverified.hint')}</p>
+              </div>
+            </div>
+            <p className="text-xs text-neutral-500 mt-2">{t('settings.bot.systemRoles.note')}</p>
           </div>
         </div>
       </div>
