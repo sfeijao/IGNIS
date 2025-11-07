@@ -1,9 +1,20 @@
+"use client"
 import Link from 'next/link'
 import { Icon, IconName } from './icons'
 
 type Props = { name: string; desc: string; badge?: string; icon?: IconName; tip?: string; href?: string }
 
 export default function PluginCard({ name, desc, badge, icon = 'plugins', tip, href }: Props) {
+  // Ensure links work when the Next export is served under "/next" basePath
+  const finalHref = (() => {
+    if (!href) return undefined
+    if (href.startsWith('/next')) return href
+    if (typeof window !== 'undefined') {
+      const onNextBase = window.location.pathname.startsWith('/next')
+      return onNextBase ? `/next${href}` : href
+    }
+    return href
+  })()
   return (
     <article className="card p-5 flex flex-col gap-3 transition-transform hover:-translate-y-0.5 hover:shadow-xl">
       <div className="flex items-center justify-between">
@@ -15,10 +26,10 @@ export default function PluginCard({ name, desc, badge, icon = 'plugins', tip, h
       </div>
       <p className="text-neutral-300 text-sm flex-1">{desc}</p>
       <div className="flex gap-2">
-        {href ? (
+        {finalHref ? (
           <>
-            <Link href={href} className="px-3 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium transition-all hover:animate-glow">Configurar</Link>
-            <Link href={href} className="px-3 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 transition-colors">Ver</Link>
+            <Link href={finalHref} className="px-3 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium transition-all hover:animate-glow" aria-label={`Configurar ${name}`}>Configurar</Link>
+            <Link href={finalHref} className="px-3 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 transition-colors" aria-label={`Ver ${name}`}>Ver</Link>
           </>
         ) : (
           <>

@@ -18,9 +18,8 @@ export default function HomePage() {
             Uma experiência moderna, rápida e responsiva — inspirada no MEE6 — mantendo a compatibilidade com seus sistemas atuais.
           </p>
           <div className="flex gap-3">
-            <Link href="/plugins" className="inline-flex items-center rounded-xl px-4 py-2 bg-brand-600 hover:bg-brand-700 transition text-white font-medium">Explorar plugins</Link>
-            <Link href="/tickets" className="inline-flex items-center rounded-xl px-4 py-2 bg-neutral-800 hover:bg-neutral-700 transition border border-neutral-700">{t('nav.tickets')}</Link>
-            <a href="/moderation-react.html" className="inline-flex items-center rounded-xl px-4 py-2 bg-neutral-800 hover:bg-neutral-700 transition border border-neutral-700">{t('nav.moderation.center')}</a>
+            <Link href="/next/plugins" className="inline-flex items-center rounded-xl px-4 py-2 bg-brand-600 hover:bg-brand-700 transition text-white font-medium">Explorar plugins</Link>
+            <Link href="/next/tickets" className="inline-flex items-center rounded-xl px-4 py-2 bg-neutral-800 hover:bg-neutral-700 transition border border-neutral-700">{t('nav.tickets')}</Link>
           </div>
         </div>
         <DashboardStats />

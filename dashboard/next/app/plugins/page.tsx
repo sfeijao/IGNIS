@@ -20,21 +20,21 @@ export default function PluginsPage() {
     {
       title: 'Essenciais',
       items: [
-        { name: 'Moderação', desc: 'Automod, logs, ações e auditoria.', icon: 'shield' as const, tip: 'Configure regras, mod-logs e automod.', href: '/moderation' },
+  { name: 'Moderação', desc: 'Automod, logs, ações e auditoria.', icon: 'shield' as const, tip: 'Configure regras, mod-logs e automod.', href: '/moderation' },
       ]
     },
     {
       title: 'Gestão do Servidor',
       items: [
-        { name: 'Tickets', desc: 'Gestão de tickets e painéis.', icon: 'tickets' as const, tip: 'Crie painéis e gerencie filas.', href: '/tickets' },
-        { name: 'Tags', desc: 'Respostas rápidas e painéis.', icon: 'tag' as const, tip: 'Defina atalhos e coleções.', href: '/tags' },
-        { name: 'Webhooks', desc: 'Gerir webhooks e auto-setup.', icon: 'plugins' as const, tip: 'Criar e testar webhooks.', href: '/webhooks' },
+  { name: 'Tickets', desc: 'Gestão de tickets e painéis.', icon: 'tickets' as const, tip: 'Crie painéis e gerencie filas.', href: '/tickets' },
+  { name: 'Tags', desc: 'Respostas rápidas e painéis.', icon: 'tag' as const, tip: 'Defina atalhos e coleções.', href: '/tags' },
+  { name: 'Webhooks', desc: 'Gerir webhooks e auto-setup.', icon: 'plugins' as const, tip: 'Criar e testar webhooks.', href: '/webhooks' },
       ]
     },
     {
       title: 'Segurança',
       items: [
-        { name: 'Verificação', desc: 'Configurar sistema de verificação.', icon: 'shield' as const, tip: 'Captcha e cargos.', href: '/verification' },
+  { name: 'Verificação', desc: 'Configurar sistema de verificação.', icon: 'shield' as const, tip: 'Captcha e cargos.', href: '/verification' },
       ]
     }
   ]
