@@ -150,8 +150,8 @@ try {
         app.get(/^\/(.*)\/index\.txt$/, (req, res, next) => {
             try {
                 let rel = req.params[0] || '';
-                // Strip leading basePath when present (e.g. "next/logs" -> "logs")
-                if (rel.startsWith('next/')) rel = rel.slice('next/'.length);
+                // Strip any repeated leading basePath segments (e.g. "next/next/logs" -> "logs")
+                while (rel.startsWith('next/')) rel = rel.slice('next/'.length);
                 // Handle exact basePath root (e.g. /next/index.txt)
                 if (rel === 'next') rel = '';
                 const filePath = path.join(NEXT_EXPORT_DIR, rel, 'index.txt');

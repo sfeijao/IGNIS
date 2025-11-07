@@ -14,24 +14,9 @@ type Props = {
 }
 
 export default function PluginCard({ name, desc, badge, icon = 'plugins', tip, href, configHref, viewHref }: Props) {
-  // Ensure links work when the Next export is served under "/next" basePath
-  const finalHref = (() => {
-    if (!href) return undefined
-    if (href.startsWith('/next')) return href
-    if (typeof window !== 'undefined') {
-      const onNextBase = window.location.pathname.startsWith('/next')
-      return onNextBase ? `/next${href}` : href
-    }
-    return href
-  })()
-  const withBase = (u?: string) => {
-    if (!u) return undefined
-    if (u.startsWith('/next')) return u
-    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/next')) return `/next${u}`
-    return u
-  }
-  const finalConfig = withBase(configHref) || finalHref
-  const finalView = withBase(viewHref) || finalHref
+  // With Next.js basePath configured, pass clean hrefs (without manual "/next" prefix)
+  const finalConfig = configHref || href
+  const finalView = viewHref || href
   return (
     <article className="card p-5 flex flex-col gap-3 transition-transform hover:-translate-y-0.5 hover:shadow-xl">
       <div className="flex items-center justify-between">
