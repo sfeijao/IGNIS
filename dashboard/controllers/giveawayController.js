@@ -106,7 +106,17 @@ async function listGiveaways(req, res){
     if (!guildId) return res.status(400).json({ error: 'missing_guild_id' });
     const { status, channel_id, creator, search, limit=25, cursor } = req.query;
     const q = { guild_id: guildId };
-    if (status) q.status = status;
+    if (status) {
+      const raw = String(status).trim().toLowerCase();
+      if (raw.includes(',')) {
+        const parts = raw.split(',').map(s=>s.trim()).filter(Boolean);
+        if (parts.length) q.status = { $in: parts };
+      } else if (raw === 'open') {
+        q.status = { $in: ['active','scheduled'] };
+      } else {
+        q.status = raw;
+      }
+    }
     if (channel_id) q.channel_id = channel_id;
     if (creator) q.created_by = creator;
     if (search) q.title = { $regex: String(search).replace(/[-/\\^$*+?.()|[\]{}]/g,'\\$&'), $options: 'i' };

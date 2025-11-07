@@ -6,6 +6,7 @@ import LanguageSwitcher from './LanguageSwitcher'
 import MobileSidebar from './MobileSidebar'
 import { useEffect, useState } from 'react'
 import GuildSelector from './GuildSelector'
+import { getGuildId, setGuildId } from '@/lib/guild'
 import UserAvatar from './UserAvatar'
 import { useAuth } from '../hooks/useAuth'
 import { useI18n } from '../lib/i18n'
@@ -19,6 +20,15 @@ export default function Topbar() {
     const saved = localStorage.getItem('sidebar-compact')
     const isCompact = saved === '1' || document.body.classList.contains('sidebar-compact')
     setCompact(isCompact)
+  }, [])
+
+  // Persist guildId from URL param as a quick shortcut
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href)
+      const gid = url.searchParams.get('guildId')
+      if (gid) setGuildId(gid, false)
+    } catch {}
   }, [])
 
   const toggleCompact = () => {
@@ -44,6 +54,9 @@ export default function Topbar() {
         </div>
         <div className="flex items-center gap-3">
           <GuildSelector />
+          {!getGuildId() && (
+            <span className="text-xs px-2 py-1 rounded border border-amber-600/40 bg-amber-500/10 text-amber-300" title={t('common.selectGuild')}>Selecione um servidor</span>
+          )}
           <LanguageSwitcher />
           <ThemeToggle />
           {loading ? (

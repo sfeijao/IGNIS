@@ -9,7 +9,7 @@ import GuildSelector from '@/components/GuildSelector'
 export default function GiveawaysList(){
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [status, setStatus] = useState('active')
+  const [status, setStatus] = useState('open')
   const [search, setSearch] = useState('')
   const [error, setError] = useState<string|null>(null)
   const liveRegionRef = useRef<HTMLDivElement|null>(null)
@@ -35,13 +35,37 @@ export default function GiveawaysList(){
     if (!guildId) return
     setLoading(true); setError(null)
     try {
-      const qs = new URLSearchParams()
-      if (status) qs.set('status', status)
-      if (search) qs.set('search', search)
-      const res = await fetch(`/api/guilds/${guildId}/giveaways?`+qs.toString(), { credentials: 'include' })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'fetch_failed')
-      setItems(data.giveaways || [])
+      if (status === 'open') {
+        // Fetch active + scheduled concurrently and merge
+        const makeUrl = (s:string) => {
+          const qs = new URLSearchParams()
+          qs.set('status', s)
+          if (search) qs.set('search', search)
+          return `/api/guilds/${guildId}/giveaways?` + qs.toString()
+        }
+        const [r1, r2] = await Promise.all([
+          fetch(makeUrl('active'), { credentials: 'include' }),
+          fetch(makeUrl('scheduled'), { credentials: 'include' })
+        ])
+        const j1 = await r1.json(); const j2 = await r2.json()
+        if (!r1.ok) throw new Error(j1?.error || 'fetch_failed')
+        if (!r2.ok) throw new Error(j2?.error || 'fetch_failed')
+        const map: Record<string, any> = {}
+        ;(j1.giveaways||[]).forEach((g:any)=>{ map[g._id]=g })
+        ;(j2.giveaways||[]).forEach((g:any)=>{ map[g._id]=g })
+        const merged = Object.values(map) as any[]
+        // Sort by created time (ObjectId) desc if present
+        merged.sort((a:any,b:any)=> (String(b._id)).localeCompare(String(a._id)))
+        setItems(merged)
+      } else {
+        const qs = new URLSearchParams()
+        if (status) qs.set('status', status)
+        if (search) qs.set('search', search)
+        const res = await fetch(`/api/guilds/${guildId}/giveaways?`+qs.toString(), { credentials: 'include' })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data?.error || 'fetch_failed')
+        setItems(data.giveaways || [])
+      }
     } catch (e:any) {
       setError(e.message || String(e))
     } finally { setLoading(false) }
@@ -67,6 +91,7 @@ export default function GiveawaysList(){
         <div className="ml-auto flex gap-2">
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t('giveaways.search.placeholder')} aria-label={t('giveaways.search.placeholder')} className="px-2 py-1 rounded bg-neutral-800 border border-neutral-700" />
           <select value={status} onChange={e=>setStatus(e.target.value)} className="px-2 py-1 rounded bg-neutral-800 border border-neutral-700">
+            <option value="open">Ativos + Agendados</option>
             <option value="active">{t('giveaways.status.active')}</option>
             <option value="scheduled">{t('giveaways.status.scheduled')}</option>
             <option value="ended">{t('giveaways.status.ended')}</option>
