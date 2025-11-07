@@ -275,6 +275,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'commands.noDescription': 'Sem descrição',
   'commands.loadFailed': 'Erro ao carregar comandos',
   'commands.actionFailed': 'Falha na ação',
+  'commands.none': 'Nenhum comando',
   // Auth/Common UI
   'auth.login': 'Entrar',
   'auth.logout': 'Sair',
@@ -1018,6 +1019,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'commands.noDescription': 'No description',
   'commands.loadFailed': 'Failed to load commands',
   'commands.actionFailed': 'Action failed',
+  'commands.none': 'No commands',
     // Moderation
     'mod.bulk.title': 'Bulk actions',
     'mod.bulk.userIds': 'User IDs',

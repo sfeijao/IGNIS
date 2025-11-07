@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getGuildId } from '../lib/guild'
 import { api } from '../lib/apiClient'
 import { useToast } from './Toaster'
@@ -38,6 +38,13 @@ export default function VerificationMetrics() {
     try { await api.purgeVerificationLogs(guildId); toast({ type: 'success', title: t('verification.metrics.clearLogs') }); await load(guildId) } catch (e:any) { toast({ type:'error', title: t('verification.metrics.error'), description: e?.message }) } finally { setLoading(false) }
   }
 
+  const [logSearch, setLogSearch] = useState('')
+  const filteredLogs = useMemo(() => {
+    const q = logSearch.trim().toLowerCase()
+    if (!q) return logs
+    return logs.filter((l:any) => (l.message ? String(l.message).toLowerCase() : JSON.stringify(l).toLowerCase()).includes(q))
+  }, [logs, logSearch])
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -49,19 +56,33 @@ export default function VerificationMetrics() {
       <section className="card">
         <div className="card-header">{t('verification.metrics.section')}</div>
         <div className="card-body grid grid-cols-2 md:grid-cols-4 gap-3">
-          {metrics ? Object.entries(metrics).map(([k,v]) => (
+          {loading && (
+            <>
+              {Array.from({ length: 4 }).map((_,i) => (
+                <div key={i} className="p-3 rounded-lg bg-neutral-800/30 border border-neutral-800 animate-pulse">
+                  <div className="h-3 w-20 bg-neutral-700 rounded mb-2" />
+                  <div className="h-6 w-14 bg-neutral-700/70 rounded" />
+                </div>
+              ))}
+            </>
+          )}
+          {!loading && metrics ? Object.entries(metrics).map(([k,v]) => (
             <div key={k} className="p-3 rounded-lg bg-neutral-800/50 border border-neutral-800">
               <div className="text-xs opacity-70">{k}</div>
               <div className="text-xl font-semibold">{String(v)}</div>
             </div>
-          )) : <div className="opacity-70">{t('verification.metrics.noData')}</div>}
+          )) : (!loading && <div className="opacity-70">{t('verification.metrics.noData')}</div>)}
         </div>
       </section>
       <section className="card">
-        <div className="card-header">{t('verification.metrics.recentLogs')}</div>
+        <div className="card-header flex items-center justify-between gap-2">
+          <span>{t('verification.metrics.recentLogs')}</span>
+          <input className="input w-48" placeholder={t('common.search')} value={logSearch} onChange={e=>setLogSearch(e.target.value)} />
+        </div>
         <div className="card-body text-xs max-h-[360px] overflow-auto">
-          {logs.length === 0 && <div className="opacity-70">{t('verification.metrics.noLogs')}</div>}
-          {logs.map((l:any, idx:number) => (
+          {loading && <div className="opacity-70">{t('common.loading')}</div>}
+          {!loading && filteredLogs.length === 0 && <div className="opacity-70">{t('verification.metrics.noLogs')}</div>}
+          {!loading && filteredLogs.map((l:any, idx:number) => (
             <div key={idx} className="border-b border-neutral-900/60 py-1">
               <span className="opacity-60">{new Date(l.timestamp || Date.now()).toLocaleString()} • </span>
               <span>{l.message || JSON.stringify(l)}</span>

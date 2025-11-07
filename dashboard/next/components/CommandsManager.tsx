@@ -14,6 +14,7 @@ export default function CommandsManager() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   const [runName, setRunName] = useState('')
   const [runArgs, setRunArgs] = useState('')
@@ -71,14 +72,21 @@ export default function CommandsManager() {
     finally { setLoading(false) }
   }
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return commands
+    return commands.filter(c => c.name.toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q))
+  }, [commands, search])
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <h2 className="text-xl font-semibold">{t('commands.title')}</h2>
   <button type="button" className="btn btn-secondary" onClick={() => guildId && load(guildId)} title={t('common.reload')}>{t('common.reload')}</button>
   <button type="button" className="btn btn-primary" onClick={() => action({ action: 'deploy' })} title={t('commands.redeploy')}>{t('commands.redeploy')}</button>
   <button type="button" className="btn btn-secondary" onClick={() => action({ action: 'sync' })} title={t('commands.sync')}>{t('commands.sync')}</button>
   <button type="button" className="btn btn-danger" onClick={() => action({ action: 'clear' })} title={t('commands.clear.title')}>{t('commands.clear')}</button>
+        <input className="input" placeholder={t('common.search')} value={search} onChange={e => setSearch(e.target.value)} />
       </div>
       {error && <div className="text-red-400">{error}</div>}
       {result && <pre className="text-xs opacity-70 max-h-40 overflow-auto">{result}</pre>}
@@ -110,12 +118,18 @@ export default function CommandsManager() {
       <section className="card">
         <div className="card-header">{t('commands.registered')}</div>
         <div className="card-body grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {commands.map((c) => (
+          {loading && Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="p-3 rounded-lg bg-neutral-800/40 border border-neutral-800 animate-pulse h-20" />
+          ))}
+          {!loading && filtered.map((c) => (
             <div key={c.id || c.name} className="p-3 rounded-lg bg-neutral-800/50 border border-neutral-800">
               <div className="font-medium">/{c.name}</div>
               <div className="text-xs opacity-70">{c.description || t('commands.noDescription')}</div>
             </div>
           ))}
+          {!loading && filtered.length === 0 && (
+            <div className="opacity-70 text-sm">{t('commands.none')}</div>
+          )}
         </div>
       </section>
     </div>
