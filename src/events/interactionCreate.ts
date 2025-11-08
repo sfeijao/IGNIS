@@ -1,4 +1,4 @@
-import { Interaction, ButtonInteraction, TextChannel, ModalSubmitInteraction, UserSelectMenuInteraction, RoleSelectMenuInteraction, ChannelSelectMenuInteraction } from 'discord.js';
+import { Interaction, ButtonInteraction, TextChannel, ModalSubmitInteraction, UserSelectMenuInteraction, RoleSelectMenuInteraction, ChannelSelectMenuInteraction, MessageFlags } from 'discord.js';
 import { resolveTicket, handleCancel, handleHowDM, handleClaim, handleClose, handleRename, handleMove, handleAddMember, handleRemoveMember, handleCallMember, handleGreet, handleNote, handleExport, handleFeedbackButton, handleFeedbackSubmit } from '../services/ticketService';
 
 module.exports = {
@@ -8,7 +8,7 @@ module.exports = {
       const btn = interaction as ButtonInteraction;
       const channel = btn.channel as TextChannel;
       const ticket = await resolveTicket(channel);
-      if (!ticket) return btn.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+  if (!ticket) return btn.reply({ content: 'Ticket não encontrado.', flags: MessageFlags.Ephemeral });
 
       const ctx: any = { guildId: btn.guildId!, channel, userId: btn.user.id, member: btn.member as any, ticket, interaction: btn };
   let response: any = 'Ação não reconhecida.';
@@ -29,10 +29,10 @@ module.exports = {
       }
       try {
         if (typeof response === 'string') {
-          await btn.reply({ content: response, ephemeral: true });
+          await btn.reply({ content: response, flags: MessageFlags.Ephemeral });
         } else {
           const r: any = response;
-          await btn.reply({ content: r.content || 'Ok', components: r.components as any, ephemeral: true });
+          await btn.reply({ content: r.content || 'Ok', components: r.components as any, flags: MessageFlags.Ephemeral });
         }
       } catch {}
       return;
@@ -43,9 +43,9 @@ module.exports = {
         const name = m.fields.getTextInputValue('ticket:rename:name');
         try {
           if (m.channel && 'setName' in m.channel) await (m.channel as any).setName(name);
-          await m.reply({ content: '📝 Canal renomeado com sucesso.', ephemeral: true });
+          await m.reply({ content: '📝 Canal renomeado com sucesso.', flags: MessageFlags.Ephemeral });
         } catch (e) {
-          await m.reply({ content: '❌ Não foi possível renomear o canal (permissões?).', ephemeral: true });
+          await m.reply({ content: '❌ Não foi possível renomear o canal (permissões?).', flags: MessageFlags.Ephemeral });
         }
         return;
       }
@@ -54,22 +54,22 @@ module.exports = {
         try {
           const channel = m.channel as TextChannel;
           const ticket: any = await resolveTicket(channel);
-          if (!ticket) return m.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+          if (!ticket) return m.reply({ content: 'Ticket não encontrado.', flags: MessageFlags.Ephemeral });
           ticket.notes = ticket.notes || [];
           ticket.notes.push({ by: m.user.id, text, createdAt: new Date() });
           await ticket.save();
-          await m.reply({ content: '🗒️ Nota interna registada.', ephemeral: true });
+          await m.reply({ content: '🗒️ Nota interna registada.', flags: MessageFlags.Ephemeral });
         } catch {
-          await m.reply({ content: '❌ Falha ao guardar nota.', ephemeral: true });
+          await m.reply({ content: '❌ Falha ao guardar nota.', flags: MessageFlags.Ephemeral });
         }
         return;
       }
       if (m.customId === 'ticket:feedback:modal') {
         const channel = m.channel as TextChannel;
-        const ticket: any = await resolveTicket(channel);
-        if (!ticket) return m.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+  const ticket: any = await resolveTicket(channel);
+  if (!ticket) return m.reply({ content: 'Ticket não encontrado.', flags: MessageFlags.Ephemeral });
         const result = await handleFeedbackSubmit({ interaction: m, ticket, guildId: m.guildId!, userId: m.user.id });
-        return m.reply({ content: result, ephemeral: true });
+  return m.reply({ content: result, flags: MessageFlags.Ephemeral });
       }
       return;
     }
@@ -77,22 +77,22 @@ module.exports = {
       const sel = interaction as UserSelectMenuInteraction;
       const channel = sel.channel as TextChannel;
       const ticket = await resolveTicket(channel);
-      if (!ticket) return sel.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+  if (!ticket) return sel.reply({ content: 'Ticket não encontrado.', flags: MessageFlags.Ephemeral });
       const ids = sel.values;
       try {
         if (sel.customId === 'ticket:add_member:select') {
           for (const id of ids) {
             await channel.permissionOverwrites.edit(id, { ViewChannel: true, SendMessages: true });
           }
-          await sel.reply({ content: `➕ Adicionados: ${ids.map(i=>`<@${i}>`).join(', ')}`, ephemeral: true });
+          await sel.reply({ content: `➕ Adicionados: ${ids.map(i=>`<@${i}>`).join(', ')}`, flags: MessageFlags.Ephemeral });
         } else if (sel.customId === 'ticket:remove_member:select') {
           for (const id of ids) {
             await channel.permissionOverwrites.delete(id).catch(()=>{});
           }
-          await sel.reply({ content: `❌ Removidos: ${ids.map(i=>`<@${i}>`).join(', ')}`, ephemeral: true });
+          await sel.reply({ content: `❌ Removidos: ${ids.map(i=>`<@${i}>`).join(', ')}`, flags: MessageFlags.Ephemeral });
         }
       } catch {
-        await sel.reply({ content: '❌ Falha a atualizar permissões.', ephemeral: true });
+        await sel.reply({ content: '❌ Falha a atualizar permissões.', flags: MessageFlags.Ephemeral });
       }
       return;
     }
@@ -100,14 +100,14 @@ module.exports = {
       const sel = interaction as RoleSelectMenuInteraction;
       const channel = sel.channel as TextChannel;
       const ticket = await resolveTicket(channel);
-      if (!ticket) return sel.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+  if (!ticket) return sel.reply({ content: 'Ticket não encontrado.', flags: MessageFlags.Ephemeral });
       const roleIds = sel.values;
       try {
         const mention = roleIds.map(r=>`<@&${r}>`).join(' ');
         await channel.send({ content: `🔔 Chamando: ${mention}` });
-        await sel.reply({ content: '🔔 Notificação enviada.', ephemeral: true });
+        await sel.reply({ content: '🔔 Notificação enviada.', flags: MessageFlags.Ephemeral });
       } catch {
-        await sel.reply({ content: '❌ Falha ao chamar cargo.', ephemeral: true });
+        await sel.reply({ content: '❌ Falha ao chamar cargo.', flags: MessageFlags.Ephemeral });
       }
       return;
     }
@@ -115,13 +115,13 @@ module.exports = {
       const sel = interaction as ChannelSelectMenuInteraction;
       const channel = sel.channel as TextChannel;
       const ticket = await resolveTicket(channel);
-      if (!ticket) return sel.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+  if (!ticket) return sel.reply({ content: 'Ticket não encontrado.', flags: MessageFlags.Ephemeral });
       const targetCategoryId = sel.values[0];
       try {
         await channel.setParent(targetCategoryId, { lockPermissions: false });
-        await sel.reply({ content: '🔁 Ticket movido para nova categoria.', ephemeral: true });
+        await sel.reply({ content: '🔁 Ticket movido para nova categoria.', flags: MessageFlags.Ephemeral });
       } catch {
-        await sel.reply({ content: '❌ Falha ao mover ticket.', ephemeral: true });
+        await sel.reply({ content: '❌ Falha ao mover ticket.', flags: MessageFlags.Ephemeral });
       }
       return;
     }

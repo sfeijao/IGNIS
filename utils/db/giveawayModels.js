@@ -38,14 +38,16 @@ const GiveawaySchema = new mongoose.Schema({
     auto_pin: { type: Boolean, default: false },
     allow_manual_pick: { type: Boolean, default: true },
     multi_prizes: { type: [String], default: [] }, // e.g. ["Nitro", "VIP"]
-    dm_winners: { type: Boolean, default: false }
+    dm_winners: { type: Boolean, default: false },
+    live_update_interval_minutes: { type: Number, default: 0 } // >0 enables periodic message edits
   },
   announcement_markdown: { type: String, default: '' }, // WYSIWYG/markdown content
   fair_rng_seed: { type: String, default: '' }, // stored seed used for winner selection transparency
   audit: {
     last_action_by: { type: String },
     last_action_at: { type: Date }
-  }
+  },
+  last_live_update_at: { type: Date }
 }, { timestamps: true });
 
 // Ensure logical constraints

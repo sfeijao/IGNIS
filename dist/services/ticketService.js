@@ -27,11 +27,12 @@ async function log(ticketId, guildId, byUserId, action, payload = {}) {
 }
 // legacy helper removed; using async isStaff below
 async function buildPanelEmbed(author, categoryName, thumbnailUrl) {
+    // Layout atualizado conforme screenshot fornecido
     return new discord_js_1.EmbedBuilder()
         .setTitle('Ticket Criado com Sucesso! 📌')
         .setDescription('Todos os responsáveis pelo ticket já estão cientes da abertura.\n' +
-        'Evite chamar alguém via DM, basta aguardar alguém já irá lhe atender...')
-        .addFields({ name: 'Categoria Escolhida:', value: `🧾 \`Ticket ${categoryName || 'Suporte'}\``, inline: false }, { name: '\u200B', value: '**DESCREVA O MOTIVO DO CONTACTO COM O MÁXIMO DE DETALHES POSSÍVEIS...**', inline: false })
+        'Evite chamar alguém via DM, basta aguardar alguém já irá lhe atender..')
+        .addFields({ name: 'Categoria Escolhida:', value: `🧾 \`Ticket ${categoryName || 'Suporte'}\``, inline: false }, { name: 'Lembrando', value: 'que os botões são exclusivos para staff!\n\n`DESCREVA O MOTIVO DO CONTACTO COM O MÁXIMO DE DETALHES POSSÍVEIS QUE ALGUM RESPONSÁVEL JÁ IRÁ LHE ATENDER!`', inline: false })
         .setThumbnail(thumbnailUrl || author.displayAvatarURL())
         .setColor(0x2F3136)
         .setFooter({ text: 'OBS: Procure manter sua DM aberta para receber uma cópia deste ticket e a opção de avaliar seu atendimento.' });

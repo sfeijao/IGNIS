@@ -12,7 +12,8 @@ exports.data = new discord_js_1.SlashCommandBuilder()
     .addStringOption(opt => opt.setName('categoria').setDescription('Nome da categoria para exibir').setRequired(false));
 async function execute(interaction) {
     if (!interaction.channel || interaction.channel.type !== discord_js_1.ChannelType.GuildText) {
-        return interaction.reply({ content: 'Canal inválido para painel.', ephemeral: true });
+        // Use flags instead of deprecated ephemeral property
+        return interaction.reply({ content: 'Canal inválido para painel.', flags: discord_js_1.MessageFlags.Ephemeral });
     }
     const categoria = interaction.options.getString('categoria') || 'Suporte';
     // Verificar permissões do bot no canal
@@ -20,12 +21,21 @@ async function execute(interaction) {
     const needed = [discord_js_1.PermissionsBitField.Flags.ViewChannel, discord_js_1.PermissionsBitField.Flags.SendMessages, discord_js_1.PermissionsBitField.Flags.ManageChannels, discord_js_1.PermissionsBitField.Flags.ManageRoles];
     const missing = needed.filter(p => !me?.permissionsIn(interaction.channel.id).has(p));
     const embed = await (0, ticketService_1.buildPanelEmbed)(interaction.member, categoria);
+    // Embed de aviso (OBS) destacado
+    const { EmbedBuilder } = require('discord.js');
+    const noticeEmbed = new EmbedBuilder()
+        .setDescription('OBS: Procure manter sua DM aberta para receber uma cópia deste ticket e a opção de avaliar seu atendimento.')
+        .setColor(0xED4245);
     if (missing.length) {
         embed.setColor(0xFF3333).addFields({ name: '⚠ Permissões em falta', value: missing.map(m => discord_js_1.PermissionsBitField.resolve(m)).length ? missing.map(m => `\`${Object.keys(discord_js_1.PermissionsBitField.Flags).find(k => discord_js_1.PermissionsBitField.Flags[k] === m)}\``).join(', ') : 'Desconhecido' });
     }
     const components = (0, ticketService_1.buildPanelComponents)();
-    const sent = await interaction.channel.send({ embeds: [embed], components });
+    const sent = await interaction.channel.send({ embeds: [embed, noticeEmbed], components });
     await ticket_1.TicketModel.create({ guildId: interaction.guildId, channelId: interaction.channelId, messageId: sent.id, ownerId: interaction.user.id, category: categoria, status: 'open' });
-    return interaction.reply({ content: 'Painel criado ✅', ephemeral: true });
+    // Guard: if already replied (edge race) use followUp instead
+    if (interaction.replied || interaction.deferred) {
+        return interaction.followUp({ content: 'Painel criado ✅', flags: discord_js_1.MessageFlags.Ephemeral });
+    }
+    return interaction.reply({ content: 'Painel criado ✅', flags: discord_js_1.MessageFlags.Ephemeral });
 }
 module.exports = { data: exports.data, execute };

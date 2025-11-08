@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
+import Skeleton from '@/components/Skeleton'
 import { api } from '@/lib/apiClient'
 import { useGuildId } from '@/lib/guild'
 import TicketModal from '@/components/TicketModal'
@@ -35,6 +36,25 @@ interface TicketsResponse {
 
 const statuses = ['', 'open', 'claimed', 'closed', 'pending']
 const priorities = ['', 'low', 'normal', 'high', 'urgent']
+
+const statusColor = (s?: string) => {
+  switch ((s || '').toLowerCase()) {
+    case 'open': return 'bg-emerald-600/20 text-emerald-400 border-emerald-600/40'
+    case 'claimed': return 'bg-amber-600/20 text-amber-400 border-amber-600/40'
+    case 'closed': return 'bg-rose-600/20 text-rose-400 border-rose-600/40'
+    case 'pending': return 'bg-blue-600/20 text-blue-400 border-blue-600/40'
+    default: return 'bg-neutral-800 text-neutral-300 border-neutral-700'
+  }
+}
+const priorityColor = (p?: string) => {
+  switch ((p || '').toLowerCase()) {
+    case 'urgent': return 'bg-red-600/30 text-red-400 border-red-600/50 animate-pulse'
+    case 'high': return 'bg-orange-600/25 text-orange-400 border-orange-600/40'
+    case 'normal': return 'bg-teal-600/20 text-teal-300 border-teal-600/40'
+    case 'low': return 'bg-neutral-700 text-neutral-300 border-neutral-600'
+    default: return 'bg-neutral-800 text-neutral-300 border-neutral-700'
+  }
+}
 
 type Channel = { id: string; name: string; type?: any }
 const channelTypeLabel = (ch?: Channel) => {
@@ -296,10 +316,10 @@ export default function TicketsList() {
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="text-neutral-400 mr-1">{tr('tickets.filtersApplied')}</span>
           {!!status && (
-            <span className="px-2 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-200">{tr('tickets.status')}: {status}</span>
+            <span className={`px-2 py-0.5 rounded border ${statusColor(status)}`}>{tr('tickets.status')}: {status}</span>
           )}
           {!!priority && (
-            <span className="px-2 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-200">{tr('tickets.priority')}: {priority}</span>
+            <span className={`px-2 py-0.5 rounded border ${priorityColor(priority)}`}>{tr('tickets.priority')}: {priority}</span>
           )}
           {!!q && (
             <span className="px-2 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-200">{tr('tickets.search')}: “{q}”</span>
@@ -333,23 +353,48 @@ export default function TicketsList() {
         </div>
       )}
 
+      {/* Quick filter chips */}
+      <div className="flex flex-wrap gap-2 text-xs">
+        {['open','claimed','closed','pending'].map(s => (
+          <button key={s} type="button" onClick={()=>{ setStatus(s); setPage(1) }}
+            className={`px-3 py-1 rounded border ${status === s ? statusColor(s) : 'bg-neutral-900 border-neutral-700 text-neutral-300 hover:bg-neutral-800'}`}>{s}</button>
+        ))}
+        {['urgent','high','normal','low'].map(p => (
+          <button key={p} type="button" onClick={()=>{ setPriority(p); setPage(1) }}
+            className={`px-3 py-1 rounded border ${priority === p ? priorityColor(p) : 'bg-neutral-900 border-neutral-700 text-neutral-300 hover:bg-neutral-800'}`}>{p}</button>
+        ))}
+        {(status || priority) && (
+          <button type="button" onClick={()=>{ setStatus(''); setPriority(''); setPage(1) }} className="px-3 py-1 rounded border bg-neutral-900 border-neutral-700 text-neutral-400 hover:text-neutral-200">{tr('tickets.clearFilters')}</button>
+        )}
+      </div>
       <div className="card p-0 overflow-hidden">
         <div className="divide-y divide-neutral-800">
-          {loading && <div className="p-6 text-neutral-400">{tr('tickets.loading')}</div>}
+          {loading && (
+            <div className="p-4 space-y-3">
+              {[...Array(5)].map((_,i)=>(
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ))}
+            </div>
+          )}
           {error && <div className="p-6 text-red-400">{error}</div>}
           {!loading && !error && data?.tickets?.length === 0 && (
-            <div className="p-6 text-neutral-400">{tr('tickets.none')}</div>
+            <div className="p-6 text-neutral-400 flex flex-col items-start gap-3">
+              <div>{tr('tickets.none')}</div>
+              <a href="/tickets/panels" className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-sm">{tr('tickets.createPanelCta')}</a>
+            </div>
           )}
           {data?.tickets?.map((tk) => (
-            <div key={tk.id} className="p-4 flex flex-col md:flex-row md:items-center gap-3">
+            <div key={tk.id} className="group p-4 flex flex-col md:flex-row md:items-center gap-3 hover:bg-neutral-900/40 transition-colors">
               <div className="flex items-center gap-2">
                 <input type="checkbox" aria-label={`Select ticket ${tk.id}`} checked={!!selected[tk.id]} onChange={e => setSelected(prev => ({ ...prev, [tk.id]: e.target.checked }))} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-neutral-300 font-mono">#{tk.id}</span>
-                  <span className="px-2 py-0.5 text-xs rounded bg-neutral-800 border border-neutral-700">{tk.status}</span>
-                  {tk.priority && <span className="px-2 py-0.5 text-xs rounded bg-neutral-800 border border-neutral-700">{tk.priority}</span>}
+                  <span className={`px-2 py-0.5 text-xs rounded border ${statusColor(tk.status)}`}>{tk.status}</span>
+                  {tk.priority && <span className={`px-2 py-0.5 text-xs rounded border ${priorityColor(tk.priority)}`}>{tk.priority}</span>}
                   {tk.timeAgo && <span className="text-xs text-neutral-500">{tk.timeAgo}</span>}
                 </div>
                 <div className="mt-1 text-neutral-200 truncate">{tk.subject || tk.category || 'Ticket'}</div>
@@ -365,7 +410,7 @@ export default function TicketsList() {
                 </div>
                 {tk.claimedByTag && <div className="mt-1 text-xs text-neutral-400">{tr('tickets.claimedBy')} {tk.claimedByTag}</div>}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <button type="button" onClick={()=> setViewId(tk.id)} className="bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 rounded text-sm border border-neutral-700">{tr('tickets.view')}</button>
                 {tk.status === 'open' && (
                   <>

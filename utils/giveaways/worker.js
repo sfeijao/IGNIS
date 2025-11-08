@@ -48,11 +48,49 @@ function initGiveawayWorker(){
     }
   }
 
+  async function tickLiveUpdates(){
+    try {
+      if (!isReady()) return;
+      const now = new Date();
+      const list = await GiveawayModel.find({ status: 'active', 'options.live_update_interval_minutes': { $gt: 0 } }).limit(20).lean();
+      for (const g of list){
+        const intervalMs = (g.options?.live_update_interval_minutes || 0) * 60_000;
+        if (!intervalMs) continue;
+        const last = g.last_live_update_at ? new Date(g.last_live_update_at).getTime() : 0;
+        if (Date.now() - last < intervalMs) continue;
+        // Perform a lightweight message edit with remaining time & entrants count
+        try {
+          const remainingSec = g.ends_at ? Math.max(0, Math.floor((new Date(g.ends_at).getTime() - Date.now()) / 1000)) : 0;
+          const entrants = g.entries_count || 0;
+          const { getClient } = require('../discordClient');
+          const client = getClient();
+          if (client && g.channel_id && g.message_id){
+            const channel = await client.channels.fetch(g.channel_id).catch(()=>null);
+            if (channel && channel.messages){
+              const msg = await channel.messages.fetch(g.message_id).catch(()=>null);
+              if (msg){
+                const contentBase = '🎉 Giveaway';
+                const suffix = ` | Entradas: ${entrants} | Termina ${g.ends_at ? `<t:${Math.floor(new Date(g.ends_at).getTime()/1000)}:R>` : ''}`;
+                if (!msg.content.includes('Giveaway (ended)')){
+                  await msg.edit({ content: contentBase + suffix });
+                  await GiveawayModel.updateOne({ _id: g._id }, { $set: { last_live_update_at: new Date() } });
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+    } catch (e) {
+      try { console.warn('[GiveawayWorker] live update error:', e && e.message || e); } catch {}
+    }
+  }
+
   const i1 = setInterval(tickPromoteScheduled, 10_000);
   const i2 = setInterval(tickEndDue, 8_000);
+  const i3 = setInterval(tickLiveUpdates, 30_000);
   // run soon after start
-  setTimeout(()=>{ tickPromoteScheduled(); tickEndDue(); }, 2000);
-  return () => { clearInterval(i1); clearInterval(i2); };
+  setTimeout(()=>{ tickPromoteScheduled(); tickEndDue(); tickLiveUpdates(); }, 2000);
+  return () => { clearInterval(i1); clearInterval(i2); clearInterval(i3); };
 }
 
 module.exports = { initGiveawayWorker };

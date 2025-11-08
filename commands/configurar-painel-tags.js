@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, MessageFlags } = require('discord.js');
 const storage = require('../utils/storage');
 
 module.exports = {
@@ -17,7 +17,7 @@ module.exports = {
         if (!isOwner && !hasAdminRole && !hasAdminPerm) {
             return interaction.reply({ 
                 content: '❌ Apenas administradores podem configurar este painel!', 
-                ephemeral: true 
+                flags: MessageFlags.Ephemeral 
             });
         }
 
@@ -76,7 +76,7 @@ module.exports = {
         // Resposta ephemeral para confirmar ao admin
         await interaction.reply({
             content: '✅ Configurando painel de tags...',
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         });
 
         // Enviar o painel no canal

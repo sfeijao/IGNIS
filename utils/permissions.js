@@ -104,7 +104,7 @@ async function requireOwner(interaction) {
     if (!isOwner(interaction.member)) {
         await interaction.reply({
             content: '❌ Apenas o **Owner** do servidor pode usar este comando.',
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         });
         throw new Error('NoPermission');
     }

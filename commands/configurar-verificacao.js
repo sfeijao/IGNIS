@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const { BUTTON_IDS } = require('../constants/ui');
 const storage = require('../utils/storage');
 
@@ -17,7 +17,7 @@ module.exports = {
         if (!isOwner && !hasAdminRole && !hasAdminPerm) {
             return interaction.reply({ 
                 content: '❌ Não tens permissão para usar este comando!', 
-                ephemeral: true 
+                flags: MessageFlags.Ephemeral 
             });
         }
 
@@ -47,7 +47,7 @@ module.exports = {
         try {
             await interaction.reply({
                 content: '✅ Configurando sistema de verificação...',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
 
             // Enviar o painel no canal
@@ -67,7 +67,7 @@ module.exports = {
             if (!interaction.replied) {
                 await interaction.reply({
                     content: '❌ Erro ao configurar o sistema de verificação!',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             } else {
                 await interaction.editReply({

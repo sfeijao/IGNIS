@@ -1,4 +1,4 @@
-const { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, PermissionFlagsBits } = require('discord.js');
+const { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const logger = require('./logger');
 const config = require('./config');
 
@@ -84,12 +84,12 @@ class TicketSystem {
         try {
             const ticket = await this.client.storage.getTicket(ticketId);
             if (!ticket) {
-                return await interaction.reply({ content: '❌ Ticket não encontrado.', ephemeral: true });
+                return await this._safeReply(interaction, { content: '❌ Ticket não encontrado.', flags: MessageFlags.Ephemeral });
             }
 
             const hasPermission = await this.checkTicketPermissions(interaction.member, ticket);
             if (!hasPermission) {
-                return await interaction.reply({ content: '❌ Você não tem permissão para fechar este ticket.', ephemeral: true });
+                return await this._safeReply(interaction, { content: '❌ Você não tem permissão para fechar este ticket.', flags: MessageFlags.Ephemeral });
             }
 
             // Atualizar ticket na base de dados
@@ -115,11 +115,11 @@ class TicketSystem {
             await interaction.channel.setName(`arquivado-${interaction.channel.name}`);
             setTimeout(() => interaction.channel.delete('Ticket fechado'), 5000);
 
-            return await interaction.reply({ content: '✅ Ticket fechado com sucesso!' });
+            return await this._safeReply(interaction, { content: '✅ Ticket fechado com sucesso!', flags: MessageFlags.Ephemeral });
 
         } catch (error) {
             logger.error('Erro ao fechar ticket', { error: error.message, ticketId });
-            return await interaction.reply({ content: '❌ Erro ao fechar ticket.', ephemeral: true });
+            return await this._safeReply(interaction, { content: '❌ Erro ao fechar ticket.', flags: MessageFlags.Ephemeral });
         }
     }
 
@@ -179,5 +179,20 @@ class TicketSystem {
         return fields;
     }
 }
+
+// Helper para evitar InteractionAlreadyReplied
+TicketSystem.prototype._safeReply = async function(interaction, data) {
+    try {
+        if (!interaction.deferred && !interaction.replied) {
+            return await interaction.reply(data);
+        }
+        return await interaction.followUp(data);
+    } catch (e) {
+        try {
+            if (interaction.deferred) return await interaction.editReply(data);
+        } catch {}
+        throw e;
+    }
+};
 
 module.exports = TicketSystem;

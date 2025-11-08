@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const discord_js_1 = require("discord.js");
 const ticketService_1 = require("../services/ticketService");
 module.exports = {
     name: 'interactionCreate',
@@ -9,7 +10,7 @@ module.exports = {
             const channel = btn.channel;
             const ticket = await (0, ticketService_1.resolveTicket)(channel);
             if (!ticket)
-                return btn.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+                return btn.reply({ content: 'Ticket não encontrado.', flags: discord_js_1.MessageFlags.Ephemeral });
             const ctx = { guildId: btn.guildId, channel, userId: btn.user.id, member: btn.member, ticket, interaction: btn };
             let response = 'Ação não reconhecida.';
             switch (btn.customId) {
@@ -55,11 +56,11 @@ module.exports = {
             }
             try {
                 if (typeof response === 'string') {
-                    await btn.reply({ content: response, ephemeral: true });
+                    await btn.reply({ content: response, flags: discord_js_1.MessageFlags.Ephemeral });
                 }
                 else {
                     const r = response;
-                    await btn.reply({ content: r.content || 'Ok', components: r.components, ephemeral: true });
+                    await btn.reply({ content: r.content || 'Ok', components: r.components, flags: discord_js_1.MessageFlags.Ephemeral });
                 }
             }
             catch { }
@@ -72,10 +73,10 @@ module.exports = {
                 try {
                     if (m.channel && 'setName' in m.channel)
                         await m.channel.setName(name);
-                    await m.reply({ content: '📝 Canal renomeado com sucesso.', ephemeral: true });
+                    await m.reply({ content: '📝 Canal renomeado com sucesso.', flags: discord_js_1.MessageFlags.Ephemeral });
                 }
                 catch (e) {
-                    await m.reply({ content: '❌ Não foi possível renomear o canal (permissões?).', ephemeral: true });
+                    await m.reply({ content: '❌ Não foi possível renomear o canal (permissões?).', flags: discord_js_1.MessageFlags.Ephemeral });
                 }
                 return;
             }
@@ -85,14 +86,14 @@ module.exports = {
                     const channel = m.channel;
                     const ticket = await (0, ticketService_1.resolveTicket)(channel);
                     if (!ticket)
-                        return m.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+                        return m.reply({ content: 'Ticket não encontrado.', flags: discord_js_1.MessageFlags.Ephemeral });
                     ticket.notes = ticket.notes || [];
                     ticket.notes.push({ by: m.user.id, text, createdAt: new Date() });
                     await ticket.save();
-                    await m.reply({ content: '🗒️ Nota interna registada.', ephemeral: true });
+                    await m.reply({ content: '🗒️ Nota interna registada.', flags: discord_js_1.MessageFlags.Ephemeral });
                 }
                 catch {
-                    await m.reply({ content: '❌ Falha ao guardar nota.', ephemeral: true });
+                    await m.reply({ content: '❌ Falha ao guardar nota.', flags: discord_js_1.MessageFlags.Ephemeral });
                 }
                 return;
             }
@@ -100,9 +101,9 @@ module.exports = {
                 const channel = m.channel;
                 const ticket = await (0, ticketService_1.resolveTicket)(channel);
                 if (!ticket)
-                    return m.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+                    return m.reply({ content: 'Ticket não encontrado.', flags: discord_js_1.MessageFlags.Ephemeral });
                 const result = await (0, ticketService_1.handleFeedbackSubmit)({ interaction: m, ticket, guildId: m.guildId, userId: m.user.id });
-                return m.reply({ content: result, ephemeral: true });
+                return m.reply({ content: result, flags: discord_js_1.MessageFlags.Ephemeral });
             }
             return;
         }
@@ -111,24 +112,24 @@ module.exports = {
             const channel = sel.channel;
             const ticket = await (0, ticketService_1.resolveTicket)(channel);
             if (!ticket)
-                return sel.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+                return sel.reply({ content: 'Ticket não encontrado.', flags: discord_js_1.MessageFlags.Ephemeral });
             const ids = sel.values;
             try {
                 if (sel.customId === 'ticket:add_member:select') {
                     for (const id of ids) {
                         await channel.permissionOverwrites.edit(id, { ViewChannel: true, SendMessages: true });
                     }
-                    await sel.reply({ content: `➕ Adicionados: ${ids.map(i => `<@${i}>`).join(', ')}`, ephemeral: true });
+                    await sel.reply({ content: `➕ Adicionados: ${ids.map(i => `<@${i}>`).join(', ')}`, flags: discord_js_1.MessageFlags.Ephemeral });
                 }
                 else if (sel.customId === 'ticket:remove_member:select') {
                     for (const id of ids) {
                         await channel.permissionOverwrites.delete(id).catch(() => { });
                     }
-                    await sel.reply({ content: `❌ Removidos: ${ids.map(i => `<@${i}>`).join(', ')}`, ephemeral: true });
+                    await sel.reply({ content: `❌ Removidos: ${ids.map(i => `<@${i}>`).join(', ')}`, flags: discord_js_1.MessageFlags.Ephemeral });
                 }
             }
             catch {
-                await sel.reply({ content: '❌ Falha a atualizar permissões.', ephemeral: true });
+                await sel.reply({ content: '❌ Falha a atualizar permissões.', flags: discord_js_1.MessageFlags.Ephemeral });
             }
             return;
         }
@@ -137,15 +138,15 @@ module.exports = {
             const channel = sel.channel;
             const ticket = await (0, ticketService_1.resolveTicket)(channel);
             if (!ticket)
-                return sel.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+                return sel.reply({ content: 'Ticket não encontrado.', flags: discord_js_1.MessageFlags.Ephemeral });
             const roleIds = sel.values;
             try {
                 const mention = roleIds.map(r => `<@&${r}>`).join(' ');
                 await channel.send({ content: `🔔 Chamando: ${mention}` });
-                await sel.reply({ content: '🔔 Notificação enviada.', ephemeral: true });
+                await sel.reply({ content: '🔔 Notificação enviada.', flags: discord_js_1.MessageFlags.Ephemeral });
             }
             catch {
-                await sel.reply({ content: '❌ Falha ao chamar cargo.', ephemeral: true });
+                await sel.reply({ content: '❌ Falha ao chamar cargo.', flags: discord_js_1.MessageFlags.Ephemeral });
             }
             return;
         }
@@ -154,14 +155,14 @@ module.exports = {
             const channel = sel.channel;
             const ticket = await (0, ticketService_1.resolveTicket)(channel);
             if (!ticket)
-                return sel.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+                return sel.reply({ content: 'Ticket não encontrado.', flags: discord_js_1.MessageFlags.Ephemeral });
             const targetCategoryId = sel.values[0];
             try {
                 await channel.setParent(targetCategoryId, { lockPermissions: false });
-                await sel.reply({ content: '🔁 Ticket movido para nova categoria.', ephemeral: true });
+                await sel.reply({ content: '🔁 Ticket movido para nova categoria.', flags: discord_js_1.MessageFlags.Ephemeral });
             }
             catch {
-                await sel.reply({ content: '❌ Falha ao mover ticket.', ephemeral: true });
+                await sel.reply({ content: '❌ Falha ao mover ticket.', flags: discord_js_1.MessageFlags.Ephemeral });
             }
             return;
         }

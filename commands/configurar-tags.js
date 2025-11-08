@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const storage = require('../utils/storage');
 
 module.exports = {
@@ -16,7 +16,7 @@ module.exports = {
         if (!isOwner && !hasAdminRole && !hasAdminPerm) {
             return interaction.reply({ 
                 content: '❌ Não tens permissão para usar este comando!', 
-                ephemeral: true 
+                flags: MessageFlags.Ephemeral 
             });
         }
 
@@ -56,7 +56,7 @@ module.exports = {
 
         await interaction.reply({
             content: '✅ Configurando sistema de tags...',
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         });
 
         // Enviar o painel no canal

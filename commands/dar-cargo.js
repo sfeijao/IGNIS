@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const storage = require('../utils/storage');
 
 module.exports = {
@@ -26,7 +26,7 @@ module.exports = {
         if (!isOwner && !hasStaffRole && !hasAdminPerm) {
             return interaction.reply({ 
                 content: '❌ Não tens permissão para usar este comando!', 
-                ephemeral: true 
+                flags: MessageFlags.Ephemeral 
             });
         }
 
@@ -37,14 +37,14 @@ module.exports = {
         if (!targetMember) {
             return interaction.reply({ 
                 content: '❌ Utilizador não encontrado no servidor!', 
-                ephemeral: true 
+                flags: MessageFlags.Ephemeral 
             });
         }
 
         if (targetMember.roles.cache.has(targetRole.id)) {
             return interaction.reply({ 
                 content: `❌ ${targetUser.tag} já possui o cargo **${targetRole.name}**!`, 
-                ephemeral: true 
+                flags: MessageFlags.Ephemeral 
             });
         }
 
@@ -81,7 +81,7 @@ module.exports = {
             console.error('Erro ao adicionar cargo:', error);
             await interaction.reply({ 
                 content: '❌ Erro ao adicionar o cargo. Verifica se o bot tem permissões adequadas.', 
-                ephemeral: true 
+                flags: MessageFlags.Ephemeral 
             });
         }
     },
