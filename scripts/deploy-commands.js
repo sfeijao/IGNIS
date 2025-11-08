@@ -250,7 +250,13 @@ class CommandDeployer {
             return result;
         } catch (error) {
             console.error('\n❌ Deploy falhou:', error.message);
-            process.exit(1);
+            // Se este módulo estiver a ser executado diretamente via CLI, sair com código 1.
+            // Caso contrário (quando requerido por outro módulo, ex.: railway-start), lançar o erro
+            // para que o chamador possa decidir continuar o arranque.
+            if (require.main === module) {
+                process.exit(1);
+            }
+            throw error;
         }
     }
 }
