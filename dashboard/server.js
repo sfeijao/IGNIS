@@ -198,7 +198,12 @@ try {
         const NEXT_TARGET = `http://127.0.0.1:${NEXT_PORT}`;
         app.use('/next', (req, res) => {
             try {
-                const targetUrl = new URL(req.url, NEXT_TARGET);
+                // Preserve the basePath "/next" when forwarding to the Next standalone server.
+                // Inside this mounted route, req.url strips the "/next" prefix, but Next was built
+                // with basePath '/next' and expects paths like '/next/_next/...'. Using originalUrl
+                // ensures the forwarded request includes '/next'.
+                const rawPath = (req.originalUrl && typeof req.originalUrl === 'string') ? req.originalUrl : ('/next' + (req.url.startsWith('/') ? req.url : ('/' + req.url)));
+                const targetUrl = new URL(rawPath, NEXT_TARGET);
                 const opts = {
                     method: req.method,
                     headers: Object.assign({}, req.headers, { host: `127.0.0.1:${NEXT_PORT}` })
