@@ -3,7 +3,7 @@
   "version": "2.1.1",
   "description": "🤖 Bot Discord completo para IGNIS Community com sistema de verificação, tags, status roxo e administração avançada",
   "main": "index.js",
-  
+
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sfeijao/IGNIS_BOT.git"

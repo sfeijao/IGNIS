@@ -16,10 +16,7 @@ async function log(ticketId: string, guildId: string, byUserId: string, action: 
   await TicketLogModel.create({ ticketId, guildId, byUserId, action, payload });
 }
 
-function isStaff(member: GuildMember, guildConfig?: any): boolean {
-  const staffRoles: string[] = guildConfig?.staffRoles || [];
-  return member.roles.cache.some(r => staffRoles.includes(r.id));
-}
+// legacy helper removed; using async isStaff below
 
 export async function buildPanelEmbed(author: GuildMember, categoryName: string, thumbnailUrl?: string) {
   return new EmbedBuilder()
@@ -76,6 +73,10 @@ export async function handleCancel(ctx: ActionContext): Promise<ActionResult> {
     ctx.ticket.status = 'cancelled';
     await ctx.ticket.save();
     await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'cancel');
+    // Adicionar botões de export/feedback após cancelamento
+    try {
+      await ctx.channel.send({ content: 'Ticket cancelado. Ações pós-fecho:', components: buildPostCloseRow() });
+    } catch {}
     return '✅ Ticket cancelado.';
   });
 }
@@ -85,9 +86,25 @@ export async function handleHowDM() { return 'Para abrir as DMs: Vá a Definiç�
 export async function handleClaim(ctx: ActionContext): Promise<ActionResult> {
   return withTicketLock(ctx.ticket.id, async () => {
     if (ctx.ticket.staffAssigned) return 'Já está atribuído.';
+    if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode assumir.';
     ctx.ticket.staffAssigned = ctx.userId;
     await ctx.ticket.save();
     await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'claim');
+    // Tentar atualizar embed original com responsável
+    if (ctx.ticket.messageId) {
+      try {
+        const msg = await ctx.channel.messages.fetch(ctx.ticket.messageId).catch(()=>null);
+        if (msg && msg.editable && msg.embeds?.[0]) {
+          const original = EmbedBuilder.from(msg.embeds[0]);
+          // Remover field antigo "Responsável" se existir
+          const fields = original.data.fields || [];
+          const filtered = fields.filter(f => !/Responsável/i.test(f.name));
+          filtered.push({ name: 'Responsável', value: `<@${ctx.userId}>`, inline: false });
+          original.setFields(filtered as any);
+          await msg.edit({ embeds: [original] });
+        }
+      } catch {}
+    }
     return '📌 Atendimento assumido.';
   });
 }
@@ -95,15 +112,20 @@ export async function handleClaim(ctx: ActionContext): Promise<ActionResult> {
 export async function handleClose(ctx: ActionContext): Promise<ActionResult> {
   return withTicketLock(ctx.ticket.id, async () => {
     if (ctx.ticket.status !== 'open') return 'Ticket já fechado.';
+    if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode fechar.';
     ctx.ticket.status = 'closed';
     await ctx.ticket.save();
     await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'close');
+    try {
+      await ctx.channel.send({ content: 'Ticket fechado. Ações pós-fecho:', components: buildPostCloseRow() });
+    } catch {}
     return '✅ Ticket fechado.';
   });
 }
 
 // Placeholder minimal handlers
 export async function handleRename(ctx: ActionContext): Promise<ActionResult> {
+  if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode renomear.';
   const modal = new ModalBuilder().setCustomId('ticket:rename:modal').setTitle('Renomear Canal');
   const input = new TextInputBuilder().setCustomId('ticket:rename:name').setLabel('Novo nome do canal').setStyle(TextInputStyle.Short).setMinLength(2).setMaxLength(90).setRequired(true);
   modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
@@ -113,6 +135,7 @@ export async function handleRename(ctx: ActionContext): Promise<ActionResult> {
 }
 
 export async function handleMove(ctx: ActionContext): Promise<ActionResult> {
+  if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode mover.';
   const row = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
     new ChannelSelectMenuBuilder().setCustomId('ticket:move:select').setPlaceholder('Escolhe uma categoria…').addChannelTypes(ChannelType.GuildCategory)
   );
@@ -120,6 +143,7 @@ export async function handleMove(ctx: ActionContext): Promise<ActionResult> {
 }
 
 export async function handleAddMember(ctx: ActionContext): Promise<ActionResult> {
+  if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode adicionar membros.';
   const key = `${ctx.channel.id}:add:${ctx.userId}`;
   if (isRateLimited(key, 5000)) return '⏱️ Aguarde alguns segundos antes de repetir.';
   const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
@@ -129,6 +153,7 @@ export async function handleAddMember(ctx: ActionContext): Promise<ActionResult>
 }
 
 export async function handleRemoveMember(ctx: ActionContext): Promise<ActionResult> {
+  if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode remover membros.';
   const key = `${ctx.channel.id}:remove:${ctx.userId}`;
   if (isRateLimited(key, 5000)) return '⏱️ Aguarde alguns segundos antes de repetir.';
   const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
@@ -138,6 +163,7 @@ export async function handleRemoveMember(ctx: ActionContext): Promise<ActionResu
 }
 
 export async function handleCallMember(ctx: ActionContext): Promise<ActionResult> {
+  if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode chamar cargos.';
   const key = `${ctx.channel.id}:call:${ctx.userId}`;
   if (isRateLimited(key, 10000)) return '⏱️ Evite spam — aguarde 10 segundos.';
   const row = new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(
@@ -149,6 +175,7 @@ export async function handleCallMember(ctx: ActionContext): Promise<ActionResult
 export async function handleGreet(ctx: ActionContext): Promise<ActionResult> { return `👋 Olá! Sou <@${ctx.userId}>. Em que posso ajudar?`; }
 
 export async function handleNote(ctx: ActionContext): Promise<ActionResult> {
+  if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode adicionar notas.';
   const modal = new ModalBuilder().setCustomId('ticket:note:modal').setTitle('Nota interna');
   const input = new TextInputBuilder().setCustomId('ticket:note:text').setLabel('Conteúdo da nota').setStyle(TextInputStyle.Paragraph).setMinLength(2).setMaxLength(1000).setRequired(true);
   modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
@@ -158,4 +185,83 @@ export async function handleNote(ctx: ActionContext): Promise<ActionResult> {
 
 export async function resolveTicket(channel: TextChannel): Promise<Awaited<ReturnType<typeof TicketModel.findOne>> | null> {
   return TicketModel.findOne({ channelId: channel.id });
+}
+
+// Staff gating
+const staffCache = new Map<string, { roles: string[]; ts: number }>();
+async function getStaffRoles(guildId: string): Promise<string[]> {
+  const cached = staffCache.get(guildId);
+  const now = Date.now();
+  if (cached && (now - cached.ts < 60000)) return cached.roles;
+  let roles: string[] = [];
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const storage = require('../../utils/storage');
+    const cfg = await storage.getGuildConfig(guildId, 'staffRoles');
+    if (Array.isArray(cfg)) roles = cfg.filter(r => typeof r === 'string');
+  } catch {}
+  staffCache.set(guildId, { roles, ts: now });
+  return roles;
+}
+
+async function isStaff(member: GuildMember, guildId: string): Promise<boolean> {
+  try {
+    const staffRoles = await getStaffRoles(guildId);
+    if (!staffRoles.length) return false;
+    return member.roles.cache.some(r => staffRoles.includes(r.id));
+  } catch { return false; }
+}
+
+// Post-close action row
+export function buildPostCloseRow() {
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId('ticket:export').setLabel('Exportar Logs').setStyle(ButtonStyle.Secondary).setEmoji('📄'),
+    new ButtonBuilder().setCustomId('ticket:feedback').setLabel('Avaliar Atendimento').setStyle(ButtonStyle.Primary).setEmoji('⭐')
+  );
+  return [row];
+}
+
+export async function handleExport(ctx: ActionContext): Promise<ActionResult> {
+  const isStaffMember = await isStaff(ctx.member, ctx.guildId);
+  if (!(isStaffMember || ctx.userId === ctx.ticket.ownerId)) return '⛔ Apenas staff ou autor pode exportar.';
+  try {
+  const entries: any[] = await TicketLogModel.find({ ticketId: ctx.ticket.id }).sort({ createdAt: 1 }).limit(500).lean();
+  const lines = entries.map(e => `${new Date(e.createdAt || Date.now()).toISOString()} | ${e.byUserId || 'n/a'} | ${e.action} | ${JSON.stringify(e.payload || {})}`);
+    const text = lines.join('\n');
+    if (text.length < 1800) {
+      await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'export', { count: entries.length });
+      return '```\n' + text + '\n```';
+    }
+    // Send as attachment via calling channel send then ephemeral note
+    const buf = Buffer.from(text, 'utf8');
+    try { await ctx.channel.send({ files: [{ attachment: buf, name: `ticket_${ctx.ticket.id}_logs.txt` }] }); } catch {}
+    await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'export', { count: entries.length, mode: 'file' });
+    return '📄 Logs exportados (ficheiro enviado no canal).';
+  } catch {
+    return '❌ Falha ao exportar logs.';
+  }
+}
+
+export async function handleFeedbackButton(ctx: ActionContext): Promise<ActionResult> {
+  if (ctx.userId !== ctx.ticket.ownerId) return '⛔ Apenas o autor pode avaliar.';
+  const modal = new ModalBuilder().setCustomId('ticket:feedback:modal').setTitle('Avaliar Atendimento');
+  const rating = new TextInputBuilder().setCustomId('ticket:feedback:rating').setLabel('Nota (1-5)').setStyle(TextInputStyle.Short).setMinLength(1).setMaxLength(1).setRequired(true);
+  const comment = new TextInputBuilder().setCustomId('ticket:feedback:comment').setLabel('Comentário (opcional)').setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(500);
+  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(rating), new ActionRowBuilder<TextInputBuilder>().addComponents(comment));
+  await (ctx as any).interaction?.showModal?.(modal);
+  return '⭐ Introduza feedback (modal).';
+}
+
+export async function handleFeedbackSubmit(ctx: { interaction: any; ticket: any; guildId: string; userId: string }): Promise<string> {
+  try {
+    const r = ctx.interaction.fields.getTextInputValue('ticket:feedback:rating');
+    const c = ctx.interaction.fields.getTextInputValue('ticket:feedback:comment');
+    const ratingNum = Number(r);
+    if (!(ratingNum >= 1 && ratingNum <= 5)) return '❌ Nota inválida (use 1-5).';
+    ctx.ticket.meta = ctx.ticket.meta || {};
+    ctx.ticket.meta.feedback = { rating: ratingNum, comment: c || '', by: ctx.userId, at: new Date() };
+    await ctx.ticket.save();
+    await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'feedback', { rating: ratingNum });
+    return '✅ Feedback registado. Obrigado!';
+  } catch { return '❌ Falha ao registar feedback.'; }
 }

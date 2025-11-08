@@ -1,5 +1,5 @@
 import { Interaction, ButtonInteraction, TextChannel, ModalSubmitInteraction, UserSelectMenuInteraction, RoleSelectMenuInteraction, ChannelSelectMenuInteraction } from 'discord.js';
-import { resolveTicket, handleCancel, handleHowDM, handleClaim, handleClose, handleRename, handleMove, handleAddMember, handleRemoveMember, handleCallMember, handleGreet, handleNote } from '../services/ticketService';
+import { resolveTicket, handleCancel, handleHowDM, handleClaim, handleClose, handleRename, handleMove, handleAddMember, handleRemoveMember, handleCallMember, handleGreet, handleNote, handleExport, handleFeedbackButton, handleFeedbackSubmit } from '../services/ticketService';
 
 module.exports = {
   name: 'interactionCreate',
@@ -24,6 +24,8 @@ module.exports = {
   case 'ticket:call_member': response = await handleCallMember(ctx); break;
         case 'ticket:greet': response = await handleGreet(ctx); break;
   case 'ticket:note': response = await handleNote(ctx); break;
+  case 'ticket:export': response = await handleExport(ctx); break;
+  case 'ticket:feedback': response = await handleFeedbackButton(ctx); break;
       }
       try {
         if (typeof response === 'string') {
@@ -45,21 +47,29 @@ module.exports = {
         } catch (e) {
           await m.reply({ content: '❌ Não foi possível renomear o canal (permissões?).', ephemeral: true });
         }
+        return;
       }
       if (m.customId === 'ticket:note:modal') {
         const text = m.fields.getTextInputValue('ticket:note:text');
         try {
           const channel = m.channel as TextChannel;
           const ticket: any = await resolveTicket(channel);
-          if (ticket) {
-            ticket.notes = ticket.notes || [];
-            ticket.notes.push({ by: m.user.id, text, createdAt: new Date() });
-            await ticket.save();
-          }
+          if (!ticket) return m.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+          ticket.notes = ticket.notes || [];
+          ticket.notes.push({ by: m.user.id, text, createdAt: new Date() });
+          await ticket.save();
           await m.reply({ content: '🗒️ Nota interna registada.', ephemeral: true });
         } catch {
           await m.reply({ content: '❌ Falha ao guardar nota.', ephemeral: true });
         }
+        return;
+      }
+      if (m.customId === 'ticket:feedback:modal') {
+        const channel = m.channel as TextChannel;
+        const ticket: any = await resolveTicket(channel);
+        if (!ticket) return m.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+        const result = await handleFeedbackSubmit({ interaction: m, ticket, guildId: m.guildId!, userId: m.user.id });
+        return m.reply({ content: result, ephemeral: true });
       }
       return;
     }

@@ -46,6 +46,12 @@ module.exports = {
                 case 'ticket:note':
                     response = await (0, ticketService_1.handleNote)(ctx);
                     break;
+                case 'ticket:export':
+                    response = await (0, ticketService_1.handleExport)(ctx);
+                    break;
+                case 'ticket:feedback':
+                    response = await (0, ticketService_1.handleFeedbackButton)(ctx);
+                    break;
             }
             try {
                 if (typeof response === 'string') {
@@ -71,22 +77,32 @@ module.exports = {
                 catch (e) {
                     await m.reply({ content: '❌ Não foi possível renomear o canal (permissões?).', ephemeral: true });
                 }
+                return;
             }
             if (m.customId === 'ticket:note:modal') {
                 const text = m.fields.getTextInputValue('ticket:note:text');
                 try {
                     const channel = m.channel;
                     const ticket = await (0, ticketService_1.resolveTicket)(channel);
-                    if (ticket) {
-                        ticket.notes = ticket.notes || [];
-                        ticket.notes.push({ by: m.user.id, text, createdAt: new Date() });
-                        await ticket.save();
-                    }
+                    if (!ticket)
+                        return m.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+                    ticket.notes = ticket.notes || [];
+                    ticket.notes.push({ by: m.user.id, text, createdAt: new Date() });
+                    await ticket.save();
                     await m.reply({ content: '🗒️ Nota interna registada.', ephemeral: true });
                 }
                 catch {
                     await m.reply({ content: '❌ Falha ao guardar nota.', ephemeral: true });
                 }
+                return;
+            }
+            if (m.customId === 'ticket:feedback:modal') {
+                const channel = m.channel;
+                const ticket = await (0, ticketService_1.resolveTicket)(channel);
+                if (!ticket)
+                    return m.reply({ content: 'Ticket não encontrado.', ephemeral: true });
+                const result = await (0, ticketService_1.handleFeedbackSubmit)({ interaction: m, ticket, guildId: m.guildId, userId: m.user.id });
+                return m.reply({ content: result, ephemeral: true });
             }
             return;
         }
