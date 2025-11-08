@@ -186,6 +186,13 @@ try {
 
         // Extra cache-control for Next static assets
         app.use('/next/_next/static', (req, res, next) => { try { res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); } catch {} next(); });
+        // Redirect bare /_next/* to /next/_next/* to honor basePath in all environments
+        app.use('/_next', (req, res) => {
+            try {
+                const target = '/next' + (req.url.startsWith('/') ? req.url : ('/' + req.url));
+                res.redirect(307, target);
+            } catch { res.status(404).end(); }
+        });
 
         // Minimal HTTP proxy to Next standalone for /next/*
         const NEXT_TARGET = `http://127.0.0.1:${NEXT_PORT}`;
@@ -219,6 +226,11 @@ try {
         app.get(['/dashboard', '/dashboard/*', '/dashboard-new', '/dashboard-new/*'], (req, res) => res.redirect('/next/'));
     } else if (fs.existsSync(NEXT_EXPORT_DIR)) {
         app.use('/next', express.static(NEXT_EXPORT_DIR, { index: 'index.html', redirect: false }));
+        // Serve Next static assets also under root /_next/* for robustness
+        const NEXT_EXPORT_STATIC = path.join(NEXT_EXPORT_DIR, '_next');
+        if (fs.existsSync(NEXT_EXPORT_STATIC)) {
+            app.use('/_next', express.static(NEXT_EXPORT_STATIC, { index: false, redirect: false }));
+        }
         // Make the new dashboard the default landing page
         app.get('/', (req, res) => res.redirect('/next/'));
         app.get(['/dashboard', '/dashboard/*', '/dashboard-new', '/dashboard-new/*'], (req, res) => res.redirect('/next/'));
@@ -5080,6 +5092,7 @@ app.get('/api/guild/:guildId/tickets/:ticketId/transcript', async (req, res) => 
     try {
         const { guildId, ticketId } = req.params;
         const format = (req.query.format || 'txt').toString().toLowerCase();
+        const wantStream = String(req.query.stream || '0') === '1';
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const guild = client.guilds.cache.get(guildId);
@@ -5095,6 +5108,38 @@ app.get('/api/guild/:guildId/tickets/:ticketId/transcript', async (req, res) => 
         const channel = guild.channels.cache.get(ticket.channel_id);
         const meta = (ticket.meta && typeof ticket.meta === 'object') ? ticket.meta : {};
         const t = meta.transcript || {};
+
+        // Streaming mode: progressively stream text transcript line-by-line
+        if (wantStream && channel && channel.messages?.fetch) {
+            try {
+                res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+                res.setHeader('Transfer-Encoding', 'chunked');
+                res.setHeader('Content-Disposition', `attachment; filename=ticket-${ticketId}-transcript.txt`);
+                // header
+                res.write(`Ticket #${ticketId} (stream)\n`);
+                let before;
+                let total = 0;
+                for (let i = 0; i < 50; i++) {
+                    const fetched = await channel.messages.fetch(before ? { limit: 100, before } : { limit: 100 }).catch(() => null);
+                    if (!fetched || !fetched.size) break;
+                    const batch = Array.from(fetched.values());
+                    before = batch[batch.length - 1]?.id;
+                    // oldest first
+                    batch.sort((a,b) => a.createdTimestamp - b.createdTimestamp);
+                    for (const m of batch) {
+                        const when = new Date(m.createdTimestamp).toISOString();
+                        const who = `${m.author?.username || 'Unknown'}#${m.author?.discriminator || '0000'}`;
+                        res.write(`[${when}] ${who}: ${m.content || ''}\n`);
+                        total++;
+                    }
+                    if (fetched.size < 100) break;
+                }
+                return res.end();
+            } catch (e) {
+                logger.warn('Streaming transcript failed, falling back:', e?.message || String(e));
+                // fall through to stored/on-the-fly behavior
+            }
+        }
 
         // If we have stored transcript and requested format is available, serve it
         if (format === 'html' && t.html) {
@@ -5135,6 +5180,84 @@ app.get('/api/guild/:guildId/tickets/:ticketId/transcript', async (req, res) => 
     } catch (e) {
         logger.error('Error serving ticket transcript:', e);
         return res.status(500).json({ success: false, error: 'Failed to get transcript' });
+    }
+});
+
+// Regenerate and persist transcript (HTML + TXT)
+app.post('/api/guild/:guildId/tickets/:ticketId/transcript/regenerate', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    try {
+        const { guildId, ticketId } = req.params;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+
+        const storage = require('../utils/storage');
+        const tickets = await storage.getTickets(guildId);
+        const ticket = tickets.find(t => `${t.id}` === `${ticketId}`);
+        if (!ticket) return res.status(404).json({ success: false, error: 'Ticket not found' });
+
+        // Only ticket owner or staff can regenerate
+        let isStaff = false;
+        try {
+            const staffRoles = await storage.getGuildConfig(guildId, 'staffRoles') || [];
+            if (Array.isArray(staffRoles) && staffRoles.length) {
+                isStaff = member.roles.cache.some(r => staffRoles.includes(r.id));
+            }
+        } catch {}
+        if (`${req.user.id}` !== `${ticket.user_id}` && !isStaff) {
+            return res.status(403).json({ success: false, error: 'Only owner or staff can regenerate transcript' });
+        }
+
+        const channel = guild.channels.cache.get(ticket.channel_id);
+        if (!channel || !channel.messages?.fetch) {
+            return res.status(404).json({ success: false, error: 'Channel not found' });
+        }
+
+        // Fetch messages (paginate most recent -> oldest, then sort ASC)
+        let before;
+        const rows = [];
+        for (let i = 0; i < 50; i++) {
+            const fetched = await channel.messages.fetch(before ? { limit: 100, before } : { limit: 100 }).catch(() => null);
+            if (!fetched || !fetched.size) break;
+            const batch = Array.from(fetched.values());
+            rows.push(...batch);
+            before = batch[batch.length - 1]?.id;
+            if (fetched.size < 100) break;
+        }
+        rows.sort((a,b) => a.createdTimestamp - b.createdTimestamp);
+        const lines = [];
+        lines.push(`Ticket #${ticketId}`);
+        for (const m of rows) {
+            const when = new Date(m.createdTimestamp).toISOString();
+            const who = `${m.author?.username || 'Unknown'}#${m.author?.discriminator || '0000'}`;
+            lines.push(`[${when}] ${who}: ${m.content || ''}`);
+        }
+        const text = lines.join('\n');
+
+        // Basic HTML render
+        const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const htmlBody = rows.map(m => {
+            const when = new Date(m.createdTimestamp).toISOString();
+            const who = `${m.author?.username || 'Unknown'}#${m.author?.discriminator || '0000'}`;
+            return `<div class="msg"><span class="ts">[${esc(when)}]</span> <span class="who">${esc(who)}</span>: <span class="content">${esc(m.content || '')}</span></div>`;
+        }).join('\n');
+        const html = `<!doctype html><html><head><meta charset="utf-8"/><title>Ticket ${esc(ticketId)} Transcript</title><style>body{font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#0a0a0a;color:#e5e5e5} .msg{margin:4px 0} .ts{color:#9ca3af} .who{color:#93c5fd} .content{color:#e5e7eb;white-space:pre-wrap}</style></head><body><h1>Ticket #${esc(ticketId)} Transcript</h1>${htmlBody}</body></html>`;
+
+        const transcript = { text, html, generatedAt: new Date().toISOString(), messageCount: rows.length };
+        const currentMeta = ticket.meta && typeof ticket.meta === 'object' ? ticket.meta : {};
+        const updates = { meta: { ...currentMeta, transcript } };
+        await storage.updateTicket(ticketId, updates);
+        try { await storage.addTicketLog({ ticket_id: ticketId, guild_id: guildId, actor_id: req.user.id, action: 'transcript_regenerate', message: `messages:${rows.length}`, data: { count: rows.length } }); } catch {}
+        return res.json({ success: true, transcript });
+    } catch (e) {
+        logger.error('Error regenerating ticket transcript:', e);
+        return res.status(500).json({ success: false, error: 'Failed to regenerate transcript' });
     }
 });
 

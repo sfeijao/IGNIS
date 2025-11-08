@@ -116,6 +116,16 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'tickets.table.category': 'Categoria',
   'tickets.table.message': 'Mensagem',
   'tickets.table.actions': 'Ações',
+  // Tickets transcript & feedback additions
+  'tickets.transcript': 'Transcript',
+  'tickets.feedback': 'Feedback',
+  'tickets.submitFeedback': 'Enviar feedback',
+  'tickets.feedbackSaved': 'Feedback guardado',
+  'tickets.feedbackStored': 'Feedback guardado',
+  'tickets.feedbackCommentPlaceholder': 'Comentário opcional',
+  'tickets.feedbackOnlyClosed': 'Feedback disponível após fechar o ticket.',
+  'tickets.regenerateTranscript': 'Regenerar transcript',
+  'tickets.transcriptRegenerated': 'Transcript regenerado',
   // Tickets config/panels
   'tickets.config.title': 'Configuração de Tickets',
   'tickets.fields.common': 'Campos comuns',
@@ -762,6 +772,16 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'tickets.table.category': 'Category',
   'tickets.table.message': 'Message',
   'tickets.table.actions': 'Actions',
+  // Tickets transcript & feedback additions
+  'tickets.transcript': 'Transcript',
+  'tickets.feedback': 'Feedback',
+  'tickets.submitFeedback': 'Submit feedback',
+  'tickets.feedbackSaved': 'Feedback saved',
+  'tickets.feedbackStored': 'Feedback saved',
+  'tickets.feedbackCommentPlaceholder': 'Optional comment',
+  'tickets.feedbackOnlyClosed': 'Feedback available after ticket is closed.',
+  'tickets.regenerateTranscript': 'Regenerate transcript',
+  'tickets.transcriptRegenerated': 'Transcript regenerated',
   // Tickets config/panels
   'tickets.config.title': 'Tickets Configuration',
   'tickets.fields.common': 'Common fields',

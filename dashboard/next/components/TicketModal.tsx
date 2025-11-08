@@ -1,7 +1,11 @@
 "use client"
 
 import { useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { api } from '@/lib/apiClient'
+import { useI18n } from '@/lib/i18n'
+import { useToast } from '@/components/Toaster'
+// added feedback + transcript enhancements
 
 interface Props {
   guildId: string
@@ -26,11 +30,19 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
   const [logs, setLogs] = useState<TicketLogs | null>(null)
   const [offset, setOffset] = useState(0)
   const [busyMore, setBusyMore] = useState(false)
-  const [tab, setTab] = useState<'overview' | 'logs' | 'transcript'>('overview')
+  const [tab, setTab] = useState<'overview' | 'logs' | 'transcript' | 'feedback'>('overview')
   const limit = 200
   const [messages, setMessages] = useState<any[]>([])
   const [nextBefore, setNextBefore] = useState<string | null>(null)
   const [channels, setChannels] = useState<Array<{ id: string; name: string; type?: any }>>([])
+  // feedback state
+  const [rating, setRating] = useState<number>(0)
+  const [comment, setComment] = useState('')
+  const [submittingFb, setSubmittingFb] = useState(false)
+  const [feedbackSaved, setFeedbackSaved] = useState(false)
+  const [feedbackError, setFeedbackError] = useState<string | null>(null)
+  const { t } = useI18n()
+  const { toast } = useToast()
   const channelTypeLabel = (t?: any) => {
     const tt = (t ?? '').toString().toLowerCase()
     if (tt === '0' || tt === 'text' || tt === 'guild_text') return 'Text'
@@ -51,6 +63,13 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
         const ch = await api.getChannels(guildId).catch(() => ({ channels: [] }))
         if (!aborted) {
           setDetails(d)
+          try {
+            const fb = (d as any)?.ticket?.meta?.feedback
+            if (fb && typeof fb === 'object' && typeof fb.rating === 'number') {
+              setRating(fb.rating)
+              setComment(String(fb.comment||''))
+            }
+          } catch {}
           setLogs(l)
           setOffset(l?.logs?.length || 0)
           setChannels(((ch as any).channels || ch || []).filter((c: any) => c && c.id && c.name))
@@ -105,9 +124,27 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
             <div className="px-5 pt-3 flex items-center gap-2 border-b border-neutral-800">
               <button type="button" className={`px-3 py-2 text-sm rounded-t ${tab==='overview' ? 'bg-neutral-800 border border-neutral-700 border-b-neutral-800' : 'text-neutral-400 hover:text-white'}`} onClick={()=> setTab('overview')}>Overview</button>
               <button type="button" className={`px-3 py-2 text-sm rounded-t ${tab==='logs' ? 'bg-neutral-800 border border-neutral-700 border-b-neutral-800' : 'text-neutral-400 hover:text-white'}`} onClick={()=> setTab('logs')}>Logs</button>
-              <button type="button" className={`px-3 py-2 text-sm rounded-t ${tab==='transcript' ? 'bg-neutral-800 border border-neutral-700 border-b-neutral-800' : 'text-neutral-400 hover:text-white'}`} onClick={()=> setTab('transcript')}>Transcript</button>
+              <button type="button" className={`px-3 py-2 text-sm rounded-t ${tab==='transcript' ? 'bg-neutral-800 border border-neutral-700 border-b-neutral-800' : 'text-neutral-400 hover:text-white'}`} onClick={()=> setTab('transcript')}>{t('tickets.transcript') || 'Transcript'}</button>
+              <button type="button" className={`px-3 py-2 text-sm rounded-t ${tab==='feedback' ? 'bg-neutral-800 border border-neutral-700 border-b-neutral-800' : 'text-neutral-400 hover:text-white'}`} onClick={()=> setTab('feedback')}>{t('tickets.feedback') || 'Feedback'}</button>
               {tab==='transcript' && (
-                <a className="ml-auto mr-5 text-sm text-blue-400 hover:text-blue-300 underline" href={`/api/guild/${guildId}/tickets/${ticketId}?download=transcript`} target="_blank" rel="noreferrer">Download transcript</a>
+                <div className="ml-auto mr-5 flex gap-3 items-center">
+                  <a className="text-sm text-blue-400 hover:text-blue-300 underline" href={api.ticketTranscriptUrl(guildId, ticketId, 'txt')} target="_blank" rel="noreferrer">TXT</a>
+                  <a className="text-sm text-blue-400 hover:text-blue-300 underline" href={api.ticketTranscriptUrl(guildId, ticketId, 'html')} target="_blank" rel="noreferrer">HTML</a>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const r = await api.regenerateTicketTranscript(guildId, ticketId)
+                        toast({ type: 'success', title: t('tickets.transcriptRegenerated') || 'Transcript regenerated', description: r?.transcript?.messageCount ? `${r.transcript.messageCount} messages` : undefined })
+                        const d = await api.getTicketDetails(guildId, ticketId)
+                        setDetails(d)
+                      } catch(e:any){
+                        toast({ type: 'error', title: 'Failed to regenerate', description: e?.message || 'Error' })
+                      }
+                    }}
+                    className="px-2.5 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-xs font-medium"
+                  >{t('tickets.regenerateTranscript') || 'Regenerate'}</button>
+                </div>
               )}
             </div>
 
@@ -149,7 +186,14 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
 
             {tab === 'transcript' && (
               <div className="p-4">
-                <div className="font-medium mb-2">Transcript</div>
+                <div className="font-medium mb-2 flex items-center justify-between">
+                  <span>{t('tickets.transcript') || 'Transcript'}</span>
+                  {details.ticket.meta?.transcript && (
+                    <span className="text-xs text-neutral-500">
+                      {details.ticket.meta.transcript.messageCount ? `${details.ticket.meta.transcript.messageCount} msgs` : ''} · {details.ticket.meta.transcript.generatedAt ? new Date(details.ticket.meta.transcript.generatedAt).toLocaleString() : ''}
+                    </span>
+                  )}
+                </div>
                 <div className="max-h-[28rem] overflow-auto space-y-3">
                   {messages.map((m: any) => (
                     <div key={m.id} className="text-sm">
@@ -165,6 +209,45 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
                 <div className="mt-3 flex items-center gap-2">
                   <button type="button" onClick={loadMoreMessages} disabled={!nextBefore} className="px-3 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50 text-sm">{nextBefore ? 'Load older messages' : 'No more messages'}</button>
                 </div>
+              </div>
+            )}
+
+            {tab === 'feedback' && (
+              <div className="p-4 space-y-4">
+                <div className="font-medium">{t('tickets.feedback') || 'Feedback'}</div>
+                {details.ticket.status !== 'closed' && (
+                  <div className="text-sm text-neutral-400">{t('tickets.feedbackOnlyClosed') || 'Feedback disponível após fechar o ticket.'}</div>
+                )}
+                {details.ticket.status === 'closed' && (
+                  <FeedbackForm
+                    existing={details.ticket.meta?.feedback}
+                    rating={rating}
+                    setRating={setRating}
+                    comment={comment}
+                    setComment={setComment}
+                    onSubmit={async () => {
+                      if (submittingFb || feedbackSaved) return
+                      setSubmittingFb(true); setFeedbackError(null)
+                      try {
+                        const r = await api.submitTicketFeedback(guildId, ticketId, { rating, comment })
+                        if (r.success) {
+                          setFeedbackSaved(true)
+                          // refresh details to show stored feedback
+                          const d = await api.getTicketDetails(guildId, ticketId)
+                          setDetails(d)
+                          toast({ type: 'success', title: t('tickets.feedbackSaved') || 'Guardado!', description: rating ? `⭐ ${rating}` : undefined })
+                        } else {
+                          setFeedbackError(r.error || 'Failed to submit')
+                          toast({ type: 'error', title: t('common.error') || 'Erro', description: r.error || 'Failed to submit' })
+                        }
+                      } catch(e:any){ setFeedbackError(e?.message || 'Failed to submit') }
+                      finally { setSubmittingFb(false) }
+                    }}
+                    submitting={submittingFb}
+                    saved={feedbackSaved || !!details.ticket.meta?.feedback}
+                    error={feedbackError}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -195,5 +278,57 @@ function Timeline({ items }: { items: Array<{ timestamp: string; action: string;
         </li>
       ))}
     </ol>
+  )
+}
+
+function FeedbackForm({ existing, rating, setRating, comment, setComment, onSubmit, submitting, saved, error }:{
+  existing: any
+  rating: number
+  setRating: (n:number)=>void
+  comment: string
+  setComment: (s:string)=>void
+  onSubmit: ()=>void
+  submitting: boolean
+  saved: boolean
+  error: string|null
+}) {
+  const { t } = useI18n()
+  const interactive = !existing && !saved
+  return (
+    <div className="space-y-4">
+      {existing && (
+        <div className="p-3 rounded bg-neutral-800 border border-neutral-700">
+          <div className="text-sm text-neutral-300">{t('tickets.feedbackStored') || 'Feedback guardado'}:</div>
+          <div className="text-sm text-neutral-200">{`⭐ ${existing.rating}`}{existing.comment ? ` – ${existing.comment}` : ''}</div>
+          <div className="text-xs text-neutral-500">{existing.at ? new Date(existing.at).toLocaleString() : ''}</div>
+        </div>
+      )}
+      {!existing && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            {[1,2,3,4,5].map(n => (
+              <button key={n} type="button" disabled={!interactive} onClick={()=> setRating(n)} className={`text-2xl ${rating>=n ? 'text-yellow-400' : 'text-neutral-600'} ${interactive ? 'hover:text-yellow-300' : ''}`}>★</button>
+            ))}
+          </div>
+          <textarea
+            value={comment}
+            onChange={e=> setComment(e.target.value)}
+            placeholder={t('tickets.feedbackCommentPlaceholder') || 'Comentário opcional'}
+            disabled={!interactive}
+            className="w-full h-24 rounded bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-neutral-600"
+          />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              disabled={!interactive || rating<1 || submitting}
+              onClick={onSubmit}
+              className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-sm font-medium"
+            >{submitting ? (t('common.working') || 'A trabalhar…') : (t('tickets.submitFeedback') || 'Enviar feedback')}</button>
+            {saved && !existing && <span className="text-green-500 text-sm">{t('tickets.feedbackSaved') || 'Guardado!'}</span>}
+            {error && <span className="text-red-500 text-sm">{error}</span>}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

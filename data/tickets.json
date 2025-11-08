@@ -1,1 +1,33 @@
-[]
+[
+  {
+    "id": 1001,
+    "guild_id": "g1",
+    "channel_id": "c1",
+    "user_id": "0",
+    "status": "closed",
+    "meta": {
+      "transcript": {
+        "text": "stored transcript text",
+        "html": "<html><body>stored</body></html>",
+        "generatedAt": "2025-11-08T07:17:24.499Z",
+        "messageCount": 3
+      }
+    }
+  },
+  {
+    "id": 1002,
+    "guild_id": "g1",
+    "channel_id": "c2",
+    "user_id": "0",
+    "status": "closed",
+    "meta": {}
+  },
+  {
+    "id": 1003,
+    "guild_id": "g1",
+    "channel_id": "c2",
+    "user_id": "someone",
+    "status": "closed",
+    "meta": {}
+  }
+]

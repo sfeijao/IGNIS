@@ -1,4 +1,46 @@
 export const api = {
+  // Ticket transcripts & feedback
+  ticketTranscriptUrl(guildId: string, ticketId: string, format: 'txt'|'html' = 'txt') {
+    const f = (format === 'html') ? 'html' : 'txt'
+    return `/api/guild/${guildId}/tickets/${ticketId}/transcript?format=${encodeURIComponent(f)}`
+  },
+  async regenerateTicketTranscript(guildId: string, ticketId: string) {
+    const res = await fetch(`/api/guild/${guildId}/tickets/${ticketId}/transcript/regenerate`, {
+      method: 'POST',
+      credentials: 'include'
+    })
+    if (!res.ok) {
+      try { const err = await res.json(); throw new Error(err?.error || 'Failed to regenerate transcript') } catch { throw new Error('Failed to regenerate transcript') }
+    }
+    return res.json()
+  },
+  async getTicketTranscript(guildId: string, ticketId: string, format: 'txt'|'html' = 'txt') {
+    const url = this.ticketTranscriptUrl(guildId, ticketId, format)
+    const res = await fetch(url, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch transcript')
+    return res.text()
+  },
+  async submitTicketFeedback(
+    guildId: string,
+    ticketId: string,
+    payload: { rating: number; comment?: string }
+  ) {
+    const res = await fetch(`/api/guild/${guildId}/tickets/${ticketId}/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) {
+      try {
+        const err = await res.json()
+        throw new Error(err?.error || 'Failed to submit feedback')
+      } catch {
+        throw new Error('Failed to submit feedback')
+      }
+    }
+    return res.json()
+  },
   async getLogStats(guildId: string, params?: Record<string, string | number | boolean>) {
     const qs = params ? `?${new URLSearchParams(Object.entries(params).map(([k,v]) => [k, String(v)]))}` : ''
   const res = await fetch(`/api/guild/${guildId}/logs/stats${qs}`, { credentials: 'include' })

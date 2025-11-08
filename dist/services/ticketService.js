@@ -102,14 +102,84 @@ async function handleClose(ctx) {
             return 'Ticket já fechado.';
         if (!(await isStaff(ctx.member, ctx.guildId)))
             return '⛔ Apenas staff pode fechar.';
-        ctx.ticket.status = 'closed';
-        await ctx.ticket.save();
-        await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'close');
+        // Gerar transcript antes de fechar
+        let transcriptText = '';
+        let transcriptHtml = '';
         try {
-            await ctx.channel.send({ content: 'Ticket fechado. Ações pós-fecho:', components: buildPostCloseRow() });
+            const messages = [];
+            // Fetch up to 400 mensagens em páginas de 100 (limite razoável)
+            let lastId = undefined;
+            for (let i = 0; i < 4; i++) {
+                const fetched = await ctx.channel.messages.fetch(lastId ? { limit: 100, before: lastId } : { limit: 100 }).catch(() => null);
+                if (!fetched || !fetched.size)
+                    break;
+                const batch = Array.from(fetched.values());
+                messages.push(...batch);
+                const last = batch[batch.length - 1];
+                lastId = last?.id;
+                if (fetched.size < 100)
+                    break; // no more messages
+            }
+            messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+            const lines = [];
+            lines.push(`Ticket ${ctx.ticket.id} Transcript`);
+            lines.push(`Canal: ${ctx.channel.name} (${ctx.channel.id})`);
+            lines.push(`Fechado por: ${ctx.userId}`);
+            lines.push(`Gerado em: ${new Date().toISOString()}`);
+            lines.push('');
+            for (const m of messages) {
+                const when = new Date(m.createdTimestamp).toISOString();
+                const authorTag = `${m.author?.username || 'Desconhecido'}#${m.author?.discriminator || '0000'}`;
+                const content = (m.content || '').replace(/\n/g, ' ');
+                lines.push(`[${when}] ${authorTag}: ${content}`);
+                // Incluir embeds simples
+                if (Array.isArray(m.embeds) && m.embeds.length) {
+                    for (const e of m.embeds) {
+                        const etitle = e.title ? ` ${e.title}` : '';
+                        const edesc = e.description ? ` ${e.description}` : '';
+                        lines.push(`[${when}] EMBED:${etitle}${edesc}`.trim());
+                    }
+                }
+                // Incluir anexos (apenas nomes/urls)
+                if (m.attachments?.size) {
+                    for (const at of m.attachments.values()) {
+                        lines.push(`[${when}] ANEXO: ${at.name} ${at.url}`);
+                    }
+                }
+            }
+            transcriptText = lines.join('\n');
+            // HTML muito simples
+            const esc = (s) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            const rows = lines.map(l => `<div class="line">${esc(l)}</div>`).join('');
+            transcriptHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Transcript Ticket ${ctx.ticket.id}</title><style>body{font-family:Segoe UI,Arial,sans-serif;background:#0f1113;color:#eee;padding:16px}h1{font-size:18px;margin:0 0 12px}div.line{font-size:13px;white-space:pre-wrap;font-family:Consolas,monospace;padding:2px 0;border-bottom:1px solid #222}div.line:nth-child(even){background:#14171a}</style></head><body><h1>Transcript Ticket ${ctx.ticket.id}</h1>${rows}</body></html>`;
         }
         catch { }
-        return '✅ Ticket fechado.';
+        ctx.ticket.status = 'closed';
+        ctx.ticket.meta = ctx.ticket.meta || {};
+        ctx.ticket.meta.transcript = {
+            generatedAt: new Date(),
+            messageCount: transcriptText ? transcriptText.split('\n').length - 6 : 0, // approximate count excluding header lines
+            text: transcriptText.length > 200000 ? transcriptText.slice(0, 200000) + '\n...[TRUNCATED]' : transcriptText,
+            html: transcriptHtml.length > 300000 ? '<!-- Transcript HTML truncado por tamanho -->' : transcriptHtml
+        };
+        await ctx.ticket.save();
+        await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'close', { transcriptStored: !!transcriptText });
+        try {
+            // Se o transcript for pequeno, anexar ficheiro txt ao canal
+            if (transcriptText && transcriptText.length < 190000) {
+                const buf = Buffer.from(transcriptText, 'utf8');
+                await ctx.channel.send({ files: [{ attachment: buf, name: `ticket_${ctx.ticket.id}_transcript.txt` }], content: 'Ticket fechado. Transcript gerado. Ações pós-fecho:' });
+            }
+            else {
+                await ctx.channel.send({ content: 'Ticket fechado. Transcript (grande) armazenado no sistema. Ações pós-fecho:', components: buildPostCloseRow() });
+            }
+            // Adicionar botões pós-fecho se ainda não incluídos quando enviamos ficheiro
+            if (transcriptText && transcriptText.length < 190000) {
+                await ctx.channel.send({ content: 'Ações pós-fecho:', components: buildPostCloseRow() }).catch(() => { });
+            }
+        }
+        catch { }
+        return '✅ Ticket fechado (transcript gerado).';
     });
 }
 // Placeholder minimal handlers
