@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildPanelEmbed = buildPanelEmbed;
+exports.buildPanelEmbedsV2 = buildPanelEmbedsV2;
+exports.syncTicketPanel = syncTicketPanel;
+exports.syncAllOpenTicketPanels = syncAllOpenTicketPanels;
 exports.buildPanelComponents = buildPanelComponents;
 exports.handleCancel = handleCancel;
 exports.handleHowDM = handleHowDM;
@@ -36,6 +39,80 @@ async function buildPanelEmbed(author, categoryName, thumbnailUrl) {
         .setThumbnail(thumbnailUrl || author.displayAvatarURL())
         .setColor(0x2F3136)
         .setFooter({ text: 'OBS: Procure manter sua DM aberta para receber uma cópia deste ticket e a opção de avaliar seu atendimento.' });
+}
+// --- V2 helpers (isolated) ---
+function buildPanelEmbedsV2(author, categoryName, thumbnailUrl) {
+    const main = new discord_js_1.EmbedBuilder()
+        .setTitle('Ticket Criado com Sucesso! 📌')
+        .setDescription('Todos os responsáveis pelo ticket já estão cientes da abertura.\nEvite chamar alguém via DM, basta aguardar alguém já irá lhe atender..')
+        .addFields({ name: 'Categoria Escolhida:', value: `🧾 \`Ticket ${categoryName || 'Suporte'}\``, inline: false }, { name: 'Lembrando', value: 'que os botões são exclusivos para staff!\n\n`DESCREVA O MOTIVO DO CONTACTO COM O MÁXIMO DE DETALHES POSSÍVEIS QUE ALGUM RESPONSÁVEL JÁ IRÁ LHE ATENDER!`', inline: false })
+        .setThumbnail(thumbnailUrl || author.displayAvatarURL())
+        .setColor(0x2F3136);
+    const notice = new discord_js_1.EmbedBuilder()
+        .setDescription('OBS: Procure manter sua DM aberta para receber uma cópia deste ticket e a opção de avaliar seu atendimento.')
+        .setColor(0xED4245);
+    return [main, notice];
+}
+async function syncTicketPanel(client, ticket) {
+    try {
+        if (!ticket || ticket.status !== 'open')
+            return { updated: false, reason: 'not-open' };
+        const guild = client.guilds.cache.get(ticket.guildId) || await client.guilds.fetch(ticket.guildId).catch(() => null);
+        if (!guild)
+            return { updated: false, reason: 'guild-missing' };
+        const channel = guild.channels.cache.get(ticket.channelId) || await guild.channels.fetch(ticket.channelId).catch(() => null);
+        if (!channel || !channel.send)
+            return { updated: false, reason: 'channel-missing' };
+        // Try fetch existing message
+        let existing = null;
+        if (ticket.messageId) {
+            existing = await channel.messages.fetch(ticket.messageId).catch(() => null);
+        }
+        // We need a guild member for avatar (fallback: guild owner or first member cached)
+        let member = null;
+        try {
+            member = await guild.members.fetch(ticket.ownerId).catch(() => null);
+        }
+        catch { }
+        if (!member) {
+            const ownerId = guild.ownerId || guild.members.cache.first()?.id;
+            if (ownerId)
+                member = await guild.members.fetch(ownerId).catch(() => null);
+        }
+        if (!member)
+            return { updated: false, reason: 'member-missing' };
+        const embeds = buildPanelEmbedsV2(member, ticket.category || 'Suporte');
+        const components = buildPanelComponents();
+        if (existing && existing.editable) {
+            await existing.edit({ embeds, components });
+            return { updated: true };
+        }
+        else {
+            const sent = await channel.send({ embeds, components });
+            if (!ticket.messageId) {
+                ticket.messageId = sent.id;
+                try {
+                    await ticket.save();
+                }
+                catch { }
+            }
+            return { updated: true, reason: existing ? 'replaced' : 'created' };
+        }
+    }
+    catch (e) {
+        return { updated: false, reason: e?.message || 'error' };
+    }
+}
+async function syncAllOpenTicketPanels(client, guildId) {
+    const openTickets = await ticket_1.TicketModel.find({ guildId, status: 'open' }).limit(500);
+    const results = [];
+    for (const t of openTickets) {
+        // small delay to avoid rate limit bursts
+        // eslint-disable-next-line no-await-in-loop
+        const r = await syncTicketPanel(client, t);
+        results.push({ id: t.id, ...r });
+    }
+    return results;
 }
 function buildPanelComponents() {
     const row1 = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId('ticket:cancel').setLabel('Desejo sair ou cancelar este ticket').setStyle(discord_js_1.ButtonStyle.Danger).setEmoji('🧯'), new discord_js_1.ButtonBuilder().setCustomId('ticket:how_dm').setLabel('Como libero minha DM?').setStyle(discord_js_1.ButtonStyle.Secondary).setEmoji('❓'));

@@ -2,6 +2,7 @@ import { ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle
 import { TicketModel } from '../models/ticket';
 import { TicketLogModel } from '../models/ticketLog';
 import { withTicketLock } from '../utils/lockManager';
+import { Client, TextBasedChannel, Message } from 'discord.js';
 
 interface ActionContext {
   guildId: string;
@@ -33,6 +34,73 @@ export async function buildPanelEmbed(author: GuildMember, categoryName: string,
     .setThumbnail(thumbnailUrl || author.displayAvatarURL())
     .setColor(0x2F3136)
     .setFooter({ text: 'OBS: Procure manter sua DM aberta para receber uma cópia deste ticket e a opção de avaliar seu atendimento.' });
+}
+
+// --- V2 helpers (isolated) ---
+export function buildPanelEmbedsV2(author: GuildMember, categoryName: string, thumbnailUrl?: string) {
+  const main = new EmbedBuilder()
+    .setTitle('Ticket Criado com Sucesso! 📌')
+    .setDescription('Todos os responsáveis pelo ticket já estão cientes da abertura.\nEvite chamar alguém via DM, basta aguardar alguém já irá lhe atender..')
+    .addFields(
+      { name: 'Categoria Escolhida:', value: `🧾 \`Ticket ${categoryName || 'Suporte'}\``, inline: false },
+      { name: 'Lembrando', value: 'que os botões são exclusivos para staff!\n\n`DESCREVA O MOTIVO DO CONTACTO COM O MÁXIMO DE DETALHES POSSÍVEIS QUE ALGUM RESPONSÁVEL JÁ IRÁ LHE ATENDER!`', inline: false }
+    )
+    .setThumbnail(thumbnailUrl || author.displayAvatarURL())
+    .setColor(0x2F3136);
+  const notice = new EmbedBuilder()
+    .setDescription('OBS: Procure manter sua DM aberta para receber uma cópia deste ticket e a opção de avaliar seu atendimento.')
+    .setColor(0xED4245);
+  return [main, notice];
+}
+
+export async function syncTicketPanel(client: Client, ticket: any): Promise<{ updated: boolean; reason?: string }> {
+  try {
+    if (!ticket || ticket.status !== 'open') return { updated: false, reason: 'not-open' };
+    const guild = client.guilds.cache.get(ticket.guildId) || await client.guilds.fetch(ticket.guildId).catch(()=>null);
+    if (!guild) return { updated: false, reason: 'guild-missing' };
+    const channel = guild.channels.cache.get(ticket.channelId) as TextChannel || await guild.channels.fetch(ticket.channelId).catch(()=>null) as TextChannel;
+    if (!channel || !channel.send) return { updated: false, reason: 'channel-missing' };
+    // Try fetch existing message
+    let existing: Message | null = null;
+    if (ticket.messageId) {
+      existing = await channel.messages.fetch(ticket.messageId).catch(()=>null);
+    }
+    // We need a guild member for avatar (fallback: guild owner or first member cached)
+    let member: GuildMember | null = null;
+    try { member = await guild.members.fetch(ticket.ownerId).catch(()=>null); } catch {}
+    if (!member) {
+      const ownerId = guild.ownerId || guild.members.cache.first()?.id;
+      if (ownerId) member = await guild.members.fetch(ownerId).catch(()=>null);
+    }
+    if (!member) return { updated: false, reason: 'member-missing' };
+    const embeds = buildPanelEmbedsV2(member, ticket.category || 'Suporte');
+    const components = buildPanelComponents();
+    if (existing && existing.editable) {
+      await existing.edit({ embeds, components });
+      return { updated: true };
+    } else {
+      const sent = await channel.send({ embeds, components });
+      if (!ticket.messageId) {
+        ticket.messageId = sent.id;
+        try { await ticket.save(); } catch {}
+      }
+      return { updated: true, reason: existing ? 'replaced' : 'created' };
+    }
+  } catch (e: any) {
+    return { updated: false, reason: e?.message || 'error' };
+  }
+}
+
+export async function syncAllOpenTicketPanels(client: Client, guildId: string) {
+  const openTickets = await TicketModel.find({ guildId, status: 'open' }).limit(500);
+  const results = [] as Array<{ id: string; updated: boolean; reason?: string }>;
+  for (const t of openTickets) {
+    // small delay to avoid rate limit bursts
+    // eslint-disable-next-line no-await-in-loop
+    const r = await syncTicketPanel(client, t);
+    results.push({ id: t.id, ...r });
+  }
+  return results;
 }
 
 export function buildPanelComponents() {

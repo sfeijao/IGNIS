@@ -1717,6 +1717,39 @@ app.get('/api/guild/:guildId/is-admin', async (req, res) => {
     }
 });
 
+// Tickets: sincronizar painéis V2 em todos os tickets abertos do servidor
+app.post('/api/guild/:guildId/tickets/sync', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(req.params.guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+        // Permissão mínima para staff gerir painéis dos tickets
+        const canManage = member.permissions.has(PermissionFlagsBits.ManageChannels);
+        if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
+
+        let TicketModel;
+        try { TicketModel = require('../src/models/ticket').TicketModel; } catch { TicketModel = null; }
+        if (!TicketModel) return res.status(500).json({ success: false, error: 'Ticket model not available' });
+        const svc = require('../src/services/ticketService');
+        const tickets = await TicketModel.find({ guildId: req.params.guildId, status: 'open' }).limit(500);
+        const results = [];
+        for (const t of tickets) {
+            // eslint-disable-next-line no-await-in-loop
+            const r = await svc.syncTicketPanel(client, t);
+            results.push({ id: t.id, ...r });
+        }
+        return res.json({ success: true, count: results.length, results });
+    } catch (e) {
+        logger.error('Error syncing ticket panels:', e);
+        return res.status(500).json({ success: false, error: 'Failed to sync panels' });
+    }
+});
+
 app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
