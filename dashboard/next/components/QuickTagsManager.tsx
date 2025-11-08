@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 import { api } from '@/lib/apiClient'
 import { useI18n } from '@/lib/i18n'
 import { useToast } from '@/components/Toaster'
@@ -10,7 +10,7 @@ type Tag = { id: string; name: string; prefix: string; color?: string; icon?: st
 type Role = { id: string; name: string; manageable?: boolean }
 
 export default function QuickTagsManager() {
-  const guildId = getGuildId()
+  const guildId = useGuildId()
   const { t } = useI18n()
   const { toast } = useToast()
   const [tags, setTags] = useState<Tag[]>([])

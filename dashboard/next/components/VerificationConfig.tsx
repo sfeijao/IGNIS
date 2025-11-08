@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 import { useI18n } from '@/lib/i18n'
 import { useToast } from '@/components/Toaster'
 import { api } from '@/lib/apiClient'
@@ -50,7 +50,7 @@ const channelTypeLabel = (ch: Channel | string | undefined) => {
 }
 
 export default function VerificationConfig() {
-  const guildId = getGuildId()
+  const guildId = useGuildId()
   const [cfg, setCfg] = useState<VerificationConfig>({ mode: 'easy', method: 'button', cooldownSeconds: 0, logFails: false })
   const [panelDefaults, setPanelDefaults] = useState<NonNullable<VerificationConfig['panelDefaults']>>({ template: 'minimal', title: '', description: '', buttonLabel: '', color: '#7C3AED' })
   const [panelChannelId, setPanelChannelId] = useState<string>('')

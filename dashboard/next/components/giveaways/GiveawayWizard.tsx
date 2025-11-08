@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from 'react'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 import { useGiveawaysI18n } from '@/lib/useI18nGiveaways'
 
 export default function GiveawayWizard(){
@@ -17,7 +17,7 @@ export default function GiveawayWizard(){
   const firstFieldRef = useRef<HTMLInputElement|null>(null)
   const t = useGiveawaysI18n()
 
-  const guildId = typeof window !== 'undefined' ? getGuildId() : null
+  const guildId = useGuildId()
 
   async function create(){
     if (!guildId) { setError('Select a guild first'); return }

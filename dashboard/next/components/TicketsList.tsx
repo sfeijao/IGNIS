@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { api } from '@/lib/apiClient'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 import TicketModal from '@/components/TicketModal'
 import { useI18n } from '@/lib/i18n'
 
@@ -48,7 +48,7 @@ const channelTypeLabel = (ch?: Channel) => {
 }
 
 export default function TicketsList() {
-  const guildId = getGuildId()
+  const guildId = useGuildId()
   const { t: tr } = useI18n()
   const [status, setStatus] = useState<string>('')
   const [priority, setPriority] = useState<string>('')

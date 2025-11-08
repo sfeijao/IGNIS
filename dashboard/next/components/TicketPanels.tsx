@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
-import { getGuildId } from '../lib/guild'
+import { useGuildId } from '../lib/guild'
 import { api } from '../lib/apiClient'
 import { useToast } from './Toaster'
 import { useI18n } from '@/lib/i18n'
@@ -37,7 +37,7 @@ const channelTypeLabel = (ch: Channel) => {
 }
 
 export default function TicketPanels() {
-  const [guildId, setGuildId] = useState<string | null>(null)
+  const guildId = useGuildId()
   const [panels, setPanels] = useState<Panel[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
@@ -50,9 +50,7 @@ export default function TicketPanels() {
   const [newCategory, setNewCategory] = useState<{ name: string }>({ name: '' })
   const [filter, setFilter] = useState('')
 
-  useEffect(() => {
-    setGuildId(getGuildId())
-  }, [])
+  // guildId is resolved after mount via useGuildId
 
   const loadAll = async (gid: string) => {
     setLoading(true)

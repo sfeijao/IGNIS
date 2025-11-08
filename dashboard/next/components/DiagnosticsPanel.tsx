@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 import { useToast } from './Toaster'
 
 export default function DiagnosticsPanel() {
-  const guildId = getGuildId()
+  const guildId = useGuildId()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()

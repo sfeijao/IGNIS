@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import PluginCard from '@/components/PluginCard'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 
 type Plugin = { name: string; desc: string; icon: any; tip?: string; href?: string; configHref?: string; viewHref?: string }
 type Category = { title: string; items: Plugin[] }
@@ -10,11 +10,7 @@ type Category = { title: string; items: Plugin[] }
 export default function PluginsPage() {
   const [query, setQuery] = useState('')
   const [active, setActive] = useState<string>('Todas')
-  const [isGuildSelected, setIsGuildSelected] = useState<boolean>(false)
-
-  useEffect(() => {
-    setIsGuildSelected(!!getGuildId())
-  }, [])
+  const isGuildSelected = !!useGuildId()
 
   const categories: Category[] = [
     {

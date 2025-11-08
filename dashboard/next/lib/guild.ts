@@ -24,3 +24,17 @@ export function setGuildId(id: string, updateUrl: boolean = true) {
     } catch {}
   }
 }
+
+// Hydration-safe hook: returns null on the server and during the first client render,
+// then resolves the stored guildId (from URL param or localStorage) after mount.
+// This ensures SSR markup matches the first client render, preventing hydration mismatches
+// caused by reading window/localStorage synchronously.
+import { useEffect, useState } from 'react'
+
+export function useGuildId(): string | null {
+  const [id, setId] = useState<string | null>(null)
+  useEffect(() => {
+    setId(getGuildId())
+  }, [])
+  return id
+}

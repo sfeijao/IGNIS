@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/lib/apiClient'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 import { useToast } from './Toaster'
 import { PERMISSION_BITS, PERMISSION_KEYS, useI18n } from '@/lib/i18n'
 
@@ -10,7 +10,7 @@ type Role = { id: string; name: string; color?: string; position?: number; manag
 type RoleDetails = { id: string; name: string; color?: string; hoist?: boolean; mentionable?: boolean; permissions?: string }
 
 export default function RolesManager() {
-  const guildId = getGuildId()
+  const guildId = useGuildId()
   const { toast } = useToast()
   const { t, lang, setLang } = useI18n()
   const [roles, setRoles] = useState<Role[]>([])

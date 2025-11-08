@@ -2,14 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/lib/apiClient'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 import MemberModal from './MemberModal'
 import { useToast } from './Toaster'
 import { useI18n } from '@/lib/i18n'
 
 export default function MembersList() {
   const { t } = useI18n()
-  const guildId = getGuildId()
+  const guildId = useGuildId()
   const [q, setQ] = useState('')
   const [role, setRole] = useState('')
   const [limit, setLimit] = useState(50)

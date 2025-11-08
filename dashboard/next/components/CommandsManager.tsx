@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
-import { getGuildId } from '../lib/guild'
+import { useGuildId } from '../lib/guild'
 import { useI18n } from '../lib/i18n'
 import { api } from '../lib/apiClient'
 
@@ -9,7 +9,7 @@ type Command = { name: string; id?: string; description?: string; type?: string 
 
 export default function CommandsManager() {
   const { t } = useI18n()
-  const [guildId, setGuildId] = useState<string | null>(null)
+  const guildId = useGuildId()
   const [commands, setCommands] = useState<Command[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +40,7 @@ export default function CommandsManager() {
     }
   }
 
-  useEffect(() => { setGuildId(getGuildId()) }, [])
+  // guildId resolved after mount
 
   const load = async (gid: string) => {
     setLoading(true)

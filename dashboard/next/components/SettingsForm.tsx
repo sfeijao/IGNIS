@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type React from 'react'
 import { api } from '@/lib/apiClient'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 import { useI18n } from '@/lib/i18n'
 import { useToast } from '@/components/Toaster'
 
@@ -54,7 +54,7 @@ export default function SettingsForm() {
   const [uploadingIcon, setUploadingIcon] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loaded, setLoaded] = useState(false)
-  const guildId = typeof window !== 'undefined' ? getGuildId() : null
+  const guildId = useGuildId()
   const { t } = useI18n()
   const { toast } = useToast()
   const [channels, setChannels] = useState<Array<{ id: string; name: string; type?: string }>>([])

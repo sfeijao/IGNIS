@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 
 export default function ModerationSummary() {
-  const guildId = getGuildId()
+  const guildId = useGuildId()
   const [stats, setStats] = useState<any>(null)
   const [cases, setCases] = useState<any[]>([])
   const [loading, setLoading] = useState(false)

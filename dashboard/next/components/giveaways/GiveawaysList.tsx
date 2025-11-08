@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from 'react'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 import useGiveawaySocket from '@/lib/useGiveawaySocket'
 import { useGiveawaysI18n } from '@/lib/useI18nGiveaways'
 import GuildSelector from '@/components/GuildSelector'
@@ -14,7 +14,7 @@ export default function GiveawaysList(){
   const [error, setError] = useState<string|null>(null)
   const liveRegionRef = useRef<HTMLDivElement|null>(null)
 
-  const guildId = typeof window !== 'undefined' ? getGuildId() : null
+  const guildId = useGuildId()
   const t = useGiveawaysI18n()
   useGiveawaySocket(guildId, (evt: any) => {
     if (!evt || !evt.type) return

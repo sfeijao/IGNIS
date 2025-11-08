@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 import Skeleton from './Skeleton'
 
 interface GuildInfo {
@@ -18,15 +18,11 @@ interface GuildInfo {
 
 export default function GuildHero() {
   const { t } = useI18n()
-  const [guildId, setGuildId] = useState<string | null>(null)
+  const guildId = useGuildId()
   const [info, setInfo] = useState<GuildInfo | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [stats, setStats] = useState<{ onlineCount?: number; channelCount?: number; roleCount?: number } | null>(null)
 
-  useEffect(() => {
-    const id = getGuildId()
-    setGuildId(id)
-  }, [])
 
   useEffect(() => {
     let aborted = false

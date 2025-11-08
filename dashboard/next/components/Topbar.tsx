@@ -6,7 +6,7 @@ import LanguageSwitcher from './LanguageSwitcher'
 import MobileSidebar from './MobileSidebar'
 import { useEffect, useState } from 'react'
 import GuildSelector from './GuildSelector'
-import { getGuildId, setGuildId } from '@/lib/guild'
+import { setGuildId, useGuildId } from '@/lib/guild'
 import UserAvatar from './UserAvatar'
 import { useAuth } from '../hooks/useAuth'
 import { useI18n } from '../lib/i18n'
@@ -15,7 +15,7 @@ export default function Topbar() {
   const { t } = useI18n()
   const [compact, setCompact] = useState(false)
   const { user, loading } = useAuth()
-  const [mountedGuildId, setMountedGuildId] = useState<string | null>(null)
+  const mountedGuildId = useGuildId()
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-compact')
@@ -30,8 +30,6 @@ export default function Topbar() {
       const gid = url.searchParams.get('guildId')
       if (gid) setGuildId(gid, false)
     } catch {}
-    // Resolve guildId only after mount to avoid SSR/client markup divergence
-    setMountedGuildId(getGuildId())
   }, [])
 
   const toggleCompact = () => {

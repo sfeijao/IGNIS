@@ -1,13 +1,13 @@
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
-import { getGuildId } from '../lib/guild'
+import { useGuildId } from '../lib/guild'
 import { api } from '../lib/apiClient'
 import { useToast } from './Toaster'
 import { useI18n } from '@/lib/i18n'
 
 export default function VerificationMetrics() {
-  const [guildId, setGuildId] = useState<string | null>(null)
+  const guildId = useGuildId()
   const [metrics, setMetrics] = useState<any>(null)
   const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -15,7 +15,7 @@ export default function VerificationMetrics() {
   const { toast } = useToast()
   const { t } = useI18n()
 
-  useEffect(() => { setGuildId(getGuildId()) }, [])
+  // guildId resolved post-mount by useGuildId
 
   const load = async (gid: string) => {
     setLoading(true); setError(null)

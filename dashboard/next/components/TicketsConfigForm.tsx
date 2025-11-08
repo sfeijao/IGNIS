@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
-import { getGuildId } from '../lib/guild'
+import { useGuildId } from '../lib/guild'
 import { api } from '../lib/apiClient'
 import { useI18n } from '@/lib/i18n'
 import { useToast } from '@/components/Toaster'
@@ -25,7 +25,7 @@ const channelTypeLabel = (ch: AnyChannel) => {
 }
 
 export default function TicketsConfigForm() {
-  const [guildId, setGuildId] = useState<string | null>(null)
+  const guildId = useGuildId()
   const [config, setConfig] = useState<any>({})
   const [json, setJson] = useState('')
   const [loading, setLoading] = useState(false)
@@ -33,6 +33,7 @@ export default function TicketsConfigForm() {
   const [saved, setSaved] = useState<boolean>(false)
   const { t } = useI18n()
   const { toast } = useToast()
+  const [reloadTick, setReloadTick] = useState(0)
 
   // Data sources for selectors
   const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([])
@@ -47,9 +48,7 @@ export default function TicketsConfigForm() {
   const [logChannelQuery, setLogChannelQuery] = useState('')
   const [webhookQuery, setWebhookQuery] = useState('')
 
-  useEffect(() => {
-    setGuildId(getGuildId())
-  }, [])
+  // guildId provided by hydration-safe hook
 
   useEffect(() => {
     const load = async () => {
@@ -83,7 +82,7 @@ export default function TicketsConfigForm() {
       }
     }
     load()
-  }, [guildId])
+  }, [guildId, reloadTick])
 
   const save = async () => {
     if (!guildId) return
@@ -185,7 +184,7 @@ export default function TicketsConfigForm() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <h2 className="text-xl font-semibold">{t('tickets.config.title')}</h2>
-  <button type="button" onClick={() => guildId && setGuildId(guildId)} className="btn btn-secondary" title={t('tickets.reload')}>{t('tickets.reload')}</button>
+  <button type="button" onClick={() => setReloadTick(x => x + 1)} className="btn btn-secondary" title={t('tickets.reload')}>{t('tickets.reload')}</button>
       </div>
       {error && <div className="text-red-400">{error}</div>}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

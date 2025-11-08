@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
-import { getGuildId } from '../lib/guild'
+import { useGuildId } from '../lib/guild'
 import { api } from '../lib/apiClient'
 import { useI18n } from '../lib/i18n'
 
@@ -9,7 +9,7 @@ type Appeal = { id: string; userId?: string; caseId?: string; reason?: string; s
 
 export default function AppealsManager() {
   const { t } = useI18n()
-  const [guildId, setGuildId] = useState<string | null>(null)
+  const guildId = useGuildId()
   const [appeals, setAppeals] = useState<Appeal[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -20,7 +20,7 @@ export default function AppealsManager() {
   const [page, setPage] = useState(0)
   const pageSize = 20
 
-  useEffect(() => { setGuildId(getGuildId()) }, [])
+  // guildId resolved after mount
 
   const load = async (gid: string) => {
     setLoading(true); setError(null)

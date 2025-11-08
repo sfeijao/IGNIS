@@ -1,13 +1,13 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 import { api } from '@/lib/apiClient'
 import { useToast } from './Toaster'
 import { useI18n } from '@/lib/i18n'
 
 export default function ModerationCenterTools() {
-  const guildId = getGuildId()
+  const guildId = useGuildId()
   const { toast } = useToast()
   const { t } = useI18n()
   const [userIdsRaw, setUserIdsRaw] = useState('')

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 import { api } from '@/lib/apiClient'
 import { useToast } from './Toaster'
 import { useI18n } from '@/lib/i18n'
@@ -26,7 +26,7 @@ const channelTypeLabel = (ch: Channel) => {
 }
 
 export default function WebhooksManager() {
-  const guildId = getGuildId()
+  const guildId = useGuildId()
   const [hooks, setHooks] = useState<Webhook[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

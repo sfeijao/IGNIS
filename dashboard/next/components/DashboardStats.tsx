@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Icon } from './icons'
 import Stat from './Stat'
 import { api } from '@/lib/apiClient'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 import { useI18n } from '@/lib/i18n'
 
 export default function DashboardStats() {
@@ -61,8 +61,8 @@ export default function DashboardStats() {
     return null
   }
 
+  const guildId = useGuildId()
   const fetchStats = async () => {
-    const guildId = getGuildId()
     if (!guildId) return
     setLoading(true)
     try {
@@ -120,7 +120,7 @@ export default function DashboardStats() {
 
     fetchStats()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [guildId])
 
   useEffect(() => {
     if (intervalRef.current) {

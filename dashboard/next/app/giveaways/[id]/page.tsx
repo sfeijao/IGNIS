@@ -2,14 +2,14 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { getGuildId } from '@/lib/guild'
+import { useGuildId } from '@/lib/guild'
 import useGiveawaySocket from '@/lib/useGiveawaySocket'
 import { useGiveawaysI18n } from '@/lib/useI18nGiveaways'
 
 export default function GiveawayDetailPage(){
   const params = useParams() as any
   const id = params?.id as string
-  const guildId = typeof window !== 'undefined' ? getGuildId() : null
+  const guildId = useGuildId()
   const [data, setData] = useState<any>(null)
   const [error, setError] = useState<string|null>(null)
   const liveRef = useRef<HTMLDivElement|null>(null)
