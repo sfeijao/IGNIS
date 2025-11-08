@@ -115,7 +115,11 @@ export default function AppealsManager() {
           {!loading && paged.length === 0 && <div className="opacity-70">{t('appeals.empty')}</div>}
           {!loading && paged.map(ap => (
             <div key={ap.id} className="p-3 rounded-lg bg-neutral-800/50 border border-neutral-800">
-              <div className="text-sm opacity-70">{ap.userId} • {t('appeals.case')} {ap.caseId} • {new Date(ap.createdAt || Date.now()).toLocaleString()}</div>
+              <div className="text-sm opacity-70">
+                {ap.userId} • {t('appeals.case')} {ap.caseId} • {ap.createdAt ? (
+                  <time suppressHydrationWarning dateTime={new Date(ap.createdAt).toISOString()}>{new Date(ap.createdAt).toLocaleString()}</time>
+                ) : '—'}
+              </div>
               <div className="mt-1">{t('appeals.reason')}: {ap.reason || t('appeals.reason.empty')}</div>
               <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
                 <label className="flex flex-col gap-1 md:col-span-2">

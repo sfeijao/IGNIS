@@ -109,7 +109,11 @@ export default function VerificationMetrics() {
           {!loading && filteredLogs.length === 0 && <div className="opacity-70">{t('verification.metrics.noLogs')}</div>}
           {!loading && filteredLogs.map((l:any, idx:number) => (
             <div key={idx} className="border-b border-neutral-900/60 py-1">
-              <span className="opacity-60">{new Date(l.timestamp || Date.now()).toLocaleString()} • </span>
+              <span className="opacity-60">
+                {l.timestamp ? (
+                  <time suppressHydrationWarning dateTime={new Date(l.timestamp).toISOString()}>{new Date(l.timestamp).toLocaleString()}</time>
+                ) : '—'} •
+              </span>
               <span>{l.message || JSON.stringify(l)}</span>
             </div>
           ))}

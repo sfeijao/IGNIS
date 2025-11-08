@@ -82,7 +82,11 @@ export default function AutomodEvents() {
           {!loading && paged.length === 0 && <div className="opacity-70">{t('automod.empty')}</div>}
           {!loading && paged.map(ev => (
             <div key={ev.id} className="p-3 rounded-lg bg-neutral-800/50 border border-neutral-800">
-              <div className="text-sm opacity-70">{ev.type} • {ev.userId} • {new Date(ev.createdAt || Date.now()).toLocaleString()}</div>
+              <div className="text-sm opacity-70">
+                {ev.type} • {ev.userId} • {ev.createdAt ? (
+                  <time suppressHydrationWarning dateTime={new Date(ev.createdAt).toISOString()}>{new Date(ev.createdAt).toLocaleString()}</time>
+                ) : '—'}
+              </div>
               <div className="mt-1">{ev.content || t('automod.content.empty')}</div>
               <div className="mt-2 flex gap-2">
                 <button type="button" className="btn btn-primary btn-xs" onClick={() => decide(ev.id, 'approve')}>{t('automod.approve')}</button>

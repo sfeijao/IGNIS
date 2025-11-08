@@ -78,9 +78,10 @@ export default function DashboardStats() {
         { label: t('dash.modLogs'), value: String(data.totals?.logs ?? '—'), color: '#22d3ee' },
       ]
       setStats(s)
-  const ts = data.updatedAt ? new Date(data.updatedAt) : new Date()
-  setLastUpdated(ts.toLocaleString())
-  setIsRecent(Date.now() - ts.getTime() < 90_000)
+      // Avoid using Date.now() as a fallback here (causes hydration mismatch); show placeholder instead.
+      const ts = data.updatedAt ? new Date(data.updatedAt) : null
+      setLastUpdated(ts ? ts.toLocaleString() : '—')
+      setIsRecent(ts ? Date.now() - ts.getTime() < 90_000 : false)
   const w = data.totals?.warnings ?? 0
   const b = data.totals?.bans ?? 0
   const k = data.totals?.kicks ?? 0
@@ -151,7 +152,7 @@ export default function DashboardStats() {
               {loading && (
                 <span className="inline-block h-3 w-3 rounded-full border-2 border-neutral-500 border-t-transparent animate-spin" aria-label={t('dash.updating')} />
               )}
-              <span>{loading ? `${t('dash.updating')}…` : t('dash.updated')}: {lastUpdated}</span>
+              <span suppressHydrationWarning>{loading ? `${t('dash.updating')}…` : `${t('dash.updated')}: ${lastUpdated}`}</span>
             </div>
             <div className="flex items-center gap-2">
               <label className="text-xs text-neutral-400 hidden sm:flex items-center gap-1" title={t('dash.refreshFrequency')}>

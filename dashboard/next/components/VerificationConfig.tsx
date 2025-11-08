@@ -375,7 +375,9 @@ function FormBuilder({ value, onChange }: { value: Array<{ id?: string; label: s
 
   const saveQuestion = () => {
     const lbl=(label||'').trim(); if(!lbl) return; // guard
-    const q:any = { id: (editing!=null && questions[editing]?.id) || `${Date.now()}-${Math.random().toString(36).slice(2,8)}`, label: lbl, type, required }
+    // Generate a stable incremental id instead of Date.now()+random to avoid hydration mismatches
+    const nextId = (editing!=null && questions[editing]?.id) || `q${questions.length}_${Math.random().toString(36).slice(2,6)}`
+    const q:any = { id: nextId, label: lbl, type, required }
     if(type==='multiple_choice' || type==='dropdown'){
       if(opts.length<2) return; q.options = opts.slice()
     }
@@ -520,6 +522,7 @@ function importQuestions(e: any, setQuestions: (q:any[])=>void, setErr: (s:strin
         const data = JSON.parse(String(reader.result||'[]'))
         if (!Array.isArray(data)) throw new Error('invalid')
         const allowed = new Set(['short_text','long_text','yes_no','multiple_choice','dropdown'])
+        let i = 0
         const normalized = data.map((q:any)=>{
           const label = String(q?.label||'').trim()
           const type = String(q?.type||'short_text')
@@ -528,7 +531,10 @@ function importQuestions(e: any, setQuestions: (q:any[])=>void, setErr: (s:strin
           if (!label) throw new Error('invalid')
           if (!allowed.has(type)) throw new Error('invalid')
           if ((type==='multiple_choice'||type==='dropdown') && (!options || options.length<2)) throw new Error('invalid')
-          return { id: String(q?.id||`${Date.now()}-${Math.random().toString(36).slice(2,8)}`), label, type, required, options }
+          // Preserve existing id if present; otherwise create a pseudo-stable id using current length + short random segment.
+          // This runs purely on the client after user selects a file.
+          const newId = q?.id ? String(q.id) : `q${i++}_${Math.random().toString(36).slice(2,6)}`
+          return { id: newId, label, type, required, options }
         })
         setQuestions(normalized)
       } catch {

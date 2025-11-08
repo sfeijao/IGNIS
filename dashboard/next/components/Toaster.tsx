@@ -19,6 +19,9 @@ export function useToast() {
 
 export function ToasterProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
+  // Use a purely incremental id that does NOT embed Date.now() to avoid any chance of
+  // server/client divergence during hydration. The initial SSR pass (empty array) will
+  // still match the client, and subsequent IDs are deterministic within the session.
   const idSeq = useRef(0)
 
   const remove = useCallback((id: string) => {
@@ -26,11 +29,13 @@ export function ToasterProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const toast = useCallback((t: Omit<Toast, 'id'>) => {
-    const id = `${Date.now()}_${idSeq.current++}`
+    const id = String(idSeq.current++)
     const next: Toast = { id, ...t }
     setToasts(prev => [...prev, next])
     // auto-dismiss after 4.5s
-    window.setTimeout(() => remove(id), 4500)
+    if (typeof window !== 'undefined') {
+      window.setTimeout(() => remove(id), 4500)
+    }
   }, [remove])
 
   const value = useMemo(() => ({ toast }), [toast])

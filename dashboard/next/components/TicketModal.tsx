@@ -190,14 +190,22 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
                   <span>{t('tickets.transcript') || 'Transcript'}</span>
                   {details.ticket.meta?.transcript && (
                     <span className="text-xs text-neutral-500">
-                      {details.ticket.meta.transcript.messageCount ? `${details.ticket.meta.transcript.messageCount} msgs` : ''} · {details.ticket.meta.transcript.generatedAt ? new Date(details.ticket.meta.transcript.generatedAt).toLocaleString() : ''}
+                      {details.ticket.meta.transcript.messageCount ? `${details.ticket.meta.transcript.messageCount} msgs` : ''}
+                      {" · "}
+                      {details.ticket.meta.transcript.generatedAt && (
+                        <time suppressHydrationWarning dateTime={new Date(details.ticket.meta.transcript.generatedAt).toISOString()}>
+                          {new Date(details.ticket.meta.transcript.generatedAt).toLocaleString()}
+                        </time>
+                      )}
                     </span>
                   )}
                 </div>
                 <div className="max-h-[28rem] overflow-auto space-y-3">
                   {messages.map((m: any) => (
                     <div key={m.id} className="text-sm">
-                      <span className="text-neutral-500">[{new Date(m.timestamp).toLocaleString()}]</span>{' '}
+                      <span className="text-neutral-500">[
+                        <time suppressHydrationWarning dateTime={new Date(m.timestamp).toISOString()}>{new Date(m.timestamp).toLocaleString()}</time>
+                      ]</span>{' '}
                       <span className="text-neutral-300">{m.author?.username}#{m.author?.discriminator}</span>:{' '}
                       <span className="text-neutral-200 whitespace-pre-wrap break-words">{m.content || ''}</span>
                     </div>
@@ -272,7 +280,7 @@ function Timeline({ items }: { items: Array<{ timestamp: string; action: string;
       {items.map((l, idx) => (
         <li key={idx} className="mb-4 ml-2">
           <div className="absolute -left-1.5 mt-1.5 w-3 h-3 bg-neutral-700 rounded-full border border-neutral-600" />
-          <time className="text-xs text-neutral-500">{new Date(l.timestamp).toLocaleString()}</time>
+          <time className="text-xs text-neutral-500" suppressHydrationWarning dateTime={new Date(l.timestamp).toISOString()}>{new Date(l.timestamp).toLocaleString()}</time>
           <div className="text-sm text-neutral-300"><span className="font-semibold">{l.action}</span>{l.actorTag ? ` by ${l.actorTag}` : ''}</div>
           {l.message && <div className="text-sm text-neutral-400 whitespace-pre-wrap break-words">{l.message}</div>}
         </li>
@@ -300,7 +308,11 @@ function FeedbackForm({ existing, rating, setRating, comment, setComment, onSubm
         <div className="p-3 rounded bg-neutral-800 border border-neutral-700">
           <div className="text-sm text-neutral-300">{t('tickets.feedbackStored') || 'Feedback guardado'}:</div>
           <div className="text-sm text-neutral-200">{`⭐ ${existing.rating}`}{existing.comment ? ` – ${existing.comment}` : ''}</div>
-          <div className="text-xs text-neutral-500">{existing.at ? new Date(existing.at).toLocaleString() : ''}</div>
+          <div className="text-xs text-neutral-500">
+            {existing.at ? (
+              <time suppressHydrationWarning dateTime={new Date(existing.at).toISOString()}>{new Date(existing.at).toLocaleString()}</time>
+            ) : ''}
+          </div>
         </div>
       )}
       {!existing && (

@@ -45,7 +45,11 @@ export default function ModerationSummary() {
               <div className="px-2 py-0.5 text-xs rounded bg-neutral-800 border border-neutral-700">{c.type || 'case'}</div>
               <div className="flex-1 min-w-0 text-neutral-200 truncate">{c.reason || '—'}</div>
               <div className="text-xs text-neutral-500">{c.userId || '—'} • {c.moderatorId || '—'}</div>
-              <div className="text-xs text-neutral-500">{c.createdAt ? new Date(c.createdAt).toLocaleString() : '—'}</div>
+              <div className="text-xs text-neutral-500">
+                {c.createdAt ? (
+                  <time suppressHydrationWarning dateTime={new Date(c.createdAt).toISOString()}>{new Date(c.createdAt).toLocaleString()}</time>
+                ) : '—'}
+              </div>
             </div>
           ))}
           {!loading && cases.length === 0 && <div className="p-6 text-neutral-400">Sem casos recentes.</div>}
