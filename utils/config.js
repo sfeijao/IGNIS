@@ -126,6 +126,16 @@ const config = {
         WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
         MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
     },
+
+    // Deploy / command registration resilience configuration
+    DEPLOY: {
+        MAX_RETRIES: parseInt(process.env.COMMAND_DEPLOY_MAX_RETRIES) || 5,
+        BASE_DELAY_MS: parseInt(process.env.COMMAND_DEPLOY_BASE_DELAY_MS) || 500,
+        TIMEOUT_MS: parseInt(process.env.COMMAND_DEPLOY_TIMEOUT_MS) || 10000,
+        JITTER_MS: parseInt(process.env.COMMAND_DEPLOY_JITTER_MS) || 250,
+        // Allow disabling retry logic explicitly
+        DISABLE_RETRY: (process.env.COMMAND_DEPLOY_DISABLE_RETRY || '').toLowerCase() === 'true'
+    }
 };
 
 // Função de debug condicional: silêncio completo em ambiente de teste

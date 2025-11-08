@@ -61,41 +61,77 @@ class CommandDeployer {
             throw new Error('Nenhum comando válido encontrado para deploy');
         }
 
+        const { MAX_RETRIES, BASE_DELAY_MS, TIMEOUT_MS, JITTER_MS, DISABLE_RETRY } = config.DEPLOY || {};
+
         console.log(`\n🚀 Iniciando deploy ${scope === 'guild' ? 'no servidor' : 'global'}...`);
 
-        try {
-            const route = scope === 'guild' 
-                ? Routes.applicationGuildCommands(config.DISCORD.CLIENT_ID, config.DISCORD.GUILD_ID)
-                : Routes.applicationCommands(config.DISCORD.CLIENT_ID);
+        const route = scope === 'guild'
+            ? Routes.applicationGuildCommands(config.DISCORD.CLIENT_ID, config.DISCORD.GUILD_ID)
+            : Routes.applicationCommands(config.DISCORD.CLIENT_ID);
 
+        let attempt = 0;
+        let lastError = null;
+
+        // Helper delay with exponential backoff + jitter
+        const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+        while (true) {
+            attempt++;
             const startTime = Date.now();
-            
-            const data = await this.rest.put(route, { 
-                body: this.commands 
-            });
+            try {
+                // Implement manual timeout using AbortController to guard against undici connect stalls
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+                const data = await this.rest.put(route, { body: this.commands, signal: controller.signal });
+                clearTimeout(timeout);
 
-            const deployTime = Date.now() - startTime;
+                const deployTime = Date.now() - startTime;
+                console.log(`✅ ${data.length} comandos registrados com sucesso em ${deployTime}ms (tentativa ${attempt})`);
+                logger.info('Comandos deployados', {
+                    scope,
+                    commandCount: data.length,
+                    deployTime,
+                    attempt,
+                    retriesUsed: attempt - 1,
+                    commands: this.commands.map(cmd => cmd.name)
+                });
+                return data;
+            } catch (error) {
+                lastError = error;
+                const isTimeout = (error && (error.code === 'UND_ERR_CONNECT_TIMEOUT' || /ConnectTimeoutError/i.test(error.message))) || error.name === 'AbortError';
+                const transient = isTimeout || (error && /ECONNRESET|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|EHOSTUNREACH|EPIPE/.test(error.message));
 
-            console.log(`✅ ${data.length} comandos registrados com sucesso em ${deployTime}ms`);
-            
-            logger.info('Comandos deployados', {
-                scope,
-                commandCount: data.length,
-                deployTime,
-                commands: this.commands.map(cmd => cmd.name)
-            });
+                console.error(`❌ Erro na tentativa ${attempt}: ${error.message}`);
+                logger.error('Erro no deploy de comandos', {
+                    scope,
+                    attempt,
+                    transient,
+                    isTimeout,
+                    error: error.message,
+                    code: error.code,
+                    stack: error.stack && error.stack.split('\n').slice(0,6).join('\n'),
+                    commandCount: this.commands.length
+                });
 
-            return data;
-        } catch (error) {
-            console.error('❌ Erro no deploy:', error);
-            
-            logger.error('Erro no deploy de comandos', {
-                scope,
-                error: error.message,
-                commandCount: this.commands.length
-            });
+                if (DISABLE_RETRY) {
+                    console.error('⚠️ Retentativas desabilitadas por configuração. Abortando.');
+                    throw error;
+                }
 
-            throw error;
+                if (!transient) {
+                    console.error('🛑 Erro não transitório, não será feito retry.');
+                    throw error;
+                }
+
+                if (attempt >= MAX_RETRIES) {
+                    console.error(`🛑 Limite de ${MAX_RETRIES} tentativas atingido. Abortando.`);
+                    throw error;
+                }
+
+                const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1) + Math.floor(Math.random() * JITTER_MS);
+                console.log(`🔁 Aguardando ${delay}ms antes da próxima tentativa...`);
+                await sleep(delay);
+            }
         }
     }
 

@@ -85,6 +85,7 @@
     "deploy:global": "node scripts/deploy-commands.js --global",
     "deploy:list": "node scripts/deploy-commands.js --list",
     "deploy:clear": "node scripts/deploy-commands.js --clear",
+  "deploy:diagnostic": "node scripts/deploy-diagnostic.js",
     "env:check": "node scripts/check-env.js",
     "server": "node website/server.js",
     "database:backup": "node -e \"require('./website/database/database').backupDatabase()\"",

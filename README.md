@@ -303,6 +303,53 @@ npm start
 - Verifique logs no dashboard Railway
 - NODE_ENV deve estar como **production**
 
+### **Timeout ao registrar comandos (UND_ERR_CONNECT_TIMEOUT)**
+
+Use o script de diagnóstico para validar conectividade antes do deploy:
+
+```bash
+npm run deploy:diagnostic
+```
+
+Se DNS/TCP/HTTPS estiverem OK e ainda ocorrer timeout:
+
+- Aumente `COMMAND_DEPLOY_TIMEOUT_MS` (default 10000)
+- Ajuste retentativas: `COMMAND_DEPLOY_MAX_RETRIES` (default 5)
+- Reduza agressividade: aumente `COMMAND_DEPLOY_BASE_DELAY_MS` (default 500)
+- Desative retentativas temporariamente: `COMMAND_DEPLOY_DISABLE_RETRY=true`
+
+Backoff aplicado: exponencial com jitter (`BASE_DELAY_MS * 2^(tentativa-1) + rand(0,JITTER_MS)`).
+
+Variáveis suportadas:
+
+| Variável | Default | Descrição |
+|----------|---------|-----------|
+| COMMAND_DEPLOY_MAX_RETRIES | 5 | Número máximo de tentativas antes de abortar |
+| COMMAND_DEPLOY_BASE_DELAY_MS | 500 | Delay base inicial para backoff exponencial |
+| COMMAND_DEPLOY_JITTER_MS | 250 | Jitter aleatório para evitar sincronização |
+| COMMAND_DEPLOY_TIMEOUT_MS | 10000 | Timeout por tentativa (ms) antes de abortar |
+| COMMAND_DEPLOY_DISABLE_RETRY | (vazio) | "true" para desativar retry |
+
+Saída típica de falha transitória:
+
+```text
+❌ Erro na tentativa 1: UND_ERR_CONNECT_TIMEOUT
+🔁 Aguardando 500ms antes da próxima tentativa...
+```
+
+Se todas falharem:
+
+```text
+🛑 Limite de 5 tentativas atingido. Abortando.
+```
+
+Checklist adicional:
+
+- Verifique firewall bloqueando saída para `discord.com:443`
+- Teste resolução DNS (script já mostra IPs)
+- Em ambientes corporativos, confirme proxy HTTP não interceptando TLS
+- Último recurso: tente executar `curl -I https://discord.com/api/v10/gateway` manualmente
+
 ---
 
 ## 📝 Changelog
