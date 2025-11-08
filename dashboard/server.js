@@ -184,8 +184,12 @@ try {
             logger.warn('Failed to start Next standalone server:', e?.message || String(e));
         }
 
-        // Extra cache-control for Next static assets
-        app.use('/next/_next/static', (req, res, next) => { try { res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); } catch {} next(); });
+        // Serve Next static build artifacts directly from .next/static to avoid 404s
+        const NEXT_STATIC_DIR = path.join(__dirname, 'next', '.next', 'static');
+        if (fs.existsSync(NEXT_STATIC_DIR)) {
+            app.use('/next/_next/static', (req, res, next) => { try { res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); } catch {} next(); });
+            app.use('/next/_next/static', express.static(NEXT_STATIC_DIR, { index: false, redirect: false }));
+        }
         // Redirect bare /_next/* to /next/_next/* to honor basePath in all environments
         app.use('/_next', (req, res) => {
             try {
