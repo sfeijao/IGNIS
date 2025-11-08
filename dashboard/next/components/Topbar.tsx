@@ -15,6 +15,7 @@ export default function Topbar() {
   const { t } = useI18n()
   const [compact, setCompact] = useState(false)
   const { user, loading } = useAuth()
+  const [mountedGuildId, setMountedGuildId] = useState<string | null>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-compact')
@@ -29,6 +30,8 @@ export default function Topbar() {
       const gid = url.searchParams.get('guildId')
       if (gid) setGuildId(gid, false)
     } catch {}
+    // Resolve guildId only after mount to avoid SSR/client markup divergence
+    setMountedGuildId(getGuildId())
   }, [])
 
   const toggleCompact = () => {
@@ -54,9 +57,9 @@ export default function Topbar() {
         </div>
         <div className="flex items-center gap-3">
           <GuildSelector />
-          {!getGuildId() && (
+          {mountedGuildId === null ? null : (!mountedGuildId && (
             <span className="text-xs px-2 py-1 rounded border border-amber-600/40 bg-amber-500/10 text-amber-300" title={t('common.selectGuild')}>Selecione um servidor</span>
-          )}
+          ))}
           <LanguageSwitcher />
           <ThemeToggle />
           {loading ? (
