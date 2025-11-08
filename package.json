@@ -58,7 +58,10 @@
     "supertest": "^6.3.4",
     "mongodb-memory-server": "^10.1.4",
     "body-parser": "^1.20.2",
-    "markdownlint-cli2": "^0.15.0"
+    "markdownlint-cli2": "^0.15.0",
+    "typescript": "^5.6.3",
+    "ts-node": "^10.9.2",
+    "@types/node": "^20.11.30"
   },
   "jest": {
     "testEnvironment": "node",
@@ -71,6 +74,8 @@
     "start:bot-only": "node scripts/deploy-commands.js && node bot-only.js",
     "start:health": "node health-check.js",
     "dev": "nodemon index.js",
+    "dev:ts": "nodemon --exec ts-node src/bootstrap.ts",
+    "build:ts": "tsc -p tsconfig.json",
     "backup": "node scripts/backup-export.js",
     "migrate:sqlite-to-mongo": "node scripts/migrate-storage.js sqlite-to-mongo",
     "migrate:mongo-to-sqlite": "node scripts/migrate-storage.js mongo-to-sqlite",

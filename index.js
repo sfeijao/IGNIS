@@ -109,9 +109,19 @@ client.socketManager = {
 
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+// Carregar também comandos compilados de TypeScript (dist/commands)
+try {
+    const distCommandsPath = path.join(__dirname, 'dist', 'commands');
+    if (fs.existsSync(distCommandsPath)) {
+        const tsBuilt = fs.readdirSync(distCommandsPath).filter(f => f.endsWith('.js'));
+        for (const f of tsBuilt) {
+            commandFiles.push(path.join('dist','commands', f));
+        }
+    }
+} catch {}
 
 for (const file of commandFiles) {
-    const filePath = path.join(commandsPath, file);
+    const filePath = file.includes('dist') ? path.join(__dirname, file) : path.join(commandsPath, file);
     const command = require(filePath);
 
     if ('data' in command && 'execute' in command) {
@@ -123,11 +133,20 @@ for (const file of commandFiles) {
 }
 
 const eventsPath = path.join(__dirname, 'events');
-const eventFiles = fs.readdirSync(eventsPath)
-    .filter(file => file.endsWith('.js'));
+const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+// Incluir eventos compilados (dist/events)
+try {
+    const distEventsPath = path.join(__dirname, 'dist', 'events');
+    if (fs.existsSync(distEventsPath)) {
+        const tsEvents = fs.readdirSync(distEventsPath).filter(f => f.endsWith('.js'));
+        for (const f of tsEvents) {
+            eventFiles.push(path.join('dist','events', f));
+        }
+    }
+} catch {}
 
 for (const file of eventFiles) {
-    const filePath = path.join(eventsPath, file);
+    const filePath = file.includes('dist') ? path.join(__dirname, file) : path.join(eventsPath, file);
     const event = require(filePath);
 
     if (event.once) {
