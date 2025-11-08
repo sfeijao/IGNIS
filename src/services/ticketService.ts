@@ -47,6 +47,8 @@ export function buildPanelEmbedsV2(author: GuildMember, categoryName: string, th
     )
     .setThumbnail(thumbnailUrl || author.displayAvatarURL())
     .setColor(0x2F3136);
+  const singleMode = (process.env.TICKET_PANEL_SINGLE_EMBED || '').toLowerCase() === 'true';
+  if (singleMode) return [main];
   const notice = new EmbedBuilder()
     .setDescription('OBS: Procure manter sua DM aberta para receber uma cópia deste ticket e a opção de avaliar seu atendimento.')
     .setColor(0xED4245);
@@ -242,6 +244,35 @@ export async function handleClose(ctx: ActionContext): Promise<ActionResult> {
     };
     await ctx.ticket.save();
     await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'close', { transcriptStored: !!transcriptText });
+    // Disparar webhooks configurados (transcript e vlog) após gerar transcript
+    try {
+      const webhookSvc = require('./webhookService');
+      // Payload base
+      const basePayload = {
+        ticketId: ctx.ticket.id,
+        guildId: ctx.guildId,
+        closedBy: ctx.userId,
+        channelId: ctx.channel.id,
+        transcriptPresent: !!transcriptText,
+        closedAt: new Date().toISOString()
+      };
+      // Transcript webhook (inclui talvez link ou snippet encurtado)
+      if (transcriptText) {
+        const shortTxt = transcriptText.length > 400 ? (transcriptText.slice(0, 390) + '...') : transcriptText;
+        await webhookSvc.postToType(ctx.guildId, 'transcript', { ...basePayload, transcriptSnippet: shortTxt });
+      } else {
+        await webhookSvc.postToType(ctx.guildId, 'transcript', { ...basePayload, transcriptSnippet: null });
+      }
+      // Vlog webhook (poderia ser um futuro export em vídeo; placeholder)
+      await webhookSvc.postToType(ctx.guildId, 'vlog', { ...basePayload, vlog: false });
+      // Modlog webhook (informação administrativa)
+      await webhookSvc.postToType(ctx.guildId, 'modlog', { ...basePayload, action: 'ticket_close' });
+    } catch (e) {
+      // Só loga, não falha operação de fecho
+      // eslint-disable-next-line no-console
+      const err: any = e as any;
+      console.warn('Webhook dispatch after ticket close failed:', err?.message || String(err));
+    }
     try {
       // Se o transcript for pequeno, anexar ficheiro txt ao canal
       if (transcriptText && transcriptText.length < 190000) {

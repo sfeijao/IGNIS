@@ -371,6 +371,59 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch webhooks')
     return res.json()
   },
+  // Outgoing webhook configs (encrypted at rest)
+  async getOutgoingWebhooks(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/webhooks`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch outgoing webhooks')
+    return res.json()
+  },
+  async createOutgoingWebhook(guildId: string, payload: { type: string; url: string; channelId?: string }) {
+    const res = await fetch(`/api/guild/${guildId}/webhooks`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
+    })
+    if (!res.ok) {
+      try { const err = await res.json(); throw new Error(err?.error || 'Failed to create webhook') } catch { throw new Error('Failed to create webhook') }
+    }
+    return res.json()
+  },
+  async updateOutgoingWebhook(guildId: string, id: string, patch: { type?: string; url?: string; enabled?: boolean; channelId?: string }) {
+    const res = await fetch(`/api/guild/${guildId}/webhooks/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(patch)
+    })
+    if (!res.ok) {
+      try { const err = await res.json(); throw new Error(err?.error || 'Failed to update webhook') } catch { throw new Error('Failed to update webhook') }
+    }
+    return res.json()
+  },
+  async deleteOutgoingWebhook(guildId: string, id: string) {
+    const res = await fetch(`/api/guild/${guildId}/webhooks/${id}`, { method: 'DELETE', credentials: 'include' })
+    if (!res.ok) {
+      try { const err = await res.json(); throw new Error(err?.error || 'Failed to delete webhook') } catch { throw new Error('Failed to delete webhook') }
+    }
+    return res.json()
+  },
+  async testOutgoingWebhook(guildId: string, type: string, payload?: Record<string, any>) {
+    const body: any = { type }
+    if (payload && typeof payload === 'object') body.payload = payload
+    const res = await fetch(`/api/guild/${guildId}/webhooks/test`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) }
+    )
+    if (!res.ok) {
+      try { const err = await res.json(); throw new Error(err?.error || 'Failed to test webhook') } catch { throw new Error('Failed to test webhook') }
+    }
+    return res.json()
+  },
+  async testAllOutgoingWebhooks(guildId: string, payload?: Record<string, any>) {
+    const body: any = {}
+    if (payload && typeof payload === 'object') body.payload = payload
+    const res = await fetch(`/api/guild/${guildId}/webhooks/test-all`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) }
+    )
+    if (!res.ok) {
+      try { const err = await res.json(); throw new Error(err?.error || 'Failed to bulk test webhooks') } catch { throw new Error('Failed to bulk test webhooks') }
+    }
+    return res.json()
+  },
   async createWebhookInChannel(guildId: string, payload: { type: string; channel_id: string; name?: string }) {
     const res = await fetch(`/api/guild/${guildId}/webhooks/create-in-channel`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)

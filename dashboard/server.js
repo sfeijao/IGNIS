@@ -67,38 +67,31 @@ function pushPerfSample(guildId, sample){
     if(perfHistory[guildId].length > maxLen) perfHistory[guildId].splice(0, perfHistory[guildId].length - maxLen);
 }
 
-// Helper function for OAuth callback URL
+// Helper function for OAuth callback URL (reconstructed after corruption)
 const getCallbackURL = () => {
     const baseUrl = (config.getBaseUrl && config.getBaseUrl()) || (config.WEBSITE?.BASE_URL) || `http://localhost:${PORT}`;
-    const cb = (process.env.CALLBACK_URL || '').trim();
-    if (cb) {
-        // If absolute URL provided, normalize its host to the configured BASE_URL host.
-        // This prevents accidentally using a callback pointing at a different Railway app
-        // (e.g., copied from another environment), which causes 404 after OAuth.
-        if (/^https?:\/\//i.test(cb)) {
+    const cbRaw = (process.env.CALLBACK_URL || '').trim();
+    if (cbRaw) {
+        if (/^https?:\/\//i.test(cbRaw)) {
             try {
                 const base = new URL(baseUrl);
-                const u = new URL(cb);
-                // If hosts differ, rebuild on base host but preserve path/query
+                const u = new URL(cbRaw);
                 if (u.host !== base.host) {
                     const rebuilt = `${base.protocol}//${base.host}${u.pathname}${u.search || ''}`;
                     logger.warn(`Normalized CALLBACK_URL host from ${u.host} -> ${base.host} (${rebuilt})`);
                     return rebuilt;
                 }
-                return cb;
-            } catch {
-                // Fall through to relative handling if parsing fails
+                return cbRaw;
+            } catch (e) {
+                logger.warn('Invalid CALLBACK_URL, falling back to base URL:', e?.message || e);
             }
+        } else {
+            // Treat non-absolute value as relative path under base URL
+            return `${baseUrl.replace(/\/$/, '')}/${cbRaw.replace(/^\//, '')}`;
         }
-        // Relative: join with base URL
-        const rel = cb.startsWith('/') ? cb : `/${cb}`;
-        return `${baseUrl}${rel}`;
     }
-    return `${baseUrl}/auth/discord/callback`;
+    return `${baseUrl.replace(/\/$/, '')}/auth/discord/callback`;
 };
-
-// Middleware
-// Optional CORS (only when explicitly configured)
 try {
     const CORS_ORIGIN = (process.env.CORS_ORIGIN || '').trim();
     if (CORS_ORIGIN) {
@@ -1831,7 +1824,6 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
         let updated = null;
         switch (action) {
             case 'resend': {
-                // Reenviar usando payload guardado, sem apagar o anterior
                 const payload = panel.payload || { content: '🎫 Painel de tickets' };
                 message = await channel.send(payload);
                 if (useMongoPanels) {
@@ -1843,7 +1835,6 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 return res.json({ success: true, message: 'Panel resent', panel: updated });
             }
             case 'recreate': {
-                // Tenta eliminar mensagem antiga e enviar de novo
                 if (panel.message_id && channel.messages?.fetch) {
                     const old = await channel.messages.fetch(panel.message_id).catch(() => null);
                     if (old) await old.delete().catch(() => {});
@@ -1859,11 +1850,9 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 return res.json({ success: true, message: 'Panel recreated', panel: updated });
             }
             case 'save': {
-                // Se já é um painel guardado, nada a fazer
                 return res.json({ success: true, message: 'Panel already saved', panel });
             }
             case 'delete': {
-                // Remover registo e tentar apagar mensagem
                 if (panel.message_id && channel.messages?.fetch) {
                     const old = await channel.messages.fetch(panel.message_id).catch(() => null);
                     if (old) await old.delete().catch(() => {});
@@ -1887,10 +1876,8 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 const newTemplate = typeof data?.template === 'string' ? String(data.template) : 'classic';
                 const allowed = new Set(['classic','compact','premium','minimal','gamer']);
                 const tpl = allowed.has(newTemplate) ? newTemplate : 'classic';
-                // Rebuild payload using existing theme for consistency
                 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
                 const visualAssets = require('../assets/visual-assets');
-                // Guild-branded banner/icon override (falls back to defaults)
                 let brandedBanner = null; try {
                     const storage = require('../utils/storage');
                     const cfg = await storage.getGuildConfig(req.params.guildId) || {};
@@ -1938,9 +1925,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                     );
                     rows = [r1, r2];
                 } else if (tpl === 'gamer') {
-                    embed
-                        .setTitle('Precisas de ajuda? Clica aí 👇')
-                        .setDescription('Escolhe o tipo de ajuda abaixo. Visual gamer, chill e funcional.');
+                    embed.setTitle('Precisas de ajuda? Clica aí 👇').setDescription('Escolhe o tipo de ajuda abaixo. Visual gamer, chill e funcional.');
                     const r = new ActionRowBuilder().addComponents(
                         new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
                         new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
@@ -1968,25 +1953,226 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                     rows = [r1, r2];
                 }
                 const newPayload = { embeds: [embed], components: rows };
-                // Try to edit existing message for seamless change
                 if (panel.message_id && channel.messages?.fetch) {
                     const old = await channel.messages.fetch(panel.message_id).catch(() => null);
-                    if (old) {
-                        await old.edit(newPayload).catch(() => {});
-                    }
+                    if (old) await old.edit(newPayload).catch(() => {});
                 }
-                // Persist template and payload
                 const updatedPanel = useMongoPanels
                     ? await PanelModel.findByIdAndUpdate(panelId, { $set: { template: tpl, payload: newPayload } }, { new: true }).lean()
                     : await (async () => { const storage = require('../utils/storage'); return await storage.updatePanel(panelId, { template: tpl, payload: newPayload }); })();
-                return res.json({ success: true, message: 'Template updated', template: tpl, panel: updatedPanel });
+                // Auto-sync open ticket panels to V2 after template updates
+                let synced = null;
+                try {
+                    const svc = require('../src/services/ticketService');
+                    if (global.discordClient) {
+                        synced = await svc.syncAllOpenTicketPanels(global.discordClient, guildId);
+                    }
+                } catch (e) {
+                    logger.warn('Auto-sync after template update failed:', e?.message || e);
+                }
+                return res.json({ success: true, message: 'Template updated', template: tpl, panel: updatedPanel, synced });
             }
-            default:
+            default: {
                 return res.status(400).json({ success: false, error: 'Invalid action' });
+            }
         }
     } catch (error) {
         logger.error('Error performing panel action:', error);
         res.status(500).json({ success: false, error: 'Failed to perform panel action' });
+    }
+});
+
+// WebhookConfig CRUD (Mongo only)
+app.get('/api/guild/:guildId/webhooks', async (req, res) => {
+    if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const { guildId } = req.params;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+        const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
+        if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
+
+        const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
+        if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not configured' });
+        const { isReady } = require('../utils/db/mongoose');
+        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
+
+        const svc = require('../src/services/webhookService');
+        const list = await svc.listConfigs(guildId);
+        return res.json({ success: true, items: list });
+    } catch (e) {
+        logger.error('Webhook list error:', e);
+        return res.status(500).json({ success: false, error: 'Failed to list webhooks' });
+    }
+});
+
+app.post('/api/guild/:guildId/webhooks', async (req, res) => {
+    if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const { guildId } = req.params;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+        const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
+        if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
+
+        const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
+        if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not configured' });
+        const { isReady } = require('../utils/db/mongoose');
+        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
+
+        const schema = Joi.object({
+            type: Joi.string().valid('transcript','vlog','modlog','generic').required(),
+            url: Joi.string().uri({ scheme: ['https'] }).required(),
+            enabled: Joi.boolean().optional(),
+            channelId: Joi.string().optional()
+        });
+        const { error, value } = schema.validate(req.body || {});
+        if (error) return res.status(400).json({ success: false, error: error.message });
+
+        const svc = require('../src/services/webhookService');
+        const created = await svc.createConfig(guildId, value);
+        return res.json({ success: true, item: created });
+    } catch (e) {
+        logger.error('Webhook create error:', e);
+        return res.status(500).json({ success: false, error: e?.message || 'Failed to create webhook' });
+    }
+});
+
+app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
+    if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const { guildId, id } = req.params;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+        const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
+        if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
+
+        const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
+        if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not configured' });
+        const { isReady } = require('../utils/db/mongoose');
+        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
+
+        const schema = Joi.object({
+            type: Joi.string().valid('transcript','vlog','modlog','generic').optional(),
+            url: Joi.string().uri({ scheme: ['https'] }).optional(),
+            enabled: Joi.boolean().optional(),
+            channelId: Joi.string().allow(null, '').optional()
+        }).min(1);
+        const { error, value } = schema.validate(req.body || {});
+        if (error) return res.status(400).json({ success: false, error: error.message });
+
+        const svc = require('../src/services/webhookService');
+        const updated = await svc.updateConfig(id, guildId, value);
+        return res.json({ success: true, item: updated });
+    } catch (e) {
+        logger.error('Webhook update error:', e);
+        return res.status(500).json({ success: false, error: e?.message || 'Failed to update webhook' });
+    }
+});
+
+app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
+    if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const { guildId, id } = req.params;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+        const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
+        if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
+
+        const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
+        if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not configured' });
+        const { isReady } = require('../utils/db/mongoose');
+        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
+
+        const svc = require('../src/services/webhookService');
+        const ok = await svc.deleteConfig(id, guildId);
+        if (!ok) return res.status(404).json({ success: false, error: 'Not found' });
+        return res.json({ success: true });
+    } catch (e) {
+        logger.error('Webhook delete error:', e);
+        return res.status(500).json({ success: false, error: 'Failed to delete webhook' });
+    }
+});
+
+// Test post to configured webhooks by type
+app.post('/api/guild/:guildId/webhooks/test', async (req, res) => {
+    if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const { guildId } = req.params;
+        const { type, payload } = req.body || {};
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+        const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
+        if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
+
+        const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
+        if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not configured' });
+        const { isReady } = require('../utils/db/mongoose');
+        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
+
+    const schema = Joi.object({ type: Joi.string().valid('transcript','vlog','modlog','generic').required(), payload: Joi.object().optional() });
+        const { error, value } = schema.validate({ type, payload });
+        if (error) return res.status(400).json({ success: false, error: error.message });
+
+        const svc = require('../src/services/webhookService');
+        const resArr = await svc.postToType(guildId, value.type, value.payload || { test: true, at: Date.now() });
+        return res.json({ success: true, results: resArr });
+    } catch (e) {
+        logger.error('Webhook test post error:', e);
+        return res.status(500).json({ success: false, error: 'Failed to post to webhooks' });
+    }
+});
+
+// Bulk test: post a payload to all enabled webhooks regardless of type
+app.post('/api/guild/:guildId/webhooks/test-all', async (req, res) => {
+    if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const { guildId } = req.params;
+        const { payload } = req.body || {};
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+        const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
+        if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
+
+        const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
+        if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not configured' });
+        const { isReady } = require('../utils/db/mongoose');
+        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
+
+        const schema = Joi.object({ payload: Joi.object().optional() });
+        const { error, value } = schema.validate({ payload });
+        if (error) return res.status(400).json({ success: false, error: error.message });
+
+        const svc = require('../src/services/webhookService');
+        const resArr = await svc.postToAll(guildId, value.payload || { test: true, at: Date.now() });
+        return res.json({ success: true, results: resArr });
+    } catch (e) {
+        logger.error('Webhook bulk test post error:', e);
+        return res.status(500).json({ success: false, error: 'Failed to post to webhooks' });
     }
 });
 
