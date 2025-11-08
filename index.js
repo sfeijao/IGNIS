@@ -174,7 +174,10 @@ async function registerCommands() {
 
         const commands = [];
         for (const file of commandFiles) {
-            const filePath = path.join(commandsPath, file);
+            // Suporta comandos JS locais e também comandos compilados (dist/commands)
+            const filePath = file.includes('dist')
+                ? path.join(__dirname, file)
+                : path.join(commandsPath, file);
             const command = require(filePath);
             if ('data' in command && 'execute' in command) {
                 commands.push(command.data.toJSON());
@@ -201,7 +204,17 @@ async function registerCommands() {
 
 // Registrar comandos e fazer login
 (async () => {
-    await registerCommands();
+    // Em Railway (produção), o deploy de comandos já é feito pelo starter (scripts/deploy-commands.js).
+    // Para evitar duplicação e ruído de logs/erros, pulamos o registro em runtime por padrão
+    // quando a variável RAILWAY_ENVIRONMENT_NAME existir. Use FORCE_RUNTIME_COMMAND_REGISTER=true
+    // para forçar registro em runtime mesmo em Railway.
+    const inRailway = !!process.env.RAILWAY_ENVIRONMENT_NAME;
+    const forceRuntime = String(process.env.FORCE_RUNTIME_COMMAND_REGISTER || '').toLowerCase() === 'true';
+    if (inRailway && !forceRuntime) {
+        logger.info('⚙️  Ignorando registro de comandos em runtime (Railway detectado). Use FORCE_RUNTIME_COMMAND_REGISTER=true para forçar.');
+    } else {
+        await registerCommands();
+    }
     client.login(config.DISCORD.TOKEN).catch(error => {
         logger.error('❌ Erro ao fazer login:', { error: error && error.message ? error.message : error, stack: error && error.stack });
         process.exit(1);

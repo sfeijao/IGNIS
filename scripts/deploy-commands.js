@@ -18,19 +18,19 @@ class CommandDeployer {
      */
     loadCommands() {
         console.log('🔍 Carregando comandos...');
-        
+
         const commandsPath = path.join(__dirname, '..', 'commands');
         const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
         for (const file of commandFiles) {
             const filePath = path.join(commandsPath, file);
-            
+
             try {
                 // Limpar cache do require para recarregar comandos
                 delete require.cache[require.resolve(filePath)];
-                
+
                 const command = require(filePath);
-                
+
                 if ('data' in command && 'execute' in command) {
                     this.commands.push(command.data.toJSON());
                     console.log(`✅ ${command.data.name}`);
@@ -141,12 +141,12 @@ class CommandDeployer {
      */
     async listCommands(scope = 'guild') {
         try {
-            const route = scope === 'guild' 
+            const route = scope === 'guild'
                 ? Routes.applicationGuildCommands(config.DISCORD.CLIENT_ID, config.DISCORD.GUILD_ID)
                 : Routes.applicationCommands(config.DISCORD.CLIENT_ID);
 
             const commands = await this.rest.get(route);
-            
+
             console.log(`\n📋 Comandos registrados (${scope}):`);
             commands.forEach((cmd, index) => {
                 console.log(`${index + 1}. ${cmd.name} - ${cmd.description}`);
@@ -165,14 +165,14 @@ class CommandDeployer {
      */
     async clearCommands(scope = 'guild') {
         try {
-            const route = scope === 'guild' 
+            const route = scope === 'guild'
                 ? Routes.applicationGuildCommands(config.DISCORD.CLIENT_ID, config.DISCORD.GUILD_ID)
                 : Routes.applicationCommands(config.DISCORD.CLIENT_ID);
 
             await this.rest.put(route, { body: [] });
-            
+
             console.log(`✅ Todos os comandos ${scope} foram removidos`);
-            
+
             logger.info('Comandos removidos', { scope });
         } catch (error) {
             console.error(`❌ Erro ao remover comandos ${scope}:`, error);
@@ -216,7 +216,7 @@ class CommandDeployer {
         try {
             console.log('🎯 IGNIS Bot - Deploy de Comandos');
             console.log('=====================================');
-            
+
             // Validar configuração
             this.validateConfig();
             console.log('✅ Configuração validada');
@@ -235,7 +235,7 @@ class CommandDeployer {
 
             // Deploy normal
             this.loadCommands();
-            
+
             if (this.errors.length > 0) {
                 console.log('\n⚠️ Avisos encontrados:');
                 this.errors.forEach(error => console.log(`  - ${error}`));
@@ -243,10 +243,10 @@ class CommandDeployer {
             }
 
             const result = await this.deployCommands(scope);
-            
+
             console.log('\n🎉 Deploy concluído com sucesso!');
             console.log('=====================================');
-            
+
             return result;
         } catch (error) {
             console.error('\n❌ Deploy falhou:', error.message);
@@ -258,7 +258,7 @@ class CommandDeployer {
 // Executar se chamado diretamente
 if (require.main === module) {
     const args = process.argv.slice(2);
-    
+
     const options = {
         scope: args.includes('--global') ? 'global' : 'guild',
         list: args.includes('--list'),
