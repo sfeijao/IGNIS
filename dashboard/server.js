@@ -5019,6 +5019,125 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
     }
 });
 
+// Ingest feedback for a ticket (rating 1-5 and optional comment)
+app.post('/api/guild/:guildId/tickets/:ticketId/feedback', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    try {
+        const { guildId, ticketId } = req.params;
+        const { rating, comment } = req.body || {};
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+
+        const storage = require('../utils/storage');
+        const tickets = await storage.getTickets(guildId);
+        const ticket = tickets.find(t => `${t.id}` === `${ticketId}`);
+        if (!ticket) return res.status(404).json({ success: false, error: 'Ticket not found' });
+
+        // Only ticket owner or staff can submit/record feedback
+        let isStaff = false;
+        try {
+            const staffRoles = await storage.getGuildConfig(guildId, 'staffRoles') || [];
+            if (Array.isArray(staffRoles) && staffRoles.length) {
+                isStaff = member.roles.cache.some(r => staffRoles.includes(r.id));
+            }
+        } catch {}
+        if (`${req.user.id}` !== `${ticket.user_id}` && !isStaff) {
+            return res.status(403).json({ success: false, error: 'Only owner or staff can submit feedback' });
+        }
+
+        const r = Number(rating);
+        if (!(r >= 1 && r <= 5)) return res.status(400).json({ success: false, error: 'Invalid rating (1-5)' });
+        const fb = {
+            rating: r,
+            comment: String(comment || ''),
+            by: req.user.id,
+            at: new Date().toISOString()
+        };
+        // persist into ticket meta
+        const currentMeta = ticket.meta && typeof ticket.meta === 'object' ? ticket.meta : {};
+        const updates = { meta: { ...currentMeta, feedback: fb } };
+        await storage.updateTicket(ticketId, updates);
+        // best-effort log
+        try { await storage.addTicketLog({ ticket_id: ticketId, guild_id: guildId, actor_id: req.user.id, action: 'feedback', message: `rating:${r}`, data: fb }); } catch {}
+        return res.json({ success: true, feedback: fb });
+    } catch (e) {
+        logger.error('Error ingesting ticket feedback:', e);
+        return res.status(500).json({ success: false, error: 'Failed to submit feedback' });
+    }
+});
+
+// Serve transcript (stored or generated on-the-fly)
+app.get('/api/guild/:guildId/tickets/:ticketId/transcript', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    try {
+        const { guildId, ticketId } = req.params;
+        const format = (req.query.format || 'txt').toString().toLowerCase();
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+
+        const storage = require('../utils/storage');
+        const tickets = await storage.getTickets(guildId);
+        const ticket = tickets.find(t => `${t.id}` === `${ticketId}`);
+        if (!ticket) return res.status(404).json({ success: false, error: 'Ticket not found' });
+
+        const channel = guild.channels.cache.get(ticket.channel_id);
+        const meta = (ticket.meta && typeof ticket.meta === 'object') ? ticket.meta : {};
+        const t = meta.transcript || {};
+
+        // If we have stored transcript and requested format is available, serve it
+        if (format === 'html' && t.html) {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename=ticket-${ticketId}-transcript.html`);
+            return res.send(String(t.html));
+        } else if (format !== 'html' && t.text) {
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename=ticket-${ticketId}-transcript.txt`);
+            return res.send(String(t.text));
+        }
+
+        // Otherwise, generate a simple on-the-fly transcript (text only)
+        if (!channel || !channel.messages?.fetch) {
+            return res.status(404).json({ success: false, error: 'Channel not found and no stored transcript' });
+        }
+        let before;
+        let rows = [];
+        for (let i = 0; i < 5; i++) {
+            const fetched = await channel.messages.fetch(before ? { limit: 100, before } : { limit: 100 }).catch(() => null);
+            if (!fetched || !fetched.size) break;
+            const batch = Array.from(fetched.values());
+            rows.push(...batch);
+            before = batch[batch.length - 1]?.id;
+            if (fetched.size < 100) break;
+        }
+        rows.sort((a,b) => a.createdTimestamp - b.createdTimestamp);
+        const out = [];
+        out.push(`Ticket #${ticketId} (on-the-fly)`);
+        for (const m of rows) {
+            const when = new Date(m.createdTimestamp).toISOString();
+            const who = `${m.author?.username || 'Unknown'}#${m.author?.discriminator || '0000'}`;
+            out.push(`[${when}] ${who}: ${m.content || ''}`);
+        }
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename=ticket-${ticketId}-transcript.txt`);
+        return res.send(out.join('\n'));
+    } catch (e) {
+        logger.error('Error serving ticket transcript:', e);
+        return res.status(500).json({ success: false, error: 'Failed to get transcript' });
+    }
+});
+
 // Função helper para formatar tempo
 function formatTimeAgo(date) {
     const now = new Date();
