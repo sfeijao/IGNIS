@@ -144,8 +144,12 @@ export default function DashboardStats() {
           <div>
             <h3 className="text-sm font-semibold text-neutral-200">{t('dash.statusSummary')}</h3>
             <p className="text-xs text-neutral-400 mt-1">{summary}</p>
-            <p className="text-xs text-neutral-400 mt-1">{t('dash.lastActivity')}: {lastActivity}</p>
-            <p className="text-xs text-neutral-400 mt-1">{t('dash.lastTicket')}: {lastTicket}</p>
+            <p className="text-xs text-neutral-400 mt-1">{t('dash.lastActivity')}: {lastActivity === '—' ? '—' : (
+              <time suppressHydrationWarning dateTime={(() => { try { return new Date(lastActivity).toISOString() } catch { return '' } })()}>{lastActivity}</time>
+            )}</p>
+            <p className="text-xs text-neutral-400 mt-1">{t('dash.lastTicket')}: {lastTicket === '—' ? '—' : (
+              <time suppressHydrationWarning dateTime={(() => { try { return new Date(lastTicket).toISOString() } catch { return '' } })()}>{lastTicket}</time>
+            )}</p>
           </div>
           <div className="flex flex-col items-end gap-2">
             <div className="text-xs text-neutral-400 flex items-center gap-2">

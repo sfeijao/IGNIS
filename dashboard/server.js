@@ -207,6 +207,9 @@ try {
                 // with basePath '/next' and expects paths like '/next/_next/...'. Using originalUrl
                 // ensures the forwarded request includes '/next'.
                 const rawPath = (req.originalUrl && typeof req.originalUrl === 'string') ? req.originalUrl : ('/next' + (req.url.startsWith('/') ? req.url : ('/' + req.url)));
+                // Debug header to help diagnose hydration inconsistencies (variant of requested path)
+                try { res.setHeader('X-Debug-Next-Path', rawPath); } catch {}
+                try { res.setHeader('X-Debug-Next-UA-Hash', Buffer.from(String(req.headers['user-agent']||'ua')).toString('base64').slice(0,16)); } catch {}
                 const targetUrl = new URL(rawPath, NEXT_TARGET);
                 const opts = {
                     method: req.method,
