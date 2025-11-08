@@ -1,5 +1,6 @@
 import type { Document, Model } from 'mongoose';
-import { mongoose } from '../../utils/db/mongoose';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { mongoose } = require('../../utils/db/mongoose');
 
 export interface ITicketLog extends Document {
   ticketId: string;
@@ -10,7 +11,7 @@ export interface ITicketLog extends Document {
   createdAt: Date;
 }
 
-const TicketLogSchema = new mongoose.Schema<ITicketLog>({
+const TicketLogSchema = new mongoose.Schema({
   ticketId: { type: String, index: true },
   guildId: { type: String, index: true },
   byUserId: { type: String, index: true },
@@ -19,4 +20,4 @@ const TicketLogSchema = new mongoose.Schema<ITicketLog>({
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: false });
 
-export const TicketLogModel: Model<ITicketLog> = mongoose.models.TicketLogTS || mongoose.model<ITicketLog>('TicketLogTS', TicketLogSchema);
+export const TicketLogModel: Model<ITicketLog> = mongoose.models.TicketLogTS || mongoose.model('TicketLogTS', TicketLogSchema);

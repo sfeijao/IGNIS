@@ -1,4 +1,4 @@
-import { ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, GuildMember, TextChannel } from 'discord.js';
+import { ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, GuildMember, TextChannel, ModalBuilder, TextInputBuilder, TextInputStyle, UserSelectMenuBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, PermissionsBitField } from 'discord.js';
 import { TicketModel } from '../models/ticket';
 import { TicketLogModel } from '../models/ticketLog';
 import { withTicketLock } from '../utils/lockManager';
@@ -58,8 +58,19 @@ export function buildPanelComponents() {
   return [row1, row2, row3];
 }
 
+type ActionResult = string | { content?: string; components?: ActionRowBuilder<any>[] };
+
+const rateMap = new Map<string, number>();
+function isRateLimited(key: string, ms: number) {
+  const now = Date.now();
+  const last = rateMap.get(key) || 0;
+  if (now - last < ms) return true;
+  rateMap.set(key, now);
+  return false;
+}
+
 // Individual handlers (minimal logic for now)
-export async function handleCancel(ctx: ActionContext) {
+export async function handleCancel(ctx: ActionContext): Promise<ActionResult> {
   return withTicketLock(ctx.ticket.id, async () => {
     if (ctx.ticket.status !== 'open') return 'Ticket já não está aberto.';
     ctx.ticket.status = 'cancelled';
@@ -71,7 +82,7 @@ export async function handleCancel(ctx: ActionContext) {
 
 export async function handleHowDM() { return 'Para abrir as DMs: Vá a Definições > Privacidade & Segurança > Permitir mensagens de membros do servidor.'; }
 
-export async function handleClaim(ctx: ActionContext) {
+export async function handleClaim(ctx: ActionContext): Promise<ActionResult> {
   return withTicketLock(ctx.ticket.id, async () => {
     if (ctx.ticket.staffAssigned) return 'Já está atribuído.';
     ctx.ticket.staffAssigned = ctx.userId;
@@ -81,7 +92,7 @@ export async function handleClaim(ctx: ActionContext) {
   });
 }
 
-export async function handleClose(ctx: ActionContext) {
+export async function handleClose(ctx: ActionContext): Promise<ActionResult> {
   return withTicketLock(ctx.ticket.id, async () => {
     if (ctx.ticket.status !== 'open') return 'Ticket já fechado.';
     ctx.ticket.status = 'closed';
@@ -92,13 +103,58 @@ export async function handleClose(ctx: ActionContext) {
 }
 
 // Placeholder minimal handlers
-export async function handleRename() { return '📝 Renomear canal em breve.'; }
-export async function handleMove() { return '🔁 Mover ticket em breve.'; }
-export async function handleAddMember() { return '➕ Adicionar membro em breve.'; }
-export async function handleRemoveMember() { return '❌ Remover membro em breve.'; }
-export async function handleCallMember() { return '🔔 Chamar membro em breve.'; }
-export async function handleGreet(ctx: ActionContext) { return `👋 Olá! Sou <@${ctx.userId}>. Em que posso ajudar?`; }
-export async function handleNote() { return '🗒️ Nota interna em breve.'; }
+export async function handleRename(ctx: ActionContext): Promise<ActionResult> {
+  const modal = new ModalBuilder().setCustomId('ticket:rename:modal').setTitle('Renomear Canal');
+  const input = new TextInputBuilder().setCustomId('ticket:rename:name').setLabel('Novo nome do canal').setStyle(TextInputStyle.Short).setMinLength(2).setMaxLength(90).setRequired(true);
+  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+  await (ctx.channel as any).client.api; // noop to keep TS calm
+  await (ctx as any).interaction?.showModal?.(modal); // if called from dispatcher with interaction
+  return '📝 Introduza o novo nome (modal).';
+}
+
+export async function handleMove(ctx: ActionContext): Promise<ActionResult> {
+  const row = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+    new ChannelSelectMenuBuilder().setCustomId('ticket:move:select').setPlaceholder('Escolhe uma categoria…').addChannelTypes(ChannelType.GuildCategory)
+  );
+  return { content: '🔁 Seleciona a categoria para mover o ticket.', components: [row as any] };
+}
+
+export async function handleAddMember(ctx: ActionContext): Promise<ActionResult> {
+  const key = `${ctx.channel.id}:add:${ctx.userId}`;
+  if (isRateLimited(key, 5000)) return '⏱️ Aguarde alguns segundos antes de repetir.';
+  const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
+    new UserSelectMenuBuilder().setCustomId('ticket:add_member:select').setPlaceholder('Seleciona membros para adicionar…').setMinValues(1).setMaxValues(5)
+  );
+  return { content: '➕ Escolhe quem adicionar ao ticket.', components: [row as any] };
+}
+
+export async function handleRemoveMember(ctx: ActionContext): Promise<ActionResult> {
+  const key = `${ctx.channel.id}:remove:${ctx.userId}`;
+  if (isRateLimited(key, 5000)) return '⏱️ Aguarde alguns segundos antes de repetir.';
+  const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
+    new UserSelectMenuBuilder().setCustomId('ticket:remove_member:select').setPlaceholder('Seleciona membros para remover…').setMinValues(1).setMaxValues(5)
+  );
+  return { content: '❌ Escolhe quem remover do ticket.', components: [row as any] };
+}
+
+export async function handleCallMember(ctx: ActionContext): Promise<ActionResult> {
+  const key = `${ctx.channel.id}:call:${ctx.userId}`;
+  if (isRateLimited(key, 10000)) return '⏱️ Evite spam — aguarde 10 segundos.';
+  const row = new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(
+    new RoleSelectMenuBuilder().setCustomId('ticket:call_member:role').setPlaceholder('Escolhe um cargo para chamar…')
+  );
+  return { content: '🔔 Escolhe o cargo a mencionar.', components: [row as any] };
+}
+
+export async function handleGreet(ctx: ActionContext): Promise<ActionResult> { return `👋 Olá! Sou <@${ctx.userId}>. Em que posso ajudar?`; }
+
+export async function handleNote(ctx: ActionContext): Promise<ActionResult> {
+  const modal = new ModalBuilder().setCustomId('ticket:note:modal').setTitle('Nota interna');
+  const input = new TextInputBuilder().setCustomId('ticket:note:text').setLabel('Conteúdo da nota').setStyle(TextInputStyle.Paragraph).setMinLength(2).setMaxLength(1000).setRequired(true);
+  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+  await (ctx as any).interaction?.showModal?.(modal);
+  return '🗒️ Introduza a nota (modal).';
+}
 
 export async function resolveTicket(channel: TextChannel): Promise<Awaited<ReturnType<typeof TicketModel.findOne>> | null> {
   return TicketModel.findOne({ channelId: channel.id });

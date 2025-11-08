@@ -1,5 +1,6 @@
 import type { Document, Model } from 'mongoose';
-import { mongoose } from '../../utils/db/mongoose';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { mongoose } = require('../../utils/db/mongoose');
 
 export type TicketStatus = 'open' | 'closed' | 'archived' | 'cancelled';
 
@@ -17,7 +18,7 @@ export interface ITicket extends Document {
   updatedAt: Date;
 }
 
-const TicketSchema = new mongoose.Schema<ITicket>({
+const TicketSchema = new mongoose.Schema({
   guildId: { type: String, index: true },
   channelId: { type: String, index: true },
   messageId: { type: String },
@@ -29,4 +30,4 @@ const TicketSchema = new mongoose.Schema<ITicket>({
   meta: { type: Object, default: {} }
 }, { timestamps: true });
 
-export const TicketModel: Model<ITicket> = mongoose.models.TicketTS || mongoose.model<ITicket>('TicketTS', TicketSchema);
+export const TicketModel: Model<ITicket> = mongoose.models.TicketTS || mongoose.model('TicketTS', TicketSchema);
