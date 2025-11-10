@@ -17,11 +17,24 @@ const { PermissionFlagsBits, ActivityType } = require('discord.js');
 const app = express();
 let io = null;
 const PORT = process.env.PORT || 4000;
+// Lightweight test-mode stub for discord client
+if (process.env.DASHBOARD_TEST_MODE === 'true') {
+    try {
+        const fakeGuild = {
+            id: 'test',
+            members: { fetch: async () => ({ permissions: { has: () => true } }) },
+            channels: { cache: new Map() }
+        };
+        global.discordClient = { guilds: { cache: new Map([['test', fakeGuild]]) } };
+    } catch {}
+}
 // When running behind a reverse proxy (Railway/Heroku), trust the proxy so secure cookies work
 try { app.set('trust proxy', 1); } catch {}
 const isSqlite = (process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite';
 const BYPASS_AUTH = (process.env.DASHBOARD_BYPASS_AUTH || '').toLowerCase() === 'true';
 const IS_LOCAL = (process.env.NODE_ENV || 'development') !== 'production';
+// Legacy webhook mode: skip test gating & encryption; behave like original dashboard
+const LEGACY_WEBHOOKS = (process.env.LEGACY_WEBHOOKS_MODE || '').toLowerCase() === 'true';
 const OAUTH_VERBOSE = (process.env.OAUTH_VERBOSE_LOGS || '').toLowerCase() === 'true';
 // Suppress common noisy warnings in production
 if ((process.env.NODE_ENV || 'production') === 'production') {
@@ -159,6 +172,8 @@ app.use('/dashboard', express.static(CLASSIC_PUBLIC_DIR, { index: false, redirec
 app.use('/dashboard-new', express.static(WEBSITE_PUBLIC_DIR, { index: false, redirect: false }));
 // Serve Next.js dashboard from standalone server if available; otherwise fall back to static export
 try {
+    // Skip heavy Next.js startup in test environment to keep Jest fast
+    if ((process.env.NODE_ENV || '').toLowerCase() === 'test') throw new Error('Skip Next startup in test');
     const NEXT_STANDALONE_DIR = path.join(__dirname, 'next', '.next', 'standalone');
     const NEXT_EXPORT_DIR = path.join(__dirname, 'public', 'next-export');
     const hasStandalone = fs.existsSync(NEXT_STANDALONE_DIR) && fs.existsSync(path.join(NEXT_STANDALONE_DIR, 'server.js'));
@@ -399,6 +414,9 @@ passport.serializeUser((user, done) => {
     else logger.debug && logger.debug(`Serializing user: ${user.username} (${user.id})`);
     done(null, user);
 });
+
+// Export app for tests (Jest / Supertest)
+try { module.exports = app; } catch {}
 
 passport.deserializeUser((user, done) => {
     if (OAUTH_VERBOSE) logger.info(`Deserializing user: ${user.username} (${user.id})`);
@@ -2021,7 +2039,7 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
                         updatedAt: null
                     };
                 });
-                return res.json({ success: true, items });
+                return res.json({ success: true, items, webhooks: items });
             } catch (e) {
                 logger.error('Webhook list sqlite fallback error:', e);
                 return res.status(500).json({ success: false, error: 'Failed to list webhooks (sqlite fallback)' });
@@ -2030,8 +2048,8 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
         const { isReady } = require('../utils/db/mongoose');
         if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
         const svc = require('../src/services/webhookService');
-        const list = await svc.listConfigs(guildId);
-        return res.json({ success: true, items: list });
+    const list = await svc.listConfigs(guildId);
+    return res.json({ success: true, items: list, webhooks: list });
     } catch (e) {
         logger.error('Webhook list error:', e);
         return res.status(500).json({ success: false, error: 'Failed to list webhooks' });
@@ -2060,7 +2078,7 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
         const { error, value } = schema.validate(req.body || {});
         if (error) return res.status(400).json({ success: false, error: error.message });
 
-        if (!hasMongoEnv) {
+        if (!hasMongoEnv || LEGACY_WEBHOOKS) {
             // Fallback para SQLite: aceitar qualquer URL HTTPS; criar sempre desativado (requer teste para ativar)
             try {
                 const storage = require('../utils/storage-sqlite');
@@ -2071,12 +2089,29 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
                     url: value.url,
                     channel_id: value.channelId || null,
                     channel_name: null,
-                    enabled: false
+                    enabled: LEGACY_WEBHOOKS ? true : false,
+                    last_ok: LEGACY_WEBHOOKS ? null : null,
+                    last_status: LEGACY_WEBHOOKS ? null : null,
+                    last_error: null,
+                    last_at: null
                 });
                 const masked = (saved.url && saved.url.length > 16)
                     ? saved.url.slice(0, saved.url.length - 12).replace(/./g, '*') + saved.url.slice(-12)
                     : '****';
                 return res.json({ success: true, item: {
+                    id: saved._id,
+                    guildId: saved.guild_id,
+                    type: saved.type,
+                    enabled: !!saved.enabled,
+                    channelId: saved.channel_id || null,
+                    urlMasked: masked,
+                    lastOk: saved.last_ok == null ? null : !!saved.last_ok,
+                    lastStatus: saved.last_status == null ? null : Number(saved.last_status),
+                    lastError: saved.last_error || null,
+                    lastAt: saved.last_at || null,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                }, webhook: {
                     id: saved._id,
                     guildId: saved.guild_id,
                     type: saved.type,
@@ -2098,8 +2133,8 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
         const { isReady } = require('../utils/db/mongoose');
         if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
         const svc = require('../src/services/webhookService');
-        const created = await svc.createConfig(guildId, value);
-        return res.json({ success: true, item: created });
+    const created = await svc.createConfig(guildId, value);
+    return res.json({ success: true, item: created, webhook: created });
     } catch (e) {
         logger.error('Webhook create error:', e);
         return res.status(500).json({ success: false, error: e?.message || 'Failed to create webhook' });
@@ -2145,7 +2180,7 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
                 if (value.url) {
                     // Aceitar qualquer HTTPS (Joi já validou)
                     nextUrl = value.url;
-                    nextEnabled = false;
+                    nextEnabled = LEGACY_WEBHOOKS ? true : false;
                     last_ok = null; last_status = null; last_error = null; last_at = null;
                 }
                 if (typeof value.enabled === 'boolean') {
@@ -2169,15 +2204,16 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
                         } finally {
                             clearTimeout(timeout);
                         }
-                        // Persist status fields regardless of success
-                        last_ok = ok ? true : false;
-                        last_status = status || 0;
-                        last_error = ok ? null : (status ? `status ${status}` : errMsg || 'falha');
-                        last_at = new Date().toISOString();
-                        if (ok) {
-                            nextEnabled = true;
+                        if (!LEGACY_WEBHOOKS) {
+                            // Persist status fields regardless of success (legacy mode skips test gating)
+                            last_ok = ok ? true : false;
+                            last_status = status || 0;
+                            last_error = ok ? null : (status ? `status ${status}` : errMsg || 'falha');
+                            last_at = new Date().toISOString();
+                            nextEnabled = ok ? true : false;
                         } else {
-                            nextEnabled = false;
+                            // Legacy: ignore test result, always enable
+                            nextEnabled = true;
                         }
                     } else {
                         nextEnabled = false;
@@ -2202,6 +2238,19 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
                     lastAt: row2.last_at || null,
                     createdAt: null,
                     updatedAt: new Date()
+                }, webhook: {
+                    id: row2._id,
+                    guildId: row2.guild_id,
+                    type: ['transcript','vlog','modlog','generic'].includes(row2.type) ? row2.type : 'generic',
+                    enabled: !!row2.enabled,
+                    channelId: row2.channel_id || null,
+                    urlMasked: masked,
+                    lastOk: row2.last_ok == null ? null : !!row2.last_ok,
+                    lastStatus: row2.last_status == null ? null : Number(row2.last_status),
+                    lastError: row2.last_error || null,
+                    lastAt: row2.last_at || null,
+                    createdAt: null,
+                    updatedAt: new Date()
                 }});
             } catch (e) {
                 logger.error('Webhook update sqlite fallback error:', e);
@@ -2211,8 +2260,8 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         const { isReady } = require('../utils/db/mongoose');
         if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
         const svc = require('../src/services/webhookService');
-        const updated = await svc.updateConfig(id, guildId, value);
-        return res.json({ success: true, item: updated });
+    const updated = await svc.updateConfig(id, guildId, value);
+    return res.json({ success: true, item: updated, webhook: updated });
     } catch (e) {
         logger.error('Webhook update error:', e);
         return res.status(500).json({ success: false, error: e?.message || 'Failed to update webhook' });
@@ -2384,8 +2433,8 @@ app.post('/api/guild/:guildId/webhooks/:id/test-activate', async (req, res) => {
         const { isReady } = require('../utils/db/mongoose');
         if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
         const svc = require('../src/services/webhookService');
-        const item = await svc.testAndActivate(id, guildId, payload);
-        return res.json({ success: true, item });
+    const item = await svc.testAndActivate(id, guildId, payload);
+    return res.json({ success: true, item, webhook: item });
     } catch (e) {
         logger.error('Webhook test-activate error:', e);
         return res.status(500).json({ success: false, error: e?.message || 'Failed to test-activate webhook' });
@@ -4542,7 +4591,12 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
             if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
         }
         const { type = 'logs', name = 'Logs', url, channel_id, channel_name } = req.body || {};
-        if (!url || !url.startsWith('https://discord.com/api/webhooks/')) return res.status(400).json({ success: false, error: 'Invalid webhook URL' });
+        const legacyExternal = process.env.LEGACY_WEBHOOKS_MODE === 'true';
+        const validDiscord = url && url.startsWith('https://discord.com/api/webhooks/');
+        const validExternal = legacyExternal && url && url.startsWith('https://');
+        if (!validDiscord && !validExternal) {
+            return res.status(400).json({ success: false, error: legacyExternal ? 'URL inválida (esperado https://). Em modo legacy aceita qualquer HTTPS ou um webhook do Discord.' : 'Invalid webhook URL (expected Discord webhook).'});
+        }
         if (preferSqlite) {
             const storage = require('../utils/storage-sqlite');
             const saved = await storage.upsertWebhook({ guild_id: req.params.guildId, type, name, url, channel_id, channel_name, enabled: true });
@@ -5733,7 +5787,7 @@ function formatTimeAgo(date) {
 }
 
 // Start server only if not in bot-only mode
-if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only') {
+if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' && (process.env.NODE_ENV || '') !== 'test') {
     // Attach socket.io on an HTTP server to support live updates
     const http = require('http');
     const server = http.createServer(app);
@@ -5790,7 +5844,9 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only')
         logger.info(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
 } else {
-    logger.warn('⚠️ Dashboard não iniciado - CLIENT_SECRET não configurado');
+    if ((process.env.NODE_ENV || '') !== 'test') {
+        logger.warn('⚠️ Dashboard não iniciado - CLIENT_SECRET não configurado');
+    }
 }
 
 module.exports = app;
