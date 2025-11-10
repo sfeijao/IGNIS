@@ -216,7 +216,7 @@ async function createTicket(interaction, type) {
   try {
     const svc = require('../dist/services/ticketService.js');
     if (svc && typeof svc.buildPanelEmbedsV2 === 'function') {
-      embeds = svc.buildPanelEmbedsV2(interaction.member, departmentInfo(type)?.name || info.name, visualAssets?.realImages?.supportIcon);
+      embeds = svc.buildPanelEmbedsV2(interaction.member, departmentInfo(type)?.name || info.name, interaction.guild.iconURL?.() || visualAssets?.realImages?.supportIcon);
     }
   } catch {}
   if (!embeds) {
@@ -229,7 +229,7 @@ async function createTicket(interaction, type) {
         { name: 'Categoria Escolhida:', value: `🧾 \`Ticket ${info.name}\``, inline: false },
         { name: 'Lembrando', value: 'que os botões são exclusivos para staff!\n\n`DESCREVA O MOTIVO DO CONTACTO COM O MÁXIMO DE DETALHES POSSÍVEIS QUE ALGUM RESPONSÁVEL JÁ IRÁ LHE ATENDER!`', inline: false }
       )
-      .setThumbnail(interaction.user.displayAvatarURL?.() || visualAssets?.realImages?.supportIcon)
+  .setThumbnail(interaction.guild.iconURL?.() || interaction.user.displayAvatarURL?.() || visualAssets?.realImages?.supportIcon)
       .setColor(0x2F3136);
     const introNotice = new EmbedBuilder()
       .setDescription('OBS: Procure manter sua DM aberta para receber uma cópia deste ticket e a opção de avaliar seu atendimento.')

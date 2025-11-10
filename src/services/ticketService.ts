@@ -31,7 +31,7 @@ export async function buildPanelEmbed(author: GuildMember, categoryName: string,
       { name: 'Categoria Escolhida:', value: `🧾 \`Ticket ${categoryName || 'Suporte'}\``, inline: false },
       { name: 'Lembrando', value: 'que os botões são exclusivos para staff!\n\n`DESCREVA O MOTIVO DO CONTACTO COM O MÁXIMO DE DETALHES POSSÍVEIS QUE ALGUM RESPONSÁVEL JÁ IRÁ LHE ATENDER!`', inline: false }
     )
-    .setThumbnail(thumbnailUrl || author.displayAvatarURL())
+  .setThumbnail(author.guild?.iconURL() || thumbnailUrl || author.displayAvatarURL())
     .setColor(0x2F3136)
     .setFooter({ text: 'OBS: Procure manter sua DM aberta para receber uma cópia deste ticket e a opção de avaliar seu atendimento.' });
 }
@@ -45,7 +45,7 @@ export function buildPanelEmbedsV2(author: GuildMember, categoryName: string, th
       { name: 'Categoria Escolhida:', value: `🧾 \`Ticket ${categoryName || 'Suporte'}\``, inline: false },
       { name: 'Lembrando', value: 'que os botões são exclusivos para staff!\n\n`DESCREVA O MOTIVO DO CONTACTO COM O MÁXIMO DE DETALHES POSSÍVEIS QUE ALGUM RESPONSÁVEL JÁ IRÁ LHE ATENDER!`', inline: false }
     )
-    .setThumbnail(thumbnailUrl || author.displayAvatarURL())
+  .setThumbnail(author.guild?.iconURL() || thumbnailUrl || author.displayAvatarURL())
     .setColor(0x2F3136);
   const singleMode = (process.env.TICKET_PANEL_SINGLE_EMBED || '').toLowerCase() === 'true';
   if (singleMode) return [main];
@@ -163,7 +163,7 @@ export function buildTicketStatusEmbedsV2(ticket: any, author: GuildMember) {
       { name: 'Prioridade', value: prioridadeLabel, inline: true },
       { name: 'Responsável', value: responsavel, inline: true }
     )
-    .setThumbnail(author.displayAvatarURL())
+  .setThumbnail(author.guild?.iconURL() || author.displayAvatarURL())
     .setColor(0x2F3136);
   const singleMode = (process.env.TICKET_PANEL_SINGLE_EMBED || '').toLowerCase() === 'true';
   if (singleMode) return [main];
