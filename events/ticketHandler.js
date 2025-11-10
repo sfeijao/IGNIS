@@ -20,7 +20,8 @@ module.exports = {
                             const tsHandler = require('../dist/events/interactionCreate.js');
                             if (tsHandler && typeof tsHandler.execute === 'function') {
                                 await tsHandler.execute(interaction);
-                                return;
+                                // Se o handler TS não respondeu (canal legado), continuar para o comunitário
+                                if (interaction.replied || interaction.deferred) return;
                             }
                         } catch {}
                     }

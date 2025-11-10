@@ -401,6 +401,62 @@ async function handleButton(interaction) {
   if (id === 'ticket:close:confirm') return confirmClose(interaction);
   if (id === 'ticket:close:cancel') return interaction.update({ content: '❎ Cancelado.', components: [] });
 
+  // --- Novos botões do layout unificado (quando canal é legado e não existe TicketModel TS) ---
+  // Para estes IDs o handler TS não responde porque resolveTicket() retorna null.
+  // Implementamos respostas básicas aqui.
+  if (id === 'ticket:cancel') {
+    try { await interaction.reply({ content: '✅ Ticket será cancelado e apagado.', flags: MessageFlags.Ephemeral }); } catch {}
+    setTimeout(()=>{ try { interaction.channel.delete('Ticket cancelado'); } catch {} }, 1500);
+    return;
+  }
+  if (id === 'ticket:how_dm') {
+    return safeReply(interaction, { content: 'Para abrir DMs: Definições > Privacidade & Segurança > Permitir mensagens de membros do servidor.', flags: MessageFlags.Ephemeral });
+  }
+  if (id === 'ticket:greet') {
+    return safeReply(interaction, { content: `👋 Olá ${interaction.user}, em que podemos ajudar?`, flags: MessageFlags.Ephemeral });
+  }
+  if (id === 'ticket:note') {
+    // Modal para nota interna
+    const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+    const modal = new ModalBuilder().setCustomId('ticket:note:modal').setTitle('Nota interna');
+    const input = new TextInputBuilder().setCustomId('ticket:note:text').setLabel('Conteúdo da nota').setStyle(TextInputStyle.Paragraph).setMinLength(2).setMaxLength(500).setRequired(true);
+    modal.addComponents(new ActionRowBuilder().addComponents(input));
+    try { await interaction.showModal(modal); } catch { return safeReply(interaction, { content: '❌ Falha ao mostrar modal.', flags: MessageFlags.Ephemeral }); }
+    return;
+  }
+  if (id === 'ticket:rename') {
+    const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+    const modal = new ModalBuilder().setCustomId('ticket:rename:modal').setTitle('Renomear Canal');
+    const input = new TextInputBuilder().setCustomId('ticket:rename:name').setLabel('Novo nome').setStyle(TextInputStyle.Short).setMinLength(2).setMaxLength(90).setRequired(true);
+    modal.addComponents(new ActionRowBuilder().addComponents(input));
+    try { await interaction.showModal(modal); } catch { return safeReply(interaction, { content: '❌ Falha ao abrir modal.', flags: MessageFlags.Ephemeral }); }
+    return;
+  }
+  if (id === 'ticket:move') {
+    const { ActionRowBuilder, ChannelSelectMenuBuilder, ChannelType } = require('discord.js');
+    const menu = new ChannelSelectMenuBuilder().setCustomId('ticket:move:select').addChannelTypes(ChannelType.GuildCategory).setPlaceholder('Escolhe categoria destino');
+    const row = new ActionRowBuilder().addComponents(menu);
+    return safeReply(interaction, { content: '🔁 Seleciona a nova categoria.', components: [row], flags: MessageFlags.Ephemeral });
+  }
+  if (id === 'ticket:add_member') {
+    const { ActionRowBuilder, UserSelectMenuBuilder } = require('discord.js');
+    const menu = new UserSelectMenuBuilder().setCustomId('ticket:add_member:select').setPlaceholder('Seleciona membros').setMinValues(1).setMaxValues(5);
+    const row = new ActionRowBuilder().addComponents(menu);
+    return safeReply(interaction, { content: '➕ Escolhe membros para adicionar.', components: [row], flags: MessageFlags.Ephemeral });
+  }
+  if (id === 'ticket:remove_member') {
+    const { ActionRowBuilder, UserSelectMenuBuilder } = require('discord.js');
+    const menu = new UserSelectMenuBuilder().setCustomId('ticket:remove_member:select').setPlaceholder('Seleciona membros').setMinValues(1).setMaxValues(5);
+    const row = new ActionRowBuilder().addComponents(menu);
+    return safeReply(interaction, { content: '❌ Escolhe membros para remover.', components: [row], flags: MessageFlags.Ephemeral });
+  }
+  if (id === 'ticket:call_member') {
+    const { ActionRowBuilder, RoleSelectMenuBuilder } = require('discord.js');
+    const menu = new RoleSelectMenuBuilder().setCustomId('ticket:call_member:role').setPlaceholder('Escolhe cargo a chamar');
+    const row = new ActionRowBuilder().addComponents(menu);
+    return safeReply(interaction, { content: '🔔 Seleciona o cargo para notificar.', components: [row], flags: MessageFlags.Ephemeral });
+  }
+
   // Painel staff efémero
   // (Removido) painel efémero Ctrl-Staff: botões agora estão sempre visíveis nas linhas principais
 
