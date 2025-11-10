@@ -412,6 +412,26 @@ export default function TicketsList() {
               </div>
               <div className="flex items-center gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <button type="button" onClick={()=> setViewId(tk.id)} className="bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 rounded text-sm border border-neutral-700">{tr('tickets.view')}</button>
+                {/* Inline priority control */}
+                <div className="flex items-center gap-1 text-xs text-neutral-400">
+                  <label className="sr-only">{tr('tickets.priority')}</label>
+                  <select
+                    className="bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-sm"
+                    value={tk.priority || ''}
+                    onChange={async (e)=>{
+                      const val = e.target.value || 'normal'
+                      try {
+                        await api.ticketAction(guildId!, tk.id, 'priority', { value: val })
+                        const res = await api.getTickets(guildId!, params)
+                        setData(res)
+                      } catch (err: any) {
+                        alert(err?.message || 'Failed to update priority')
+                      }
+                    }}
+                  >
+                    {['urgent','high','normal','low'].map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
                 {tk.status === 'open' && (
                   <>
                     <button type="button" onClick={()=>doAction(tk.id, 'claim')} className="bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded text-sm">{tr('tickets.claim')}</button>

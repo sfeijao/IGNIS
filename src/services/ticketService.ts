@@ -1,4 +1,4 @@
-import { ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, GuildMember, TextChannel, ModalBuilder, TextInputBuilder, TextInputStyle, UserSelectMenuBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, PermissionsBitField } from 'discord.js';
+import { ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, GuildMember, TextChannel, ModalBuilder, TextInputBuilder, TextInputStyle, UserSelectMenuBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder, PermissionsBitField } from 'discord.js';
 import { TicketModel } from '../models/ticket';
 import { TicketLogModel } from '../models/ticketLog';
 import { withTicketLock } from '../utils/lockManager';
@@ -121,9 +121,59 @@ export function buildPanelComponents() {
     new ButtonBuilder().setCustomId('ticket:claim').setLabel('Assumir Atendimento').setStyle(ButtonStyle.Primary).setEmoji('🟦'),
     new ButtonBuilder().setCustomId('ticket:greet').setLabel('Saudar Atendimento').setStyle(ButtonStyle.Primary).setEmoji('👋'),
     new ButtonBuilder().setCustomId('ticket:note').setLabel('Adicionar Observação Interna').setStyle(ButtonStyle.Secondary).setEmoji('🗒️'),
+    new ButtonBuilder().setCustomId('ticket:priority').setLabel('Prioridade').setStyle(ButtonStyle.Secondary).setEmoji('⚡'),
     new ButtonBuilder().setCustomId('ticket:close').setLabel('Finalizar Ticket').setStyle(ButtonStyle.Success).setEmoji('✅'),
   );
   return [row1, row2, row3];
+}
+
+// --- Unified status embed builder (for convergence) ---
+// Generates the dual-embed V2 status panel for a ticket, reflecting dynamic fields.
+export function buildTicketStatusEmbedsV2(ticket: any, author: GuildMember) {
+  const estado = (ticket.status || 'open').toLowerCase();
+  const statusLabel = estado === 'open' ? 'Aberto' : (estado === 'closed' ? 'Fechado' : estado === 'cancelled' ? 'Cancelado' : estado);
+  const prioridade = (ticket.priority || ticket.meta?.priority || 'normal');
+  const prioridadeMap: Record<string,string> = { low: 'BAIXA', normal: 'NORMAL', high: 'ALTA', urgent: 'URGENTE' };
+  const prioridadeLabel = prioridadeMap[prioridade.toLowerCase()] || prioridade.toUpperCase();
+  const responsavel = ticket.staffAssigned ? `<@${ticket.staffAssigned}>` : '—';
+  const openedTs = Math.floor((ticket.createdAt ? new Date(ticket.createdAt).getTime() : Date.now()) / 1000);
+  const idDisplay = ticket.id || ticket._id || '—';
+  const categoryName = ticket.category || 'Suporte';
+  const main = new EmbedBuilder()
+    .setTitle('Ticket Criado com Sucesso! 📌')
+    .setDescription('Todos os responsáveis pelo ticket já estão cientes da abertura.\nEvite chamar alguém via DM, basta aguardar alguém já irá lhe atender..')
+    .addFields(
+      { name: 'Categoria Escolhida:', value: `🧾 \`Ticket ${categoryName}\``, inline: false },
+      { name: 'Estado', value: statusLabel, inline: true },
+      { name: 'Utilizador', value: `<@${ticket.ownerId || ticket.user_id || author.id}>`, inline: true },
+      { name: 'Abertura', value: `<t:${openedTs}:R>`, inline: true },
+      { name: 'ID', value: `#${idDisplay}`, inline: true },
+      { name: 'Prioridade', value: prioridadeLabel, inline: true },
+      { name: 'Responsável', value: responsavel, inline: true }
+    )
+    .setThumbnail(author.displayAvatarURL())
+    .setColor(0x2F3136);
+  const singleMode = (process.env.TICKET_PANEL_SINGLE_EMBED || '').toLowerCase() === 'true';
+  if (singleMode) return [main];
+  const notice = new EmbedBuilder().setDescription('OBS: Procure manter sua DM aberta para receber uma cópia deste ticket e a opção de avaliar seu atendimento.').setColor(0xED4245);
+  return [main, notice];
+}
+
+// Update existing ticket panel message with current status fields (TS tickets only for now)
+export async function updateTicketStatusEmbeds(client: Client, ticket: any) {
+  if (!ticket?.messageId) return false;
+  try {
+    const guild = client.guilds.cache.get(ticket.guildId) || await client.guilds.fetch(ticket.guildId).catch(()=>null);
+    if (!guild) return false;
+    const channel = guild.channels.cache.get(ticket.channelId) as TextChannel || await guild.channels.fetch(ticket.channelId).catch(()=>null) as TextChannel;
+    if (!channel) return false;
+    const msg = await channel.messages.fetch(ticket.messageId).catch(()=>null);
+    if (!msg || !msg.editable) return false;
+    const member = await guild.members.fetch(ticket.ownerId).catch(()=>guild.members.cache.first());
+    const embeds = buildTicketStatusEmbedsV2(ticket, member!);
+    await msg.edit({ embeds });
+    return true;
+  } catch { return false; }
 }
 
 type ActionResult = string | { content?: string; components?: ActionRowBuilder<any>[] };
@@ -144,6 +194,8 @@ export async function handleCancel(ctx: ActionContext): Promise<ActionResult> {
     ctx.ticket.status = 'cancelled';
     await ctx.ticket.save();
     await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'cancel');
+    // Atualizar painel com novo estado
+    try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch {}
     // Adicionar botões de export/feedback após cancelamento
     try {
       await ctx.channel.send({ content: 'Ticket cancelado. Ações pós-fecho:', components: buildPostCloseRow() });
@@ -161,21 +213,8 @@ export async function handleClaim(ctx: ActionContext): Promise<ActionResult> {
     ctx.ticket.staffAssigned = ctx.userId;
     await ctx.ticket.save();
     await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'claim');
-    // Tentar atualizar embed original com responsável
-    if (ctx.ticket.messageId) {
-      try {
-        const msg = await ctx.channel.messages.fetch(ctx.ticket.messageId).catch(()=>null);
-        if (msg && msg.editable && msg.embeds?.[0]) {
-          const original = EmbedBuilder.from(msg.embeds[0]);
-          // Remover field antigo "Responsável" se existir
-          const fields = original.data.fields || [];
-          const filtered = fields.filter(f => !/Responsável/i.test(f.name));
-          filtered.push({ name: 'Responsável', value: `<@${ctx.userId}>`, inline: false });
-          original.setFields(filtered as any);
-          await msg.edit({ embeds: [original] });
-        }
-      } catch {}
-    }
+    // Atualizar painel com responsável
+    try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch {}
     return '📌 Atendimento assumido.';
   });
 }
@@ -244,6 +283,7 @@ export async function handleClose(ctx: ActionContext): Promise<ActionResult> {
     };
     await ctx.ticket.save();
     await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'close', { transcriptStored: !!transcriptText });
+  try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch {}
     // Disparar webhooks configurados (transcript e vlog) após gerar transcript
     try {
       const webhookSvc = require('./webhookService');
@@ -289,6 +329,76 @@ export async function handleClose(ctx: ActionContext): Promise<ActionResult> {
     return '✅ Ticket fechado (transcript gerado).';
   });
 }
+
+// --- New handlers for convergence ---
+export async function handleRelease(ctx: ActionContext): Promise<ActionResult> {
+  return withTicketLock(ctx.ticket.id, async () => {
+    if (!ctx.ticket.staffAssigned) return 'Nenhum responsável atribuído.';
+    if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode libertar.';
+    const prev = ctx.ticket.staffAssigned;
+    ctx.ticket.staffAssigned = null;
+    await ctx.ticket.save();
+    await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'release', { previous: prev });
+    try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch {}
+    return '👐 Ticket libertado.';
+  });
+}
+
+export async function handleLockToggle(ctx: ActionContext): Promise<ActionResult> {
+  return withTicketLock(ctx.ticket.id, async () => {
+    if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode bloquear.';
+    ctx.ticket.meta = ctx.ticket.meta || {};
+    const locked = !!ctx.ticket.meta.locked;
+    ctx.ticket.meta.locked = !locked;
+    await ctx.ticket.save();
+    await log(ctx.ticket.id, ctx.guildId, ctx.userId, locked ? 'unlock' : 'lock');
+    try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch {}
+    return locked ? '🔓 Ticket desbloqueado.' : '🔐 Ticket bloqueado.';
+  });
+}
+
+export async function handleTranscript(ctx: ActionContext): Promise<ActionResult> {
+  return withTicketLock(ctx.ticket.id, async () => {
+    // Gerar transcript sem fechar
+    let transcriptText = '';
+    try {
+      const messages: any[] = [];
+      let lastId: string | undefined = undefined;
+      for (let i = 0; i < 3; i++) {
+        const fetched: any = await ctx.channel.messages.fetch(lastId ? { limit: 100, before: lastId } : { limit: 100 }).catch(() => null);
+        if (!fetched || !fetched.size) break;
+        const batch: any[] = Array.from((fetched as any).values());
+        messages.push(...batch);
+        const last: any = batch[batch.length - 1];
+        lastId = last?.id as string | undefined;
+        if (fetched.size < 100) break;
+      }
+      messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+      const lines: string[] = [];
+      lines.push(`Ticket ${ctx.ticket.id} Transcript (on-demand)`);
+      lines.push(`Canal: ${ctx.channel.name} (${ctx.channel.id})`);
+      lines.push(`Gerado por: ${ctx.userId}`);
+      lines.push(`Gerado em: ${new Date().toISOString()}`);
+      lines.push('');
+      for (const m of messages) {
+        const when = new Date(m.createdTimestamp).toISOString();
+        const authorTag = `${m.author?.username || 'Desconhecido'}#${m.author?.discriminator || '0000'}`;
+        const content = (m.content || '').replace(/\n/g, ' ');
+        lines.push(`[${when}] ${authorTag}: ${content}`);
+      }
+      transcriptText = lines.join('\n');
+    } catch {}
+    await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'transcript', { size: transcriptText.length });
+    if (!transcriptText) return '❌ Não foi possível gerar transcript.';
+    if (transcriptText.length < 180000) {
+      const buf = Buffer.from(transcriptText, 'utf8');
+      try { await ctx.channel.send({ files: [{ attachment: buf, name: `ticket_${ctx.ticket.id}_transcript.txt` }] }); } catch {}
+      return '📄 Transcript gerado.';
+    }
+    return '📄 Transcript demasiado grande (armazenado internamente).';
+  });
+}
+
 
 // Placeholder minimal handlers
 export async function handleRename(ctx: ActionContext): Promise<ActionResult> {
@@ -348,6 +458,22 @@ export async function handleNote(ctx: ActionContext): Promise<ActionResult> {
   modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
   await (ctx as any).interaction?.showModal?.(modal);
   return '🗒️ Introduza a nota (modal).';
+}
+
+// Definir prioridade (seleção via select menu)
+export async function handlePrioritySet(ctx: ActionContext, chosenRaw: string): Promise<ActionResult> {
+  if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode definir prioridade.';
+  return withTicketLock(ctx.ticket.id, async () => {
+    const allowed = ['low','normal','high','urgent'];
+    const chosen = allowed.includes((chosenRaw || '').toLowerCase()) ? chosenRaw.toLowerCase() : 'normal';
+    ctx.ticket.meta = ctx.ticket.meta || {};
+    (ctx.ticket.meta as any).priority = chosen; // Persistido dentro de meta para evitar alterar schema
+    await ctx.ticket.save();
+    await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'priority', { value: chosen });
+    try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch {}
+    const labelMap: Record<string,string> = { low: 'BAIXA', normal: 'NORMAL', high: 'ALTA', urgent: 'URGENTE' };
+    return `⚡ Prioridade alterada para ${labelMap[chosen] || chosen.toUpperCase()}`;
+  });
 }
 
 export async function resolveTicket(channel: TextChannel): Promise<Awaited<ReturnType<typeof TicketModel.findOne>> | null> {

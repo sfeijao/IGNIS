@@ -5250,6 +5250,16 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
                 message = 'Note added successfully';
                 break;
 
+            case 'priority': {
+                const allowed = ['low','normal','high','urgent'];
+                const val = (data && data.value ? String(data.value).toLowerCase() : 'normal');
+                const chosen = allowed.includes(val) ? val : 'normal';
+                await storage.updateTicket(ticketId, { priority: chosen });
+                success = true;
+                message = 'Priority updated';
+                break;
+            }
+
             default:
                 message = 'Invalid action';
         }

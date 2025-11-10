@@ -1,5 +1,5 @@
-import { Interaction, ButtonInteraction, TextChannel, ModalSubmitInteraction, UserSelectMenuInteraction, RoleSelectMenuInteraction, ChannelSelectMenuInteraction, MessageFlags } from 'discord.js';
-import { resolveTicket, handleCancel, handleHowDM, handleClaim, handleClose, handleRename, handleMove, handleAddMember, handleRemoveMember, handleCallMember, handleGreet, handleNote, handleExport, handleFeedbackButton, handleFeedbackSubmit } from '../services/ticketService';
+import { Interaction, ButtonInteraction, TextChannel, ModalSubmitInteraction, UserSelectMenuInteraction, RoleSelectMenuInteraction, ChannelSelectMenuInteraction, StringSelectMenuInteraction, MessageFlags, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
+import { resolveTicket, handleCancel, handleHowDM, handleClaim, handleClose, handleRename, handleMove, handleAddMember, handleRemoveMember, handleCallMember, handleGreet, handleNote, handleExport, handleFeedbackButton, handleFeedbackSubmit, handleRelease, handleLockToggle, handleTranscript, handlePrioritySet } from '../services/ticketService';
 
 module.exports = {
   name: 'interactionCreate',
@@ -8,7 +8,8 @@ module.exports = {
       const btn = interaction as ButtonInteraction;
       const channel = btn.channel as TextChannel;
       const ticket = await resolveTicket(channel);
-  if (!ticket) return btn.reply({ content: 'Ticket não encontrado.', flags: MessageFlags.Ephemeral });
+      // If this channel isn't managed by the TS TicketModel (legacy system handles it), do not interfere
+      if (!ticket) return; // let communityTickets/ticketHandler.js process
 
       const ctx: any = { guildId: btn.guildId!, channel, userId: btn.user.id, member: btn.member as any, ticket, interaction: btn };
   let response: any = 'Ação não reconhecida.';
@@ -26,6 +27,25 @@ module.exports = {
   case 'ticket:note': response = await handleNote(ctx); break;
   case 'ticket:export': response = await handleExport(ctx); break;
   case 'ticket:feedback': response = await handleFeedbackButton(ctx); break;
+        case 'ticket:release': response = await handleRelease(ctx); break;
+        case 'ticket:lock-toggle': response = await handleLockToggle(ctx); break;
+        case 'ticket:transcript': response = await handleTranscript(ctx); break;
+        case 'ticket:priority': {
+          // Build select menu inline
+          const current = (ctx.ticket.meta?.priority || 'normal').toLowerCase();
+          const menu = new StringSelectMenuBuilder()
+            .setCustomId('ticket:priority:select')
+            .setPlaceholder('Seleciona a prioridade')
+            .addOptions(
+              { label: 'Baixa', value: 'low', description: 'Menos urgente', default: current === 'low' },
+              { label: 'Normal', value: 'normal', description: 'Prioridade padrão', default: current === 'normal' },
+              { label: 'Alta', value: 'high', description: 'Requer atenção', default: current === 'high' },
+              { label: 'URGENTE', value: 'urgent', description: 'Criticidade máxima', default: current === 'urgent' },
+            );
+          const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
+          response = { content: '⚡ Escolhe a nova prioridade para este ticket:', components: [row as any] };
+          break;
+        }
       }
       try {
         if (typeof response === 'string') {
@@ -54,7 +74,7 @@ module.exports = {
         try {
           const channel = m.channel as TextChannel;
           const ticket: any = await resolveTicket(channel);
-          if (!ticket) return m.reply({ content: 'Ticket não encontrado.', flags: MessageFlags.Ephemeral });
+          if (!ticket) return; // legacy system will handle
           ticket.notes = ticket.notes || [];
           ticket.notes.push({ by: m.user.id, text, createdAt: new Date() });
           await ticket.save();
@@ -66,10 +86,10 @@ module.exports = {
       }
       if (m.customId === 'ticket:feedback:modal') {
         const channel = m.channel as TextChannel;
-  const ticket: any = await resolveTicket(channel);
-  if (!ticket) return m.reply({ content: 'Ticket não encontrado.', flags: MessageFlags.Ephemeral });
+        const ticket: any = await resolveTicket(channel);
+        if (!ticket) return; // legacy system will handle
         const result = await handleFeedbackSubmit({ interaction: m, ticket, guildId: m.guildId!, userId: m.user.id });
-  return m.reply({ content: result, flags: MessageFlags.Ephemeral });
+        return m.reply({ content: result, flags: MessageFlags.Ephemeral });
       }
       return;
     }
@@ -77,7 +97,7 @@ module.exports = {
       const sel = interaction as UserSelectMenuInteraction;
       const channel = sel.channel as TextChannel;
       const ticket = await resolveTicket(channel);
-  if (!ticket) return sel.reply({ content: 'Ticket não encontrado.', flags: MessageFlags.Ephemeral });
+      if (!ticket) return; // legacy system will handle
       const ids = sel.values;
       try {
         if (sel.customId === 'ticket:add_member:select') {
@@ -96,11 +116,24 @@ module.exports = {
       }
       return;
     }
+    if (interaction.isStringSelectMenu()) {
+      const sel = interaction as StringSelectMenuInteraction;
+      const channel = sel.channel as TextChannel;
+      const ticket = await resolveTicket(channel);
+      if (!ticket) return; // legacy handles legacy tickets
+      if (sel.customId === 'ticket:priority:select') {
+        const value = sel.values?.[0];
+        const ctx: any = { guildId: sel.guildId!, channel, userId: sel.user.id, member: sel.member as any, ticket, interaction: sel };
+        const result = await handlePrioritySet(ctx, value);
+        try { await sel.reply({ content: typeof result === 'string' ? result : (result as any).content || 'Atualizado', flags: MessageFlags.Ephemeral }); } catch {}
+        return;
+      }
+    }
     if (interaction.isRoleSelectMenu()) {
       const sel = interaction as RoleSelectMenuInteraction;
       const channel = sel.channel as TextChannel;
       const ticket = await resolveTicket(channel);
-  if (!ticket) return sel.reply({ content: 'Ticket não encontrado.', flags: MessageFlags.Ephemeral });
+      if (!ticket) return; // legacy system will handle
       const roleIds = sel.values;
       try {
         const mention = roleIds.map(r=>`<@&${r}>`).join(' ');
@@ -115,7 +148,7 @@ module.exports = {
       const sel = interaction as ChannelSelectMenuInteraction;
       const channel = sel.channel as TextChannel;
       const ticket = await resolveTicket(channel);
-  if (!ticket) return sel.reply({ content: 'Ticket não encontrado.', flags: MessageFlags.Ephemeral });
+      if (!ticket) return; // legacy system will handle
       const targetCategoryId = sel.values[0];
       try {
         await channel.setParent(targetCategoryId, { lockPermissions: false });
