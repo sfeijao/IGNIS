@@ -650,6 +650,74 @@ app.get('/api/user', (req, res) => {
     });
 });
 
+// List guilds available to the authenticated user (filtered to those where the bot is present)
+// Combines OAuth /users/@me/guilds (cached) with bot guild cache.
+// Response shape expected by Next dashboard and classic UI: { success, guilds: [{ id, name, iconUrl, permissions, owner, canManage }] }
+app.get('/api/guilds', async (req, res) => {
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+
+        // Fetch user guilds via OAuth (uses session cache & backoff). If it fails, fallback to intersection of bot guilds & user membership (best-effort).
+        let userGuilds = [];
+        try {
+            const fetchRes = await oauthFetchWithSessionCache(req, 'https://discord.com/api/users/@me/guilds', { ttlMs: 60_000 });
+            if (fetchRes.ok && Array.isArray(fetchRes.json)) {
+                userGuilds = fetchRes.json;
+            }
+        } catch (e) {
+            logger.warn('OAuth guilds fetch failed, fallback to bot guild membership heuristic:', e?.message || e);
+        }
+
+        // Build a map for quick lookup and allow fallback
+        const userGuildIdSet = new Set(userGuilds.map(g => g.id));
+        const out = [];
+        for (const g of client.guilds.cache.values()) {
+            // Only include guilds where the authenticated user is (heuristic: if userGuilds empty include all; else include intersection)
+            if (userGuildIdSet.size && !userGuildIdSet.has(g.id)) continue;
+            let canManage = false;
+            let owner = false;
+            let permissionsBitfield = null;
+            // Attempt to derive user permissions from OAuth list entry first (more efficient than fetching member)
+            const oauthEntry = userGuilds.find(ug => ug.id === g.id);
+            if (oauthEntry) {
+                permissionsBitfield = oauthEntry.permissions;
+                owner = !!oauthEntry.owner;
+                try {
+                    const perms = BigInt(oauthEntry.permissions);
+                    const hasManageGuild = (perms & BigInt(PermissionFlagsBits.ManageGuild)) !== BigInt(0);
+                    const hasAdmin = (perms & BigInt(PermissionFlagsBits.Administrator)) !== BigInt(0);
+                    canManage = hasManageGuild || hasAdmin || owner;
+                } catch {}
+            } else {
+                // Fallback: fetch member (could be heavier; guarded with try/catch)
+                try {
+                    const member = await g.members.fetch(req.user.id).catch(() => null);
+                    if (member) {
+                        owner = g.ownerId === member.id;
+                        const hasManageGuild = member.permissions.has(PermissionFlagsBits.ManageGuild);
+                        const hasAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
+                        canManage = hasManageGuild || hasAdmin || owner;
+                        permissionsBitfield = String(member.permissions.bitfield || '0');
+                    }
+                } catch {}
+            }
+            // Icon URL (CDN) if present
+            const iconUrl = g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.${String(g.icon).startsWith('a_') ? 'gif' : 'png'}?size=128` : null;
+            out.push({ id: g.id, name: g.name, iconUrl, owner, permissions: permissionsBitfield, canManage });
+        }
+        // Sort by name (case-insensitive) for deterministic UI ordering
+        out.sort((a,b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+        return res.json({ success: true, guilds: out });
+    } catch (e) {
+        logger.error('Guilds list route failed:', e);
+        return res.status(500).json({ success: false, error: 'guilds_list_failed' });
+    }
+});
+
 // Unified Webhooks list route (supports both legacy/sqlite and mongo, returns items + webhooks arrays)
 app.get('/api/guild/:guildId/webhooks', async (req, res) => {
     if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
