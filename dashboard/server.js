@@ -634,60 +634,77 @@ app.get('/api/user', (req, res) => {
     });
 });
 
-app.get('/api/guilds', async (req, res) => {
-    if (!req.isAuthenticated()) {
-        return res.status(401).json({ success: false, error: 'Not authenticated' });
-    }
-
+// Unified Webhooks list route (supports both legacy/sqlite and mongo, returns items + webhooks arrays)
+app.get('/api/guild/:guildId/webhooks', async (req, res) => {
+    if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const force = String(req.query.force || '').toLowerCase() === 'true';
-        const resp = await oauthFetchWithSessionCache(req, 'https://discord.com/api/v10/users/@me/guilds', { ttlMs: 60_000, force });
-        if (!resp.ok) {
-            if (resp.status === 429) return res.status(429).json({ success:false, error: resp.error, retry_after_ms: resp.retry_after_ms });
-            if (resp.status === 401) return res.status(401).json({ success:false, error: resp.error });
-            return res.status(500).json({ success:false, error: 'discord_oauth_failed' });
-        }
-        let userGuilds = resp.json;
-        if (!Array.isArray(userGuilds)) {
-            logger.warn('Unexpected /users/@me/guilds payload (not array).');
-            userGuilds = [];
-        }
-
-        // Get bot's guilds
+        const guildId = req.params.guildId;
         const client = global.discordClient;
-        if (!client) {
-            return res.json({ success: true, guilds: [] });
-        }
-
-        const botGuilds = client.guilds.cache;
-
-        // Filter guilds where user has admin permissions and bot is present
-        const managedGuilds = userGuilds.filter(guild => {
-            const permStr = guild.permissions_new || guild.permissions; // both are strings in v10
-            let hasAdmin = false;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+        const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
+        if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
+        const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
+        const loadedTypes = (global.discordClient?.webhooks?.getLoadedTypes?.(guildId)) || [];
+        if (!hasMongoEnv || LEGACY_WEBHOOKS) {
             try {
-                if (permStr != null) hasAdmin = (BigInt(permStr) & 8n) === 8n;
-            } catch { // fallback to number coercion
-                try { hasAdmin = ((Number(permStr) | 0) & 0x8) === 0x8; } catch {}
+                const storage = require('../utils/storage-sqlite');
+                const raw = await storage.listWebhooks(guildId);
+                const items = (raw || []).map(r => ({
+                    id: r._id,
+                    guildId: r.guild_id,
+                    type: r.type || 'logs',
+                    enabled: !!r.enabled,
+                    channelId: r.channel_id || null,
+                    urlMasked: r.url && r.url.length > 16 ? (r.url.slice(0, r.url.length - 12).replace(/./g, '*') + r.url.slice(-12)) : '****',
+                    loaded: loadedTypes.includes(r.type || 'logs'),
+                    lastOk: r.last_ok == null ? null : !!r.last_ok,
+                    lastStatus: r.last_status == null ? null : Number(r.last_status),
+                    lastError: r.last_error || null,
+                    lastAt: r.last_at || null,
+                    createdAt: null,
+                    updatedAt: null
+                }));
+                return res.json({ success: true, items, webhooks: items });
+            } catch (e) {
+                logger.error('Webhook list sqlite fallback error:', e);
+                return res.status(500).json({ success: false, error: 'Failed to list webhooks (sqlite fallback)' });
             }
-            const botPresent = botGuilds.has(guild.id);
-            return hasAdmin && botPresent;
-        }).map(guild => ({
-            id: guild.id,
-            name: guild.name,
-            icon: guild.icon,
-            memberCount: botGuilds.get(guild.id)?.memberCount || 0,
-            botPresent: true
+        }
+        const { isReady } = require('../utils/db/mongoose');
+        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
+        const { WebhookModel } = require('../utils/db/models');
+        let list = [];
+        try {
+            const svc = require('../src/services/webhookService');
+            list = await svc.listConfigs(guildId);
+        } catch (e) {
+            logger.warn('webhookService.listConfigs fallback to direct model:', e?.message || e);
+            list = await WebhookModel.find({ guild_id: guildId }).lean();
+        }
+        // Ensure loaded flag present and urlMasked compatibility for Next classic expectations
+        const items = (list || []).map(w => ({
+            id: w._id || w.id,
+            guildId: w.guild_id || guildId,
+            type: w.type || 'logs',
+            enabled: !!w.enabled,
+            channelId: w.channel_id || w.channelId || null,
+            urlMasked: w.url && w.url.length > 16 ? (w.url.slice(0, w.url.length - 12).replace(/./g, '*') + w.url.slice(-12)) : (w.url ? '****' : null),
+            loaded: loadedTypes.includes(w.type || 'logs'),
+            lastOk: w.last_ok == null ? (w.lastOk == null ? null : !!w.lastOk) : !!w.last_ok,
+            lastStatus: w.last_status == null ? (w.lastStatus == null ? null : Number(w.lastStatus)) : Number(w.last_status),
+            lastError: w.last_error || w.lastError || null,
+            lastAt: w.last_at || w.lastAt || null,
+            createdAt: w.createdAt || null,
+            updatedAt: w.updatedAt || null
         }));
-
-    // Cache the processed result to reduce future calls
-    try { req.session.__guildsCache = { at: Date.now(), data: managedGuilds }; } catch {}
-    if (resp.headers && resp.headers['X-Stale-Cache'] === '1') res.setHeader('X-Stale-Cache', '1');
-    return res.json({ success: true, guilds: managedGuilds });
-
-    } catch (error) {
-        logger.error('Error fetching guilds:', error);
-        return res.status(500).json({ success: false, error: 'guilds_fetch_failed' });
+        return res.json({ success: true, items, webhooks: items });
+    } catch (e) {
+        logger.error('Webhook list error unified route:', e);
+        return res.status(500).json({ success: false, error: 'Failed to list webhooks' });
     }
 });
 
@@ -4580,57 +4597,8 @@ app.get('/api/guild/:guildId/performance', async (req, res) => {
 });
 
 
-app.post('/api/guild/:guildId/webhooks', async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        if (!preferSqlite) {
-            if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not available' });
-            const { isReady } = require('../utils/db/mongoose');
-            if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
-        }
-        const { type = 'logs', name = 'Logs', url, channel_id, channel_name } = req.body || {};
-        const legacyExternal = process.env.LEGACY_WEBHOOKS_MODE === 'true';
-        const validDiscord = url && url.startsWith('https://discord.com/api/webhooks/');
-        const validExternal = legacyExternal && url && url.startsWith('https://');
-        if (!validDiscord && !validExternal) {
-            return res.status(400).json({ success: false, error: legacyExternal ? 'URL inválida (esperado https://). Em modo legacy aceita qualquer HTTPS ou um webhook do Discord.' : 'Invalid webhook URL (expected Discord webhook).'});
-        }
-        if (preferSqlite) {
-            const storage = require('../utils/storage-sqlite');
-            const saved = await storage.upsertWebhook({ guild_id: req.params.guildId, type, name, url, channel_id, channel_name, enabled: true });
-            // Atualizar gestor em memória para refletir imediatamente no runtime
-            try {
-                const client = global.discordClient;
-                if (client?.webhooks?.addWebhook) {
-                    await client.webhooks.addWebhook(req.params.guildId, type || 'logs', name || 'Logs', url);
-                }
-            } catch {}
-            return res.json({ success: true, webhook: saved });
-        } else {
-            const { WebhookModel } = require('../utils/db/models');
-            const saved = await WebhookModel.findOneAndUpdate(
-                { guild_id: req.params.guildId, type },
-                { $set: { name, url, channel_id, channel_name, enabled: true } },
-                { upsert: true, new: true }
-            ).lean();
-            // Atualizar gestor em memória para refletir imediatamente no runtime
-            try {
-                const client = global.discordClient;
-                if (client?.webhooks?.addWebhook) {
-                    await client.webhooks.addWebhook(req.params.guildId, type || 'logs', name || 'Logs', url);
-                }
-            } catch {}
-            return res.json({ success: true, webhook: saved });
-        }
-    } catch (e) {
-        logger.error('Error upserting webhook:', e);
-        res.status(500).json({ success: false, error: 'Failed to upsert webhook' });
-    }
-});
+// Remove duplicate simplistic POST route: unified earlier one handles creation
+// (This block intentionally left blank after unification)
 
 app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
