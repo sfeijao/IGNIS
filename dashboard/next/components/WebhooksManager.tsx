@@ -33,6 +33,10 @@ export default function WebhooksManager() {
   const [channel, setChannel] = useState('')
   const [name, setName] = useState('IGNIS')
   const [type, setType] = useState('logs')
+  // Manual (colar URL já criada no Discord)
+  const [manualType, setManualType] = useState('logs')
+  const [manualName, setManualName] = useState('IGNIS')
+  const [manualUrl, setManualUrl] = useState('')
   const { toast } = useToast()
   const { t } = useI18n()
   const [transcriptUrl, setTranscriptUrl] = useState<string>('')
@@ -70,6 +74,28 @@ export default function WebhooksManager() {
       await load()
     } catch (e: any) {
       toast({ type: 'error', title: t('common.saveFailed'), description: e?.message })
+    } finally { setLoading(false) }
+  }
+
+  const createManual = async () => {
+    if (!guildId) return
+    if (!manualUrl.trim()) {
+      toast({ type: 'error', title: 'URL obrigatória' });
+      return;
+    }
+    // Validação básica: precisa ser um webhook do Discord
+    if (!manualUrl.startsWith('https://discord.com/api/webhooks/')) {
+      toast({ type: 'error', title: 'URL inválida', description: 'Cole a URL completa do webhook do Discord.' })
+      return
+    }
+    setLoading(true)
+    try {
+      await api.createOutgoingWebhook(guildId, { type: manualType, url: manualUrl.trim(), channelId: undefined })
+      toast({ type: 'success', title: 'Webhook guardado (manual)' })
+      setManualUrl('')
+      await load()
+    } catch (e:any) {
+      toast({ type: 'error', title: 'Falhou guardar', description: e?.message })
     } finally { setLoading(false) }
   }
 
@@ -146,6 +172,27 @@ export default function WebhooksManager() {
   <button type="button" onClick={create} className="mt-5 px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 disabled:opacity-50" disabled={!guildId || !channel || loading}>{t('webhooks.create')}</button>
   <button type="button" onClick={() => guildId && api.autoSetupWebhook(guildId).then(()=>{ toast({ type:'success', title: t('webhooks.autosetup.ok') }); load(); }).catch((e:any)=> toast({ type:'error', title: t('webhooks.autosetup.fail'), description: e?.message }))} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={!guildId || loading}>{t('webhooks.autosetup')}</button>
   <button type="button" onClick={load} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={!guildId || loading}>{t('webhooks.refresh')}</button>
+      </div>
+      {/* Manual Discord webhook paste form */}
+      <div className="card p-4 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="text-xs text-neutral-400">Tipo (manual)</label>
+          <select className="mt-1 w-40 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={manualType} onChange={e=> setManualType(e.target.value)}>
+            <option value="logs">logs</option>
+            <option value="tickets">tickets</option>
+            <option value="updates">updates</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-neutral-400">Nome (manual)</label>
+          <input className="mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={manualName} onChange={e=> setManualName(e.target.value)} placeholder="IGNIS" />
+        </div>
+        <div className="flex-1 min-w-[320px]">
+          <label className="text-xs text-neutral-400">URL do Webhook (Discord)</label>
+          <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={manualUrl} onChange={e=> setManualUrl(e.target.value)} placeholder="https://discord.com/api/webhooks/..." />
+          <p className="text-[10px] text-neutral-500 mt-1">Cole a URL de um webhook já criado em Integrações &gt; Webhooks no Discord.</p>
+        </div>
+        <button type="button" onClick={createManual} disabled={loading || !manualUrl.trim()} className="mt-5 px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 disabled:opacity-50">Guardar Manual</button>
       </div>
       <div className="card p-0 overflow-hidden">
         <div className="divide-y divide-neutral-800">
