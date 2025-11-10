@@ -101,7 +101,16 @@ module.exports = {
                 configuradoPor: interaction.user.id
             };
 
-            await storage.setGuildConfig(interaction.guild.id, config);
+            // Persistir corretamente: usar updateGuildConfig para salvar a chave logsOrganizados
+            try {
+                if (typeof storage.updateGuildConfig === 'function') {
+                    await storage.updateGuildConfig(interaction.guild.id, { logsOrganizados: config.logsOrganizados });
+                } else if (typeof storage.setGuildConfig === 'function') {
+                    await storage.setGuildConfig(interaction.guild.id, 'logsOrganizados', config.logsOrganizados);
+                }
+            } catch (persistErr) {
+                logger.warn('Falha ao persistir logsOrganizados:', persistErr?.message || persistErr);
+            }
 
             // Testar webhook
             await webhook.send({
