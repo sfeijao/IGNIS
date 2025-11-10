@@ -2013,9 +2013,10 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
                         enabled: !!r.enabled,
                         channelId: r.channel_id || null,
                         urlMasked: masked,
-                        lastOk: null,
-                        lastStatus: null,
-                        lastAt: null,
+                        lastOk: r.last_ok == null ? null : !!r.last_ok,
+                        lastStatus: r.last_status == null ? null : Number(r.last_status),
+                        lastError: r.last_error || null,
+                        lastAt: r.last_at || null,
                         createdAt: null,
                         updatedAt: null
                     };
@@ -2082,9 +2083,10 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
                     enabled: !!saved.enabled,
                     channelId: saved.channel_id || null,
                     urlMasked: masked,
-                    lastOk: null,
-                    lastStatus: null,
-                    lastAt: null,
+                    lastOk: saved.last_ok == null ? null : !!saved.last_ok,
+                    lastStatus: saved.last_status == null ? null : Number(saved.last_status),
+                    lastError: saved.last_error || null,
+                    lastAt: saved.last_at || null,
                     createdAt: new Date(),
                     updatedAt: new Date()
                 }});
@@ -2136,10 +2138,15 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
                 // Se URL mudar, forçar desativar até teste
                 let nextUrl = row.url;
                 let nextEnabled = row.enabled;
+                let last_ok = row.last_ok == null ? null : !!row.last_ok;
+                let last_status = row.last_status == null ? null : Number(row.last_status);
+                let last_error = row.last_error || null;
+                let last_at = row.last_at || null;
                 if (value.url) {
                     // Aceitar qualquer HTTPS (Joi já validou)
                     nextUrl = value.url;
                     nextEnabled = false;
+                    last_ok = null; last_status = null; last_error = null; last_at = null;
                 }
                 if (typeof value.enabled === 'boolean') {
                     if (value.enabled === true) {
@@ -2162,16 +2169,21 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
                         } finally {
                             clearTimeout(timeout);
                         }
-                        if (!ok) {
-                            const reason = status ? `status ${status}` : errMsg || 'falha de rede';
-                            return res.status(400).json({ success: false, error: `Teste do webhook falhou (${reason}). Não foi possível ativar.` });
+                        // Persist status fields regardless of success
+                        last_ok = ok ? true : false;
+                        last_status = status || 0;
+                        last_error = ok ? null : (status ? `status ${status}` : errMsg || 'falha');
+                        last_at = new Date().toISOString();
+                        if (ok) {
+                            nextEnabled = true;
+                        } else {
+                            nextEnabled = false;
                         }
-                        nextEnabled = true;
                     } else {
                         nextEnabled = false;
                     }
                 }
-                await storage.upsertWebhook({ guild_id: guildId, type: row.type, name: row.name, url: nextUrl, channel_id: row.channel_id, channel_name: row.channel_name, enabled: nextEnabled });
+                await storage.upsertWebhook({ guild_id: guildId, type: row.type, name: row.name, url: nextUrl, channel_id: row.channel_id, channel_name: row.channel_name, enabled: nextEnabled, last_ok, last_status, last_error, last_at });
                 // Return updated list item
                 const list2 = await storage.listWebhooks(guildId);
                 const row2 = list2.find(r => String(r._id) === String(id));
@@ -2184,9 +2196,10 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
                     enabled: !!row2.enabled,
                     channelId: row2.channel_id || null,
                     urlMasked: masked,
-                    lastOk: null,
-                    lastStatus: null,
-                    lastAt: null,
+                    lastOk: row2.last_ok == null ? null : !!row2.last_ok,
+                    lastStatus: row2.last_status == null ? null : Number(row2.last_status),
+                    lastError: row2.last_error || null,
+                    lastAt: row2.last_at || null,
                     createdAt: null,
                     updatedAt: new Date()
                 }});
@@ -2306,6 +2319,76 @@ app.post('/api/guild/:guildId/webhooks/test-all', async (req, res) => {
     } catch (e) {
         logger.error('Webhook bulk test post error:', e);
         return res.status(500).json({ success: false, error: 'Failed to post to webhooks' });
+    }
+});
+
+// Test & Activate a single webhook by id
+app.post('/api/guild/:guildId/webhooks/:id/test-activate', async (req, res) => {
+    if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const { guildId, id } = req.params;
+        const { payload } = req.body || {};
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+        const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
+        if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
+
+        const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
+        if (!hasMongoEnv) {
+            try {
+                const storage = require('../utils/storage-sqlite');
+                const list = await storage.listWebhooks(guildId);
+                const row = list.find(r => String(r._id) === String(id));
+                if (!row) return res.status(404).json({ success: false, error: 'Not found' });
+                const url = row.url;
+                const fetch = require('node-fetch');
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 7000);
+                let ok = false; let status = 0; let errMsg = '';
+                try {
+                    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload && typeof payload === 'object' ? payload : { test: true, at: Date.now(), source: 'IGNIS' }), signal: controller.signal });
+                    status = resp.status; ok = resp.ok;
+                } catch (e) { errMsg = e?.message || 'network error'; } finally { clearTimeout(timeout); }
+                const last_ok = ok ? true : false;
+                const last_status = status || 0;
+                const last_error = ok ? null : (status ? `status ${status}` : errMsg || 'falha');
+                const last_at = new Date().toISOString();
+                await storage.upsertWebhook({ guild_id: guildId, type: row.type, name: row.name, url, channel_id: row.channel_id, channel_name: row.channel_name, enabled: ok ? 1 : 0, last_ok, last_status, last_error, last_at });
+                const list2 = await storage.listWebhooks(guildId);
+                const row2 = list2.find(r => String(r._id) === String(id));
+                if (!row2) return res.status(404).json({ success: false, error: 'Not found' });
+                const masked = (row2.url && row2.url.length > 16) ? row2.url.slice(0, row2.url.length - 12).replace(/./g, '*') + row2.url.slice(-12) : '****';
+                return res.json({ success: true, item: {
+                    id: row2._id,
+                    guildId: row2.guild_id,
+                    type: ['transcript','vlog','modlog','generic'].includes(row2.type) ? row2.type : 'generic',
+                    enabled: !!row2.enabled,
+                    channelId: row2.channel_id || null,
+                    urlMasked: masked,
+                    lastOk: row2.last_ok == null ? null : !!row2.last_ok,
+                    lastStatus: row2.last_status == null ? null : Number(row2.last_status),
+                    lastError: row2.last_error || null,
+                    lastAt: row2.last_at || null,
+                    createdAt: null,
+                    updatedAt: new Date()
+                }});
+            } catch (e) {
+                logger.error('Webhook test-activate sqlite fallback error:', e);
+                return res.status(500).json({ success: false, error: 'Failed to test-activate webhook (sqlite fallback)' });
+            }
+        }
+        const { isReady } = require('../utils/db/mongoose');
+        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
+        const svc = require('../src/services/webhookService');
+        const item = await svc.testAndActivate(id, guildId, payload);
+        return res.json({ success: true, item });
+    } catch (e) {
+        logger.error('Webhook test-activate error:', e);
+        return res.status(500).json({ success: false, error: e?.message || 'Failed to test-activate webhook' });
     }
 });
 
