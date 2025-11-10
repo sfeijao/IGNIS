@@ -2070,7 +2070,9 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
         if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
         const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
         const schema = Joi.object({
-            type: Joi.string().valid('transcript','vlog','modlog','generic').required(),
+            // Aceitar os tipos usados no dashboard (logs, tickets, updates) e também os antigos
+            // Evitar 400 desnecessário por validação muito restrita
+            type: Joi.string().trim().valid('logs','tickets','updates','transcript','vlog','modlog','generic').required(),
             url: Joi.string().uri({ scheme: ['https'] }).required(),
             enabled: Joi.boolean().optional(),
             channelId: Joi.string().optional()
@@ -2155,7 +2157,7 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
 
         const schema = Joi.object({
-            type: Joi.string().valid('transcript','vlog','modlog','generic').optional(),
+            type: Joi.string().trim().valid('logs','tickets','updates','transcript','vlog','modlog','generic').optional(),
             url: Joi.string().uri({ scheme: ['https'] }).optional(),
             enabled: Joi.boolean().optional(),
             channelId: Joi.string().allow(null, '').optional()
