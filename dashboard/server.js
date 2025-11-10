@@ -2060,10 +2060,7 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
         if (error) return res.status(400).json({ success: false, error: error.message });
 
         if (!hasMongoEnv) {
-            // Fallback para SQLite: aceita apenas webhooks Discord e guarda simples.
-            if (!value.url.startsWith('https://discord.com/api/webhooks/')) {
-                return res.status(400).json({ success: false, error: 'URL de webhook Discord inválida (esperado https://discord.com/api/webhooks/...)' });
-            }
+            // Fallback para SQLite: aceitar qualquer URL HTTPS; criar sempre desativado (requer teste para ativar)
             try {
                 const storage = require('../utils/storage-sqlite');
                 const saved = await storage.upsertWebhook({
@@ -2073,7 +2070,7 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
                     url: value.url,
                     channel_id: value.channelId || null,
                     channel_name: null,
-                    enabled: value.enabled !== false
+                    enabled: false
                 });
                 const masked = (saved.url && saved.url.length > 16)
                     ? saved.url.slice(0, saved.url.length - 12).replace(/./g, '*') + saved.url.slice(-12)
@@ -2130,23 +2127,51 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         if (error) return res.status(400).json({ success: false, error: error.message });
         const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
         if (!hasMongoEnv) {
-            // SQLite fallback: only toggle enabled or update URL by deleting+recreating entry
+            // SQLite fallback: validar alterações; se habilitar, testar a URL antes
             try {
                 const storage = require('../utils/storage-sqlite');
-                if (typeof value.enabled === 'boolean') {
-                    // Fetch row, then upsert preserving URL
-                    const list = await storage.listWebhooks(guildId);
-                    const row = list.find(r => String(r._id) === String(id));
-                    if (!row) return res.status(404).json({ success: false, error: 'Not found' });
-                    await storage.upsertWebhook({ guild_id: guildId, type: row.type, name: row.name, url: row.url, channel_id: row.channel_id, channel_name: row.channel_name, enabled: value.enabled });
-                }
+                const list = await storage.listWebhooks(guildId);
+                const row = list.find(r => String(r._id) === String(id));
+                if (!row) return res.status(404).json({ success: false, error: 'Not found' });
+                // Se URL mudar, forçar desativar até teste
+                let nextUrl = row.url;
+                let nextEnabled = row.enabled;
                 if (value.url) {
-                    if (!value.url.startsWith('https://discord.com/api/webhooks/')) return res.status(400).json({ success: false, error: 'URL de webhook Discord inválida (esperado https://discord.com/api/webhooks/...)' });
-                    const list = await storage.listWebhooks(guildId);
-                    const row = list.find(r => String(r._id) === String(id));
-                    if (!row) return res.status(404).json({ success: false, error: 'Not found' });
-                    await storage.upsertWebhook({ guild_id: guildId, type: row.type, name: row.name, url: value.url, channel_id: row.channel_id, channel_name: row.channel_name, enabled: row.enabled });
+                    // Aceitar qualquer HTTPS (Joi já validou)
+                    nextUrl = value.url;
+                    nextEnabled = false;
                 }
+                if (typeof value.enabled === 'boolean') {
+                    if (value.enabled === true) {
+                        // Teste obrigatório antes de ativar
+                        const fetch = require('node-fetch');
+                        const controller = new AbortController();
+                        const timeout = setTimeout(() => controller.abort(), 7000);
+                        let ok = false; let status = 0; let errMsg = '';
+                        try {
+                            const resp = await fetch(nextUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ test: true, source: 'IGNIS', at: Date.now() }),
+                                signal: controller.signal
+                            });
+                            status = resp.status;
+                            ok = resp.ok;
+                        } catch (e) {
+                            errMsg = e?.message || 'network error';
+                        } finally {
+                            clearTimeout(timeout);
+                        }
+                        if (!ok) {
+                            const reason = status ? `status ${status}` : errMsg || 'falha de rede';
+                            return res.status(400).json({ success: false, error: `Teste do webhook falhou (${reason}). Não foi possível ativar.` });
+                        }
+                        nextEnabled = true;
+                    } else {
+                        nextEnabled = false;
+                    }
+                }
+                await storage.upsertWebhook({ guild_id: guildId, type: row.type, name: row.name, url: nextUrl, channel_id: row.channel_id, channel_name: row.channel_name, enabled: nextEnabled });
                 // Return updated list item
                 const list2 = await storage.listWebhooks(guildId);
                 const row2 = list2.find(r => String(r._id) === String(id));
