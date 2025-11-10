@@ -233,8 +233,16 @@ client.once('ready', () => {
     // Atualizar avatar/banner do bot no arranque se variáveis estiverem definidas
     (async () => {
         try {
-            const newAvatar = process.env.BOT_AVATAR_URL; // URL direta (PNG/JPG/GIF) ou caminho local
-            const newBanner = process.env.BOT_BANNER_URL; // Requer que o bot tenha banner habilitado (Developer Portal / Nitro requirements)
+            // Formas suportadas:
+            //  - BOT_AVATAR_URL / BOT_BANNER_URL: URLs diretas (http/https)
+            //  - BOT_AVATAR_FILE / BOT_BANNER_FILE: caminhos locais para ficheiros (ex: assets/avatar.png)
+            //  - Se ambos (URL e FILE) estiverem definidos para o mesmo recurso, FILE tem prioridade.
+            const newAvatar = process.env.BOT_AVATAR_FILE
+                ? (() => { try { return fs.readFileSync(path.resolve(process.env.BOT_AVATAR_FILE)); } catch { return null; } })()
+                : process.env.BOT_AVATAR_URL; // URL direta (PNG/JPG/GIF) ou buffer
+            const newBanner = process.env.BOT_BANNER_FILE
+                ? (() => { try { return fs.readFileSync(path.resolve(process.env.BOT_BANNER_FILE)); } catch { return null; } })()
+                : process.env.BOT_BANNER_URL; // Requer que o bot tenha banner habilitado (Developer Portal / Nitro requirements)
             if (newAvatar) {
                 try {
                     await client.user.setAvatar(newAvatar);
@@ -243,7 +251,7 @@ client.once('ready', () => {
                     logger.warn('⚠️ Falha ao atualizar avatar do bot:', e?.message || e);
                 }
             } else {
-                logger.info('🖼️ BOT_AVATAR_URL não definido - mantendo avatar atual.');
+                logger.info('🖼️ BOT_AVATAR_URL/BOT_AVATAR_FILE não definidos - mantendo avatar atual.');
             }
             if (newBanner) {
                 try {
@@ -258,7 +266,7 @@ client.once('ready', () => {
                     logger.warn('⚠️ Falha ao atualizar banner do bot (possível falta de permissão/recurso):', e?.message || e);
                 }
             } else {
-                logger.info('🎏 BOT_BANNER_URL não definido - mantendo banner atual.');
+                logger.info('🎏 BOT_BANNER_URL/BOT_BANNER_FILE não definidos - mantendo banner atual.');
             }
         } catch (e) {
             logger.warn('⚠️ Erro inesperado ao tentar atualizar avatar/banner:', e?.message || e);

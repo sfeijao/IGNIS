@@ -15,8 +15,10 @@ Environment
   - SESSION_SECRET — a long random string
   - For Mongo persistence: set MONGO_URI; if the URI has no `/db` path, also set MONGO_DB_NAME (e.g., `IGNIS`)
   - Optional visual settings on startup:
-    - BOT_AVATAR_URL — direct URL or local path (PNG/JPG/GIF) to set the bot avatar on startup
-    - BOT_BANNER_URL — direct URL to set the bot banner on startup (requires app banner capability)
+    - BOT_AVATAR_URL — direct URL (PNG/JPG/GIF)
+    - BOT_AVATAR_FILE — local file path (e.g., `assets/avatar.png`) — takes priority over URL
+    - BOT_BANNER_URL — direct URL
+    - BOT_BANNER_FILE — local file path (e.g., `assets/banner.png`) — takes priority over URL
 
 Install and start
 
