@@ -216,7 +216,12 @@ module.exports = {
                             return;
                         }
 
-                        if (interaction.member.roles.cache.has(verifyRole.id)) {
+                        // Ensure we have a GuildMember instance (interaction.member can be null in some edge cases)
+                        let member = interaction.member;
+                        if (!member) {
+                            try { member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null); } catch {}
+                        }
+                        if (member?.roles?.cache?.has(verifyRole.id)) {
                             return await interaction.reply({
                                 content: `${EMOJIS.SUCCESS} Já estás verificado!`,
                                 flags: MessageFlags.Ephemeral
@@ -225,7 +230,11 @@ module.exports = {
 
                         // Apply verified role and optionally remove unverified role
                         let addOk = true;
-                        await interaction.member.roles.add(verifyRole).catch((e) => { addOk = false; logger.debug('role add fail', e?.message); });
+                        if (member?.roles?.add) {
+                            await member.roles.add(verifyRole).catch((e) => { addOk = false; logger.debug('role add fail', e?.message); });
+                        } else {
+                            addOk = false;
+                        }
                         if (!addOk) {
                             try {
                                 const storage = require('../utils/storage');
@@ -239,8 +248,8 @@ module.exports = {
                             } catch {}
                             // Still respond gracefully
                         }
-                        if (unverifiedRole && interaction.member.roles.cache.has(unverifiedRole.id)) {
-                            await interaction.member.roles.remove(unverifiedRole).catch(() => {});
+                        if (unverifiedRole && member?.roles?.cache?.has(unverifiedRole.id)) {
+                            await member.roles.remove(unverifiedRole).catch(() => {});
                         }
                         await interaction.reply({
                             content: `${EMOJIS.SUCCESS} Verificação completa! Bem-vindo(a) ao servidor!`,

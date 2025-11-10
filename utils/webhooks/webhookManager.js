@@ -116,7 +116,16 @@ class WebhookManager {
                 for (const w of list) {
                     if (w && w.guild_id && w.url) {
                         const typeMap = this.webhooks.get(w.guild_id) || new Map();
-                        typeMap.set((w.type || 'logs'), { name: w.name || (this.client?.guilds?.cache.get(w.guild_id)?.name) || 'Logs', webhook: new WebhookClient({ url: w.url }) });
+                        let externalFlag = false;
+                        try {
+                            // Best-effort: fetch webhook metadata to detect origin guild; ignore failures
+                            const probe = new WebhookClient({ url: w.url });
+                            const meta = await probe.fetch().catch(() => null);
+                            if (meta && meta.guildId && meta.guildId !== w.guild_id) externalFlag = true;
+                            typeMap.set((w.type || 'logs'), { name: w.name || (this.client?.guilds?.cache.get(w.guild_id)?.name) || 'Logs', webhook: probe, external: externalFlag });
+                        } catch {
+                            typeMap.set((w.type || 'logs'), { name: w.name || (this.client?.guilds?.cache.get(w.guild_id)?.name) || 'Logs', webhook: new WebhookClient({ url: w.url }), external: externalFlag });
+                        }
                         this.webhooks.set(w.guild_id, typeMap);
                         count++;
                     }
@@ -137,7 +146,8 @@ class WebhookManager {
                     guildEntry[type] = {
                         name: info.name,
                         webhook_url: info.webhook.url,
-                        enabled: true
+                        enabled: true,
+                        external: !!info.external
                     };
                 }
             }
@@ -238,7 +248,12 @@ class WebhookManager {
 
             // Registra o webhook (tipo 'logs')
             const typeMap = this.webhooks.get(guild.id) || new Map();
-            typeMap.set('logs', { name: guild.name, webhook: new WebhookClient({ url: webhook.url }) });
+            let externalFlag = false;
+            try {
+                const meta = await (new WebhookClient({ url: webhook.url })).fetch().catch(()=>null);
+                if (meta && meta.guildId && meta.guildId !== guild.id) externalFlag = true;
+            } catch {}
+            typeMap.set('logs', { name: guild.name, webhook: new WebhookClient({ url: webhook.url }), external: externalFlag });
             this.webhooks.set(guild.id, typeMap);
 
             await this.saveConfig();
@@ -404,7 +419,7 @@ class WebhookManager {
         }
     }
 
-    async addWebhook(guildId, typeOrName, nameOrUrl, urlMaybe) {
+    async addWebhook(guildId, typeOrName, nameOrUrl, urlMaybe, opts = {}) {
         try {
             // Overloads supported:
             // (guildId, type, name, url) or (guildId, name, url) -> defaults to type 'logs'
@@ -428,14 +443,20 @@ class WebhookManager {
 
             // Create webhook client
             const webhook = new WebhookClient({ url: webhookUrl });
+            // Try to determine if this webhook is cross-guild
+            let externalFlag = !!opts.external;
+            try {
+                const fetched = await webhook.fetch().catch(() => null);
+                if (fetched && fetched.guildId && fetched.guildId !== guildId) externalFlag = true;
+            } catch {}
             const typeMap = this.webhooks.get(guildId) || new Map();
-            typeMap.set(type, { name, webhook });
+            typeMap.set(type, { name, webhook, external: externalFlag });
             this.webhooks.set(guildId, typeMap);
 
             // Save configuration
             await this.saveConfig();
             // Persist to DB
-            await this.persistToDB(guildId, { type, name, url: webhookUrl, enabled: true });
+            await this.persistToDB(guildId, { type, name, url: webhookUrl, enabled: true, external: externalFlag });
             return true;
         } catch (error) {
             logger.error('Error adding webhook:', error);
@@ -546,7 +567,12 @@ class WebhookManager {
 
             // Registrar o webhook (logs)
             const typeMap = this.webhooks.get(guild.id) || new Map();
-            typeMap.set('logs', { name: guild.name, webhook: new WebhookClient({ url: webhook.url }) });
+            let externalFlag = false;
+            try {
+                const meta = await (new WebhookClient({ url: webhook.url })).fetch().catch(()=>null);
+                if (meta && meta.guildId && meta.guildId !== guild.id) externalFlag = true;
+            } catch {}
+            typeMap.set('logs', { name: guild.name, webhook: new WebhookClient({ url: webhook.url }), external: externalFlag });
             this.webhooks.set(guild.id, typeMap);
 
             await this.saveConfig();

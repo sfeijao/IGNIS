@@ -4999,6 +4999,62 @@ app.post('/api/guild/:guildId/webhooks/create-in-channel', async (req, res) => {
     }
 });
 
+// Add an external webhook by URL (cross-guild). Body: { type, name, url }
+app.post('/api/guild/:guildId/webhooks/add-external', async (req, res) => {
+    if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const { guildId } = req.params;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+        const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
+        if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
+
+        const schema = Joi.object({
+            type: Joi.string().trim().valid('logs','tickets','updates','transcript','vlog','modlog','generic').default('logs'),
+            name: Joi.string().trim().max(64).default('IGNIS Logs'),
+            url: Joi.string().uri({ scheme: ['https'] }).required()
+        });
+        const { error, value } = schema.validate(req.body || {});
+        if (error) return res.status(400).json({ success: false, error: error.message });
+
+        // Runtime register (in-memory) with external flag detection
+        if (client.webhooks?.addWebhook) {
+            const ok = await client.webhooks.addWebhook(guildId, value.type, value.name, value.url, { external: true });
+            if (!ok) return res.status(500).json({ success: false, error: 'Failed to register webhook runtime' });
+        }
+
+        // Persist minimal record (SQLite or Mongo) so it's retained; channel info unknown for external
+        const preferSqlite = (process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite' || !hasMongoEnv;
+        if (preferSqlite) {
+            try {
+                const storage = require('../utils/storage-sqlite');
+                await storage.upsertWebhook({ guild_id: guildId, type: value.type, name: value.name, url: value.url, channel_id: null, channel_name: null, enabled: true });
+            } catch (e) { logger.warn('Persist external webhook sqlite failed:', e?.message || e); }
+        } else if (hasMongoEnv) {
+            try {
+                const { isReady } = require('../utils/db/mongoose');
+                if (isReady()) {
+                    const { WebhookModel } = require('../utils/db/models');
+                    await WebhookModel.findOneAndUpdate(
+                        { guild_id: guildId, type: value.type },
+                        { $set: { name: value.name, url: value.url, channel_id: null, channel_name: null, enabled: true } },
+                        { upsert: true }
+                    );
+                }
+            } catch (e) { logger.warn('Persist external webhook mongo failed:', e?.message || e); }
+        }
+
+        return res.json({ success: true, external: true, webhook: { type: value.type, name: value.name, urlMasked: value.url.length > 16 ? value.url.slice(0, value.url.length - 12).replace(/./g,'*') + value.url.slice(-12) : '****' } });
+    } catch (e) {
+        logger.error('Error adding external webhook:', e);
+        return res.status(500).json({ success: false, error: e?.message || 'Failed to add external webhook' });
+    }
+});
+
 // (Removed duplicate /webhooks/test route; unified earlier handler now supports dashboard types)
 
 // Simple uploads endpoint for guild-scoped images (e.g., banners)
