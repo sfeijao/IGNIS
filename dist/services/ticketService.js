@@ -22,6 +22,10 @@ exports.handleCallMember = handleCallMember;
 exports.handleGreet = handleGreet;
 exports.handleNote = handleNote;
 exports.handlePrioritySet = handlePrioritySet;
+exports.handleMoveToCategory = handleMoveToCategory;
+exports.handleMoveOtherModal = handleMoveOtherModal;
+exports.buildCloseConfirmRow = buildCloseConfirmRow;
+exports.handleCloseRequest = handleCloseRequest;
 exports.resolveTicket = resolveTicket;
 exports.buildPostCloseRow = buildPostCloseRow;
 exports.handleExport = handleExport;
@@ -438,11 +442,28 @@ async function handleRename(ctx) {
     await ctx.interaction?.showModal?.(modal); // if called from dispatcher with interaction
     return '📝 Introduza o novo nome (modal).';
 }
+// Novo painel para mover com botões de categorias e opção "Outra"
 async function handleMove(ctx) {
     if (!(await isStaff(ctx.member, ctx.guildId)))
         return '⛔ Apenas staff pode mover.';
-    const row = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ChannelSelectMenuBuilder().setCustomId('ticket:move:select').setPlaceholder('Escolhe uma categoria…').addChannelTypes(discord_js_1.ChannelType.GuildCategory));
-    return { content: '🔁 Seleciona a categoria para mover o ticket.', components: [row] };
+    const guild = ctx.channel.guild;
+    const categories = guild.channels.cache.filter(c => c.type === 4 /* GuildCategory */).first(15);
+    if (!categories.length)
+        return '❌ Nenhuma categoria disponível.';
+    const rows = [];
+    let currentRow = new discord_js_1.ActionRowBuilder();
+    for (const cat of categories) {
+        if (currentRow.components.length >= 5) {
+            rows.push(currentRow);
+            currentRow = new discord_js_1.ActionRowBuilder();
+        }
+        currentRow.addComponents(new discord_js_1.ButtonBuilder().setCustomId(`ticket:move:cat:${cat.id}`).setLabel(cat.name.substring(0, 20)).setStyle(discord_js_1.ButtonStyle.Secondary).setEmoji('📁'));
+    }
+    if (currentRow.components.length)
+        rows.push(currentRow);
+    const extraRow = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId('ticket:move:other').setLabel('Outra Categoria').setStyle(discord_js_1.ButtonStyle.Primary).setEmoji('🆕'));
+    rows.push(extraRow);
+    return { content: '🔁 Escolhe uma categoria destino ou usa "Outra" para ID manual:', components: rows };
 }
 async function handleAddMember(ctx) {
     if (!(await isStaff(ctx.member, ctx.guildId)))
@@ -450,8 +471,14 @@ async function handleAddMember(ctx) {
     const key = `${ctx.channel.id}:add:${ctx.userId}`;
     if (isRateLimited(key, 5000))
         return '⏱️ Aguarde alguns segundos antes de repetir.';
-    const row = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.UserSelectMenuBuilder().setCustomId('ticket:add_member:select').setPlaceholder('Seleciona membros para adicionar…').setMinValues(1).setMaxValues(5));
-    return { content: '➕ Escolhe quem adicionar ao ticket.', components: [row] };
+    const modal = new discord_js_1.ModalBuilder().setCustomId('ticket:add_member:modal').setTitle('Adicionar Membros');
+    const input = new discord_js_1.TextInputBuilder().setCustomId('ticket:add_member:ids').setLabel('IDs ou menções (separados por espaço)').setStyle(discord_js_1.TextInputStyle.Short).setRequired(true).setMaxLength(400);
+    modal.addComponents(new discord_js_1.ActionRowBuilder().addComponents(input));
+    try {
+        await ctx.interaction?.showModal?.(modal);
+    }
+    catch { }
+    return '➕ Introduza os IDs/menções no modal.';
 }
 async function handleRemoveMember(ctx) {
     if (!(await isStaff(ctx.member, ctx.guildId)))
@@ -459,17 +486,32 @@ async function handleRemoveMember(ctx) {
     const key = `${ctx.channel.id}:remove:${ctx.userId}`;
     if (isRateLimited(key, 5000))
         return '⏱️ Aguarde alguns segundos antes de repetir.';
-    const row = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.UserSelectMenuBuilder().setCustomId('ticket:remove_member:select').setPlaceholder('Seleciona membros para remover…').setMinValues(1).setMaxValues(5));
-    return { content: '❌ Escolhe quem remover do ticket.', components: [row] };
+    const modal = new discord_js_1.ModalBuilder().setCustomId('ticket:remove_member:modal').setTitle('Remover Membros');
+    const input = new discord_js_1.TextInputBuilder().setCustomId('ticket:remove_member:ids').setLabel('IDs ou menções (separados por espaço)').setStyle(discord_js_1.TextInputStyle.Short).setRequired(true).setMaxLength(400);
+    modal.addComponents(new discord_js_1.ActionRowBuilder().addComponents(input));
+    try {
+        await ctx.interaction?.showModal?.(modal);
+    }
+    catch { }
+    return '❌ Introduza os IDs/menções a remover.';
 }
 async function handleCallMember(ctx) {
     if (!(await isStaff(ctx.member, ctx.guildId)))
-        return '⛔ Apenas staff pode chamar cargos.';
-    const key = `${ctx.channel.id}:call:${ctx.userId}`;
+        return '⛔ Apenas staff pode chamar o autor.';
+    const key = `${ctx.channel.id}:call_owner:${ctx.userId}`;
     if (isRateLimited(key, 10000))
         return '⏱️ Evite spam — aguarde 10 segundos.';
-    const row = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.RoleSelectMenuBuilder().setCustomId('ticket:call_member:role').setPlaceholder('Escolhe um cargo para chamar…'));
-    return { content: '🔔 Escolhe o cargo a mencionar.', components: [row] };
+    try {
+        const ownerId = ctx.ticket.ownerId;
+        if (!ownerId)
+            return '❌ Ticket sem owner definido.';
+        await ctx.channel.send({ content: `🔔 <@${ownerId}> precisamos da tua resposta. (${ctx.member})` });
+        await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'call_owner', { ownerId });
+        return '🔔 Membro chamado.';
+    }
+    catch {
+        return '❌ Falha ao chamar membro.';
+    }
 }
 async function handleGreet(ctx) { return `👋 Olá! Sou <@${ctx.userId}>. Em que posso ajudar?`; }
 async function handleNote(ctx) {
@@ -499,6 +541,49 @@ async function handlePrioritySet(ctx, chosenRaw) {
         const labelMap = { low: 'BAIXA', normal: 'NORMAL', high: 'ALTA', urgent: 'URGENTE' };
         return `⚡ Prioridade alterada para ${labelMap[chosen] || chosen.toUpperCase()}`;
     });
+}
+async function handleMoveToCategory(ctx, categoryId) {
+    if (!(await isStaff(ctx.member, ctx.guildId)))
+        return '⛔ Apenas staff.';
+    try {
+        if (!categoryId)
+            return '❌ Categoria inválida.';
+        await ctx.channel.setParent(categoryId, { lockPermissions: false }).catch(() => { });
+        await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'move', { categoryId });
+        return '🔁 Ticket movido.';
+    }
+    catch {
+        return '❌ Falha ao mover.';
+    }
+}
+async function handleMoveOtherModal(ctx) {
+    try {
+        const raw = ctx.interaction.fields.getTextInputValue('ticket:move:other:category_id').trim();
+        const id = raw.replace(/[^0-9]/g, '');
+        if (!id)
+            return '❌ ID inválido.';
+        const channel = ctx.interaction.channel;
+        try {
+            await channel.setParent(id, { lockPermissions: false });
+        }
+        catch {
+            return '❌ Falha ao mover (ID incorreto ou sem permissão).';
+        }
+        await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'move', { categoryId: id, manual: true });
+        return '🔁 Ticket movido para categoria personalizada.';
+    }
+    catch {
+        return '❌ Erro ao processar modal.';
+    }
+}
+function buildCloseConfirmRow() {
+    const row = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId('ticket:close:confirm').setLabel('Confirmar Fecho').setStyle(discord_js_1.ButtonStyle.Danger).setEmoji('✅'), new discord_js_1.ButtonBuilder().setCustomId('ticket:close:cancel').setLabel('Cancelar').setStyle(discord_js_1.ButtonStyle.Secondary).setEmoji('✖️'));
+    return [row];
+}
+async function handleCloseRequest(ctx) {
+    if (!(await isStaff(ctx.member, ctx.guildId)))
+        return '⛔ Apenas staff pode fechar.';
+    return { content: '⚠️ Tens a certeza que queres fechar o ticket?', components: buildCloseConfirmRow() };
 }
 async function resolveTicket(channel) {
     return ticket_1.TicketModel.findOne({ channelId: channel.id });

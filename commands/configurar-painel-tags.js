@@ -6,18 +6,18 @@ module.exports = {
         .setName('configurar-painel-tags')
         .setDescription('Configura o painel de solicitação de tags para utilizadores')
         .setDefaultMemberPermissions('0'),
-    
+
     async execute(interaction) {
         // Verificar permissões (apenas admin/owner)
         const config = await storage.getGuildConfig(interaction.guild.id);
         const isOwner = interaction.user.id === '381762006329589760';
         const hasAdminRole = config.roles?.admin ? interaction.member.roles.cache.has(config.roles.admin) : false;
         const hasAdminPerm = interaction.member.permissions.has('Administrator');
-        
+
         if (!isOwner && !hasAdminRole && !hasAdminPerm) {
-            return interaction.reply({ 
-                content: '❌ Apenas administradores podem configurar este painel!', 
-                flags: MessageFlags.Ephemeral 
+            return interaction.reply({
+                content: '❌ Apenas administradores podem configurar este painel!',
+                flags: MessageFlags.Ephemeral
             });
         }
 

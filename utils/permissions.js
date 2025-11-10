@@ -35,7 +35,7 @@ function isStaff(member) {
         config.ROLES.ADMIN,
         config.ROLES.STAFF
     ].filter(Boolean);
-    
+
     return hasAnyRole(member, staffRoles);
 }
 
@@ -49,7 +49,7 @@ function isAdmin(member) {
         config.ROLES.OWNER,
         config.ROLES.ADMIN
     ].filter(Boolean);
-    
+
     return hasAnyRole(member, adminRoles);
 }
 
@@ -137,9 +137,9 @@ function requireWebRole(role) {
     return async (req, res, next) => {
         try {
             if (!req.user) {
-                return res.status(401).json({ 
+                return res.status(401).json({
                     error: 'Não autenticado',
-                    message: 'Faça login com Discord para continuar' 
+                    message: 'Faça login com Discord para continuar'
                 });
             }
 
@@ -147,17 +147,17 @@ function requireWebRole(role) {
             // Aqui você pode fazer uma chamada à API do Discord ou verificar via bot
             // Por enquanto, assumindo que req.user tem as roles
             const userRoles = req.user.roles || [];
-            
+
             let hasPermission = false;
-            
+
             switch (role.toUpperCase()) {
                 case 'STAFF':
-                    hasPermission = userRoles.some(roleId => 
+                    hasPermission = userRoles.some(roleId =>
                         [config.ROLES.OWNER, config.ROLES.ADMIN, config.ROLES.STAFF].includes(roleId)
                     );
                     break;
                 case 'ADMIN':
-                    hasPermission = userRoles.some(roleId => 
+                    hasPermission = userRoles.some(roleId =>
                         [config.ROLES.OWNER, config.ROLES.ADMIN].includes(roleId)
                     );
                     break;
@@ -167,9 +167,9 @@ function requireWebRole(role) {
             }
 
             if (!hasPermission) {
-                return res.status(403).json({ 
+                return res.status(403).json({
                     error: 'Permissão insuficiente',
-                    message: `Precisas de permissão de ${role} para aceder a este recurso` 
+                    message: `Precisas de permissão de ${role} para aceder a este recurso`
                 });
             }
 
@@ -177,9 +177,9 @@ function requireWebRole(role) {
         } catch (error) {
             const logger = require('./logger');
             logger.error('Erro na verificação de permissões:', { error });
-            return res.status(500).json({ 
+            return res.status(500).json({
                 error: 'Erro interno',
-                message: 'Erro ao verificar permissões' 
+                message: 'Erro ao verificar permissões'
             });
         }
     };

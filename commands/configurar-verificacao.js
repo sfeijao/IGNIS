@@ -6,18 +6,18 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('configurar-verificacao')
         .setDescription('Configura o sistema de verificação de membros'),
-    
+
     async execute(interaction) {
     // Verificar permissões (incluindo owner)
         const config = await storage.getGuildConfig(interaction.guild.id);
         const isOwner = interaction.user.id === '381762006329589760';
         const hasAdminRole = config.roles?.admin ? interaction.member.roles.cache.has(config.roles.admin) : false;
     const hasAdminPerm = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
-        
+
         if (!isOwner && !hasAdminRole && !hasAdminPerm) {
-            return interaction.reply({ 
-                content: '❌ Não tens permissão para usar este comando!', 
-                flags: MessageFlags.Ephemeral 
+            return interaction.reply({
+                content: '❌ Não tens permissão para usar este comando!',
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -63,7 +63,7 @@ module.exports = {
         } catch (error) {
             const logger = require('../utils/logger');
             logger.error('❌ Erro ao configurar verificação:', { error });
-            
+
             if (!interaction.replied) {
                 await interaction.reply({
                     content: '❌ Erro ao configurar o sistema de verificação!',

@@ -14,19 +14,19 @@ module.exports = {
                 .setDescription('O cargo a ser adicionado')
                 .setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles),
-    
+
     async execute(interaction) {
         // Verificar permissões (incluindo owner)
         const config = await storage.getGuildConfig(interaction.guild.id);
         const isOwner = interaction.user.id === '381762006329589760';
-        const hasStaffRole = (config.roles?.admin && interaction.member.roles.cache.has(config.roles.admin)) || 
+        const hasStaffRole = (config.roles?.admin && interaction.member.roles.cache.has(config.roles.admin)) ||
                            (config.roles?.staff && interaction.member.roles.cache.has(config.roles.staff));
         const hasAdminPerm = interaction.member.permissions.has('ManageRoles');
-        
+
         if (!isOwner && !hasStaffRole && !hasAdminPerm) {
-            return interaction.reply({ 
-                content: '❌ Não tens permissão para usar este comando!', 
-                flags: MessageFlags.Ephemeral 
+            return interaction.reply({
+                content: '❌ Não tens permissão para usar este comando!',
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -35,22 +35,22 @@ module.exports = {
         const targetMember = interaction.guild.members.cache.get(targetUser.id);
 
         if (!targetMember) {
-            return interaction.reply({ 
-                content: '❌ Utilizador não encontrado no servidor!', 
-                flags: MessageFlags.Ephemeral 
+            return interaction.reply({
+                content: '❌ Utilizador não encontrado no servidor!',
+                flags: MessageFlags.Ephemeral
             });
         }
 
         if (targetMember.roles.cache.has(targetRole.id)) {
-            return interaction.reply({ 
-                content: `❌ ${targetUser.tag} já possui o cargo **${targetRole.name}**!`, 
-                flags: MessageFlags.Ephemeral 
+            return interaction.reply({
+                content: `❌ ${targetUser.tag} já possui o cargo **${targetRole.name}**!`,
+                flags: MessageFlags.Ephemeral
             });
         }
 
         try {
             await targetMember.roles.add(targetRole);
-            
+
             const embed = new EmbedBuilder()
                 .setColor(0x00ff00)
                 .setTitle('✅ Cargo Adicionado')
@@ -79,9 +79,9 @@ module.exports = {
 
         } catch (error) {
             console.error('Erro ao adicionar cargo:', error);
-            await interaction.reply({ 
-                content: '❌ Erro ao adicionar o cargo. Verifica se o bot tem permissões adequadas.', 
-                flags: MessageFlags.Ephemeral 
+            await interaction.reply({
+                content: '❌ Erro ao adicionar o cargo. Verifica se o bot tem permissões adequadas.',
+                flags: MessageFlags.Ephemeral
             });
         }
     },

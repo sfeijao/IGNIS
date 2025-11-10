@@ -12,7 +12,7 @@ module.exports = {
         // Verificar se é owner ou tem permissão de Administrator
         const isOwner = interaction.user.id === '381762006329589760';
         const hasAdminPerm = interaction.member.permissions.has('Administrator');
-        
+
         if (!isOwner && !hasAdminPerm) {
             return interaction.reply({
                 content: '❌ Você não tem permissão para usar este comando.',
@@ -138,9 +138,9 @@ module.exports = {
                     })
                     .setTimestamp();
 
-                await buttonInteraction.update({ 
-                    embeds: [refreshEmbed], 
-                    components: [row] 
+                await buttonInteraction.update({
+                    embeds: [refreshEmbed],
+                    components: [row]
                 });
 
             } else if (buttonInteraction.customId === 'detailed_status') {
@@ -170,9 +170,9 @@ module.exports = {
                     })
                     .setTimestamp();
 
-                await buttonInteraction.update({ 
-                    embeds: [detailEmbed], 
-                    components: [row] 
+                await buttonInteraction.update({
+                    embeds: [detailEmbed],
+                    components: [row]
                 });
 
             } else if (buttonInteraction.customId === 'system_info') {
@@ -207,9 +207,9 @@ module.exports = {
                     })
                     .setTimestamp();
 
-                await buttonInteraction.update({ 
-                    embeds: [systemEmbed], 
-                    components: [row] 
+                await buttonInteraction.update({
+                    embeds: [systemEmbed],
+                    components: [row]
                 });
             }
         });

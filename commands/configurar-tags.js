@@ -5,18 +5,18 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('configurar-tags')
         .setDescription('Configura o sistema de tags personalizadas'),
-    
+
     async execute(interaction) {
         // Verificar permissões (incluindo owner)
         const config = await storage.getGuildConfig(interaction.guild.id);
         const isOwner = interaction.user.id === '381762006329589760';
         const hasAdminRole = config.roles?.admin ? interaction.member.roles.cache.has(config.roles.admin) : false;
         const hasAdminPerm = interaction.member.permissions.has('Administrator');
-        
+
         if (!isOwner && !hasAdminRole && !hasAdminPerm) {
-            return interaction.reply({ 
-                content: '❌ Não tens permissão para usar este comando!', 
-                flags: MessageFlags.Ephemeral 
+            return interaction.reply({
+                content: '❌ Não tens permissão para usar este comando!',
+                flags: MessageFlags.Ephemeral
             });
         }
 

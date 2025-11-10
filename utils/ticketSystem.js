@@ -12,7 +12,7 @@ class TicketSystem {
         try {
             const guildConfig = await this.client.storage.getGuildConfig(guild.id);
             const webhookUrl = guildConfig?.ticketWebhookUrl;
-            
+
             if (!webhookUrl) {
                 logger.warn('Webhook não configurado para logs de tickets', { guildId: guild.id });
                 return;
@@ -27,9 +27,9 @@ class TicketSystem {
             try {
                 const webhook = await this.client.fetchWebhook(webhookUrl);
                 await webhook.send({ embeds: [embed] });
-                logger.info(`Log de ticket enviado via webhook: ${type}`, { 
-                    ticketId: data.id, 
-                    guildId: guild.id 
+                logger.info(`Log de ticket enviado via webhook: ${type}`, {
+                    ticketId: data.id,
+                    guildId: guild.id
                 });
             } catch (webhookError) {
                 if (retryCount > 0) {
@@ -46,19 +46,19 @@ class TicketSystem {
                 const fallbackPath = `./logs/webhooks/${guild.id}`;
                 const fs = require('fs').promises;
                 await fs.mkdir(fallbackPath, { recursive: true });
-                
+
                 const fallbackLog = {
                     timestamp: new Date().toISOString(),
                     type,
                     data,
                     error: webhookError.message
                 };
-                
+
                 await fs.writeFile(
                     `${fallbackPath}/${Date.now()}_${type}.json`,
                     JSON.stringify(fallbackLog, null, 2)
                 );
-                
+
                 logger.warn('Log salvo localmente após falha do webhook', {
                     guildId: guild.id,
                     ticketId: data.id
