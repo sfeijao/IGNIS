@@ -61,8 +61,12 @@ export default function OutgoingWebhooksManager(){
 		try {
 			const item = items.find(i=> i.id === id)
 			if(!item) throw new Error('Não encontrado')
-			// PATCH with enabled:true triggers backend test (sqlite) or immediate enable (mongo path will just enable)
-			await api.updateOutgoingWebhook(guildId, id, { enabled: true })
+			// Prefer dedicated endpoint; fallback to PATCH if not available
+			try {
+				await api.testActivateOutgoingWebhook(guildId, id)
+			} catch(err:any){
+				await api.updateOutgoingWebhook(guildId, id, { enabled: true })
+			}
 			toast({ type:'success', title:'Testado & Atualizado'})
 			await load()
 		} catch(e:any){ toast({ type:'error', title:'Falhou testar/ativar', description: e.message }) } finally { setActivateTesting(null) }
@@ -175,12 +179,17 @@ export default function OutgoingWebhooksManager(){
 									<div className='text-neutral-200 truncate'>
 										{i.type} {i.enabled ? <span className='ml-1 text-[10px] px-2 py-0.5 rounded-full border border-emerald-700/60 text-emerald-300'>ativo</span> : <span className='ml-1 text-[10px] px-2 py-0.5 rounded-full border border-neutral-700 text-neutral-400'>inativo</span>}
 										{i.lastOk != null && (
-											<span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full border ${i.lastOk ? 'border-emerald-700/60 text-emerald-300' : 'border-rose-700/60 text-rose-300'}`}>{i.lastOk ? 'ok' : 'falha'}{i.lastStatus != null ? ` ${i.lastStatus}` : ''}</span>
+											<span
+												title={`${i.lastOk ? 'Último teste OK' : 'Último teste falhou'}${i.lastStatus != null ? ` (status ${i.lastStatus})` : ''}${i.lastAt ? ` em ${new Date(i.lastAt).toLocaleString()}` : ''}${i.lastError ? `\nErro: ${i.lastError}` : ''}`}
+												className={`ml-2 text-[10px] px-2 py-0.5 rounded-full border ${i.lastOk ? 'border-emerald-700/60 text-emerald-300' : 'border-rose-700/60 text-rose-300'}`}
+											>
+												{i.lastOk ? 'ok' : 'falha'}{i.lastStatus != null ? ` ${i.lastStatus}` : ''}
+											</span>
 										)}
 									</div>
 										<div className='text-xs text-neutral-500 truncate'>
 											{i.id} • {i.channelId || '—'} • {i.urlMasked} {i.lastAt ? `• ${new Date(i.lastAt).toLocaleTimeString()}` : ''}
-											{i.lastError && <span className='ml-2 text-[10px] text-rose-400'>({i.lastError.slice(0,60)})</span>}
+											{i.lastError && <span className='ml-2 text-[10px] text-rose-400' title={i.lastError}>({i.lastError.slice(0,60)})</span>}
 										</div>
 								</div>
 									<button type='button' onClick={()=> startTestPayload(i)} className='px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700'>Testar</button>

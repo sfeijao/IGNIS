@@ -99,6 +99,10 @@ db.serialize(() => {
   ensureColumn('webhooks', 'last_status', 'ALTER TABLE webhooks ADD COLUMN last_status INTEGER');
   ensureColumn('webhooks', 'last_error', 'ALTER TABLE webhooks ADD COLUMN last_error TEXT');
   ensureColumn('webhooks', 'last_at', 'ALTER TABLE webhooks ADD COLUMN last_at TEXT');
+  // Optional encryption columns for webhook URLs
+  ensureColumn('webhooks', 'enc_alg', 'ALTER TABLE webhooks ADD COLUMN enc_alg TEXT');
+  ensureColumn('webhooks', 'enc_iv', 'ALTER TABLE webhooks ADD COLUMN enc_iv TEXT');
+  ensureColumn('webhooks', 'enc_tag', 'ALTER TABLE webhooks ADD COLUMN enc_tag TEXT');
 
   // Ticket action logs (lightweight)
   db.run(`CREATE TABLE IF NOT EXISTS ticket_logs (
@@ -145,6 +149,38 @@ function parseJSON(str, fallback) {
 }
 
 class SqliteStorage {
+  // --- Encryption helpers (optional, controlled by WEBHOOK_SECRET_KEY) ---
+  getWebhookKey() {
+    const s = (process.env.WEBHOOK_SECRET_KEY || '').trim();
+    if (!s) return null;
+    const crypto = require('crypto');
+    return crypto.createHash('sha256').update(s).digest();
+  }
+  encryptUrlIfKey(url) {
+    const key = this.getWebhookKey();
+    if (!key) return { url, enc: null };
+    const crypto = require('crypto');
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    const enc = Buffer.concat([cipher.update(Buffer.from(url, 'utf8')), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    return { url: enc.toString('base64'), enc: { alg: 'aes-256-gcm', iv: iv.toString('base64'), tag: tag.toString('base64') } };
+  }
+  decryptUrlRowIfAny(row) {
+    const secret = (process.env.WEBHOOK_SECRET_KEY || '').trim();
+    if (!secret) return row.url;
+    if (!(row.enc_alg === 'aes-256-gcm' && row.enc_iv && row.enc_tag)) return row.url;
+    try {
+      const crypto = require('crypto');
+      const key = crypto.createHash('sha256').update(secret).digest();
+      const iv = Buffer.from(row.enc_iv, 'base64');
+      const tag = Buffer.from(row.enc_tag, 'base64');
+      const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+      decipher.setAuthTag(tag);
+      const dec = Buffer.concat([decipher.update(Buffer.from(row.url, 'base64')), decipher.final()]).toString('utf8');
+      return dec;
+    } catch { return null; }
+  }
   async createTicket(ticketData) {
     const id = Date.now();
     const created_at = new Date().toISOString();
@@ -477,7 +513,7 @@ class SqliteStorage {
       guild_id: w.guild_id,
       type: w.type || 'logs',
       name: w.name || null,
-      url: w.url,
+      url: this.decryptUrlRowIfAny(w) || w.url,
       channel_id: w.channel_id || null,
       channel_name: w.channel_name || null,
       enabled: !!w.enabled,
@@ -490,10 +526,12 @@ class SqliteStorage {
 
   async upsertWebhook({ guild_id, type = 'logs', name, url, channel_id, channel_name, enabled = true, last_ok, last_status, last_error, last_at }) {
     const current = await get(`SELECT * FROM webhooks WHERE guild_id = ? AND type = ?`, [guild_id, type]);
+    // Encrypt if key present
+    const enc = this.encryptUrlIfKey(url);
     if (current) {
-      await run(`UPDATE webhooks SET name = ?, url = ?, channel_id = ?, channel_name = ?, enabled = ?, last_ok = ?, last_status = ?, last_error = ?, last_at = ? WHERE id = ?`, [
+      await run(`UPDATE webhooks SET name = ?, url = ?, channel_id = ?, channel_name = ?, enabled = ?, last_ok = ?, last_status = ?, last_error = ?, last_at = ?, enc_alg = ?, enc_iv = ?, enc_tag = ? WHERE id = ?`, [
         name || current.name,
-        url,
+        enc.url,
         channel_id || null,
         channel_name || null,
         enabled ? 1 : 0,
@@ -501,22 +539,28 @@ class SqliteStorage {
         last_status == null ? current.last_status : last_status,
         last_error == null ? current.last_error : last_error,
         last_at == null ? current.last_at : last_at,
+        enc.enc ? enc.enc.alg : null,
+        enc.enc ? enc.enc.iv : null,
+        enc.enc ? enc.enc.tag : null,
         current.id
       ]);
       return { _id: String(current.id), guild_id, type, name: name || current.name, url, channel_id, channel_name, enabled, last_ok: last_ok == null ? (current.last_ok == null ? null : !!current.last_ok) : !!last_ok, last_status: last_status == null ? (current.last_status == null ? null : Number(current.last_status)) : last_status, last_error: last_error == null ? current.last_error || null : last_error, last_at: last_at == null ? current.last_at || null : last_at };
     }
-    const r = await run(`INSERT INTO webhooks (guild_id, type, name, url, channel_id, channel_name, enabled, last_ok, last_status, last_error, last_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+    const r = await run(`INSERT INTO webhooks (guild_id, type, name, url, channel_id, channel_name, enabled, last_ok, last_status, last_error, last_at, enc_alg, enc_iv, enc_tag) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
       guild_id,
       type,
       name || null,
-      url,
+      enc.url,
       channel_id || null,
       channel_name || null,
       enabled ? 1 : 0,
       last_ok == null ? null : (last_ok ? 1 : 0),
       last_status == null ? null : last_status,
       last_error == null ? null : last_error,
-      last_at == null ? null : last_at
+      last_at == null ? null : last_at,
+      enc.enc ? enc.enc.alg : null,
+      enc.enc ? enc.enc.iv : null,
+      enc.enc ? enc.enc.tag : null
     ]);
     return { _id: String(r.lastID), guild_id, type, name, url, channel_id, channel_name, enabled, last_ok: last_ok == null ? null : !!last_ok, last_status: last_status == null ? null : last_status, last_error: last_error == null ? null : last_error, last_at: last_at == null ? null : last_at };
   }

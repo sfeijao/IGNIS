@@ -413,6 +413,17 @@ export const api = {
     }
     return res.json()
   },
+  async testActivateOutgoingWebhook(guildId: string, id: string, payload?: Record<string, any>) {
+    const body: any = {}
+    if (payload && typeof payload === 'object') body.payload = payload
+    const res = await fetch(`/api/guild/${guildId}/webhooks/${id}/test-activate`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) }
+    )
+    if (!res.ok) {
+      try { const err = await res.json(); throw new Error(err?.error || 'Failed to test-activate webhook') } catch { throw new Error('Failed to test-activate webhook') }
+    }
+    return res.json()
+  },
   async testAllOutgoingWebhooks(guildId: string, payload?: Record<string, any>) {
     const body: any = {}
     if (payload && typeof payload === 'object') body.payload = payload
