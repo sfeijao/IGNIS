@@ -14,6 +14,8 @@ class WebhookManager {
     this.configPath = path.join(__dirname, '..', '..', 'config', 'webhooks.json');
     // Map<guildId, Map<type, { name, webhook }>>
     this.webhooks = new Map();
+    // Throttle map for missing-log warnings: Map<guildId, timestamp>
+    this.missingLogWarnAt = new Map();
         this.init();
     }
 
@@ -176,6 +178,22 @@ class WebhookManager {
                     }
                 }
             }
+
+            // Update in-memory runtime map immediately so logs start flowing without restart
+            const typeMap = this.webhooks.get(guildId) || new Map();
+            if (enabled) {
+                try {
+                    typeMap.set(type, { name: name || type, webhook: new WebhookClient({ url }) });
+                    this.webhooks.set(guildId, typeMap);
+                } catch (e) {
+                    logger.warn('Runtime webhook client init failed:', e?.message || e);
+                }
+            } else {
+                if (typeMap.has(type)) {
+                    typeMap.delete(type);
+                    if (typeMap.size === 0) this.webhooks.delete(guildId);
+                }
+            }
         } catch (e) {
             logger.warn('persistToDB webhook error:', e && e.message ? e.message : e);
         }
@@ -254,8 +272,20 @@ class WebhookManager {
         const typeMap = this.webhooks.get(guildId);
         const webhookInfo = typeMap?.get?.(preferredType) || typeMap?.get?.('logs');
         if (!webhookInfo || !webhookInfo.webhook?.url) {
-            logger.debug(`Webhook não configurado para o servidor ${guildId}. Ticket log não enviado.`);
-            return;
+            // Attempt one on-demand hydration (in case runtime started before DB ready)
+            try { await this.hydrateFromStorage(); } catch {}
+            const refreshed = this.webhooks.get(guildId);
+            const w2 = refreshed?.get?.(preferredType) || refreshed?.get?.('logs');
+            if (!w2 || !w2.webhook?.url) {
+                const now = Date.now();
+                const lastWarn = this.missingLogWarnAt.get(guildId) || 0;
+                if (now - lastWarn > 60000) { // throttle 60s
+                    logger.info(`ℹ️  Nenhum webhook carregado para guild ${guildId} (evento ${event}); logs serão ignorados até configurar/criar um webhook.`);
+                    this.missingLogWarnAt.set(guildId, now);
+                }
+                return;
+            }
+            return this.sendTicketLog(guildId, event, data); // Retry once with hydrated map
         }
 
         try {
@@ -553,6 +583,13 @@ class WebhookManager {
             out[gid] = Array.from(typeMap.keys());
         }
         return out;
+    }
+
+    // Helper for dashboard to introspect loaded types
+    getLoadedTypes(guildId) {
+        const map = this.webhooks.get(guildId);
+        if (!map) return [];
+        return Array.from(map.keys());
     }
 }
 
