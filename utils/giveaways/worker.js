@@ -6,6 +6,23 @@ function initGiveawayWorker(){
   const enabled = (process.env.GIVEAWAYS_WORKER_ENABLED || 'true').toLowerCase() !== 'false';
   if (!enabled) return () => {};
 
+  let disabledByAuth = false;
+  let errorStrikes = 0;
+  const MAX_STRIKES = 5;
+  function checkDisable(e){
+    try {
+      const msg = (e && e.message) ? e.message : String(e || '');
+      if (/Authentication failed|bad auth|not allowed to do action|unauthorized/i.test(msg)) {
+        errorStrikes++;
+        if (errorStrikes >= MAX_STRIKES && !disabledByAuth) {
+          disabledByAuth = true;
+          try { console.warn('[GiveawayWorker] disabling due to repeated Mongo auth/permission errors'); } catch {}
+          try { global.giveawayWorkerDisabledByAuth = true; } catch {}
+        }
+      }
+    } catch {}
+  }
+
   async function tickPromoteScheduled(){
     try {
       if (!isReady()) return; // wait for mongo
@@ -17,6 +34,7 @@ function initGiveawayWorker(){
       );
     } catch (e) {
       try { console.warn('[GiveawayWorker] promote error:', e && e.message || e); } catch {}
+      checkDisable(e);
     }
   }
 
@@ -45,6 +63,7 @@ function initGiveawayWorker(){
       }
     } catch (e) {
       try { console.warn('[GiveawayWorker] end error:', e && e.message || e); } catch {}
+      checkDisable(e);
     }
   }
 
@@ -82,14 +101,20 @@ function initGiveawayWorker(){
       }
     } catch (e) {
       try { console.warn('[GiveawayWorker] live update error:', e && e.message || e); } catch {}
+      checkDisable(e);
     }
   }
 
-  const i1 = setInterval(tickPromoteScheduled, 10_000);
-  const i2 = setInterval(tickEndDue, 8_000);
-  const i3 = setInterval(tickLiveUpdates, 30_000);
+  function guarded(fn){
+    if (disabledByAuth) return;
+    fn();
+  }
+
+  const i1 = setInterval(() => guarded(tickPromoteScheduled), 10_000);
+  const i2 = setInterval(() => guarded(tickEndDue), 8_000);
+  const i3 = setInterval(() => guarded(tickLiveUpdates), 30_000);
   // run soon after start
-  setTimeout(()=>{ tickPromoteScheduled(); tickEndDue(); tickLiveUpdates(); }, 2000);
+  setTimeout(()=>{ guarded(tickPromoteScheduled); guarded(tickEndDue); guarded(tickLiveUpdates); }, 2000);
   return () => { clearInterval(i1); clearInterval(i2); clearInterval(i3); };
 }
 

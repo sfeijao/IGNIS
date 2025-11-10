@@ -350,14 +350,16 @@ const sessionOptions = {
 };
 if (useMongoSession) {
     try {
-        const mongoUrl = process.env.MONGO_URI || process.env.MONGODB_URI;
+        const mongoUrl = (process.env.MONGO_URI || process.env.MONGODB_URI || '').trim();
+        const dbName = (process.env.MONGO_DB_NAME || 'IGNIS').trim();
         sessionOptions.store = MongoStore.create({
             mongoUrl,
+            dbName, // ensure we don't default to 'test' when URI lacks db path
             collectionName: 'sessions',
             ttl: 14 * 24 * 60 * 60, // 14 days
             touchAfter: 24 * 3600 // reduce write frequency
         });
-        logger.info('🧠 Using MongoDB session store');
+        logger.info(`🧠 Using MongoDB session store (db=${dbName})`);
     } catch (e) {
         logger.warn('Session store fallback to MemoryStore (connect-mongo setup failed):', e?.message || String(e));
     }
@@ -368,6 +370,20 @@ if (useMongoSession) {
 }
 const sessionMiddleware = session(sessionOptions);
 app.use(sessionMiddleware);
+
+// Health & diagnostics endpoint (lightweight, unauthenticated for platform probes)
+// Returns: mongo status, giveaway worker disabled flag, uptime seconds
+app.get('/healthz', (req, res) => {
+    const { getStatus } = require('../utils/db/mongoose');
+    let mongo = null;
+    try { mongo = getStatus(); } catch { mongo = { connected: false, lastError: null }; }
+    let workerStatus = null;
+    try {
+        // We store flag on global after worker disables itself (set in worker.js modifications if desired)
+        workerStatus = { disabledByAuth: !!global.giveawayWorkerDisabledByAuth };
+    } catch { workerStatus = { disabledByAuth: false }; }
+    res.json({ ok: true, time: Date.now(), uptime_s: process.uptime(), mongo, giveaway: workerStatus });
+});
 
 // Passport configuration
 app.use(passport.initialize());
@@ -2430,17 +2446,73 @@ app.post('/api/guild/:guildId/webhooks/test-all', async (req, res) => {
         const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
         if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
 
-        const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
-        if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not configured' });
-        const { isReady } = require('../utils/db/mongoose');
-        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
-
         const schema = Joi.object({ payload: Joi.object().optional() });
         const { error, value } = schema.validate({ payload });
         if (error) return res.status(400).json({ success: false, error: error.message });
 
+        const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
+        const bodyToSend = value.payload || { test: true, at: Date.now(), source: 'IGNIS' };
+        // SQLite fallback when Mongo absent
+        if (!hasMongoEnv) {
+            try {
+                const storage = require('../utils/storage-sqlite');
+                const list = await storage.listWebhooks(guildId);
+                const targets = list.filter(r => r.enabled);
+                const fetch = require('node-fetch');
+                const results = [];
+                for (const r of targets) {
+                    const url = r.url;
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 8000);
+                    let status = 0; let ok = false; let errMsg = null;
+                    try {
+                        const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(bodyToSend), signal: controller.signal });
+                        status = resp.status; ok = resp.ok;
+                    } catch (e) { errMsg = e?.message || 'network error'; }
+                    finally { clearTimeout(timeout); }
+                    const last_ok = ok ? true : false;
+                    const last_status = status || 0;
+                    const last_error = ok ? null : (status ? `status ${status}` : errMsg || 'falha');
+                    const last_at = new Date().toISOString();
+                    await storage.upsertWebhook({ guild_id: guildId, type: r.type, name: r.name, url: r.url, channel_id: r.channel_id, channel_name: r.channel_name, enabled: r.enabled, last_ok, last_status, last_error, last_at });
+                    results.push({ id: r._id, type: r.type, status: last_status, ok: last_ok, error: last_error });
+                }
+                return res.json({ success: true, results });
+            } catch (e) {
+                logger.error('SQLite test-all error:', e);
+                return res.status(500).json({ success: false, error: 'Failed to post to webhooks (sqlite fallback)' });
+            }
+        }
+        const { isReady } = require('../utils/db/mongoose');
+        if (!isReady()) {
+            // Try SQLite fallback when Mongo configured but disconnected
+            try {
+                const storage = require('../utils/storage-sqlite');
+                const list = await storage.listWebhooks(guildId);
+                const targets = list.filter(r => r.enabled);
+                const fetch = require('node-fetch');
+                const results = [];
+                for (const r of targets) {
+                    const url = r.url;
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 8000);
+                    let status = 0; let ok = false; let errMsg = null;
+                    try { const resp = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(bodyToSend), signal: controller.signal }); status = resp.status; ok = resp.ok; } catch(e){ errMsg = e?.message || 'network error'; } finally { clearTimeout(timeout); }
+                    const last_ok = ok ? true : false;
+                    const last_status = status || 0;
+                    const last_error = ok ? null : (status ? `status ${status}` : errMsg || 'falha');
+                    const last_at = new Date().toISOString();
+                    await storage.upsertWebhook({ guild_id: guildId, type: r.type, name: r.name, url: r.url, channel_id: r.channel_id, channel_name: r.channel_name, enabled: r.enabled, last_ok, last_status, last_error, last_at });
+                    results.push({ id: r._id, type: r.type, status: last_status, ok: last_ok, error: last_error });
+                }
+                return res.json({ success: true, results, fallback: 'sqlite' });
+            } catch (e) {
+                return res.status(503).json({ success: false, error: 'Mongo not connected' });
+            }
+        }
+
         const svc = require('../src/services/webhookService');
-        const resArr = await svc.postToAll(guildId, value.payload || { test: true, at: Date.now() });
+        const resArr = await svc.postToAll(guildId, bodyToSend);
         return res.json({ success: true, results: resArr });
     } catch (e) {
         logger.error('Webhook bulk test post error:', e);
