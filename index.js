@@ -230,6 +230,41 @@ client.once('ready', () => {
     // Update bot status
     client.user.setActivity('🤖 Bot ativo | /ajuda', { type: 'WATCHING' });
 
+    // Atualizar avatar/banner do bot no arranque se variáveis estiverem definidas
+    (async () => {
+        try {
+            const newAvatar = process.env.BOT_AVATAR_URL; // URL direta (PNG/JPG/GIF) ou caminho local
+            const newBanner = process.env.BOT_BANNER_URL; // Requer que o bot tenha banner habilitado (Developer Portal / Nitro requirements)
+            if (newAvatar) {
+                try {
+                    await client.user.setAvatar(newAvatar);
+                    logger.info('🖼️ Avatar do bot atualizado com sucesso.');
+                } catch (e) {
+                    logger.warn('⚠️ Falha ao atualizar avatar do bot:', e?.message || e);
+                }
+            } else {
+                logger.info('🖼️ BOT_AVATAR_URL não definido - mantendo avatar atual.');
+            }
+            if (newBanner) {
+                try {
+                    // Nem todas as apps têm permissão de banner; ignorar erro silenciosamente
+                    if (client.user.setBanner) {
+                        await client.user.setBanner(newBanner);
+                        logger.info('🎏 Banner do bot atualizado com sucesso.');
+                    } else {
+                        logger.info('🎏 setBanner não disponível nesta versão/permissão - ignorando.');
+                    }
+                } catch (e) {
+                    logger.warn('⚠️ Falha ao atualizar banner do bot (possível falta de permissão/recurso):', e?.message || e);
+                }
+            } else {
+                logger.info('🎏 BOT_BANNER_URL não definido - mantendo banner atual.');
+            }
+        } catch (e) {
+            logger.warn('⚠️ Erro inesperado ao tentar atualizar avatar/banner:', e?.message || e);
+        }
+    })();
+
     // Tornar cliente disponível globalmente para o dashboard
     global.discordClient = client;
     // Disponibilizar client no manager e hidratar webhooks do DB

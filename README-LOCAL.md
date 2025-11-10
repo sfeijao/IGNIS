@@ -14,6 +14,9 @@ Environment
   - DISCORD_CLIENT_SECRET (or CLIENT_SECRET)
   - SESSION_SECRET — a long random string
   - For Mongo persistence: set MONGO_URI; if the URI has no `/db` path, also set MONGO_DB_NAME (e.g., `IGNIS`)
+  - Optional visual settings on startup:
+    - BOT_AVATAR_URL — direct URL or local path (PNG/JPG/GIF) to set the bot avatar on startup
+    - BOT_BANNER_URL — direct URL to set the bot banner on startup (requires app banner capability)
 
 Install and start
 

@@ -107,6 +107,15 @@ async function postToType(guildId, type, payload){
     let url;
     try {
       url = decryptUrlFromDoc(target); // ensure decrypted
+      // Ensure Discord-compatible payload if targeting a Discord webhook
+      let body = payload;
+      try {
+        const isDiscord = typeof url === 'string' && /discord(app)?\.com\/api\/webhooks\//i.test(url);
+        const hasMessage = body && (typeof body.content === 'string' || (Array.isArray(body.embeds) && body.embeds.length > 0));
+        if (isDiscord && !hasMessage) {
+          body = { content: `🔔 Teste de Webhook (${target.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${target.type}` };
+        }
+      } catch {}
       const start = Date.now();
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
@@ -119,7 +128,7 @@ async function postToType(guildId, type, payload){
           resp = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(body),
             signal: controller.signal
           });
           if (!resp.ok && (resp.status >= 500 || resp.status === 429)) {
@@ -185,13 +194,22 @@ async function postToAll(guildId, payload){
     let url;
     try {
       url = decryptUrlFromDoc(target);
+      // Ensure Discord-compatible payload if targeting a Discord webhook
+      let body = payload;
+      try {
+        const isDiscord = typeof url === 'string' && /discord(app)?\.com\/api\/webhooks\//i.test(url);
+        const hasMessage = body && (typeof body.content === 'string' || (Array.isArray(body.embeds) && body.embeds.length > 0));
+        if (isDiscord && !hasMessage) {
+          body = { content: `🔔 Teste de Webhook (${target.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${target.type}` };
+        }
+      } catch {}
       const start = Date.now();
       const controller = new AbortController();
       const timeout = setTimeout(()=> controller.abort(), 10000);
       let attempt = 0; let resp; let lastErr;
       while (attempt < 3){
         try {
-          resp = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload), signal: controller.signal });
+          resp = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body), signal: controller.signal });
           if(!resp.ok && (resp.status >= 500 || resp.status === 429)){
             lastErr = new Error('Transient status ' + resp.status);
             attempt++; const backoff = Math.min(2000, 250 * Math.pow(2, attempt)) + Math.random()*100; await new Promise(r=> setTimeout(r, backoff)); continue;
@@ -236,7 +254,14 @@ async function testAndActivate(id, guildId, payload){
   if (!doc) throw new Error('Not found');
   const url = decryptUrlFromDoc(doc);
   if (!url) throw new Error('Invalid URL');
-  const body = payload && typeof payload === 'object' ? payload : { test: true, at: Date.now(), source: 'IGNIS' };
+  let body = payload && typeof payload === 'object' ? payload : { test: true, at: Date.now(), source: 'IGNIS' };
+  try {
+    const isDiscord = typeof url === 'string' && /discord(app)?\.com\/api\/webhooks\//i.test(url);
+    const hasMessage = body && (typeof body.content === 'string' || (Array.isArray(body.embeds) && body.embeds.length > 0));
+    if (isDiscord && !hasMessage) {
+      body = { content: `🔔 Teste de Webhook (${doc.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${doc.type}` };
+    }
+  } catch {}
   let ok = false; let status = 0; let lastErr = null;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);

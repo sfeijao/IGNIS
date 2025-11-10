@@ -2376,8 +2376,17 @@ app.post('/api/guild/:guildId/webhooks/test', async (req, res) => {
                     const controller = new AbortController();
                     const timeout = setTimeout(() => controller.abort(), 8000);
                     let status = 0; let ok = false; let errMsg = null;
+                    // Ensure Discord-compatible payload
+                    let body = bodyToSend;
                     try {
-                        const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyToSend), signal: controller.signal });
+                        const isDiscord = typeof url === 'string' && /discord(app)?\.com\/api\/webhooks\//i.test(url);
+                        const hasMessage = body && (typeof body.content === 'string' || (Array.isArray(body.embeds) && body.embeds.length > 0));
+                        if (isDiscord && !hasMessage) {
+                            body = { content: `🔔 Teste de Webhook (${r.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${r.type}` };
+                        }
+                    } catch {}
+                    try {
+                        const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal });
                         status = resp.status; ok = resp.ok;
                     } catch (e) { errMsg = e?.message || 'network error'; }
                     finally { clearTimeout(timeout); }
@@ -2409,7 +2418,15 @@ app.post('/api/guild/:guildId/webhooks/test', async (req, res) => {
                     const controller = new AbortController();
                     const timeout = setTimeout(() => controller.abort(), 8000);
                     let status = 0; let ok = false; let errMsg = null;
-                    try { const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(bodyToSend), signal: controller.signal }); status = resp.status; ok = resp.ok; } catch(e){ errMsg = e?.message || 'network error'; } finally { clearTimeout(timeout); }
+                    let body = bodyToSend;
+                    try {
+                        const isDiscord = typeof url === 'string' && /discord(app)?\.com\/api\/webhooks\//i.test(url);
+                        const hasMessage = body && (typeof body.content === 'string' || (Array.isArray(body.embeds) && body.embeds.length > 0));
+                        if (isDiscord && !hasMessage) {
+                            body = { content: `🔔 Teste de Webhook (${r.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${r.type}` };
+                        }
+                    } catch {}
+                    try { const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body), signal: controller.signal }); status = resp.status; ok = resp.ok; } catch(e){ errMsg = e?.message || 'network error'; } finally { clearTimeout(timeout); }
                     const last_ok = ok ? true : false;
                     const last_status = status || 0;
                     const last_error = ok ? null : (status ? `status ${status}` : errMsg || 'falha');
@@ -2465,8 +2482,16 @@ app.post('/api/guild/:guildId/webhooks/test-all', async (req, res) => {
                     const controller = new AbortController();
                     const timeout = setTimeout(() => controller.abort(), 8000);
                     let status = 0; let ok = false; let errMsg = null;
+                    let body = bodyToSend;
                     try {
-                        const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(bodyToSend), signal: controller.signal });
+                        const isDiscord = typeof url === 'string' && /discord(app)?\.com\/api\/webhooks\//i.test(url);
+                        const hasMessage = body && (typeof body.content === 'string' || (Array.isArray(body.embeds) && body.embeds.length > 0));
+                        if (isDiscord && !hasMessage) {
+                            body = { content: `🔔 Teste de Webhook (${r.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${r.type}` };
+                        }
+                    } catch {}
+                    try {
+                        const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body), signal: controller.signal });
                         status = resp.status; ok = resp.ok;
                     } catch (e) { errMsg = e?.message || 'network error'; }
                     finally { clearTimeout(timeout); }
@@ -2497,7 +2522,15 @@ app.post('/api/guild/:guildId/webhooks/test-all', async (req, res) => {
                     const controller = new AbortController();
                     const timeout = setTimeout(() => controller.abort(), 8000);
                     let status = 0; let ok = false; let errMsg = null;
-                    try { const resp = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(bodyToSend), signal: controller.signal }); status = resp.status; ok = resp.ok; } catch(e){ errMsg = e?.message || 'network error'; } finally { clearTimeout(timeout); }
+                    let body = bodyToSend;
+                    try {
+                        const isDiscord = typeof url === 'string' && /discord(app)?\.com\/api\/webhooks\//i.test(url);
+                        const hasMessage = body && (typeof body.content === 'string' || (Array.isArray(body.embeds) && body.embeds.length > 0));
+                        if (isDiscord && !hasMessage) {
+                            body = { content: `🔔 Teste de Webhook (${r.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${r.type}` };
+                        }
+                    } catch {}
+                    try { const resp = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body), signal: controller.signal }); status = resp.status; ok = resp.ok; } catch(e){ errMsg = e?.message || 'network error'; } finally { clearTimeout(timeout); }
                     const last_ok = ok ? true : false;
                     const last_status = status || 0;
                     const last_error = ok ? null : (status ? `status ${status}` : errMsg || 'falha');
@@ -2548,7 +2581,16 @@ app.post('/api/guild/:guildId/webhooks/:id/test-activate', async (req, res) => {
                 const timeout = setTimeout(() => controller.abort(), 7000);
                 let ok = false; let status = 0; let errMsg = '';
                 try {
-                    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload && typeof payload === 'object' ? payload : { test: true, at: Date.now(), source: 'IGNIS' }), signal: controller.signal });
+                    // Ensure Discord-compatible payload
+                    let body = (payload && typeof payload === 'object') ? payload : { test: true, at: Date.now(), source: 'IGNIS' };
+                    try {
+                        const isDiscord = typeof url === 'string' && /discord(app)?\.com\/api\/webhooks\//i.test(url);
+                        const hasMessage = body && (typeof body.content === 'string' || (Array.isArray(body.embeds) && body.embeds.length > 0));
+                        if (isDiscord && !hasMessage) {
+                            body = { content: `🔔 Teste de Webhook (${row.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${row.type}` };
+                        }
+                    } catch {}
+                    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal });
                     status = resp.status; ok = resp.ok;
                 } catch (e) { errMsg = e?.message || 'network error'; } finally { clearTimeout(timeout); }
                 const last_ok = ok ? true : false;
