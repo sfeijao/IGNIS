@@ -8,6 +8,7 @@
 } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const fetch = require('node-fetch');
 require('dotenv').config();
 
 const config = require('./utils/config');
@@ -237,12 +238,36 @@ client.once('ready', () => {
             //  - BOT_AVATAR_URL / BOT_BANNER_URL: URLs diretas (http/https)
             //  - BOT_AVATAR_FILE / BOT_BANNER_FILE: caminhos locais para ficheiros (ex: assets/avatar.png)
             //  - Se ambos (URL e FILE) estiverem definidos para o mesmo recurso, FILE tem prioridade.
-            const newAvatar = process.env.BOT_AVATAR_FILE
-                ? (() => { try { return fs.readFileSync(path.resolve(process.env.BOT_AVATAR_FILE)); } catch { return null; } })()
-                : process.env.BOT_AVATAR_URL; // URL direta (PNG/JPG/GIF) ou buffer
-            const newBanner = process.env.BOT_BANNER_FILE
-                ? (() => { try { return fs.readFileSync(path.resolve(process.env.BOT_BANNER_FILE)); } catch { return null; } })()
-                : process.env.BOT_BANNER_URL; // Requer que o bot tenha banner habilitado (Developer Portal / Nitro requirements)
+            let newAvatar = null;
+            if (process.env.BOT_AVATAR_FILE) {
+                try { newAvatar = fs.readFileSync(path.resolve(process.env.BOT_AVATAR_FILE)); } catch {}
+            } else if (process.env.BOT_AVATAR_URL) {
+                const url = process.env.BOT_AVATAR_URL.trim();
+                try {
+                    if (/^https?:\/\//i.test(url)) {
+                        const res = await fetch(url);
+                        if (res.ok) newAvatar = Buffer.from(await res.arrayBuffer());
+                        else logger.warn(`⚠️ Download do avatar falhou: HTTP ${res.status}`);
+                    } else {
+                        newAvatar = url; // fallback (caso seja data URI)
+                    }
+                } catch (e) { logger.warn('⚠️ Download do avatar falhou:', e?.message || e); }
+            }
+            let newBanner = null;
+            if (process.env.BOT_BANNER_FILE) {
+                try { newBanner = fs.readFileSync(path.resolve(process.env.BOT_BANNER_FILE)); } catch {}
+            } else if (process.env.BOT_BANNER_URL) {
+                const urlb = process.env.BOT_BANNER_URL.trim();
+                try {
+                    if (/^https?:\/\//i.test(urlb)) {
+                        const res = await fetch(urlb);
+                        if (res.ok) newBanner = Buffer.from(await res.arrayBuffer());
+                        else logger.warn(`⚠️ Download do banner falhou: HTTP ${res.status}`);
+                    } else {
+                        newBanner = urlb; // fallback data URI
+                    }
+                } catch (e) { logger.warn('⚠️ Download do banner falhou:', e?.message || e); }
+            }
             if (newAvatar) {
                 try {
                     await client.user.setAvatar(newAvatar);
