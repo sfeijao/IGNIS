@@ -457,42 +457,117 @@ export async function handleRename(ctx: ActionContext): Promise<ActionResult> {
   return '📝 Introduza o novo nome (modal).';
 }
 
+// Novo painel para mover ticket: mostra botões de categorias + opção "Outra"
 export async function handleMove(ctx: ActionContext): Promise<ActionResult> {
   if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode mover.';
-  const row = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
-    new ChannelSelectMenuBuilder().setCustomId('ticket:move:select').setPlaceholder('Escolhe uma categoria…').addChannelTypes(ChannelType.GuildCategory)
+  const guild = ctx.channel.guild;
+  // Recolher até 15 categorias (limite prático de 3 linhas x 5 botões)
+  const categories = guild.channels.cache.filter(c => c.type === ChannelType.GuildCategory).first(15);
+  if (!categories.length) return '❌ Nenhuma categoria disponível.';
+  const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+  let currentRow = new ActionRowBuilder<ButtonBuilder>();
+  for (const cat of categories) {
+    if (currentRow.components.length >= 5) { rows.push(currentRow); currentRow = new ActionRowBuilder<ButtonBuilder>(); }
+    currentRow.addComponents(
+      new ButtonBuilder().setCustomId(`ticket:move:cat:${cat.id}`).setLabel(cat.name.substring(0,20)).setStyle(ButtonStyle.Secondary).setEmoji('📁')
+    );
+  }
+  if (currentRow.components.length) rows.push(currentRow);
+  // Botão "Outra" para inserir ID/manual
+  const extraRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId('ticket:move:other').setLabel('Outra Categoria').setStyle(ButtonStyle.Primary).setEmoji('🆕'),
   );
-  return { content: '🔁 Seleciona a categoria para mover o ticket.', components: [row as any] };
+  rows.push(extraRow);
+  return { content: '🔁 Escolhe uma categoria destino ou usa "Outra" para ID manual:', components: rows as any };
 }
 
+// Alterado: agora usa Modal para IDs/menções, em vez de UserSelect
 export async function handleAddMember(ctx: ActionContext): Promise<ActionResult> {
   if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode adicionar membros.';
   const key = `${ctx.channel.id}:add:${ctx.userId}`;
   if (isRateLimited(key, 5000)) return '⏱️ Aguarde alguns segundos antes de repetir.';
-  const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
-    new UserSelectMenuBuilder().setCustomId('ticket:add_member:select').setPlaceholder('Seleciona membros para adicionar…').setMinValues(1).setMaxValues(5)
-  );
-  return { content: '➕ Escolhe quem adicionar ao ticket.', components: [row as any] };
+  const modal = new ModalBuilder().setCustomId('ticket:add_member:modal').setTitle('Adicionar Membros');
+  const input = new TextInputBuilder()
+    .setCustomId('ticket:add_member:ids')
+    .setLabel('IDs ou menções (separados por espaço)')
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMaxLength(400);
+  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+  try { await (ctx as any).interaction?.showModal?.(modal); } catch {}
+  return '➕ Introduza os IDs/menções no modal.';
 }
 
 export async function handleRemoveMember(ctx: ActionContext): Promise<ActionResult> {
   if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode remover membros.';
   const key = `${ctx.channel.id}:remove:${ctx.userId}`;
   if (isRateLimited(key, 5000)) return '⏱️ Aguarde alguns segundos antes de repetir.';
-  const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
-    new UserSelectMenuBuilder().setCustomId('ticket:remove_member:select').setPlaceholder('Seleciona membros para remover…').setMinValues(1).setMaxValues(5)
-  );
-  return { content: '❌ Escolhe quem remover do ticket.', components: [row as any] };
+  const modal = new ModalBuilder().setCustomId('ticket:remove_member:modal').setTitle('Remover Membros');
+  const input = new TextInputBuilder()
+    .setCustomId('ticket:remove_member:ids')
+    .setLabel('IDs ou menções (separados por espaço)')
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMaxLength(400);
+  modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+  try { await (ctx as any).interaction?.showModal?.(modal); } catch {}
+  return '❌ Introduza os IDs/menções a remover.';
 }
 
+// Alterado: agora apenas menciona o autor do ticket (owner) para chamar atenção
 export async function handleCallMember(ctx: ActionContext): Promise<ActionResult> {
-  if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode chamar cargos.';
-  const key = `${ctx.channel.id}:call:${ctx.userId}`;
+  if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode chamar o autor.';
+  const key = `${ctx.channel.id}:call_owner:${ctx.userId}`;
   if (isRateLimited(key, 10000)) return '⏱️ Evite spam — aguarde 10 segundos.';
-  const row = new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(
-    new RoleSelectMenuBuilder().setCustomId('ticket:call_member:role').setPlaceholder('Escolhe um cargo para chamar…')
+  try {
+    const ownerId = ctx.ticket.ownerId;
+    if (!ownerId) return '❌ Ticket sem owner definido.';
+    await ctx.channel.send({ content: `🔔 <@${ownerId}> precisamos da tua resposta. (${ctx.member})` });
+    await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'call_owner', { ownerId });
+    return '🔔 Membro chamado.';
+  } catch {
+    return '❌ Falha ao chamar membro.';
+  }
+}
+
+// Utilitários extras para mover via botão categoria / modal outra
+export async function handleMoveToCategory(ctx: ActionContext, categoryId: string): Promise<ActionResult> {
+  if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff.';
+  try {
+    if (!categoryId) return '❌ Categoria inválida.';
+    await ctx.channel.setParent(categoryId, { lockPermissions: false }).catch(()=>{});
+    await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'move', { categoryId });
+    return '🔁 Ticket movido.';
+  } catch {
+    return '❌ Falha ao mover.';
+  }
+}
+
+export async function handleMoveOtherModal(ctx: { interaction: any; ticket: any; guildId: string; userId: string }): Promise<string> {
+  try {
+    const raw = ctx.interaction.fields.getTextInputValue('ticket:move:other:category_id').trim();
+    const id = raw.replace(/[^0-9]/g,'');
+    if (!id) return '❌ ID inválido.';
+    const channel = ctx.interaction.channel;
+    try { await channel.setParent(id, { lockPermissions: false }); } catch { return '❌ Falha ao mover (ID incorreto ou sem permissão).'; }
+    await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'move', { categoryId: id, manual: true });
+    return '🔁 Ticket movido para categoria personalizada.';
+  } catch { return '❌ Erro ao processar modal.'; }
+}
+
+// Fluxo de fecho com confirmação
+export function buildCloseConfirmRow() {
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId('ticket:close:confirm').setLabel('Confirmar Fecho').setStyle(ButtonStyle.Danger).setEmoji('✅'),
+    new ButtonBuilder().setCustomId('ticket:close:cancel').setLabel('Cancelar').setStyle(ButtonStyle.Secondary).setEmoji('✖️')
   );
-  return { content: '🔔 Escolhe o cargo a mencionar.', components: [row as any] };
+  return [row];
+}
+
+export async function handleCloseRequest(ctx: ActionContext): Promise<ActionResult> {
+  // Não fecha ainda, só pede confirmação
+  if (!(await isStaff(ctx.member, ctx.guildId))) return '⛔ Apenas staff pode fechar.';
+  return { content: '⚠️ Tens a certeza que queres fechar o ticket?', components: buildCloseConfirmRow() as any };
 }
 
 export async function handleGreet(ctx: ActionContext): Promise<ActionResult> { return `👋 Olá! Sou <@${ctx.userId}>. Em que posso ajudar?`; }

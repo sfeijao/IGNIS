@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const discord_js_1 = require("discord.js");
 const ticketService_1 = require("../services/ticketService");
+const pendingClose = new Set();
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction) {
@@ -24,15 +25,39 @@ module.exports = {
                 case 'ticket:claim':
                     response = await (0, ticketService_1.handleClaim)(ctx);
                     break;
-                case 'ticket:close':
+                case 'ticket:close': {
+                    // Fluxo de confirmação
+                    response = await (0, ticketService_1.handleCloseRequest)(ctx);
+                    break;
+                }
+                case 'ticket:close:confirm': {
                     response = await (0, ticketService_1.handleClose)(ctx);
                     break;
+                }
+                case 'ticket:close:cancel': {
+                    response = '❎ Fecho cancelado.';
+                    break;
+                }
                 case 'ticket:rename':
                     response = await (0, ticketService_1.handleRename)(ctx);
                     break;
                 case 'ticket:move':
                     response = await (0, ticketService_1.handleMove)(ctx);
                     break;
+                default: {
+                    // Botões dinâmicos de mover categoria
+                    if (btn.customId.startsWith('ticket:move:cat:')) {
+                        const categoryId = btn.customId.split(':').pop();
+                        response = await (0, ticketService_1.handleMoveToCategory)(ctx, categoryId);
+                    } else if (btn.customId === 'ticket:move:other') {
+                        // Abrir modal para ID manual
+                        const modal = new discord_js_1.ModalBuilder().setCustomId('ticket:move:other:modal').setTitle('Mover Ticket - Categoria Manual');
+                        const input = new discord_js_1.TextInputBuilder().setCustomId('ticket:move:other:category_id').setLabel('ID da categoria destino').setStyle(discord_js_1.TextInputStyle.Short).setRequired(true).setMaxLength(30);
+                        modal.addComponents(new discord_js_1.ActionRowBuilder().addComponents(input));
+                        try { await btn.showModal(modal); response = '📁 Introduza o ID no modal.'; } catch { response = '❌ Falha ao abrir modal.'; }
+                    }
+                    break;
+                }
                 case 'ticket:add_member':
                     response = await (0, ticketService_1.handleAddMember)(ctx);
                     break;
@@ -77,11 +102,13 @@ module.exports = {
             }
             try {
                 if (typeof response === 'string') {
-                    await btn.reply({ content: response, flags: discord_js_1.MessageFlags.Ephemeral });
+                    if (!btn.replied && !btn.deferred)
+                        await btn.reply({ content: response, flags: discord_js_1.MessageFlags.Ephemeral });
                 }
                 else {
                     const r = response;
-                    await btn.reply({ content: r.content || 'Ok', components: r.components, flags: discord_js_1.MessageFlags.Ephemeral });
+                    if (!btn.replied && !btn.deferred)
+                        await btn.reply({ content: r.content || 'Ok', components: r.components, flags: discord_js_1.MessageFlags.Ephemeral });
                 }
             }
             catch { }
@@ -125,6 +152,40 @@ module.exports = {
                     return; // legacy system will handle
                 const result = await (0, ticketService_1.handleFeedbackSubmit)({ interaction: m, ticket, guildId: m.guildId, userId: m.user.id });
                 return m.reply({ content: result, flags: discord_js_1.MessageFlags.Ephemeral });
+            }
+            if (m.customId === 'ticket:add_member:modal') {
+                const channel = m.channel;
+                const ticket = await (0, ticketService_1.resolveTicket)(channel);
+                if (!ticket)
+                    return;
+                const raw = m.fields.getTextInputValue('ticket:add_member:ids');
+                const ids = Array.from(new Set(raw.split(/[\s,]+/).map(s => s.replace(/[^0-9]/g, '')).filter(Boolean))).slice(0, 10);
+                let ok = [];
+                for (const id of ids) {
+                    try { await channel.permissionOverwrites.edit(id, { ViewChannel: true, SendMessages: true }); ok.push(id); } catch { }
+                }
+                return m.reply({ content: ok.length ? `➕ Adicionados: ${ok.map(i => `<@${i}>`).join(', ')}` : '❌ Nenhum ID válido.', flags: discord_js_1.MessageFlags.Ephemeral });
+            }
+            if (m.customId === 'ticket:remove_member:modal') {
+                const channel = m.channel;
+                const ticket = await (0, ticketService_1.resolveTicket)(channel);
+                if (!ticket)
+                    return;
+                const raw = m.fields.getTextInputValue('ticket:remove_member:ids');
+                const ids = Array.from(new Set(raw.split(/[\s,]+/).map(s => s.replace(/[^0-9]/g, '')).filter(Boolean))).slice(0, 10);
+                let ok = [];
+                for (const id of ids) {
+                    try { await channel.permissionOverwrites.delete(id).catch(() => { }); ok.push(id); } catch { }
+                }
+                return m.reply({ content: ok.length ? `❌ Removidos: ${ok.map(i => `<@${i}>`).join(', ')}` : '❌ Nenhum ID válido.', flags: discord_js_1.MessageFlags.Ephemeral });
+            }
+            if (m.customId === 'ticket:move:other:modal') {
+                const channel = m.channel;
+                const ticket = await (0, ticketService_1.resolveTicket)(channel);
+                if (!ticket)
+                    return;
+                const res = await (0, ticketService_1.handleMoveOtherModal)({ interaction: m, ticket, guildId: m.guildId, userId: m.user.id });
+                return m.reply({ content: res, flags: discord_js_1.MessageFlags.Ephemeral });
             }
             return;
         }

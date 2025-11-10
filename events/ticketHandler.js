@@ -12,8 +12,8 @@ module.exports = {
                 // Convergence: try TS ticket handlers first for common actions, fallback to community
                 try {
                     const id = interaction.customId || '';
-                    const tsActions = new Set(['ticket:cancel','ticket:how_dm','ticket:claim','ticket:close','ticket:rename','ticket:move','ticket:add_member','ticket:remove_member','ticket:call_member','ticket:greet','ticket:note','ticket:export','ticket:feedback']);
-                    if (tsActions.has(id)) {
+                    const tsActions = new Set(['ticket:cancel','ticket:how_dm','ticket:claim','ticket:close','ticket:close:confirm','ticket:close:cancel','ticket:rename','ticket:move','ticket:move:other','ticket:add_member','ticket:remove_member','ticket:call_member','ticket:greet','ticket:note','ticket:export','ticket:feedback']);
+                    if (tsActions.has(id) || id.startsWith('ticket:move:cat:')) {
                         // Defer to TS interaction handler by emitting a synthetic Interaction event pipeline
                         // Simpler approach: require compiled TS handler directly
                         try {

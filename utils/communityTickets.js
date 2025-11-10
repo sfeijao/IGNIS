@@ -433,28 +433,72 @@ async function handleButton(interaction) {
     return;
   }
   if (id === 'ticket:move') {
-    const { ActionRowBuilder, ChannelSelectMenuBuilder, ChannelType } = require('discord.js');
-    const menu = new ChannelSelectMenuBuilder().setCustomId('ticket:move:select').addChannelTypes(ChannelType.GuildCategory).setPlaceholder('Escolhe categoria destino');
-    const row = new ActionRowBuilder().addComponents(menu);
-    return safeReply(interaction, { content: '🔁 Seleciona a nova categoria.', components: [row], flags: MessageFlags.Ephemeral });
+    const staff = await isStaff(interaction);
+    if (!staff) return safeReply(interaction, { content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
+    const guild = interaction.guild;
+    const cats = guild.channels.cache.filter(c => c.type === 4).first(15);
+    if (!cats.length) return safeReply(interaction, { content: '❌ Sem categorias disponíveis.', flags: MessageFlags.Ephemeral });
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+    const rows = [];
+    let r = new ActionRowBuilder();
+    for (const cat of cats) {
+      if (r.components.length >= 5) { rows.push(r); r = new ActionRowBuilder(); }
+      r.addComponents(new ButtonBuilder().setCustomId(`ticket:move:cat:${cat.id}`).setLabel(cat.name.substring(0,20)).setStyle(ButtonStyle.Secondary));
+    }
+    if (r.components.length) rows.push(r);
+    const extra = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('ticket:move:other').setLabel('Outra Categoria').setStyle(ButtonStyle.Primary));
+    rows.push(extra);
+    return safeReply(interaction, { content: '🔁 Escolhe a categoria destino ou usa "Outra" para ID manual:', components: rows, flags: MessageFlags.Ephemeral });
+  }
+  // Botões dinâmicos de mover para categoria específica (legacy)
+  if (id.startsWith('ticket:move:cat:')) {
+    const staff = await isStaff(interaction);
+    if (!staff) return safeReply(interaction, { content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
+    const targetId = id.split(':').pop();
+    try { await interaction.channel.setParent(targetId, { lockPermissions: false }); } catch { return safeReply(interaction, { content: '❌ Falha ao mover.', flags: MessageFlags.Ephemeral }); }
+    try { const t = await storage.getTicketByChannel(interaction.channel.id); if (t) await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'move', message: `move->${targetId}` }); } catch {}
+    return safeReply(interaction, { content: '🔁 Ticket movido.', flags: MessageFlags.Ephemeral });
+  }
+  if (id === 'ticket:move:other') {
+    const staff = await isStaff(interaction);
+    if (!staff) return safeReply(interaction, { content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
+    const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+    const modal = new ModalBuilder().setCustomId('ticket:move:other:modal').setTitle('Mover Ticket - Categoria Manual');
+    const input = new TextInputBuilder().setCustomId('ticket:move:other:category_id').setLabel('ID da Categoria').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(30);
+    modal.addComponents(new ActionRowBuilder().addComponents(input));
+    try { await interaction.showModal(modal); } catch {}
+    return;
   }
   if (id === 'ticket:add_member') {
-    const { ActionRowBuilder, UserSelectMenuBuilder } = require('discord.js');
-    const menu = new UserSelectMenuBuilder().setCustomId('ticket:add_member:select').setPlaceholder('Seleciona membros').setMinValues(1).setMaxValues(5);
-    const row = new ActionRowBuilder().addComponents(menu);
-    return safeReply(interaction, { content: '➕ Escolhe membros para adicionar.', components: [row], flags: MessageFlags.Ephemeral });
+    const staff = await isStaff(interaction);
+    if (!staff) return safeReply(interaction, { content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
+    const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+    const modal = new ModalBuilder().setCustomId('ticket:add_member:modal').setTitle('Adicionar Membros (IDs)');
+    const input = new TextInputBuilder().setCustomId('ticket:add_member:ids').setLabel('IDs ou menções (separados por espaço)').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(400);
+    modal.addComponents(new ActionRowBuilder().addComponents(input));
+    try { await interaction.showModal(modal); } catch {}
+    return;
   }
   if (id === 'ticket:remove_member') {
-    const { ActionRowBuilder, UserSelectMenuBuilder } = require('discord.js');
-    const menu = new UserSelectMenuBuilder().setCustomId('ticket:remove_member:select').setPlaceholder('Seleciona membros').setMinValues(1).setMaxValues(5);
-    const row = new ActionRowBuilder().addComponents(menu);
-    return safeReply(interaction, { content: '❌ Escolhe membros para remover.', components: [row], flags: MessageFlags.Ephemeral });
+    const staff = await isStaff(interaction);
+    if (!staff) return safeReply(interaction, { content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
+    const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+    const modal = new ModalBuilder().setCustomId('ticket:remove_member:modal').setTitle('Remover Membros (IDs)');
+    const input = new TextInputBuilder().setCustomId('ticket:remove_member:ids').setLabel('IDs ou menções (separados por espaço)').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(400);
+    modal.addComponents(new ActionRowBuilder().addComponents(input));
+    try { await interaction.showModal(modal); } catch {}
+    return;
   }
   if (id === 'ticket:call_member') {
-    const { ActionRowBuilder, RoleSelectMenuBuilder } = require('discord.js');
-    const menu = new RoleSelectMenuBuilder().setCustomId('ticket:call_member:role').setPlaceholder('Escolhe cargo a chamar');
-    const row = new ActionRowBuilder().addComponents(menu);
-    return safeReply(interaction, { content: '🔔 Seleciona o cargo para notificar.', components: [row], flags: MessageFlags.Ephemeral });
+    // Novo comportamento: mencionar diretamente o autor do ticket para chamar atenção
+    const staff = await isStaff(interaction);
+    if (!staff) return safeReply(interaction, { content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
+    const t = await storage.getTicketByChannel(interaction.channel.id);
+    if (!t || !(t.user_id || t.ownerId)) return safeReply(interaction, { content: '⚠️ Não foi possível identificar o autor do ticket.', flags: MessageFlags.Ephemeral });
+    const ownerId = t.user_id || t.ownerId;
+    try { await interaction.channel.send({ content: `🔔 <@${ownerId}> a equipa precisa da tua resposta. (${interaction.user})` }); } catch {}
+    try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'call_owner', message: `Chamado owner ${ownerId}` }); } catch {}
+    return safeReply(interaction, { content: '🔔 Membro chamado.', flags: MessageFlags.Ephemeral });
   }
 
   // Painel staff efémero
@@ -866,6 +910,46 @@ async function handleModal(interaction) {
     }
     return interaction.reply({ content: '✅ Finalizado. O canal será apagado automaticamente em ~3 minutos.', flags: MessageFlags.Ephemeral });
   }
+  if (id === 'ticket:add_member:modal') {
+    const staff = await isStaff(interaction);
+    if (!staff) return safeReply(interaction, { content: '🚫 Apenas a equipa.', flags: MessageFlags.Ephemeral });
+    const t = await storage.getTicketByChannel(interaction.channel.id);
+    if (!t) return safeReply(interaction, { content: '⚠️ Ticket não encontrado.', flags: MessageFlags.Ephemeral });
+    const raw = interaction.fields.getTextInputValue('ticket:add_member:ids');
+    const ids = Array.from(new Set(raw.split(/[\s,]+/).map(s=>s.replace(/[^0-9]/g,'')).filter(Boolean))).slice(0,10);
+    const added = [];
+    for (const uid of ids) {
+      try { await interaction.channel.permissionOverwrites.edit(uid, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true }); added.push(uid); } catch {}
+    }
+    try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'member:add:bulk', message: `IDs: ${added.join(',')}` }); } catch {}
+    return safeReply(interaction, { content: added.length ? `✅ Adicionados: ${added.map(i=>`<@${i}>`).join(', ')}` : '❌ Nenhum ID válido.', flags: MessageFlags.Ephemeral });
+  }
+  if (id === 'ticket:remove_member:modal') {
+    const staff = await isStaff(interaction);
+    if (!staff) return safeReply(interaction, { content: '🚫 Apenas a equipa.', flags: MessageFlags.Ephemeral });
+    const t = await storage.getTicketByChannel(interaction.channel.id);
+    if (!t) return safeReply(interaction, { content: '⚠️ Ticket não encontrado.', flags: MessageFlags.Ephemeral });
+    const raw = interaction.fields.getTextInputValue('ticket:remove_member:ids');
+    const ids = Array.from(new Set(raw.split(/[\s,]+/).map(s=>s.replace(/[^0-9]/g,'')).filter(Boolean))).slice(0,10);
+    const removed = [];
+    for (const uid of ids) {
+      try { await interaction.channel.permissionOverwrites.delete(uid).catch(()=>{}); removed.push(uid); } catch {}
+    }
+    try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'member:remove:bulk', message: `IDs: ${removed.join(',')}` }); } catch {}
+    return safeReply(interaction, { content: removed.length ? `✅ Removidos: ${removed.map(i=>`<@${i}>`).join(', ')}` : '❌ Nenhum ID válido.', flags: MessageFlags.Ephemeral });
+  }
+  if (id === 'ticket:move:other:modal') {
+    const staff = await isStaff(interaction);
+    if (!staff) return safeReply(interaction, { content: '🚫 Apenas a equipa.', flags: MessageFlags.Ephemeral });
+    const t = await storage.getTicketByChannel(interaction.channel.id);
+    if (!t) return safeReply(interaction, { content: '⚠️ Ticket não encontrado.', flags: MessageFlags.Ephemeral });
+    const raw = interaction.fields.getTextInputValue('ticket:move:other:category_id').trim();
+    const catId = raw.replace(/[^0-9]/g,'');
+    if (!catId) return safeReply(interaction, { content: 'ID inválido.', flags: MessageFlags.Ephemeral });
+    try { await interaction.channel.setParent(catId, { lockPermissions: false }); } catch { return safeReply(interaction, { content: '❌ Falha ao mover (verifica o ID).', flags: MessageFlags.Ephemeral }); }
+    try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'move', message: `move->${catId}`, data: { manual: true } }); } catch {}
+    return safeReply(interaction, { content: '🔁 Ticket movido (manual).', flags: MessageFlags.Ephemeral });
+  }
 
   if (id.startsWith('ticket:member:submit')) {
     const staff = await isStaff(interaction);
@@ -931,6 +1015,18 @@ async function handleModal(interaction) {
 
 async function handleSelect(interaction) {
   const id = interaction.customId;
+  // Handler para botões dinâmicos de mover (categoria direta)
+  if (id.startsWith('ticket:move:cat:')) {
+    const staff = await isStaff(interaction);
+    if (!staff) return interaction.reply({ content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
+    const targetId = id.split(':').pop();
+    try {
+      await interaction.channel.setParent(targetId, { lockPermissions: false });
+      return interaction.reply({ content: '🔁 Ticket movido.', flags: MessageFlags.Ephemeral });
+    } catch {
+      return interaction.reply({ content: '❌ Falha ao mover ticket.', flags: MessageFlags.Ephemeral });
+    }
+  }
   if (id === 'ticket:priority:select') {
     const staff = await isStaff(interaction);
     if (!staff) {
