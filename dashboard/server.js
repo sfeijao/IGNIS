@@ -4125,30 +4125,56 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-    if (preferSqlite) {
-            const storage = require('../utils/storage-sqlite');
-            const list = await storage.listWebhooks(req.params.guildId);
-            // Mark loaded types using runtime manager
+        const guildId = req.params.guildId;
+        const loadedTypes = (global.discordClient?.webhooks?.getLoadedTypes?.(guildId)) || [];
+
+        // Prefer SQLite when configured, or fallback to SQLite if Mongo is not configured or not ready
+        const { isReady } = (() => { try { return require('../utils/db/mongoose'); } catch { return { isReady: () => false }; } })();
+        if (preferSqlite || !hasMongoEnv || !isReady()) {
             try {
-                const loadedTypes = (global.discordClient?.webhooks?.getLoadedTypes?.(req.params.guildId)) || [];
-                for (const w of list) w.loaded = loadedTypes.includes(w.type || 'logs');
-            } catch {}
-            return res.json({ success: true, webhooks: list });
-        } else {
-            if (!hasMongoEnv) return res.json({ success: true, webhooks: [] });
-            const { isReady } = require('../utils/db/mongoose');
-            if (!isReady()) {
-                // Evitar timeout de buffering quando a DB não está pronta
-                return res.json({ success: true, webhooks: [] });
+                const storage = require('../utils/storage-sqlite');
+                const raw = await storage.listWebhooks(guildId);
+                const items = (raw || []).map(r => ({
+                    id: r._id,
+                    guildId: r.guild_id,
+                    type: ['logs','tickets','updates','transcript','vlog','modlog','generic'].includes(r.type) ? r.type : 'generic',
+                    enabled: !!r.enabled,
+                    channelId: r.channel_id || null,
+                    urlMasked: r.url && r.url.length > 16 ? (r.url.slice(0, r.url.length - 12).replace(/./g, '*') + r.url.slice(-12)) : '****',
+                    loaded: loadedTypes.includes(r.type || 'logs'),
+                    lastOk: r.last_ok == null ? null : !!r.last_ok,
+                    lastStatus: r.last_status == null ? null : Number(r.last_status),
+                    lastError: r.last_error || null,
+                    lastAt: r.last_at || null,
+                    createdAt: null,
+                    updatedAt: null
+                }));
+                return res.json({ success: true, items, webhooks: items });
+            } catch (e) {
+                logger.error('Webhook list sqlite fallback error:', e);
+                return res.status(500).json({ success: false, error: 'Failed to list webhooks (sqlite fallback)' });
             }
-            const { WebhookModel } = require('../utils/db/models');
-            const list = await WebhookModel.find({ guild_id: req.params.guildId }).lean();
-            try {
-                const loadedTypes = (global.discordClient?.webhooks?.getLoadedTypes?.(req.params.guildId)) || [];
-                for (const w of list) w.loaded = loadedTypes.includes(w.type || 'logs');
-            } catch {}
-            return res.json({ success: true, webhooks: list });
         }
+
+        // Mongo path
+        const { WebhookModel } = require('../utils/db/models');
+        const list = await WebhookModel.find({ guild_id: guildId }).lean();
+        const items = (list || []).map(w => ({
+            id: w._id || w.id,
+            guildId: w.guild_id || guildId,
+            type: w.type || 'logs',
+            enabled: !!w.enabled,
+            channelId: w.channel_id || w.channelId || null,
+            urlMasked: w.url && w.url.length > 16 ? (w.url.slice(0, w.url.length - 12).replace(/./g, '*') + w.url.slice(-12)) : (w.url ? '****' : null),
+            loaded: loadedTypes.includes(w.type || 'logs'),
+            lastOk: w.last_ok == null ? (w.lastOk == null ? null : !!w.lastOk) : !!w.last_ok,
+            lastStatus: w.last_status == null ? (w.lastStatus == null ? null : Number(w.lastStatus)) : Number(w.last_status),
+            lastError: w.last_error || w.lastError || null,
+            lastAt: w.last_at || w.lastAt || null,
+            createdAt: w.createdAt || null,
+            updatedAt: w.updatedAt || null
+        }));
+        return res.json({ success: true, items, webhooks: items });
     } catch (e) {
         logger.error('Error listing webhooks:', e);
         res.status(500).json({ success: false, error: 'Failed to list webhooks' });
