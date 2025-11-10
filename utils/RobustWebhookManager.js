@@ -104,8 +104,8 @@ class RobustWebhookManager {
         if (!url || typeof url !== 'string') {
             return { valid: false, error: 'URL é obrigatória' };
         }
-
-        if (!url.startsWith('https://discord.com/api/webhooks/')) {
+        const discordWebhookRe = /^https:\/\/(ptb\.|canary\.)?discord\.com\/api\/webhooks\/|^https:\/\/discordapp\.com\/api\/webhooks\//;
+        if (!discordWebhookRe.test(url)) {
             return { valid: false, error: 'URL deve ser um webhook do Discord' };
         }
 

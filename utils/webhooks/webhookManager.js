@@ -378,8 +378,9 @@ class WebhookManager {
                 webhookUrl = nameOrUrl;
             }
 
-            // Validate webhook URL
-            if (!webhookUrl || !webhookUrl.startsWith('https://discord.com/api/webhooks/')) {
+            // Validate webhook URL (accept discord.com/ptb/canary and discordapp.com)
+            const discordWebhookRe = /^(https:\/\/(ptb\.|canary\.)?discord\.com\/api\/webhooks\/|https:\/\/discordapp\.com\/api\/webhooks\/)/;
+            if (!webhookUrl || !discordWebhookRe.test(webhookUrl)) {
                 throw new Error('Invalid webhook URL');
             }
 

@@ -1995,12 +1995,39 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
         const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
         if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
-
         const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
-        if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not configured' });
+        if (!hasMongoEnv) {
+            // Fallback para SQLite (legacy) quando Mongo não está configurado.
+            try {
+                const storage = require('../utils/storage-sqlite');
+                const rows = await storage.listWebhooks(guildId);
+                // Mapear para o formato esperado pelo dashboard (OutgoingWebhooksManager)
+                const items = rows.map(r => {
+                    const masked = (r.url && r.url.length > 16)
+                        ? r.url.slice(0, r.url.length - 12).replace(/./g, '*') + r.url.slice(-12)
+                        : '****';
+                    return {
+                        id: r._id,
+                        guildId: r.guild_id,
+                        type: ['transcript','vlog','modlog','generic'].includes(r.type) ? r.type : 'generic',
+                        enabled: !!r.enabled,
+                        channelId: r.channel_id || null,
+                        urlMasked: masked,
+                        lastOk: null,
+                        lastStatus: null,
+                        lastAt: null,
+                        createdAt: null,
+                        updatedAt: null
+                    };
+                });
+                return res.json({ success: true, items });
+            } catch (e) {
+                logger.error('Webhook list sqlite fallback error:', e);
+                return res.status(500).json({ success: false, error: 'Failed to list webhooks (sqlite fallback)' });
+            }
+        }
         const { isReady } = require('../utils/db/mongoose');
         if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
-
         const svc = require('../src/services/webhookService');
         const list = await svc.listConfigs(guildId);
         return res.json({ success: true, items: list });
@@ -2022,12 +2049,7 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
         const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
         if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
-
         const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
-        if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not configured' });
-        const { isReady } = require('../utils/db/mongoose');
-        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
-
         const schema = Joi.object({
             type: Joi.string().valid('transcript','vlog','modlog','generic').required(),
             url: Joi.string().uri({ scheme: ['https'] }).required(),
@@ -2037,6 +2059,45 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
         const { error, value } = schema.validate(req.body || {});
         if (error) return res.status(400).json({ success: false, error: error.message });
 
+        if (!hasMongoEnv) {
+            // Fallback para SQLite: aceita apenas webhooks Discord e guarda simples.
+            if (!value.url.startsWith('https://discord.com/api/webhooks/')) {
+                return res.status(400).json({ success: false, error: 'URL de webhook Discord inválida (esperado https://discord.com/api/webhooks/...)' });
+            }
+            try {
+                const storage = require('../utils/storage-sqlite');
+                const saved = await storage.upsertWebhook({
+                    guild_id: guildId,
+                    type: value.type || 'generic',
+                    name: value.type || 'Logs',
+                    url: value.url,
+                    channel_id: value.channelId || null,
+                    channel_name: null,
+                    enabled: value.enabled !== false
+                });
+                const masked = (saved.url && saved.url.length > 16)
+                    ? saved.url.slice(0, saved.url.length - 12).replace(/./g, '*') + saved.url.slice(-12)
+                    : '****';
+                return res.json({ success: true, item: {
+                    id: saved._id,
+                    guildId: saved.guild_id,
+                    type: saved.type,
+                    enabled: !!saved.enabled,
+                    channelId: saved.channel_id || null,
+                    urlMasked: masked,
+                    lastOk: null,
+                    lastStatus: null,
+                    lastAt: null,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                }});
+            } catch (e) {
+                logger.error('Webhook create sqlite fallback error:', e);
+                return res.status(500).json({ success: false, error: 'Failed to create webhook (sqlite fallback)' });
+            }
+        }
+        const { isReady } = require('../utils/db/mongoose');
+        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
         const svc = require('../src/services/webhookService');
         const created = await svc.createConfig(guildId, value);
         return res.json({ success: true, item: created });
@@ -2059,11 +2120,6 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
         if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
 
-        const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
-        if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not configured' });
-        const { isReady } = require('../utils/db/mongoose');
-        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
-
         const schema = Joi.object({
             type: Joi.string().valid('transcript','vlog','modlog','generic').optional(),
             url: Joi.string().uri({ scheme: ['https'] }).optional(),
@@ -2072,7 +2128,50 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         }).min(1);
         const { error, value } = schema.validate(req.body || {});
         if (error) return res.status(400).json({ success: false, error: error.message });
-
+        const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
+        if (!hasMongoEnv) {
+            // SQLite fallback: only toggle enabled or update URL by deleting+recreating entry
+            try {
+                const storage = require('../utils/storage-sqlite');
+                if (typeof value.enabled === 'boolean') {
+                    // Fetch row, then upsert preserving URL
+                    const list = await storage.listWebhooks(guildId);
+                    const row = list.find(r => String(r._id) === String(id));
+                    if (!row) return res.status(404).json({ success: false, error: 'Not found' });
+                    await storage.upsertWebhook({ guild_id: guildId, type: row.type, name: row.name, url: row.url, channel_id: row.channel_id, channel_name: row.channel_name, enabled: value.enabled });
+                }
+                if (value.url) {
+                    if (!value.url.startsWith('https://discord.com/api/webhooks/')) return res.status(400).json({ success: false, error: 'URL de webhook Discord inválida (esperado https://discord.com/api/webhooks/...)' });
+                    const list = await storage.listWebhooks(guildId);
+                    const row = list.find(r => String(r._id) === String(id));
+                    if (!row) return res.status(404).json({ success: false, error: 'Not found' });
+                    await storage.upsertWebhook({ guild_id: guildId, type: row.type, name: row.name, url: value.url, channel_id: row.channel_id, channel_name: row.channel_name, enabled: row.enabled });
+                }
+                // Return updated list item
+                const list2 = await storage.listWebhooks(guildId);
+                const row2 = list2.find(r => String(r._id) === String(id));
+                if (!row2) return res.status(404).json({ success: false, error: 'Not found' });
+                const masked = (row2.url && row2.url.length > 16) ? row2.url.slice(0, row2.url.length - 12).replace(/./g, '*') + row2.url.slice(-12) : '****';
+                return res.json({ success: true, item: {
+                    id: row2._id,
+                    guildId: row2.guild_id,
+                    type: ['transcript','vlog','modlog','generic'].includes(row2.type) ? row2.type : 'generic',
+                    enabled: !!row2.enabled,
+                    channelId: row2.channel_id || null,
+                    urlMasked: masked,
+                    lastOk: null,
+                    lastStatus: null,
+                    lastAt: null,
+                    createdAt: null,
+                    updatedAt: new Date()
+                }});
+            } catch (e) {
+                logger.error('Webhook update sqlite fallback error:', e);
+                return res.status(500).json({ success: false, error: 'Failed to update webhook (sqlite fallback)' });
+            }
+        }
+        const { isReady } = require('../utils/db/mongoose');
+        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
         const svc = require('../src/services/webhookService');
         const updated = await svc.updateConfig(id, guildId, value);
         return res.json({ success: true, item: updated });
@@ -2096,10 +2195,19 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
 
         const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
-        if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not configured' });
+        if (!hasMongoEnv) {
+            // SQLite fallback
+            try {
+                const storage = require('../utils/storage-sqlite');
+                await storage.deleteWebhookById(id, guildId);
+                return res.json({ success: true });
+            } catch (e) {
+                logger.error('Webhook delete sqlite fallback error:', e);
+                return res.status(500).json({ success: false, error: 'Failed to delete webhook (sqlite fallback)' });
+            }
+        }
         const { isReady } = require('../utils/db/mongoose');
         if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
-
         const svc = require('../src/services/webhookService');
         const ok = await svc.deleteConfig(id, guildId);
         if (!ok) return res.status(404).json({ success: false, error: 'Not found' });
