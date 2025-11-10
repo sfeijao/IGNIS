@@ -82,7 +82,8 @@ async function updateConfig(id, guildId, patch){
   if(typeof patch.enabled === 'boolean') doc.enabled = patch.enabled;
   if(typeof patch.channelId === 'string') doc.channelId = patch.channelId;
   if(patch.type){
-    if(!['transcript','vlog','modlog','generic'].includes(patch.type)) throw new Error('Invalid type');
+    const allowed = ['logs','tickets','updates','transcript','vlog','modlog','generic'];
+    if(!allowed.includes(patch.type)) throw new Error('Invalid type');
     doc.type = patch.type;
   }
   await doc.save();

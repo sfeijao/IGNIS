@@ -2044,7 +2044,7 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
                     return {
                         id: r._id,
                         guildId: r.guild_id,
-                        type: ['transcript','vlog','modlog','generic'].includes(r.type) ? r.type : 'generic',
+                        type: ['logs','tickets','updates','transcript','vlog','modlog','generic'].includes(r.type) ? r.type : 'generic',
                         enabled: !!r.enabled,
                         channelId: r.channel_id || null,
                         urlMasked: masked,
@@ -2247,7 +2247,7 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
                 return res.json({ success: true, item: {
                     id: row2._id,
                     guildId: row2.guild_id,
-                    type: ['transcript','vlog','modlog','generic'].includes(row2.type) ? row2.type : 'generic',
+                    type: ['logs','tickets','updates','transcript','vlog','modlog','generic'].includes(row2.type) ? row2.type : 'generic',
                     enabled: !!row2.enabled,
                     channelId: row2.channel_id || null,
                     urlMasked: masked,
@@ -2260,7 +2260,7 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
                 }, webhook: {
                     id: row2._id,
                     guildId: row2.guild_id,
-                    type: ['transcript','vlog','modlog','generic'].includes(row2.type) ? row2.type : 'generic',
+                    type: ['logs','tickets','updates','transcript','vlog','modlog','generic'].includes(row2.type) ? row2.type : 'generic',
                     enabled: !!row2.enabled,
                     channelId: row2.channel_id || null,
                     urlMasked: masked,
@@ -2301,7 +2301,8 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
 
         const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
-        if (!hasMongoEnv) {
+        const isValidObjectId = /^[a-fA-F0-9]{24}$/.test(String(id));
+        if (!hasMongoEnv || !isValidObjectId) {
             // SQLite fallback
             try {
                 const storage = require('../utils/storage-sqlite');
@@ -2339,17 +2340,74 @@ app.post('/api/guild/:guildId/webhooks/test', async (req, res) => {
         const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
         if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
 
-        const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
-        if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not configured' });
-        const { isReady } = require('../utils/db/mongoose');
-        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
-
-    const schema = Joi.object({ type: Joi.string().valid('transcript','vlog','modlog','generic').required(), payload: Joi.object().optional() });
+        const schema = Joi.object({ type: Joi.string().valid('logs','tickets','updates','transcript','vlog','modlog','generic').required(), payload: Joi.object().optional() });
         const { error, value } = schema.validate({ type, payload });
         if (error) return res.status(400).json({ success: false, error: error.message });
 
+        const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
+        const { type: testType } = value;
+        const bodyToSend = value.payload || { test: true, at: Date.now(), source: 'IGNIS' };
+        // SQLite fallback implementation when Mongo not configured or not connected
+        if (!hasMongoEnv) {
+            try {
+                const storage = require('../utils/storage-sqlite');
+                const list = await storage.listWebhooks(guildId);
+                const targets = list.filter(r => r.enabled && r.type === testType);
+                const fetch = require('node-fetch');
+                const results = [];
+                for (const r of targets) {
+                    const url = r.url; // already decrypted by storage
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 8000);
+                    let status = 0; let ok = false; let errMsg = null;
+                    try {
+                        const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyToSend), signal: controller.signal });
+                        status = resp.status; ok = resp.ok;
+                    } catch (e) { errMsg = e?.message || 'network error'; }
+                    finally { clearTimeout(timeout); }
+                    // Update last* fields
+                    const last_ok = ok ? true : false;
+                    const last_status = status || 0;
+                    const last_error = ok ? null : (status ? `status ${status}` : errMsg || 'falha');
+                    const last_at = new Date().toISOString();
+                    await storage.upsertWebhook({ guild_id: guildId, type: r.type, name: r.name, url: r.url, channel_id: r.channel_id, channel_name: r.channel_name, enabled: r.enabled, last_ok, last_status, last_error, last_at });
+                    results.push({ id: r._id, status: last_status, ok: last_ok, error: last_error });
+                }
+                return res.json({ success: true, results });
+            } catch (e) {
+                logger.error('SQLite test post error:', e);
+                return res.status(500).json({ success: false, error: 'Failed to post to webhooks (sqlite fallback)' });
+            }
+        }
+        const { isReady } = require('../utils/db/mongoose');
+        if (!isReady()) {
+            // If Mongo URI exists but not connected, still attempt SQLite fallback before returning 503
+            try {
+                const storage = require('../utils/storage-sqlite');
+                const list = await storage.listWebhooks(guildId);
+                const targets = list.filter(r => r.enabled && r.type === testType);
+                const fetch = require('node-fetch');
+                const results = [];
+                for (const r of targets) {
+                    const url = r.url;
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 8000);
+                    let status = 0; let ok = false; let errMsg = null;
+                    try { const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(bodyToSend), signal: controller.signal }); status = resp.status; ok = resp.ok; } catch(e){ errMsg = e?.message || 'network error'; } finally { clearTimeout(timeout); }
+                    const last_ok = ok ? true : false;
+                    const last_status = status || 0;
+                    const last_error = ok ? null : (status ? `status ${status}` : errMsg || 'falha');
+                    const last_at = new Date().toISOString();
+                    await storage.upsertWebhook({ guild_id: guildId, type: r.type, name: r.name, url: r.url, channel_id: r.channel_id, channel_name: r.channel_name, enabled: r.enabled, last_ok, last_status, last_error, last_at });
+                    results.push({ id: r._id, status: last_status, ok: last_ok, error: last_error });
+                }
+                return res.json({ success: true, results, fallback: 'sqlite' });
+            } catch (e) {
+                return res.status(503).json({ success: false, error: 'Mongo not connected' });
+            }
+        }
         const svc = require('../src/services/webhookService');
-        const resArr = await svc.postToType(guildId, value.type, value.payload || { test: true, at: Date.now() });
+        const resArr = await svc.postToType(guildId, testType, bodyToSend);
         return res.json({ success: true, results: resArr });
     } catch (e) {
         logger.error('Webhook test post error:', e);
@@ -4733,40 +4791,7 @@ app.post('/api/guild/:guildId/webhooks/create-in-channel', async (req, res) => {
     }
 });
 
-// Test a specific webhook type by sending a sample embed
-app.post('/api/guild/:guildId/webhooks/test', async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        const { type = 'logs' } = req.body || {};
-        const wm = client.webhooks;
-        if (!wm) return res.status(500).json({ success: false, error: 'Webhook manager not available' });
-        const info = wm.getWebhookInfo(req.params.guildId, type);
-        if (!info || !info.webhook?.url) return res.status(404).json({ success: false, error: `Webhook type '${type}' not configured` });
-        const { EmbedBuilder } = require('discord.js');
-        // Try to brand the test embed with guild banner
-        let brandedBanner = null; try {
-            const storage = require('../utils/storage');
-            const cfg = await storage.getGuildConfig(req.params.guildId) || {};
-            const bu = (cfg.botSettings && typeof cfg.botSettings.bannerUrl === 'string') ? cfg.botSettings.bannerUrl.trim() : '';
-            if (bu) brandedBanner = bu;
-        } catch {}
-        const embed = new EmbedBuilder()
-            .setTitle('🔔 Teste de Webhook')
-            .setDescription(`Mensagem de teste enviada pelo dashboard (${type}).`)
-            .setColor(type === 'tickets' ? 0x60A5FA : type === 'updates' ? 0xF59E0B : 0x7C3AED)
-            .setTimestamp();
-        if (brandedBanner) try { embed.setImage(brandedBanner); } catch {}
-        await info.webhook.send({ embeds: [embed], username: `IGNIS • ${type}` });
-        return res.json({ success: true, message: 'Test sent' });
-    } catch (e) {
-        logger.error('Error testing webhook:', e);
-        res.status(500).json({ success: false, error: 'Failed to test webhook' });
-    }
-});
+// (Removed duplicate /webhooks/test route; unified earlier handler now supports dashboard types)
 
 // Simple uploads endpoint for guild-scoped images (e.g., banners)
 // Accepts JSON: { filename?: string, contentBase64: string }
