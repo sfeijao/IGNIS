@@ -16,6 +16,8 @@ class WebhookManager {
     this.webhooks = new Map();
     // Throttle map for missing-log warnings: Map<guildId, timestamp>
     this.missingLogWarnAt = new Map();
+    // Cache para webhooks externos configurados via logsOrganizados (URL -> WebhookClient)
+    this.externalCache = new Map();
         this.init();
     }
 
@@ -260,6 +262,11 @@ class WebhookManager {
             const cfg = await storage.getGuildConfig(guildId);
             const routing = cfg && cfg.webhookRouting ? cfg.webhookRouting : null;
             if (routing && typeof routing === 'object' && routing[event]) preferredType = String(routing[event]);
+            // Se existir configuração de logsOrganizados, podemos ter webhooks externos
+            // Formato esperado: cfg.logsOrganizados = { origemKey: { webhookUrl, ... } }
+            data.__externalLogs = cfg && cfg.logsOrganizados ? cfg.logsOrganizados : null;
+            // Flag para priorizar envio apenas a externos (evita duplicar no canal local)
+            data.__preferExternal = !!(cfg && cfg.logsOrganizados && Object.keys(cfg.logsOrganizados).length > 0 && String(process.env.PREFER_EXTERNAL_LOGS || '').toLowerCase() === 'true');
         } catch {}
         if (!preferredType) {
             // Defaults: claim/release/update -> 'updates', create/close -> 'tickets', otherwise 'logs'
@@ -283,7 +290,8 @@ class WebhookManager {
                     logger.info(`ℹ️  Nenhum webhook carregado para guild ${guildId} (evento ${event}); logs serão ignorados até configurar/criar um webhook.`);
                     this.missingLogWarnAt.set(guildId, now);
                 }
-                return;
+                // Mesmo que não haja webhook interno, ainda tentamos externos se existirem
+                return await this.sendToExternalWebhooks(guildId, event, data);
             }
             return this.sendTicketLog(guildId, event, data); // Retry once with hydrated map
         }
@@ -375,7 +383,11 @@ class WebhookManager {
                 payload.files = data.files;
             }
 
-            await webhookInfo.webhook.send(payload);
+            // Se preferir externos e houver pelo menos um, não enviar local para evitar duplicações
+            const externalSent = await this.sendToExternalWebhooks(guildId, event, data, payload);
+            if (!data.__preferExternal || !externalSent) {
+                await webhookInfo.webhook.send(payload);
+            }
         } catch (error) {
             logger.error(`Error sending webhook for guild ${guildId}:`, error);
         }
@@ -592,5 +604,53 @@ class WebhookManager {
         return Array.from(map.keys());
     }
 }
+
+// ===== Extensões para suportar webhooks externos (cross-server) =====
+WebhookManager.prototype.sendToExternalWebhooks = async function(guildId, event, data, basePayload) {
+    const ext = data.__externalLogs;
+    if (!ext || typeof ext !== 'object') return false;
+    const entries = Object.entries(ext).filter(([k,v]) => v && v.webhookUrl);
+    if (!entries.length) return false;
+    let anySuccess = false;
+    for (const [key, info] of entries) {
+        const url = info.webhookUrl;
+        try {
+            let client = this.externalCache.get(url);
+            if (!client) {
+                client = new WebhookClient({ url });
+                this.externalCache.set(url, client);
+            }
+            const embedPayload = basePayload ? { ...basePayload } : undefined;
+            const payload = embedPayload || this._buildExternalPayload(key, event, data);
+            await client.send(payload);
+            anySuccess = true;
+        } catch (e) {
+            logger.warn(`Falha ao enviar log externo (${key}) para guild ${guildId}: ${e?.message || e}`);
+        }
+    }
+    return anySuccess;
+};
+
+WebhookManager.prototype._buildExternalPayload = function(originKey, event, data) {
+    try {
+        const embed = new EmbedBuilder()
+            .setTitle(`🔁 [${originKey.toUpperCase()}] Evento de Ticket: ${event}`)
+            .setColor(this.getColorForType(event))
+            .setTimestamp();
+        if (data && typeof data === 'object') {
+            if (data.ticketId) embed.addFields({ name: '🆔 Ticket', value: String(data.ticketId), inline: true });
+            if (data.channelId) embed.addFields({ name: '📣 Canal', value: `<#${data.channelId}>`, inline: true });
+            if (data.author?.id) embed.addFields({ name: '👤 Autor', value: `<@${data.author.id}>`, inline: true });
+            if (data.claimedBy?.id) embed.addFields({ name: '✋ Responsável', value: `<@${data.claimedBy.id}>`, inline: true });
+            if (data.releasedBy?.id) embed.addFields({ name: '👐 Libertado por', value: `<@${data.releasedBy.id}>`, inline: true });
+            if (data.updatedBy?.id) embed.addFields({ name: '📝 Atualizado por', value: `<@${data.updatedBy.id}>`, inline: true });
+            if (data.status) embed.addFields({ name: '📊 Status', value: String(data.status), inline: true });
+            if (data.reason) embed.addFields({ name: '📝 Motivo', value: String(data.reason).slice(0, 256) });
+        }
+        return { embeds: [embed], username: `IGNIS Logs Externos`, avatarURL: data.guild?.iconURL?.() || undefined };
+    } catch {
+        return { content: `[${originKey}] Ticket ${event}` };
+    }
+};
 
 module.exports = WebhookManager;
