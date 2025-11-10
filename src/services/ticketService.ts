@@ -127,6 +127,18 @@ export function buildPanelComponents() {
   return [row1, row2, row3];
 }
 
+// Helper: same components without the Priority button (para ficar igual ao print)
+export function buildPanelComponentsNoPriority() {
+  const rows = buildPanelComponents();
+  try {
+    if (Array.isArray(rows) && rows[2]?.components) {
+      // @ts-ignore accessing runtime data
+      rows[2].components = rows[2].components.filter((c: any)=> (c?.data?.custom_id || c?.customId) !== 'ticket:priority');
+    }
+  } catch {}
+  return rows;
+}
+
 // --- Unified status embed builder (for convergence) ---
 // Generates the dual-embed V2 status panel for a ticket, reflecting dynamic fields.
 export function buildTicketStatusEmbedsV2(ticket: any, author: GuildMember) {
@@ -174,6 +186,40 @@ export async function updateTicketStatusEmbeds(client: Client, ticket: any) {
     await msg.edit({ embeds });
     return true;
   } catch { return false; }
+}
+
+// --- TS Ticket open routine -------------------------------------------------
+// Cria (ou regista) um ticket TS para o canal e publica o painel V2 sem dropdown
+export async function openTicketTS(channel: TextChannel, owner: GuildMember, categoryName?: string) {
+  // Se já existir um TicketModel para este canal, apenas garante o painel
+  let ticket = await TicketModel.findOne({ guildId: channel.guild.id, channelId: channel.id });
+  if (!ticket) {
+    ticket = await TicketModel.create({
+      guildId: channel.guild.id,
+      channelId: channel.id,
+      ownerId: owner.id,
+      category: categoryName || 'Suporte',
+      status: 'open',
+      meta: { priority: 'normal' }
+    } as any);
+  }
+  const embeds = buildPanelEmbedsV2(owner, categoryName || ticket.category || 'Suporte');
+  let components = buildPanelComponentsNoPriority();
+  try {
+    // se houver painel antigo, editá-lo; caso contrário, enviar novo
+    let existing: Message | null = null;
+    if (ticket.messageId) {
+      existing = await channel.messages.fetch(ticket.messageId).catch(()=>null);
+    }
+    if (existing && existing.editable) {
+      await existing.edit({ embeds, components });
+    } else {
+      const sent = await channel.send({ embeds, components });
+      ticket.messageId = sent.id;
+      await ticket.save();
+    }
+  } catch {}
+  return ticket;
 }
 
 type ActionResult = string | { content?: string; components?: ActionRowBuilder<any>[] };
