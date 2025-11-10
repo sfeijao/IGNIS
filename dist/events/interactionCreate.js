@@ -9,8 +9,9 @@ module.exports = {
             const btn = interaction;
             const channel = btn.channel;
             const ticket = await (0, ticketService_1.resolveTicket)(channel);
+            // If this channel isn't managed by the TS TicketModel (legacy system handles it), do not interfere
             if (!ticket)
-                return btn.reply({ content: 'Ticket não encontrado.', flags: discord_js_1.MessageFlags.Ephemeral });
+                return; // let communityTickets/ticketHandler.js process
             const ctx = { guildId: btn.guildId, channel, userId: btn.user.id, member: btn.member, ticket, interaction: btn };
             let response = 'Ação não reconhecida.';
             switch (btn.customId) {
@@ -53,6 +54,26 @@ module.exports = {
                 case 'ticket:feedback':
                     response = await (0, ticketService_1.handleFeedbackButton)(ctx);
                     break;
+                case 'ticket:release':
+                    response = await (0, ticketService_1.handleRelease)(ctx);
+                    break;
+                case 'ticket:lock-toggle':
+                    response = await (0, ticketService_1.handleLockToggle)(ctx);
+                    break;
+                case 'ticket:transcript':
+                    response = await (0, ticketService_1.handleTranscript)(ctx);
+                    break;
+                case 'ticket:priority': {
+                    // Build select menu inline
+                    const current = (ctx.ticket.meta?.priority || 'normal').toLowerCase();
+                    const menu = new discord_js_1.StringSelectMenuBuilder()
+                        .setCustomId('ticket:priority:select')
+                        .setPlaceholder('Seleciona a prioridade')
+                        .addOptions({ label: 'Baixa', value: 'low', description: 'Menos urgente', default: current === 'low' }, { label: 'Normal', value: 'normal', description: 'Prioridade padrão', default: current === 'normal' }, { label: 'Alta', value: 'high', description: 'Requer atenção', default: current === 'high' }, { label: 'URGENTE', value: 'urgent', description: 'Criticidade máxima', default: current === 'urgent' });
+                    const row = new discord_js_1.ActionRowBuilder().addComponents(menu);
+                    response = { content: '⚡ Escolhe a nova prioridade para este ticket:', components: [row] };
+                    break;
+                }
             }
             try {
                 if (typeof response === 'string') {
@@ -86,7 +107,7 @@ module.exports = {
                     const channel = m.channel;
                     const ticket = await (0, ticketService_1.resolveTicket)(channel);
                     if (!ticket)
-                        return m.reply({ content: 'Ticket não encontrado.', flags: discord_js_1.MessageFlags.Ephemeral });
+                        return; // legacy system will handle
                     ticket.notes = ticket.notes || [];
                     ticket.notes.push({ by: m.user.id, text, createdAt: new Date() });
                     await ticket.save();
@@ -101,7 +122,7 @@ module.exports = {
                 const channel = m.channel;
                 const ticket = await (0, ticketService_1.resolveTicket)(channel);
                 if (!ticket)
-                    return m.reply({ content: 'Ticket não encontrado.', flags: discord_js_1.MessageFlags.Ephemeral });
+                    return; // legacy system will handle
                 const result = await (0, ticketService_1.handleFeedbackSubmit)({ interaction: m, ticket, guildId: m.guildId, userId: m.user.id });
                 return m.reply({ content: result, flags: discord_js_1.MessageFlags.Ephemeral });
             }
@@ -112,7 +133,7 @@ module.exports = {
             const channel = sel.channel;
             const ticket = await (0, ticketService_1.resolveTicket)(channel);
             if (!ticket)
-                return sel.reply({ content: 'Ticket não encontrado.', flags: discord_js_1.MessageFlags.Ephemeral });
+                return; // legacy system will handle
             const ids = sel.values;
             try {
                 if (sel.customId === 'ticket:add_member:select') {
@@ -133,12 +154,29 @@ module.exports = {
             }
             return;
         }
+        if (interaction.isStringSelectMenu()) {
+            const sel = interaction;
+            const channel = sel.channel;
+            const ticket = await (0, ticketService_1.resolveTicket)(channel);
+            if (!ticket)
+                return; // legacy handles legacy tickets
+            if (sel.customId === 'ticket:priority:select') {
+                const value = sel.values?.[0];
+                const ctx = { guildId: sel.guildId, channel, userId: sel.user.id, member: sel.member, ticket, interaction: sel };
+                const result = await (0, ticketService_1.handlePrioritySet)(ctx, value);
+                try {
+                    await sel.reply({ content: typeof result === 'string' ? result : result.content || 'Atualizado', flags: discord_js_1.MessageFlags.Ephemeral });
+                }
+                catch { }
+                return;
+            }
+        }
         if (interaction.isRoleSelectMenu()) {
             const sel = interaction;
             const channel = sel.channel;
             const ticket = await (0, ticketService_1.resolveTicket)(channel);
             if (!ticket)
-                return sel.reply({ content: 'Ticket não encontrado.', flags: discord_js_1.MessageFlags.Ephemeral });
+                return; // legacy system will handle
             const roleIds = sel.values;
             try {
                 const mention = roleIds.map(r => `<@&${r}>`).join(' ');
@@ -155,7 +193,7 @@ module.exports = {
             const channel = sel.channel;
             const ticket = await (0, ticketService_1.resolveTicket)(channel);
             if (!ticket)
-                return sel.reply({ content: 'Ticket não encontrado.', flags: discord_js_1.MessageFlags.Ephemeral });
+                return; // legacy system will handle
             const targetCategoryId = sel.values[0];
             try {
                 await channel.setParent(targetCategoryId, { lockPermissions: false });

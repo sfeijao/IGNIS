@@ -4,7 +4,6 @@ exports.data = void 0;
 exports.execute = execute;
 const discord_js_1 = require("discord.js");
 const ticketService_1 = require("../services/ticketService");
-const ticket_1 = require("../models/ticket");
 exports.data = new discord_js_1.SlashCommandBuilder()
     .setName('ticket-panel')
     .setDescription('Criar painel de ticket neste canal')
@@ -30,8 +29,8 @@ async function execute(interaction) {
         embed.setColor(0xFF3333).addFields({ name: '⚠ Permissões em falta', value: missing.map(m => discord_js_1.PermissionsBitField.resolve(m)).length ? missing.map(m => `\`${Object.keys(discord_js_1.PermissionsBitField.Flags).find(k => discord_js_1.PermissionsBitField.Flags[k] === m)}\``).join(', ') : 'Desconhecido' });
     }
     const components = (0, ticketService_1.buildPanelComponents)();
+    // Painel público (não é um ticket em si) – não criar TicketModel aqui
     const sent = await interaction.channel.send({ embeds: [embed, noticeEmbed], components });
-    await ticket_1.TicketModel.create({ guildId: interaction.guildId, channelId: interaction.channelId, messageId: sent.id, ownerId: interaction.user.id, category: categoria, status: 'open' });
     // Guard: if already replied (edge race) use followUp instead
     if (interaction.replied || interaction.deferred) {
         return interaction.followUp({ content: 'Painel criado ✅', flags: discord_js_1.MessageFlags.Ephemeral });

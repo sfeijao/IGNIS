@@ -5,10 +5,15 @@ exports.buildPanelEmbedsV2 = buildPanelEmbedsV2;
 exports.syncTicketPanel = syncTicketPanel;
 exports.syncAllOpenTicketPanels = syncAllOpenTicketPanels;
 exports.buildPanelComponents = buildPanelComponents;
+exports.buildTicketStatusEmbedsV2 = buildTicketStatusEmbedsV2;
+exports.updateTicketStatusEmbeds = updateTicketStatusEmbeds;
 exports.handleCancel = handleCancel;
 exports.handleHowDM = handleHowDM;
 exports.handleClaim = handleClaim;
 exports.handleClose = handleClose;
+exports.handleRelease = handleRelease;
+exports.handleLockToggle = handleLockToggle;
+exports.handleTranscript = handleTranscript;
 exports.handleRename = handleRename;
 exports.handleMove = handleMove;
 exports.handleAddMember = handleAddMember;
@@ -16,6 +21,7 @@ exports.handleRemoveMember = handleRemoveMember;
 exports.handleCallMember = handleCallMember;
 exports.handleGreet = handleGreet;
 exports.handleNote = handleNote;
+exports.handlePrioritySet = handlePrioritySet;
 exports.resolveTicket = resolveTicket;
 exports.buildPostCloseRow = buildPostCloseRow;
 exports.handleExport = handleExport;
@@ -48,6 +54,9 @@ function buildPanelEmbedsV2(author, categoryName, thumbnailUrl) {
         .addFields({ name: 'Categoria Escolhida:', value: `🧾 \`Ticket ${categoryName || 'Suporte'}\``, inline: false }, { name: 'Lembrando', value: 'que os botões são exclusivos para staff!\n\n`DESCREVA O MOTIVO DO CONTACTO COM O MÁXIMO DE DETALHES POSSÍVEIS QUE ALGUM RESPONSÁVEL JÁ IRÁ LHE ATENDER!`', inline: false })
         .setThumbnail(thumbnailUrl || author.displayAvatarURL())
         .setColor(0x2F3136);
+    const singleMode = (process.env.TICKET_PANEL_SINGLE_EMBED || '').toLowerCase() === 'true';
+    if (singleMode)
+        return [main];
     const notice = new discord_js_1.EmbedBuilder()
         .setDescription('OBS: Procure manter sua DM aberta para receber uma cópia deste ticket e a opção de avaliar seu atendimento.')
         .setColor(0xED4245);
@@ -117,8 +126,55 @@ async function syncAllOpenTicketPanels(client, guildId) {
 function buildPanelComponents() {
     const row1 = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId('ticket:cancel').setLabel('Desejo sair ou cancelar este ticket').setStyle(discord_js_1.ButtonStyle.Danger).setEmoji('🧯'), new discord_js_1.ButtonBuilder().setCustomId('ticket:how_dm').setLabel('Como libero minha DM?').setStyle(discord_js_1.ButtonStyle.Secondary).setEmoji('❓'));
     const row2 = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId('ticket:call_member').setLabel('Chamar Membro').setStyle(discord_js_1.ButtonStyle.Primary).setEmoji('🔔'), new discord_js_1.ButtonBuilder().setCustomId('ticket:add_member').setLabel('Adicionar Membro').setStyle(discord_js_1.ButtonStyle.Success).setEmoji('➕'), new discord_js_1.ButtonBuilder().setCustomId('ticket:remove_member').setLabel('Remover Membro').setStyle(discord_js_1.ButtonStyle.Danger).setEmoji('❌'), new discord_js_1.ButtonBuilder().setCustomId('ticket:move').setLabel('Mover Ticket').setStyle(discord_js_1.ButtonStyle.Secondary).setEmoji('🔁'), new discord_js_1.ButtonBuilder().setCustomId('ticket:rename').setLabel('Trocar Nome do Canal').setStyle(discord_js_1.ButtonStyle.Secondary).setEmoji('📝'));
-    const row3 = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId('ticket:claim').setLabel('Assumir Atendimento').setStyle(discord_js_1.ButtonStyle.Primary).setEmoji('🟦'), new discord_js_1.ButtonBuilder().setCustomId('ticket:greet').setLabel('Saudar Atendimento').setStyle(discord_js_1.ButtonStyle.Primary).setEmoji('👋'), new discord_js_1.ButtonBuilder().setCustomId('ticket:note').setLabel('Adicionar Observação Interna').setStyle(discord_js_1.ButtonStyle.Secondary).setEmoji('🗒️'), new discord_js_1.ButtonBuilder().setCustomId('ticket:close').setLabel('Finalizar Ticket').setStyle(discord_js_1.ButtonStyle.Success).setEmoji('✅'));
+    const row3 = new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder().setCustomId('ticket:claim').setLabel('Assumir Atendimento').setStyle(discord_js_1.ButtonStyle.Primary).setEmoji('🟦'), new discord_js_1.ButtonBuilder().setCustomId('ticket:greet').setLabel('Saudar Atendimento').setStyle(discord_js_1.ButtonStyle.Primary).setEmoji('👋'), new discord_js_1.ButtonBuilder().setCustomId('ticket:note').setLabel('Adicionar Observação Interna').setStyle(discord_js_1.ButtonStyle.Secondary).setEmoji('🗒️'), new discord_js_1.ButtonBuilder().setCustomId('ticket:priority').setLabel('Prioridade').setStyle(discord_js_1.ButtonStyle.Secondary).setEmoji('⚡'), new discord_js_1.ButtonBuilder().setCustomId('ticket:close').setLabel('Finalizar Ticket').setStyle(discord_js_1.ButtonStyle.Success).setEmoji('✅'));
     return [row1, row2, row3];
+}
+// --- Unified status embed builder (for convergence) ---
+// Generates the dual-embed V2 status panel for a ticket, reflecting dynamic fields.
+function buildTicketStatusEmbedsV2(ticket, author) {
+    const estado = (ticket.status || 'open').toLowerCase();
+    const statusLabel = estado === 'open' ? 'Aberto' : (estado === 'closed' ? 'Fechado' : estado === 'cancelled' ? 'Cancelado' : estado);
+    const prioridade = (ticket.priority || ticket.meta?.priority || 'normal');
+    const prioridadeMap = { low: 'BAIXA', normal: 'NORMAL', high: 'ALTA', urgent: 'URGENTE' };
+    const prioridadeLabel = prioridadeMap[prioridade.toLowerCase()] || prioridade.toUpperCase();
+    const responsavel = ticket.staffAssigned ? `<@${ticket.staffAssigned}>` : '—';
+    const openedTs = Math.floor((ticket.createdAt ? new Date(ticket.createdAt).getTime() : Date.now()) / 1000);
+    const idDisplay = ticket.id || ticket._id || '—';
+    const categoryName = ticket.category || 'Suporte';
+    const main = new discord_js_1.EmbedBuilder()
+        .setTitle('Ticket Criado com Sucesso! 📌')
+        .setDescription('Todos os responsáveis pelo ticket já estão cientes da abertura.\nEvite chamar alguém via DM, basta aguardar alguém já irá lhe atender..')
+        .addFields({ name: 'Categoria Escolhida:', value: `🧾 \`Ticket ${categoryName}\``, inline: false }, { name: 'Estado', value: statusLabel, inline: true }, { name: 'Utilizador', value: `<@${ticket.ownerId || ticket.user_id || author.id}>`, inline: true }, { name: 'Abertura', value: `<t:${openedTs}:R>`, inline: true }, { name: 'ID', value: `#${idDisplay}`, inline: true }, { name: 'Prioridade', value: prioridadeLabel, inline: true }, { name: 'Responsável', value: responsavel, inline: true })
+        .setThumbnail(author.displayAvatarURL())
+        .setColor(0x2F3136);
+    const singleMode = (process.env.TICKET_PANEL_SINGLE_EMBED || '').toLowerCase() === 'true';
+    if (singleMode)
+        return [main];
+    const notice = new discord_js_1.EmbedBuilder().setDescription('OBS: Procure manter sua DM aberta para receber uma cópia deste ticket e a opção de avaliar seu atendimento.').setColor(0xED4245);
+    return [main, notice];
+}
+// Update existing ticket panel message with current status fields (TS tickets only for now)
+async function updateTicketStatusEmbeds(client, ticket) {
+    if (!ticket?.messageId)
+        return false;
+    try {
+        const guild = client.guilds.cache.get(ticket.guildId) || await client.guilds.fetch(ticket.guildId).catch(() => null);
+        if (!guild)
+            return false;
+        const channel = guild.channels.cache.get(ticket.channelId) || await guild.channels.fetch(ticket.channelId).catch(() => null);
+        if (!channel)
+            return false;
+        const msg = await channel.messages.fetch(ticket.messageId).catch(() => null);
+        if (!msg || !msg.editable)
+            return false;
+        const member = await guild.members.fetch(ticket.ownerId).catch(() => guild.members.cache.first());
+        const embeds = buildTicketStatusEmbedsV2(ticket, member);
+        await msg.edit({ embeds });
+        return true;
+    }
+    catch {
+        return false;
+    }
 }
 const rateMap = new Map();
 function isRateLimited(key, ms) {
@@ -137,6 +193,11 @@ async function handleCancel(ctx) {
         ctx.ticket.status = 'cancelled';
         await ctx.ticket.save();
         await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'cancel');
+        // Atualizar painel com novo estado
+        try {
+            await updateTicketStatusEmbeds(ctx.channel.client, ctx.ticket);
+        }
+        catch { }
         // Adicionar botões de export/feedback após cancelamento
         try {
             await ctx.channel.send({ content: 'Ticket cancelado. Ações pós-fecho:', components: buildPostCloseRow() });
@@ -155,22 +216,11 @@ async function handleClaim(ctx) {
         ctx.ticket.staffAssigned = ctx.userId;
         await ctx.ticket.save();
         await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'claim');
-        // Tentar atualizar embed original com responsável
-        if (ctx.ticket.messageId) {
-            try {
-                const msg = await ctx.channel.messages.fetch(ctx.ticket.messageId).catch(() => null);
-                if (msg && msg.editable && msg.embeds?.[0]) {
-                    const original = discord_js_1.EmbedBuilder.from(msg.embeds[0]);
-                    // Remover field antigo "Responsável" se existir
-                    const fields = original.data.fields || [];
-                    const filtered = fields.filter(f => !/Responsável/i.test(f.name));
-                    filtered.push({ name: 'Responsável', value: `<@${ctx.userId}>`, inline: false });
-                    original.setFields(filtered);
-                    await msg.edit({ embeds: [original] });
-                }
-            }
-            catch { }
+        // Atualizar painel com responsável
+        try {
+            await updateTicketStatusEmbeds(ctx.channel.client, ctx.ticket);
         }
+        catch { }
         return '📌 Atendimento assumido.';
     });
 }
@@ -243,6 +293,41 @@ async function handleClose(ctx) {
         await ctx.ticket.save();
         await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'close', { transcriptStored: !!transcriptText });
         try {
+            await updateTicketStatusEmbeds(ctx.channel.client, ctx.ticket);
+        }
+        catch { }
+        // Disparar webhooks configurados (transcript e vlog) após gerar transcript
+        try {
+            const webhookSvc = require('./webhookService');
+            // Payload base
+            const basePayload = {
+                ticketId: ctx.ticket.id,
+                guildId: ctx.guildId,
+                closedBy: ctx.userId,
+                channelId: ctx.channel.id,
+                transcriptPresent: !!transcriptText,
+                closedAt: new Date().toISOString()
+            };
+            // Transcript webhook (inclui talvez link ou snippet encurtado)
+            if (transcriptText) {
+                const shortTxt = transcriptText.length > 400 ? (transcriptText.slice(0, 390) + '...') : transcriptText;
+                await webhookSvc.postToType(ctx.guildId, 'transcript', { ...basePayload, transcriptSnippet: shortTxt });
+            }
+            else {
+                await webhookSvc.postToType(ctx.guildId, 'transcript', { ...basePayload, transcriptSnippet: null });
+            }
+            // Vlog webhook (poderia ser um futuro export em vídeo; placeholder)
+            await webhookSvc.postToType(ctx.guildId, 'vlog', { ...basePayload, vlog: false });
+            // Modlog webhook (informação administrativa)
+            await webhookSvc.postToType(ctx.guildId, 'modlog', { ...basePayload, action: 'ticket_close' });
+        }
+        catch (e) {
+            // Só loga, não falha operação de fecho
+            // eslint-disable-next-line no-console
+            const err = e;
+            console.warn('Webhook dispatch after ticket close failed:', err?.message || String(err));
+        }
+        try {
             // Se o transcript for pequeno, anexar ficheiro txt ao canal
             if (transcriptText && transcriptText.length < 190000) {
                 const buf = Buffer.from(transcriptText, 'utf8');
@@ -258,6 +343,88 @@ async function handleClose(ctx) {
         }
         catch { }
         return '✅ Ticket fechado (transcript gerado).';
+    });
+}
+// --- New handlers for convergence ---
+async function handleRelease(ctx) {
+    return (0, lockManager_1.withTicketLock)(ctx.ticket.id, async () => {
+        if (!ctx.ticket.staffAssigned)
+            return 'Nenhum responsável atribuído.';
+        if (!(await isStaff(ctx.member, ctx.guildId)))
+            return '⛔ Apenas staff pode libertar.';
+        const prev = ctx.ticket.staffAssigned;
+        ctx.ticket.staffAssigned = null;
+        await ctx.ticket.save();
+        await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'release', { previous: prev });
+        try {
+            await updateTicketStatusEmbeds(ctx.channel.client, ctx.ticket);
+        }
+        catch { }
+        return '👐 Ticket libertado.';
+    });
+}
+async function handleLockToggle(ctx) {
+    return (0, lockManager_1.withTicketLock)(ctx.ticket.id, async () => {
+        if (!(await isStaff(ctx.member, ctx.guildId)))
+            return '⛔ Apenas staff pode bloquear.';
+        ctx.ticket.meta = ctx.ticket.meta || {};
+        const locked = !!ctx.ticket.meta.locked;
+        ctx.ticket.meta.locked = !locked;
+        await ctx.ticket.save();
+        await log(ctx.ticket.id, ctx.guildId, ctx.userId, locked ? 'unlock' : 'lock');
+        try {
+            await updateTicketStatusEmbeds(ctx.channel.client, ctx.ticket);
+        }
+        catch { }
+        return locked ? '🔓 Ticket desbloqueado.' : '🔐 Ticket bloqueado.';
+    });
+}
+async function handleTranscript(ctx) {
+    return (0, lockManager_1.withTicketLock)(ctx.ticket.id, async () => {
+        // Gerar transcript sem fechar
+        let transcriptText = '';
+        try {
+            const messages = [];
+            let lastId = undefined;
+            for (let i = 0; i < 3; i++) {
+                const fetched = await ctx.channel.messages.fetch(lastId ? { limit: 100, before: lastId } : { limit: 100 }).catch(() => null);
+                if (!fetched || !fetched.size)
+                    break;
+                const batch = Array.from(fetched.values());
+                messages.push(...batch);
+                const last = batch[batch.length - 1];
+                lastId = last?.id;
+                if (fetched.size < 100)
+                    break;
+            }
+            messages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+            const lines = [];
+            lines.push(`Ticket ${ctx.ticket.id} Transcript (on-demand)`);
+            lines.push(`Canal: ${ctx.channel.name} (${ctx.channel.id})`);
+            lines.push(`Gerado por: ${ctx.userId}`);
+            lines.push(`Gerado em: ${new Date().toISOString()}`);
+            lines.push('');
+            for (const m of messages) {
+                const when = new Date(m.createdTimestamp).toISOString();
+                const authorTag = `${m.author?.username || 'Desconhecido'}#${m.author?.discriminator || '0000'}`;
+                const content = (m.content || '').replace(/\n/g, ' ');
+                lines.push(`[${when}] ${authorTag}: ${content}`);
+            }
+            transcriptText = lines.join('\n');
+        }
+        catch { }
+        await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'transcript', { size: transcriptText.length });
+        if (!transcriptText)
+            return '❌ Não foi possível gerar transcript.';
+        if (transcriptText.length < 180000) {
+            const buf = Buffer.from(transcriptText, 'utf8');
+            try {
+                await ctx.channel.send({ files: [{ attachment: buf, name: `ticket_${ctx.ticket.id}_transcript.txt` }] });
+            }
+            catch { }
+            return '📄 Transcript gerado.';
+        }
+        return '📄 Transcript demasiado grande (armazenado internamente).';
     });
 }
 // Placeholder minimal handlers
@@ -313,6 +480,25 @@ async function handleNote(ctx) {
     modal.addComponents(new discord_js_1.ActionRowBuilder().addComponents(input));
     await ctx.interaction?.showModal?.(modal);
     return '🗒️ Introduza a nota (modal).';
+}
+// Definir prioridade (seleção via select menu)
+async function handlePrioritySet(ctx, chosenRaw) {
+    if (!(await isStaff(ctx.member, ctx.guildId)))
+        return '⛔ Apenas staff pode definir prioridade.';
+    return (0, lockManager_1.withTicketLock)(ctx.ticket.id, async () => {
+        const allowed = ['low', 'normal', 'high', 'urgent'];
+        const chosen = allowed.includes((chosenRaw || '').toLowerCase()) ? chosenRaw.toLowerCase() : 'normal';
+        ctx.ticket.meta = ctx.ticket.meta || {};
+        ctx.ticket.meta.priority = chosen; // Persistido dentro de meta para evitar alterar schema
+        await ctx.ticket.save();
+        await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'priority', { value: chosen });
+        try {
+            await updateTicketStatusEmbeds(ctx.channel.client, ctx.ticket);
+        }
+        catch { }
+        const labelMap = { low: 'BAIXA', normal: 'NORMAL', high: 'ALTA', urgent: 'URGENTE' };
+        return `⚡ Prioridade alterada para ${labelMap[chosen] || chosen.toUpperCase()}`;
+    });
 }
 async function resolveTicket(channel) {
     return ticket_1.TicketModel.findOne({ channelId: channel.id });

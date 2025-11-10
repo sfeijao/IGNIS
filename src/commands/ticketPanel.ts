@@ -28,8 +28,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     embed.setColor(0xFF3333).addFields({ name: '⚠ Permissões em falta', value: missing.map(m=>PermissionsBitField.resolve(m)).length ? missing.map(m=>`\`${Object.keys(PermissionsBitField.Flags).find(k=> (PermissionsBitField.Flags as any)[k]===m)}\``).join(', ') : 'Desconhecido' });
   }
   const components = buildPanelComponents();
+  // Painel público (não é um ticket em si) – não criar TicketModel aqui
   const sent = await interaction.channel.send({ embeds: [embed, noticeEmbed], components });
-  await TicketModel.create({ guildId: interaction.guildId!, channelId: interaction.channelId, messageId: sent.id, ownerId: interaction.user.id, category: categoria, status: 'open' });
   // Guard: if already replied (edge race) use followUp instead
   if (interaction.replied || interaction.deferred) {
     return interaction.followUp({ content: 'Painel criado ✅', flags: MessageFlags.Ephemeral });

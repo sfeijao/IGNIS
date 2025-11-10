@@ -211,13 +211,13 @@ async function createTicket(interaction, type) {
     '{priority}': priorityLabel(ticket.priority)
   };
   const welcome = (cfgTickets.welcomeMsg || `Olá {user}, obrigado por abrir um ticket!`).replace(/\{user\}|\{user_tag\}|\{server\}|\{ticket_id\}/g, (m)=> placeholders[m] || m);
-  const intro = new EmbedBuilder()
+  // Novo layout V2 (dual embed). Primeiro embed com detalhes, segundo com aviso DM.
+  const introMain = new EmbedBuilder()
     .setColor(info.color)
-    .setTitle(`${info.emoji} ${info.name}`)
-    .setDescription(welcome)
-    .setThumbnail(visualAssets.realImages.supportIcon)
-    .setImage(visualAssets.realImages.supportBanner)
+    .setTitle('Ticket Criado com Sucesso! 📌')
+    .setDescription('Todos os responsáveis pelo ticket já estão cientes da abertura.\nEvite chamar alguém via DM, basta aguardar alguém já irá lhe atender..')
     .addFields(
+      { name: 'Categoria Escolhida:', value: `🧾 \`Ticket ${info.name}\``, inline: false },
       { name: 'Estado', value: 'Aberto', inline: true },
       { name: 'Utilizador', value: `${interaction.user}`, inline: true },
       { name: 'Abertura', value: `<t:${Math.floor(Date.now()/1000)}:R>`, inline: true },
@@ -225,12 +225,17 @@ async function createTicket(interaction, type) {
       { name: 'Prioridade', value: priorityLabel(ticket.priority), inline: true },
       { name: 'Responsável', value: '—', inline: true }
     )
+    .setThumbnail(visualAssets.realImages.supportIcon)
+    .setImage(visualAssets.realImages.supportBanner)
     .setFooter({ text: 'IGNIS • Sistema de Tickets', iconURL: interaction.client.user.displayAvatarURL() })
     .setTimestamp();
+  const introNotice = new EmbedBuilder()
+    .setDescription('OBS: Procure manter sua DM aberta para receber uma cópia deste ticket e a opção de avaliar seu atendimento.')
+    .setColor(0xED4245);
 
   const controlsRow1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('ticket:finalize:open').setLabel('Finalizar').setEmoji('✅').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId('ticket:claim').setLabel('Claim').setEmoji('✋').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('ticket:close').setLabel('Finalizar Ticket').setEmoji('✅').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('ticket:claim').setLabel('Assumir Atendimento').setEmoji('🟦').setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId('ticket:release').setLabel('Libertar').setEmoji('👐').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('ticket:lock-toggle').setLabel('Bloquear').setEmoji('🔐').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('ticket:transcript').setLabel('Transcript').setEmoji('📄').setStyle(ButtonStyle.Secondary)
@@ -249,7 +254,7 @@ async function createTicket(interaction, type) {
     );
   const controlsRow2 = new ActionRowBuilder().addComponents(moreMenu);
 
-  const panelMsg = await channel.send({ content: `${interaction.user}`, embeds: [intro], components: [controlsRow1, controlsRow2] });
+  const panelMsg = await channel.send({ content: `${interaction.user}`, embeds: [introMain, introNotice], components: [controlsRow1, controlsRow2] });
   // Guardar referência para futuras edições do cabeçalho
   try { await storage.updateTicket(ticket.id, { panel_message_id: panelMsg.id }); } catch {}
 
