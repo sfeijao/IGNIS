@@ -37,12 +37,12 @@ class RobustWebhookManager {
             await this.ensureConfigExists();
             const data = await fs.readFile(this.configPath, 'utf8');
             this.config = JSON.parse(data);
-            
+
             // Migrar configuração antiga se necessário
             if (!this.config.version) {
                 await this.migrateOldConfig();
             }
-            
+
             return this.config;
         } catch (error) {
             logger.error('❌ Erro ao carregar configuração de webhooks:', error);
@@ -55,7 +55,7 @@ class RobustWebhookManager {
             if (!this.config) {
                 throw new Error('Configuração não carregada');
             }
-            
+
             this.config.lastUpdated = new Date().toISOString();
             await fs.writeFile(this.configPath, JSON.stringify(this.config, null, 2), 'utf8');
             logger.info('✅ Configuração de webhooks salva com sucesso');
@@ -68,7 +68,7 @@ class RobustWebhookManager {
 
     async migrateOldConfig() {
         logger.info('🔄 Migrando configuração antiga...');
-        
+
         // Manter webhooks existentes, mas atualizar estrutura
         const oldWebhooks = this.config.webhooks || {};
         this.config = {
@@ -160,7 +160,7 @@ class RobustWebhookManager {
         try {
             await this.loadConfig();
             const webhookConfig = this.config.webhooks[guildId];
-            
+
             if (!webhookConfig || !webhookConfig.enabled || !webhookConfig.url) {
                 return null;
             }
@@ -175,7 +175,7 @@ class RobustWebhookManager {
     async testWebhookConnection(webhookUrl) {
         try {
             const webhook = new WebhookClient({ url: webhookUrl });
-            
+
             // Tentar fazer fetch do webhook para validar
             await webhook.fetchMessage('@original').catch(() => {
                 // Isso é esperado falhar, mas valida se o webhook existe
@@ -190,7 +190,7 @@ class RobustWebhookManager {
     async sendLog(guildId, logType, data) {
         try {
             const webhookConfig = await this.getWebhook(guildId);
-            
+
             if (!webhookConfig) {
                 logger.debug(`⏩ Webhook não configurado para guild ${guildId}`);
                 return { success: false, reason: 'not_configured' };
@@ -203,7 +203,7 @@ class RobustWebhookManager {
 
             const webhook = new WebhookClient({ url: webhookConfig.url });
             const embed = this.createLogEmbed(logType, data);
-            
+
             const payload = {
                 embeds: [embed],
                 username: `${webhookConfig.name} Logs`,
@@ -219,18 +219,18 @@ class RobustWebhookManager {
             }
 
             await webhook.send(payload);
-            
+
             logger.info(`📨 Log '${logType}' enviado para ${webhookConfig.name}`);
             return { success: true };
 
         } catch (error) {
             logger.error(`❌ Erro ao enviar log '${logType}':`, error);
-            
+
             // Retry se configurado
             if (this.config.settings.retryOnError) {
                 // Implementar retry aqui se necessário
             }
-            
+
             return { success: false, error: error.message };
         }
     }
@@ -285,7 +285,7 @@ class RobustWebhookManager {
         try {
             await this.loadConfig();
             const webhook = this.config.webhooks[guildId];
-            
+
             return {
                 configured: !!webhook,
                 enabled: webhook?.enabled || false,
@@ -304,7 +304,7 @@ class RobustWebhookManager {
     async removeWebhook(guildId) {
         try {
             await this.loadConfig();
-            
+
             if (this.config.webhooks[guildId]) {
                 delete this.config.webhooks[guildId];
                 await this.saveConfig();
@@ -312,7 +312,7 @@ class RobustWebhookManager {
                 logger.info(`✅ Webhook removido para guild ${guildId}`);
                 return { success: true };
             }
-            
+
             return { success: false, error: 'Webhook não encontrado' };
         } catch (error) {
             logger.error('Erro ao remover webhook:', error);

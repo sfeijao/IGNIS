@@ -273,7 +273,7 @@ class WebhookManager {
                         )
                         .setTimestamp()
                         .setFooter({ text: `ID do Usuário: ${data.author?.id || 'N/A'}` });
-                    
+
                     if (data.author?.avatarURL) {
                         try {
                             embed.setThumbnail(data.author.avatarURL());
@@ -430,7 +430,7 @@ class WebhookManager {
     async setupForGuild(guild) {
         try {
             logger.info(`Configurando webhook para o servidor ${guild.name} (${guild.id})`);
-            
+
             // Verificar se já existe um webhook válido (logs)
             const existingTypeMap = this.webhooks.get(guild.id);
             const existingInfo = existingTypeMap?.get?.('logs');
@@ -454,17 +454,17 @@ class WebhookManager {
 
             // Procurar um canal apropriado
             let channel = null;
-            
+
             // 1. Procurar por um canal de logs específico
-            channel = guild.channels.cache.find(c => 
-                c.name.includes('log') && c.type === 0 && 
+            channel = guild.channels.cache.find(c =>
+                c.name.includes('log') && c.type === 0 &&
                 c.permissionsFor(guild.members.me)?.has(['SendMessages', 'ManageWebhooks'])
             );
 
             // 2. Se não encontrou, procurar canal de tickets
             if (!channel) {
-                channel = guild.channels.cache.find(c => 
-                    (c.name.includes('ticket') || c.name.includes('arquivo')) && c.type === 0 && 
+                channel = guild.channels.cache.find(c =>
+                    (c.name.includes('ticket') || c.name.includes('arquivo')) && c.type === 0 &&
                     c.permissionsFor(guild.members.me)?.has(['SendMessages', 'ManageWebhooks'])
                 );
             }

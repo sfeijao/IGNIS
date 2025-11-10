@@ -59,6 +59,7 @@ async function listConfigs(guildId){
       urlMasked: mask(real),
       lastOk: d.lastOk ?? null,
       lastStatus: d.lastStatus ?? null,
+      lastError: d.lastError ?? null,
       lastAt: d.lastAt || null,
       createdAt: d.createdAt,
       updatedAt: d.updatedAt
@@ -70,7 +71,7 @@ async function createConfig(guildId, { type, url, enabled=true, channelId }){
   if(!isHttpsUrl(url)) throw new Error('URL must be HTTPS');
   const enc = encryptUrl(url);
   const doc = await WebhookConfigModel.create({ guildId, type, enabled, channelId, url: enc.url, enc: enc.enc || undefined });
-  const safe = { id: doc._id.toString(), guildId, type, enabled, channelId: channelId || null, urlMasked: mask(url), lastOk: null, lastStatus: null, lastAt: null, createdAt: doc.createdAt, updatedAt: doc.updatedAt };
+  const safe = { id: doc._id.toString(), guildId, type, enabled, channelId: channelId || null, urlMasked: mask(url), lastOk: null, lastStatus: null, lastError: null, lastAt: null, createdAt: doc.createdAt, updatedAt: doc.updatedAt };
   return safe;
 }
 
@@ -86,7 +87,7 @@ async function updateConfig(id, guildId, patch){
   }
   await doc.save();
   const real = patch.url ? patch.url : decryptUrlFromDoc(doc) || null;
-  return { id: doc._id.toString(), guildId, type: doc.type, enabled: doc.enabled, channelId: doc.channelId || null, urlMasked: mask(real), lastOk: doc.lastOk ?? null, lastStatus: doc.lastStatus ?? null, lastAt: doc.lastAt || null, createdAt: doc.createdAt, updatedAt: doc.updatedAt };
+  return { id: doc._id.toString(), guildId, type: doc.type, enabled: doc.enabled, channelId: doc.channelId || null, urlMasked: mask(real), lastOk: doc.lastOk ?? null, lastStatus: doc.lastStatus ?? null, lastError: doc.lastError ?? null, lastAt: doc.lastAt || null, createdAt: doc.createdAt, updatedAt: doc.updatedAt };
 }
 
 async function deleteConfig(id, guildId){
@@ -227,3 +228,45 @@ async function postToAll(guildId, payload){
 }
 
 module.exports.postToAll = postToAll;
+
+// Test a single webhook by id; if OK, enable it. Always update last* fields.
+async function testAndActivate(id, guildId, payload){
+  const doc = await WebhookConfigModel.findOne({ _id: id, guildId });
+  if (!doc) throw new Error('Not found');
+  const url = decryptUrlFromDoc(doc);
+  if (!url) throw new Error('Invalid URL');
+  const body = payload && typeof payload === 'object' ? payload : { test: true, at: Date.now(), source: 'IGNIS' };
+  let ok = false; let status = 0; let lastErr = null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal });
+    status = resp.status;
+    ok = resp.ok;
+    if (!ok) lastErr = `status ${status}`;
+  } catch (e) {
+    lastErr = e?.message || 'network error';
+  } finally { clearTimeout(timeout); }
+  doc.lastOk = !!ok;
+  doc.lastStatus = status || 0;
+  doc.lastError = ok ? null : (lastErr || 'error');
+  doc.lastAt = new Date();
+  if (ok) doc.enabled = true;
+  await doc.save();
+  return {
+    id: doc._id.toString(),
+    guildId: doc.guildId,
+    type: doc.type,
+    enabled: doc.enabled,
+    channelId: doc.channelId || null,
+    urlMasked: mask(url),
+    lastOk: doc.lastOk ?? null,
+    lastStatus: doc.lastStatus ?? null,
+    lastError: doc.lastError ?? null,
+    lastAt: doc.lastAt || null,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt
+  };
+}
+
+module.exports.testAndActivate = testAndActivate;

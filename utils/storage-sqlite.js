@@ -94,6 +94,11 @@ db.serialize(() => {
     channel_name TEXT,
     enabled INTEGER
   )`);
+  // Status / health columns for webhooks (idempotent migrations)
+  ensureColumn('webhooks', 'last_ok', 'ALTER TABLE webhooks ADD COLUMN last_ok INTEGER');
+  ensureColumn('webhooks', 'last_status', 'ALTER TABLE webhooks ADD COLUMN last_status INTEGER');
+  ensureColumn('webhooks', 'last_error', 'ALTER TABLE webhooks ADD COLUMN last_error TEXT');
+  ensureColumn('webhooks', 'last_at', 'ALTER TABLE webhooks ADD COLUMN last_at TEXT');
 
   // Ticket action logs (lightweight)
   db.run(`CREATE TABLE IF NOT EXISTS ticket_logs (
@@ -475,18 +480,45 @@ class SqliteStorage {
       url: w.url,
       channel_id: w.channel_id || null,
       channel_name: w.channel_name || null,
-      enabled: !!w.enabled
+      enabled: !!w.enabled,
+      last_ok: w.last_ok == null ? null : !!w.last_ok,
+      last_status: w.last_status == null ? null : Number(w.last_status),
+      last_error: w.last_error || null,
+      last_at: w.last_at || null
     }));
   }
 
-  async upsertWebhook({ guild_id, type = 'logs', name, url, channel_id, channel_name, enabled = true }) {
+  async upsertWebhook({ guild_id, type = 'logs', name, url, channel_id, channel_name, enabled = true, last_ok, last_status, last_error, last_at }) {
     const current = await get(`SELECT * FROM webhooks WHERE guild_id = ? AND type = ?`, [guild_id, type]);
     if (current) {
-      await run(`UPDATE webhooks SET name = ?, url = ?, channel_id = ?, channel_name = ?, enabled = ? WHERE id = ?`, [name || current.name, url, channel_id || null, channel_name || null, enabled ? 1 : 0, current.id]);
-      return { _id: String(current.id), guild_id, type, name: name || current.name, url, channel_id, channel_name, enabled };
+      await run(`UPDATE webhooks SET name = ?, url = ?, channel_id = ?, channel_name = ?, enabled = ?, last_ok = ?, last_status = ?, last_error = ?, last_at = ? WHERE id = ?`, [
+        name || current.name,
+        url,
+        channel_id || null,
+        channel_name || null,
+        enabled ? 1 : 0,
+        last_ok == null ? current.last_ok : (last_ok ? 1 : 0),
+        last_status == null ? current.last_status : last_status,
+        last_error == null ? current.last_error : last_error,
+        last_at == null ? current.last_at : last_at,
+        current.id
+      ]);
+      return { _id: String(current.id), guild_id, type, name: name || current.name, url, channel_id, channel_name, enabled, last_ok: last_ok == null ? (current.last_ok == null ? null : !!current.last_ok) : !!last_ok, last_status: last_status == null ? (current.last_status == null ? null : Number(current.last_status)) : last_status, last_error: last_error == null ? current.last_error || null : last_error, last_at: last_at == null ? current.last_at || null : last_at };
     }
-    const r = await run(`INSERT INTO webhooks (guild_id, type, name, url, channel_id, channel_name, enabled) VALUES (?, ?, ?, ?, ?, ?, ?)`, [guild_id, type, name || null, url, channel_id || null, channel_name || null, enabled ? 1 : 0]);
-    return { _id: String(r.lastID), guild_id, type, name, url, channel_id, channel_name, enabled };
+    const r = await run(`INSERT INTO webhooks (guild_id, type, name, url, channel_id, channel_name, enabled, last_ok, last_status, last_error, last_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+      guild_id,
+      type,
+      name || null,
+      url,
+      channel_id || null,
+      channel_name || null,
+      enabled ? 1 : 0,
+      last_ok == null ? null : (last_ok ? 1 : 0),
+      last_status == null ? null : last_status,
+      last_error == null ? null : last_error,
+      last_at == null ? null : last_at
+    ]);
+    return { _id: String(r.lastID), guild_id, type, name, url, channel_id, channel_name, enabled, last_ok: last_ok == null ? null : !!last_ok, last_status: last_status == null ? null : last_status, last_error: last_error == null ? null : last_error, last_at: last_at == null ? null : last_at };
   }
 
   async deleteWebhookById(id, guildId) {

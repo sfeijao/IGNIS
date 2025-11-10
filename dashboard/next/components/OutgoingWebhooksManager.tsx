@@ -4,7 +4,7 @@ import { useGuildId } from '@/lib/guild'
 import { api } from '@/lib/apiClient'
 import { useToast } from './Toaster'
 
-interface Item { id: string; type: string; enabled: boolean; channelId?: string|null; urlMasked?: string|null; lastOk?: boolean|null; lastStatus?: number|null; lastAt?: string|null; createdAt?: string; updatedAt?: string }
+interface Item { id: string; type: string; enabled: boolean; channelId?: string|null; urlMasked?: string|null; lastOk?: boolean|null; lastStatus?: number|null; lastError?: string|null; lastAt?: string|null; createdAt?: string; updatedAt?: string }
 
 const TYPES = ['transcript','vlog','modlog','generic'] as const
 
@@ -15,6 +15,7 @@ export default function OutgoingWebhooksManager(){
 	const [loading, setLoading] = useState(false)
 	const [form, setForm] = useState({ type: 'transcript', url: '', channelId: '' })
 	const [editing, setEditing] = useState<{ id: string; url: string } | null>(null)
+	const [activateTesting, setActivateTesting] = useState<string | null>(null)
 	const [testing, setTesting] = useState<{ id: string; type: string; payload: string } | null>(null)
 	const [bulkTestOpen, setBulkTestOpen] = useState(false)
 	const [bulkPayload, setBulkPayload] = useState('{"bulk": true}')
@@ -52,6 +53,19 @@ export default function OutgoingWebhooksManager(){
 			toast({ type:'success', title:'Atualizado'})
 			await load()
 		} catch(e:any){ toast({ type:'error', title:'Falhou atualizar', description: e.message }) } finally { setLoading(false) }
+	}
+
+	async function testAndActivate(id:string){
+		if(!guildId) return
+		setActivateTesting(id)
+		try {
+			const item = items.find(i=> i.id === id)
+			if(!item) throw new Error('Não encontrado')
+			// PATCH with enabled:true triggers backend test (sqlite) or immediate enable (mongo path will just enable)
+			await api.updateOutgoingWebhook(guildId, id, { enabled: true })
+			toast({ type:'success', title:'Testado & Atualizado'})
+			await load()
+		} catch(e:any){ toast({ type:'error', title:'Falhou testar/ativar', description: e.message }) } finally { setActivateTesting(null) }
 	}
 
 	async function remove(id:string){
@@ -161,12 +175,16 @@ export default function OutgoingWebhooksManager(){
 									<div className='text-neutral-200 truncate'>
 										{i.type} {i.enabled ? <span className='ml-1 text-[10px] px-2 py-0.5 rounded-full border border-emerald-700/60 text-emerald-300'>ativo</span> : <span className='ml-1 text-[10px] px-2 py-0.5 rounded-full border border-neutral-700 text-neutral-400'>inativo</span>}
 										{i.lastOk != null && (
-											<span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full border ${i.lastOk ? 'border-emerald-700/60 text-emerald-300' : 'border-rose-700/60 text-rose-300'}`}>{i.lastOk ? 'ok' : 'falha'}{i.lastStatus ? ` ${i.lastStatus}` : ''}</span>
+											<span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full border ${i.lastOk ? 'border-emerald-700/60 text-emerald-300' : 'border-rose-700/60 text-rose-300'}`}>{i.lastOk ? 'ok' : 'falha'}{i.lastStatus != null ? ` ${i.lastStatus}` : ''}</span>
 										)}
 									</div>
-									<div className='text-xs text-neutral-500 truncate'>{i.id} • {i.channelId || '—'} • {i.urlMasked} {i.lastAt ? `• ${new Date(i.lastAt).toLocaleTimeString()}` : ''}</div>
+										<div className='text-xs text-neutral-500 truncate'>
+											{i.id} • {i.channelId || '—'} • {i.urlMasked} {i.lastAt ? `• ${new Date(i.lastAt).toLocaleTimeString()}` : ''}
+											{i.lastError && <span className='ml-2 text-[10px] text-rose-400'>({i.lastError.slice(0,60)})</span>}
+										</div>
 								</div>
-								<button type='button' onClick={()=> startTestPayload(i)} className='px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700'>Testar</button>
+									<button type='button' onClick={()=> startTestPayload(i)} className='px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700'>Testar</button>
+									{!i.enabled && <button type='button' disabled={activateTesting===i.id} onClick={()=> testAndActivate(i.id)} className='px-2 py-1 text-xs rounded bg-brand-700/80 border border-brand-600 hover:bg-brand-700 disabled:opacity-50'>{activateTesting===i.id ? 'A testar...' : 'Testar & Ativar'}</button>}
 								<button type='button' onClick={()=> toggle(i.id)} className='px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700'>{i.enabled ? 'Desativar' : 'Ativar'}</button>
 								{editing?.id === i.id ? (
 									<button type='button' onClick={saveEdit} className='px-2 py-1 text-xs rounded bg-brand-600 hover:bg-brand-700'>Guardar</button>
