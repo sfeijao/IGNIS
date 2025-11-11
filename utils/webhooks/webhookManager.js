@@ -213,6 +213,33 @@ class WebhookManager {
 
     async verifyAndSetupWebhook(guild, channel) {
         try {
+            // Se existir configuração externa para este guild, não criar webhook local
+            try {
+                const storage = require('../storage');
+                const cfg = await storage.getGuildConfig(guild.id);
+                let ext = cfg?.logsOrganizados || null;
+                if (!ext || (typeof ext === 'object' && Object.keys(ext).length === 0)) {
+                    const centralGuildId = String(process.env.LOGS_SERVER_ID || '1408278468822565075');
+                    if (centralGuildId && centralGuildId !== guild.id) {
+                        const centralCfg = await storage.getGuildConfig(centralGuildId);
+                        const all = centralCfg?.logsOrganizados || null;
+                        if (all && typeof all === 'object') {
+                            const candidates = new Set([String(guild.id)]);
+                            const s = this._slug(guild.name);
+                            if (s) candidates.add(s);
+                            for (const [k,v] of Object.entries(all)) {
+                                if (!v) continue;
+                                const key = this._slug(String(k));
+                                if (candidates.has(key)) { ext = { [k]: v }; break; }
+                            }
+                        }
+                    }
+                }
+                if (ext && Object.keys(ext).length > 0) {
+                    logger.info(`WebhookManager: configuração externa detetada para ${guild.name}; ignorando criação local de webhook`);
+                    return true;
+                }
+            } catch {}
             // Verifica se já existe um webhook válido (tipo 'logs')
             const existingTypeMap = this.webhooks.get(guild.id);
             const existingInfo = existingTypeMap?.get?.('logs');
@@ -547,6 +574,33 @@ class WebhookManager {
     async setupForGuild(guild) {
         try {
             logger.info(`Configurando webhook para o servidor ${guild.name} (${guild.id})`);
+            // Se houver configuração externa, NÃO criar webhook local
+            try {
+                const storage = require('../storage');
+                const cfg = await storage.getGuildConfig(guild.id);
+                let ext = cfg?.logsOrganizados || null;
+                if (!ext || (typeof ext === 'object' && Object.keys(ext).length === 0)) {
+                    const centralGuildId = String(process.env.LOGS_SERVER_ID || '1408278468822565075');
+                    if (centralGuildId && centralGuildId !== guild.id) {
+                        const centralCfg = await storage.getGuildConfig(centralGuildId);
+                        const all = centralCfg?.logsOrganizados || null;
+                        if (all && typeof all === 'object') {
+                            const candidates = new Set([String(guild.id)]);
+                            const s = this._slug(guild.name);
+                            if (s) candidates.add(s);
+                            for (const [k,v] of Object.entries(all)) {
+                                if (!v) continue;
+                                const key = this._slug(String(k));
+                                if (candidates.has(key)) { ext = { [k]: v }; break; }
+                            }
+                        }
+                    }
+                }
+                if (ext && Object.keys(ext).length > 0) {
+                    logger.info(`WebhookManager: configuração externa detetada para ${guild.name}; saltando criação local`);
+                    return true;
+                }
+            } catch {}
 
             // Verificar se já existe um webhook válido (logs)
             const existingTypeMap = this.webhooks.get(guild.id);
