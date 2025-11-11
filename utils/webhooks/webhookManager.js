@@ -280,8 +280,10 @@ class WebhookManager {
             // Se existir configuração de logsOrganizados, podemos ter webhooks externos
             // Formato esperado: cfg.logsOrganizados = { origemKey: { webhookUrl, ... } }
             data.__externalLogs = cfg && cfg.logsOrganizados ? cfg.logsOrganizados : null;
-            // Flag para priorizar envio apenas a externos (evita duplicar no canal local)
-            data.__preferExternal = !!(cfg && cfg.logsOrganizados && Object.keys(cfg.logsOrganizados).length > 0 && String(process.env.PREFER_EXTERNAL_LOGS || '').toLowerCase() === 'true');
+            // Nova lógica: se existem externos, priorizar automaticamente, podendo ser revertido via env PREFER_EXTERNAL_LOGS=false
+            const envPref = String(process.env.PREFER_EXTERNAL_LOGS || '').toLowerCase();
+            const haveExternal = !!(cfg && cfg.logsOrganizados && Object.keys(cfg.logsOrganizados).length > 0);
+            data.__preferExternal = haveExternal && envPref !== 'false';
         } catch {}
         if (!preferredType) {
             // Defaults: claim/release/update -> 'updates', create/close -> 'tickets', otherwise 'logs'
@@ -400,8 +402,15 @@ class WebhookManager {
 
             // Se preferir externos e houver pelo menos um, não enviar local para evitar duplicações
             const externalSent = await this.sendToExternalWebhooks(guildId, event, data, payload);
+            if (process.env.WEBHOOK_DEBUG_EXTERNAL === 'true') {
+                try {
+                    logger.debug(`WebhookManager: envio externo=${externalSent} preferExternal=${data.__preferExternal} guild=${guildId} tiposCarregados=${Array.from(this.webhooks.get(guildId)?.keys()||[]).join(',')}`);
+                } catch {}
+            }
             if (!data.__preferExternal || !externalSent) {
                 await webhookInfo.webhook.send(payload);
+            } else if (process.env.WEBHOOK_DEBUG_EXTERNAL === 'true') {
+                try { logger.debug(`WebhookManager: skip envio local para evitar duplicação (guild ${guildId})`); } catch {}
             }
         } catch (error) {
             logger.error(`Error sending webhook for guild ${guildId}:`, error);
