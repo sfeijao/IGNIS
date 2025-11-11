@@ -750,8 +750,17 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
                     lastError: r.last_error || null,
                     lastAt: r.last_at || null,
                     createdAt: null,
-                    updatedAt: null
+                    updatedAt: null,
+                    external: !!r.external,
+                    preferredTarget: null
                 }));
+                // Attach preferred target diagnostics (best-effort sync)
+                try {
+                    const diag = client.webhooks?.getPreferredTarget?.(guildId, null);
+                    if (diag) {
+                        items.forEach(it => { if (!it.preferredTarget) it.preferredTarget = { mode: diag.mode, reason: diag.reason }; });
+                    }
+                } catch {}
                 return res.json({ success: true, items, webhooks: items });
             } catch (e) {
                 logger.error('Webhook list sqlite fallback error:', e);
@@ -783,12 +792,46 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
             lastError: w.last_error || w.lastError || null,
             lastAt: w.last_at || w.lastAt || null,
             createdAt: w.createdAt || null,
-            updatedAt: w.updatedAt || null
+            updatedAt: w.updatedAt || null,
+            external: !!w.external,
+            preferredTarget: null
         }));
+        try {
+            const diag = client.webhooks?.getPreferredTarget?.(guildId, null);
+            if (diag) {
+                items.forEach(it => { if (!it.preferredTarget) it.preferredTarget = { mode: diag.mode, reason: diag.reason }; });
+            }
+        } catch {}
         return res.json({ success: true, items, webhooks: items });
     } catch (e) {
         logger.error('Webhook list error unified route:', e);
         return res.status(500).json({ success: false, error: 'Failed to list webhooks' });
+    }
+});
+
+// Diagnostics endpoint: resolve final preferred target (local vs external) with detail steps
+app.get('/api/guild/:guildId/webhooks/diagnostics', async (req, res) => {
+    if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const guildId = req.params.guildId;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const member = await guild.members.fetch(req.user.id).catch(()=>null);
+        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+        const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
+        if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
+
+        const eventsToCheck = ['create','close','update','claim','release','generic'];
+        const diagnostics = {};
+        for (const ev of eventsToCheck) {
+            try { diagnostics[ev] = client.webhooks?.getPreferredTarget?.(guildId, ev) || null; } catch { diagnostics[ev] = null; }
+        }
+        return res.json({ success: true, diagnostics });
+    } catch (e) {
+        logger.error('Webhook diagnostics route failed:', e);
+        return res.status(500).json({ success: false, error: 'Failed to compute diagnostics' });
     }
 });
 
