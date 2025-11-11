@@ -279,11 +279,43 @@ class WebhookManager {
             if (routing && typeof routing === 'object' && routing[event]) preferredType = String(routing[event]);
             // Se existir configuração de logsOrganizados, podemos ter webhooks externos
             // Formato esperado: cfg.logsOrganizados = { origemKey: { webhookUrl, ... } }
-            data.__externalLogs = cfg && cfg.logsOrganizados ? cfg.logsOrganizados : null;
-            // Nova lógica: se existem externos, priorizar automaticamente, podendo ser revertido via env PREFER_EXTERNAL_LOGS=false
+            let ext = cfg && cfg.logsOrganizados ? cfg.logsOrganizados : null;
+            // Fallback inteligente: se a configuração não estiver no guild de origem, procurar no guild de LOGS central
+            if (!ext || (typeof ext === 'object' && Object.keys(ext).length === 0)) {
+                try {
+                    const centralGuildId = String(process.env.LOGS_SERVER_ID || '1408278468822565075');
+                    if (centralGuildId && centralGuildId !== guildId) {
+                        const centralCfg = await storage.getGuildConfig(centralGuildId);
+                        const all = centralCfg && centralCfg.logsOrganizados ? centralCfg.logsOrganizados : null;
+                        if (all && typeof all === 'object') {
+                            // Selecionar entradas cujo key combine com o guild de origem (por id ou slug do nome)
+                            const candidates = new Set();
+                            try { candidates.add(String(guildId)); } catch {}
+                            try {
+                                const name = data?.guild?.name || '';
+                                const s = this._slug(String(name)); if (s) candidates.add(s);
+                            } catch {}
+                            const subset = {};
+                            for (const [k,v] of Object.entries(all)) {
+                                if (!v) continue;
+                                const key = this._slug(String(k));
+                                if (candidates.has(key)) subset[k] = v;
+                            }
+                            if (Object.keys(subset).length > 0) ext = subset;
+                        }
+                    }
+                } catch {}
+            }
+            data.__externalLogs = ext;
+            // Preferir externos automaticamente quando existirem (pode forçar local com PREFER_EXTERNAL_LOGS=false)
             const envPref = String(process.env.PREFER_EXTERNAL_LOGS || '').toLowerCase();
-            const haveExternal = !!(cfg && cfg.logsOrganizados && Object.keys(cfg.logsOrganizados).length > 0);
+            const haveExternal = !!(ext && Object.keys(ext).length > 0);
             data.__preferExternal = haveExternal && envPref !== 'false';
+            if (process.env.WEBHOOK_DEBUG_EXTERNAL === 'true') {
+                try {
+                    logger.debug(`WebhookManager: extCandidates=${Object.keys(ext||{}).join(',')||'none'} preferExternal=${data.__preferExternal}`);
+                } catch {}
+            }
         } catch {}
         if (!preferredType) {
             // Defaults: claim/release/update -> 'updates', create/close -> 'tickets', otherwise 'logs'
@@ -415,6 +447,19 @@ class WebhookManager {
         } catch (error) {
             logger.error(`Error sending webhook for guild ${guildId}:`, error);
         }
+    }
+
+    // Utilitário simples para comparar chaves de servidores (remove acentos/espacos/emojis e põe minúsculas)
+    _slug(s) {
+        try {
+            return String(s || '')
+                .normalize('NFKD')
+                .replace(/[\u0300-\u036f]/g, '') // diacríticos
+                .replace(/<a?:[^>]+>/g, '') // emojis custom
+                .replace(/[^a-zA-Z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '')
+                .toLowerCase();
+        } catch { return String(s||'').toLowerCase(); }
     }
 
     getColorForType(type) {
