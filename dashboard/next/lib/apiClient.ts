@@ -371,6 +371,11 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch webhooks')
     return res.json()
   },
+  async getWebhookDiagnostics(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/webhooks/diagnostics`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch webhook diagnostics')
+    return res.json()
+  },
   // Outgoing webhook configs (encrypted at rest)
   async getOutgoingWebhooks(guildId: string) {
     const res = await fetch(`/api/guild/${guildId}/webhooks`, { credentials: 'include' })

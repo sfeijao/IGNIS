@@ -6,7 +6,7 @@ import { api } from '@/lib/apiClient'
 import { useToast } from './Toaster'
 import { useI18n } from '@/lib/i18n'
 
-type Webhook = { id: string; type?: string; name?: string; channelId?: string; url?: string; loaded?: boolean }
+type Webhook = { id: string; type?: string; name?: string; channelId?: string; url?: string; loaded?: boolean; preferredTarget?: { mode: string; reason: string; urlMasked?: string }; external?: boolean }
 type TicketsConfig = { transcriptWebhook?: string }
 type Channel = { id: string; name: string; type?: any }
 
@@ -54,7 +54,16 @@ export default function WebhooksManager() {
         api.getChannels(guildId).catch(() => ({ channels: [] as Channel[] }))
       ])
       const data = hooksRes
-      const list = (data.webhooks || data || []).map((w: any) => ({ id: String(w._id || w.id || `${w.type}:${w.channel_id || ''}`), type: w.type || 'logs', name: w.name, channelId: w.channel_id, url: w.url, loaded: !!w.loaded }))
+      const list = (data.webhooks || data || []).map((w: any) => ({
+        id: String(w._id || w.id || `${w.type}:${w.channel_id || ''}`),
+        type: w.type || 'logs',
+        name: w.name,
+        channelId: w.channel_id,
+        url: w.url,
+        loaded: !!w.loaded,
+        preferredTarget: w.preferredTarget || null,
+        external: !!w.external
+      }))
       setHooks(list)
       const cfg = (cfgRes as any)?.config || cfgRes || {}
       setTranscriptUrl(cfg.transcriptWebhook || '')
@@ -204,10 +213,16 @@ export default function WebhooksManager() {
                 <div className="text-neutral-200 truncate">{h.name || 'Webhook'} <span className="text-xs text-neutral-400">({h.type})</span>
                   {h.loaded && <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full border border-emerald-700/60 text-emerald-300">{t('webhooks.active')}</span>}
                   {h.url && transcriptUrl && h.url === transcriptUrl && <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full border border-sky-700/60 text-sky-300">{t('webhooks.transcript')}</span>}
+                  {h.external && <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full border border-indigo-600/60 text-indigo-300" title="Webhook externo (cross-server)">externo</span>}
+                  {h.preferredTarget && h.preferredTarget.mode === 'external' && <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full border border-purple-600/60 text-purple-300" title="Roteamento preferido externo">destino: externo</span>}
                 </div>
-                <div className="text-xs text-neutral-500">{h.id} • {h.channelId}</div>
+                <div className="text-xs text-neutral-500">{h.id} • {h.channelId || '—'}{h.preferredTarget && <>
+                  {' '}• modo: {h.preferredTarget.mode}{h.preferredTarget.urlMasked && <> • alvo: {h.preferredTarget.urlMasked}</>}
+                  {' '}• razão: {h.preferredTarget.reason}
+                </>}</div>
               </div>
               <button type="button" onClick={()=> test(h.type)} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('webhooks.test')}</button>
+              <button type="button" onClick={async ()=> { if (!guildId) return; try { const r = await api.getWebhookDiagnostics(guildId); toast({ type:'info', title:'Diagnóstico', description: 'Ver consola para detalhes'}); console.log('[Webhook Diagnostics]', r); } catch(e:any){ toast({ type:'error', title:'Falhou diagnóstico', description: e?.message }) } }} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" title="Ver diagnóstico de resolução">Diag</button>
               {h.url && <button type="button" onClick={()=> setAsTranscript(h.url)} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('webhooks.setAsTranscript')}</button>}
               <button type="button" onClick={()=> remove(h.id, h.type)} className="px-2 py-1 text-xs rounded bg-rose-600 hover:bg-rose-500">{t('webhooks.remove')}</button>
             </div>

@@ -472,7 +472,30 @@ class WebhookManager {
                 try { logger.debug(`WebhookManager: skip envio local para evitar duplicação (guild ${guildId})`); } catch {}
             }
         } catch (error) {
+            // Se for webhook desconhecido (apagado no Discord), limpar e persistir remoção para evitar erros repetidos
+            const errMsg = error && (error.message || String(error));
+            const isUnknownWebhook = errMsg && /Unknown Webhook/i.test(errMsg);
             logger.error(`Error sending webhook for guild ${guildId}:`, error);
+            if (isUnknownWebhook && webhookInfo?.webhook?.url) {
+                try {
+                    const typeMap = this.webhooks.get(guildId);
+                    if (typeMap) {
+                        // encontrar a entry que falhou
+                        for (const [t, info] of typeMap.entries()) {
+                            if (info === webhookInfo) {
+                                typeMap.delete(t);
+                                logger.warn(`WebhookManager: removendo webhook inválido (${t}) para guild ${guildId}`);
+                                if (typeMap.size === 0) this.webhooks.delete(guildId);
+                                await this.saveConfig().catch(()=>{});
+                                try { await this.persistToDB(guildId, { type: t, enabled: false }); } catch {}
+                                break;
+                            }
+                        }
+                    }
+                } catch (cleanupErr) {
+                    logger.warn('WebhookManager: falha ao limpar webhook inválido:', cleanupErr?.message || cleanupErr);
+                }
+            }
         }
     }
 

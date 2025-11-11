@@ -29,5 +29,20 @@
     "user_id": "someone",
     "status": "closed",
     "meta": {}
+  },
+  {
+    "id": 1762821317958,
+    "guild_id": "1283603691538088027",
+    "channel_id": "1437601542709575700",
+    "user_id": "381762006329589760",
+    "category": "technical",
+    "subject": null,
+    "description": null,
+    "priority": "normal",
+    "status": "open",
+    "created_at": "2025-11-11T00:35:17.958Z",
+    "assigned_to": null,
+    "closed_at": null,
+    "panel_message_id": "1437601544815247360"
   }
 ]
