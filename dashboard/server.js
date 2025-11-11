@@ -758,7 +758,14 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
                 try {
                     const diag = client.webhooks?.getPreferredTarget?.(guildId, null);
                     if (diag) {
-                        items.forEach(it => { if (!it.preferredTarget) it.preferredTarget = { mode: diag.mode, reason: diag.reason }; });
+                        const mask = (u) => u && u.length > 16 ? (u.slice(0, u.length - 12).replace(/./g,'*') + u.slice(-12)) : (u ? '****' : null);
+                        let urlMasked = null;
+                        if (diag.mode === 'external' && Array.isArray(diag.externalCandidates?.urls) && diag.externalCandidates.urls.length) {
+                            urlMasked = mask(diag.externalCandidates.urls[0]);
+                        } else if (diag.mode === 'local' && diag.localWebhook?.url) {
+                            urlMasked = mask(diag.localWebhook.url);
+                        }
+                        items.forEach(it => { if (!it.preferredTarget) it.preferredTarget = { mode: diag.mode, reason: diag.reason, urlMasked }; });
                     }
                 } catch {}
                 return res.json({ success: true, items, webhooks: items });
@@ -799,7 +806,14 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
         try {
             const diag = client.webhooks?.getPreferredTarget?.(guildId, null);
             if (diag) {
-                items.forEach(it => { if (!it.preferredTarget) it.preferredTarget = { mode: diag.mode, reason: diag.reason }; });
+                const mask = (u) => u && u.length > 16 ? (u.slice(0, u.length - 12).replace(/./g,'*') + u.slice(-12)) : (u ? '****' : null);
+                let urlMasked = null;
+                if (diag.mode === 'external' && Array.isArray(diag.externalCandidates?.urls) && diag.externalCandidates.urls.length) {
+                    urlMasked = mask(diag.externalCandidates.urls[0]);
+                } else if (diag.mode === 'local' && diag.localWebhook?.url) {
+                    urlMasked = mask(diag.localWebhook.url);
+                }
+                items.forEach(it => { if (!it.preferredTarget) it.preferredTarget = { mode: diag.mode, reason: diag.reason, urlMasked }; });
             }
         } catch {}
         return res.json({ success: true, items, webhooks: items });
