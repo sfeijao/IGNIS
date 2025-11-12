@@ -875,6 +875,92 @@ class WebhookManager {
 
         return out;
     }
+
+    /**
+     * Async version that actually awaits storage and central fallback.
+     * Mirrors sendTicketLog routing without sending anything.
+     */
+    async getPreferredTargetAsync(guildId, event = null) {
+        const steps = [];
+        let preferredType = null;
+        const out = {
+            guildId,
+            mode: 'none',
+            preferExternal: false,
+            eventHint: event,
+            eventTypeUsed: null,
+            localWebhook: null,
+            externalCandidates: { source: 'none', count: 0, keys: [], urls: [] },
+            reason: 'no webhook configured',
+            steps
+        };
+        let routing = null;
+        try {
+            const storage = require('../storage');
+            const cfg = await storage.getGuildConfig(guildId).catch(()=>null);
+            routing = cfg && cfg.webhookRouting ? cfg.webhookRouting : null;
+            if (routing && event && routing[event]) {
+                preferredType = String(routing[event]);
+                steps.push(`routing override for event ${event} => type ${preferredType}`);
+            }
+            // External resolution
+            let ext = cfg && cfg.logsOrganizados ? cfg.logsOrganizados : null;
+            let source = 'origin';
+            if (!ext || (typeof ext === 'object' && Object.keys(ext).length === 0)) {
+                const centralGuildId = String(process.env.LOGS_SERVER_ID || '1408278468822565075');
+                if (centralGuildId && centralGuildId !== guildId) {
+                    const centralCfg = await storage.getGuildConfig(centralGuildId).catch(()=>null);
+                    const all = centralCfg && centralCfg.logsOrganizados ? centralCfg.logsOrganizados : null;
+                    if (all && typeof all === 'object') {
+                        const candidates = new Set([String(guildId)]);
+                        const guildName = this.client?.guilds?.cache?.get(guildId)?.name || '';
+                        const s = this._slug(guildName); if (s) candidates.add(s);
+                        const subset = {};
+                        for (const [k,v] of Object.entries(all)) {
+                            if (!v) continue; const key = this._slug(String(k));
+                            if (candidates.has(key)) subset[k] = v;
+                        }
+                        if (Object.keys(subset).length > 0) { ext = subset; source = 'central'; steps.push('matched external via central config'); }
+                        else steps.push('no external match in central config');
+                    } else steps.push('central config missing logsOrganizados');
+                } else steps.push('central fallback skipped (same guild or LOGS_SERVER_ID empty)');
+            } else steps.push('found external in origin config');
+
+            const haveExternal = !!(ext && Object.keys(ext).length > 0);
+            const envPref = String(process.env.PREFER_EXTERNAL_LOGS || '').toLowerCase();
+            out.preferExternal = haveExternal && envPref !== 'false';
+            if (haveExternal) {
+                const entries = Object.entries(ext).filter(([k,v]) => v && v.webhookUrl);
+                out.externalCandidates = { source, count: entries.length, keys: entries.map(([k])=>k), urls: entries.map(([_,v])=>v.webhookUrl) };
+                steps.push(`external candidates=${entries.length}`);
+            } else steps.push('no external candidates');
+        } catch (e) { steps.push('error loading configs: ' + (e?.message || e)); }
+
+        if (!preferredType) {
+            preferredType = (event === 'update' || event === 'claim' || event === 'release')
+                ? 'updates'
+                : (event === 'create' || event === 'close')
+                ? 'tickets'
+                : 'logs';
+            steps.push('default type computed: ' + preferredType);
+        }
+        out.eventTypeUsed = preferredType;
+
+        const typeMap = this.webhooks.get(guildId);
+        const webhookInfo = typeMap?.get?.(preferredType) || typeMap?.get?.('logs');
+        if (webhookInfo?.webhook?.url) {
+            out.localWebhook = { type: preferredType, url: webhookInfo.webhook.url, external: !!webhookInfo.external };
+            steps.push(`local webhook present type=${preferredType}`);
+        } else steps.push('no local webhook loaded');
+
+        if (out.preferExternal && out.externalCandidates.count > 0) {
+            out.mode = 'external'; out.reason = 'external configuration present and preference enabled';
+        } else if (out.localWebhook) {
+            out.mode = 'local'; out.reason = out.preferExternal ? 'external preference disabled via env flag' : 'no external config found';
+        } else { out.mode = 'none'; out.reason = 'no webhook (local or external)'; }
+
+        return out;
+    }
 }
 
 // ===== Extensões para suportar webhooks externos (cross-server) =====

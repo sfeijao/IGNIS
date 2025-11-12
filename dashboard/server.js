@@ -754,9 +754,11 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
                     external: !!r.external,
                     preferredTarget: null
                 }));
-                // Attach preferred target diagnostics (best-effort sync)
+                // Attach preferred target diagnostics (async, accurate)
                 try {
-                    const diag = client.webhooks?.getPreferredTarget?.(guildId, null);
+                    let diag = null;
+                    if (client.webhooks?.getPreferredTargetAsync) diag = await client.webhooks.getPreferredTargetAsync(guildId, null);
+                    else diag = client.webhooks?.getPreferredTarget?.(guildId, null);
                     if (diag) {
                         const mask = (u) => u && u.length > 16 ? (u.slice(0, u.length - 12).replace(/./g,'*') + u.slice(-12)) : (u ? '****' : null);
                         let urlMasked = null;
@@ -804,7 +806,9 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
             preferredTarget: null
         }));
         try {
-            const diag = client.webhooks?.getPreferredTarget?.(guildId, null);
+            let diag = null;
+            if (client.webhooks?.getPreferredTargetAsync) diag = await client.webhooks.getPreferredTargetAsync(guildId, null);
+            else diag = client.webhooks?.getPreferredTarget?.(guildId, null);
             if (diag) {
                 const mask = (u) => u && u.length > 16 ? (u.slice(0, u.length - 12).replace(/./g,'*') + u.slice(-12)) : (u ? '****' : null);
                 let urlMasked = null;
@@ -840,7 +844,11 @@ app.get('/api/guild/:guildId/webhooks/diagnostics', async (req, res) => {
         const eventsToCheck = ['create','close','update','claim','release','generic'];
         const diagnostics = {};
         for (const ev of eventsToCheck) {
-            try { diagnostics[ev] = client.webhooks?.getPreferredTarget?.(guildId, ev) || null; } catch { diagnostics[ev] = null; }
+            try {
+                // Prefer async version for accurate external fallback resolution
+                if (client.webhooks?.getPreferredTargetAsync) diagnostics[ev] = await client.webhooks.getPreferredTargetAsync(guildId, ev);
+                else diagnostics[ev] = client.webhooks?.getPreferredTarget?.(guildId, ev) || null;
+            } catch { diagnostics[ev] = null; }
         }
         return res.json({ success: true, diagnostics });
     } catch (e) {
