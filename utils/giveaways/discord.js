@@ -18,22 +18,67 @@ async function publishGiveaway(giveaway){
       return { ok:false, error:'missing_perm_add_reactions' };
     }
 
+    // Calcular tempo até o fim
+    const endsAt = new Date(giveaway.ends_at);
+    const timestamp = Math.floor(endsAt.getTime() / 1000);
+    
+    // Criar embed profissional
     const embed = new EmbedBuilder()
-      .setTitle(`${giveaway.icon_emoji || '🎉'} ${giveaway.title}`)
-      .setDescription(giveaway.description || '')
-      .setColor(0x8b5cf6);
-    if (giveaway.banner_url) embed.setImage(giveaway.banner_url);
-    if (giveaway.ends_at) embed.setFooter({ text: `Ends at: ${new Date(giveaway.ends_at).toLocaleString()}` });
+      .setTitle(`${giveaway.icon_emoji || '🎉'} Giveaway Started ${giveaway.icon_emoji || '🎉'}`)
+      .setColor(0xFF6B6B) // Cor vermelha/laranja como na imagem
+      .setTimestamp();
+
+    // Adicionar descrição/título do prémio
+    if (giveaway.title) {
+      embed.addFields({
+        name: '',
+        value: `**${giveaway.title}**`,
+        inline: false
+      });
+    }
+
+    // Adicionar campos formatados
+    embed.addFields(
+      {
+        name: `${giveaway.icon_emoji || '🎁'} React with ${giveaway.icon_emoji || '🎉'} to enter!`,
+        value: giveaway.description || 'Boa sorte a todos os participantes!',
+        inline: false
+      },
+      {
+        name: '⏰ Ending in a day',
+        value: `<t:${timestamp}:R>`,
+        inline: true
+      },
+      {
+        name: '🎫 Hosted by',
+        value: `<@${giveaway.created_by}>`,
+        inline: true
+      }
+    );
+
+    // Adicionar footer
+    embed.setFooter({
+      text: `${giveaway.winners_count} winner(s) • Tomorrow at ${endsAt.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}`
+    });
+
+    // Adicionar banner se existir
+    if (giveaway.banner_url) {
+      embed.setImage(giveaway.banner_url);
+    }
 
     let components = [];
     if (giveaway.method === 'button'){
       const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`gw-enter:${giveaway._id}`).setLabel('Enter').setStyle(ButtonStyle.Success).setEmoji(giveaway.icon_emoji || '🎉')
+        new ButtonBuilder()
+          .setCustomId(`gw-enter:${giveaway._id}`)
+          .setLabel('0')
+          .setStyle(ButtonStyle.Success)
+          .setEmoji(giveaway.icon_emoji || '🎉')
       );
       components = [row];
     }
 
-    const msg = await channel.send({ content: '🎉 Giveaway', embeds: [embed], components });
+    const msg = await channel.send({ embeds: [embed], components });
     if (giveaway.method === 'reaction'){
       try { await msg.react(giveaway.icon_emoji || '🎉'); } catch {}
     }
@@ -53,11 +98,55 @@ async function announceWinners(giveaway, winners){
     if (!channel) return { ok:false, error:'channel_not_found' };
     const msg = await channel.messages.fetch(giveaway.message_id).catch(()=>null);
     if (!msg) return { ok:false, error:'message_not_found' };
-    const mentions = winners && winners.length ? winners.map(w=>`<@${w.user_id}>`).join(', ') : 'No entrants';
-    await msg.reply({ content: `🎉 Winners: ${mentions}` });
-    try { await msg.edit({ content: '🎉 Giveaway (ended)' }); } catch {}
+    
+    // Criar embed de anúncio de vencedores
+    const winnerEmbed = new EmbedBuilder()
+      .setTitle(`${giveaway.icon_emoji || '🎉'} Giveaway Ended! ${giveaway.icon_emoji || '🎉'}`)
+      .setColor(0x57F287) // Verde Discord
+      .setTimestamp();
+
+    if (winners && winners.length > 0) {
+      const mentions = winners.map(w => `<@${w.user_id}>`).join('\n');
+      winnerEmbed.setDescription(
+        `**${giveaway.title}**\n\n` +
+        `🏆 **Vencedore${winners.length > 1 ? 's' : ''}:**\n${mentions}\n\n` +
+        `Parabéns! 🎊`
+      );
+    } else {
+      winnerEmbed.setDescription(
+        `**${giveaway.title}**\n\n` +
+        `😔 Nenhum participante válido.\n` +
+        `O giveaway terminou sem vencedores.`
+      );
+    }
+
+    winnerEmbed.setFooter({
+      text: `${winners?.length || 0} vencedor(es) • Hosted by ${channel.guild.name}`,
+      iconURL: channel.guild.iconURL()
+    });
+
+    // Anunciar vencedores
+    await channel.send({ 
+      content: winners && winners.length ? winners.map(w=>`<@${w.user_id}>`).join(' ') : null,
+      embeds: [winnerEmbed] 
+    });
+    
+    // Atualizar mensagem original para mostrar que terminou
+    try {
+      const oldEmbed = msg.embeds[0];
+      if (oldEmbed) {
+        const endedEmbed = EmbedBuilder.from(oldEmbed)
+          .setColor(0x95A5A6) // Cinza para indicar terminado
+          .setTitle(`${giveaway.icon_emoji || '🎉'} Giveaway Ended ${giveaway.icon_emoji || '🎉'}`);
+        
+        await msg.edit({ embeds: [endedEmbed], components: [] });
+      }
+    } catch {}
+    
     return { ok:true };
-  } catch (e) { return { ok:false, error: e && e.message || String(e) }; }
+  } catch (e) { 
+    return { ok:false, error: e && e.message || String(e) }; 
+  }
 }
 
 module.exports = { publishGiveaway, announceWinners };

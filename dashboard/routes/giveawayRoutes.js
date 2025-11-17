@@ -17,9 +17,9 @@ const giveawayController = require('../controllers/giveawayController');
 let { requireGiveawayManage, rateLimitCreate } = (()=>{ try { return require('../middleware/giveawayGuards'); } catch { return { requireGiveawayManage:(req,res,next)=>next(), rateLimitCreate:(req,res,next)=>next() }; } })();
 
 // Routes base: /api/guilds/:guildId/giveaways
-router.get('/guilds/:guildId/giveaways', checkAuth, giveawayController.listGiveaways);
-router.post('/guilds/:guildId/giveaways', checkAuth, rateLimitCreate, giveawayController.createGiveaway);
-router.get('/guilds/:guildId/giveaways/:giveawayId', checkAuth, giveawayController.getGiveaway);
+router.get('/guilds/:guildId/giveaways', checkAuth, checkGuildAdmin, giveawayController.listGiveaways);
+router.post('/guilds/:guildId/giveaways', checkAuth, checkGuildAdmin, rateLimitCreate, giveawayController.createGiveaway);
+router.get('/guilds/:guildId/giveaways/:giveawayId', checkAuth, checkGuildAdmin, giveawayController.getGiveaway);
 router.patch('/guilds/:guildId/giveaways/:giveawayId', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.updateGiveaway);
 router.delete('/guilds/:guildId/giveaways/:giveawayId', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.deleteGiveaway);
 router.post('/guilds/:guildId/giveaways/:giveawayId/end', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.endNow);

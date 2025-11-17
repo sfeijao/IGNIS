@@ -1,5 +1,6 @@
 const { MessageFlags } = require('discord.js');
 const logger = require('../logger');
+const { updateGiveawayMessage } = require('./messageUpdater');
 
 /**
  * Handle giveaway entry button click
@@ -72,6 +73,13 @@ async function handleGiveawayEntry(interaction, giveawayId) {
             totalEntries
         });
 
+        // Update Discord message button counter
+        try {
+            await updateGiveawayMessage(giveawayId);
+        } catch (updateError) {
+            logger.warn('Failed to update giveaway message counter', updateError);
+        }
+
         await interaction.editReply({
             content: `✅ **Entrada confirmada!**\n🎉 Você está participando de **${giveaway.title}**\n👥 Total de participantes: **${totalEntries}**`
         });
@@ -136,6 +144,13 @@ async function handleGiveawayLeave(interaction, giveawayId) {
             guildId: giveaway.guild_id,
             totalEntries
         });
+
+        // Update Discord message button counter
+        try {
+            await updateGiveawayMessage(giveawayId);
+        } catch (updateError) {
+            logger.warn('Failed to update giveaway message counter', updateError);
+        }
 
         await interaction.editReply({
             content: `✅ Você saiu do sorteio **${giveaway.title}**\n👥 Participantes restantes: **${totalEntries}**`
