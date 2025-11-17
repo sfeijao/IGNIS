@@ -51,18 +51,25 @@ function initGiveawayWorker(){
             try {
               const fresh = await GiveawayModel.findById(g._id).lean();
               if (fresh && fresh.status === 'ended' && !fresh.winners_announced) {
-                try {
-                  const { announceWinners } = require('./discord');
-                  await announceWinners(fresh, result.winners || []);
+                const { announceWinners } = require('./discord');
+                const announceResult = await announceWinners(fresh, result.winners || []);
+                if (announceResult.ok) {
                   await GiveawayModel.updateOne({ _id: fresh._id }, { $set: { winners_announced: true } });
-                } catch {}
+                } else {
+                  console.warn(`[GiveawayWorker] Failed to announce winners for ${g._id}: ${announceResult.error || 'unknown'}`);
+                  // Retry announcement on next tick (don't mark as announced)
+                }
               }
-            } catch {}
+            } catch (announceErr) {
+              console.warn('[GiveawayWorker] announcement error:', announceErr && announceErr.message || announceErr);
+            }
           }
-        } catch {}
+        } catch (endErr) {
+          console.warn('[GiveawayWorker] end giveaway error:', endErr && endErr.message || endErr);
+        }
       }
     } catch (e) {
-      try { console.warn('[GiveawayWorker] end error:', e && e.message || e); } catch {}
+      try { console.warn('[GiveawayWorker] tick error:', e && e.message || e); } catch {}
       checkDisable(e);
     }
   }

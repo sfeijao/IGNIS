@@ -329,37 +329,37 @@ async function confirmClose(interaction) {
   await interaction.channel.send({ embeds: [closed] });
   // Gerar transcript completo (paginado) e enviar para canal de logs, se configurado
   try {
-    const messages = await fetchAllMessages(interaction.channel, 2000);
-    let transcript = `TRANSCRICAO TICKET ${interaction.channel.name} (canal ${interaction.channel.id})\nServidor: ${interaction.guild?.name} (${interaction.guildId})\nFechado por: ${interaction.user.tag} em ${new Date().toISOString()}\n\n`;
-    for (const m of messages) {
-      const ts = new Date(m.createdTimestamp).toISOString();
-      const author = m.author?.tag || m.author?.id || 'Desconhecido';
-      const content = (m.content || '').replace(/\n/g, ' ');
-      const atts = m.attachments && m.attachments.size > 0 ? ` [anexos: ${Array.from(m.attachments.values()).map(a=>a.name).join(', ')}]` : '';
-      transcript += `${ts} - ${author}: ${content}${atts}\n`;
-    }
-    const { AttachmentBuilder } = require('discord.js');
-    const file = new AttachmentBuilder(Buffer.from(transcript,'utf8'), { name: `transcript-${interaction.channel.id}.txt` });
+    const transcriptHelper = require('./transcriptHelper');
+    const ticketData = await storage.getTicketByChannel(interaction.channel.id);
+    const { text, attachment } = await transcriptHelper.generateFullTranscript({
+      channel: interaction.channel,
+      ticketId: ticketData?.id?.toString() || interaction.channel.id,
+      closedByTag: interaction.user.tag,
+      action: 'fechado',
+      maxMessages: 2000
+    });
     let sent = false;
-    // Preferir webhook configurado
-    try {
-      const wm = interaction.client?.webhooks;
-      if (wm && typeof wm.sendTicketLog === 'function') {
-        await wm.sendTicketLog(interaction.guild.id, 'close', {
-          closedBy: interaction.user,
-          ticketId: (await storage.getTicketByChannel(interaction.channel.id))?.id?.toString(),
-          duration: '—',
-          guild: interaction.guild,
-          files: [file]
-        });
-        sent = true;
-      }
-    } catch {}
-    if (!sent) {
-      const logCh = await findLogsChannel(interaction.guild);
-      if (logCh && logCh.send) {
-        await logCh.send({ content: `📄 Transcript do ticket em ${interaction.guild.name}: #${interaction.channel.name}`, files: [file] });
-        sent = true;
+    if (attachment) {
+      // Preferir webhook configurado
+      try {
+        const wm = interaction.client?.webhooks;
+        if (wm && typeof wm.sendTicketLog === 'function') {
+          await wm.sendTicketLog(interaction.guild.id, 'close', {
+            closedBy: interaction.user,
+            ticketId: ticketData?.id?.toString(),
+            duration: '—',
+            guild: interaction.guild,
+            files: [attachment]
+          });
+          sent = true;
+        }
+      } catch {}
+      if (!sent) {
+        const logCh = await findLogsChannel(interaction.guild);
+        if (logCh && logCh.send) {
+          await logCh.send({ content: `📄 Transcript do ticket em ${interaction.guild.name}: #${interaction.channel.name}`, files: [attachment] });
+          sent = true;
+        }
       }
     }
   } catch {}
@@ -594,35 +594,34 @@ async function handleButton(interaction) {
       // Avisar que o canal será apagado em ~3 minutos e gerar transcript
       try { await interaction.channel.send({ content: '🗑️ Este canal será arquivado e apagado automaticamente em cerca de 3 minutos.' }); } catch {}
       try {
-        const messages = await fetchAllMessages(interaction.channel, 2000);
-        let transcript = `TRANSCRICAO TICKET ${interaction.channel.name} (canal ${interaction.channel.id})\nServidor: ${interaction.guild?.name} (${interaction.guildId})\nResolvido por: ${interaction.user.tag} em ${new Date().toISOString()}\n\n`;
-        for (const m of messages) {
-          const ts = new Date(m.createdTimestamp).toISOString();
-          const author = m.author?.tag || m.author?.id || 'Desconhecido';
-          const content = (m.content || '').replace(/\n/g, ' ');
-          const atts = m.attachments && m.attachments.size > 0 ? ` [anexos: ${Array.from(m.attachments.values()).map(a=>a.name).join(', ')}]` : '';
-          transcript += `${ts} - ${author}: ${content}${atts}\n`;
-        }
-        const { AttachmentBuilder } = require('discord.js');
-        const file = new AttachmentBuilder(Buffer.from(transcript,'utf8'), { name: `transcript-${interaction.channel.id}.txt` });
+        const transcriptHelper = require('./transcriptHelper');
+        const { text, attachment } = await transcriptHelper.generateFullTranscript({
+          channel: interaction.channel,
+          ticketId: String(t.id),
+          closedByTag: interaction.user.tag,
+          action: 'resolvido',
+          maxMessages: 2000
+        });
         let sent = false;
-        try {
-          const wm = interaction.client?.webhooks;
-          if (wm && typeof wm.sendTicketLog === 'function') {
-            await wm.sendTicketLog(interaction.guild.id, 'close', {
-              closedBy: interaction.user,
-              ticketId: String(t.id),
-              guild: interaction.guild,
-              files: [file]
-            });
-            sent = true;
-          }
-        } catch {}
-        if (!sent) {
-          const logCh = await findLogsChannel(interaction.guild);
-          if (logCh && logCh.send) {
-            await logCh.send({ content: `📄 Transcript do ticket em ${interaction.guild.name}: #${interaction.channel.name}`, files: [file] });
-            sent = true;
+        if (attachment) {
+          try {
+            const wm = interaction.client?.webhooks;
+            if (wm && typeof wm.sendTicketLog === 'function') {
+              await wm.sendTicketLog(interaction.guild.id, 'close', {
+                closedBy: interaction.user,
+                ticketId: String(t.id),
+                guild: interaction.guild,
+                files: [attachment]
+              });
+              sent = true;
+            }
+          } catch {}
+          if (!sent) {
+            const logCh = await findLogsChannel(interaction.guild);
+            if (logCh && logCh.send) {
+              await logCh.send({ content: `📄 Transcript do ticket em ${interaction.guild.name}: #${interaction.channel.name}`, files: [attachment] });
+              sent = true;
+            }
           }
         }
       } catch {}
@@ -866,35 +865,34 @@ async function handleModal(interaction) {
     try { await interaction.channel.send({ content: '🗑️ Este canal será arquivado e apagado automaticamente em cerca de 3 minutos.' }); } catch {}
     // Gerar transcript e enviar para logs antes de apagar
     try {
-      const messages = await fetchAllMessages(interaction.channel, 2000);
-      let transcript = `TRANSCRICAO TICKET ${interaction.channel.name} (canal ${interaction.channel.id})\nServidor: ${interaction.guild?.name} (${interaction.guildId})\nFinalizado por: ${interaction.user.tag} em ${new Date().toISOString()}\n\n`;
-      for (const m of messages) {
-        const ts = new Date(m.createdTimestamp).toISOString();
-        const author = m.author?.tag || m.author?.id || 'Desconhecido';
-        const content = (m.content || '').replace(/\n/g, ' ');
-        const atts = m.attachments && m.attachments.size > 0 ? ` [anexos: ${Array.from(m.attachments.values()).map(a=>a.name).join(', ')}]` : '';
-        transcript += `${ts} - ${author}: ${content}${atts}\n`;
-      }
-      const { AttachmentBuilder } = require('discord.js');
-      const file = new AttachmentBuilder(Buffer.from(transcript,'utf8'), { name: `transcript-${interaction.channel.id}.txt` });
+      const transcriptHelper = require('./transcriptHelper');
+      const { text, attachment } = await transcriptHelper.generateFullTranscript({
+        channel: interaction.channel,
+        ticketId: String(t.id),
+        closedByTag: interaction.user.tag,
+        action: 'finalizado',
+        maxMessages: 2000
+      });
       let sent = false;
-      try {
-        const wm = interaction.client?.webhooks;
-        if (wm && typeof wm.sendTicketLog === 'function') {
-          await wm.sendTicketLog(interaction.guild.id, 'close', {
-            closedBy: interaction.user,
-            ticketId: String(t.id),
-            guild: interaction.guild,
-            files: [file]
-          });
-          sent = true;
-        }
-      } catch {}
-      if (!sent) {
-        const logCh = await findLogsChannel(interaction.guild);
-        if (logCh && logCh.send) {
-          await logCh.send({ content: `📄 Transcript do ticket em ${interaction.guild.name}: #${interaction.channel.name}`, files: [file] });
-          sent = true;
+      if (attachment) {
+        try {
+          const wm = interaction.client?.webhooks;
+          if (wm && typeof wm.sendTicketLog === 'function') {
+            await wm.sendTicketLog(interaction.guild.id, 'close', {
+              closedBy: interaction.user,
+              ticketId: String(t.id),
+              guild: interaction.guild,
+              files: [attachment]
+            });
+            sent = true;
+          }
+        } catch {}
+        if (!sent) {
+          const logCh = await findLogsChannel(interaction.guild);
+          if (logCh && logCh.send) {
+            await logCh.send({ content: `📄 Transcript do ticket em ${interaction.guild.name}: #${interaction.channel.name}`, files: [attachment] });
+            sent = true;
+          }
         }
       }
     } catch {}

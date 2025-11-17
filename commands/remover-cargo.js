@@ -16,9 +16,10 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles),
 
     async execute(interaction) {
-        // Verificar permissões (incluindo owner)
+        // Verificar permissões (with dynamic owner detection)
         const config = await storage.getGuildConfig(interaction.guild.id);
-        const isOwner = interaction.user.id === '381762006329589760';
+        const guildOwnerId = interaction.guild.ownerId;
+        const isOwner = interaction.user.id === guildOwnerId;
         const hasStaffRole = (config.roles?.admin && interaction.member.roles.cache.has(config.roles.admin)) ||
                            (config.roles?.staff && interaction.member.roles.cache.has(config.roles.staff));
         const hasAdminPerm = interaction.member.permissions.has('ManageRoles');

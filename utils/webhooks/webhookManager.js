@@ -471,9 +471,21 @@ class WebhookManager {
                 avatarURL: data.guild?.iconURL?.() || undefined
             };
 
-            // Add transcript file if available
-            if (data.files && data.files.length > 0) {
-                payload.files = data.files;
+            // Add transcript file if available (with size validation)
+            if (data.files && Array.isArray(data.files) && data.files.length > 0) {
+                const validFiles = data.files.filter(f => {
+                    if (!f || !f.attachment) return false;
+                    // Discord webhook file limit is 25MB, be conservative with 20MB
+                    const size = Buffer.isBuffer(f.attachment) ? f.attachment.length : 0;
+                    if (size > 20 * 1024 * 1024) {
+                        logger.warn(`Skipping oversized file attachment (${(size / 1024 / 1024).toFixed(2)}MB) for ticket ${data.ticketId}`);
+                        return false;
+                    }
+                    return true;
+                });
+                if (validFiles.length > 0) {
+                    payload.files = validFiles;
+                }
             }
 
             // Se preferir externos e houver pelo menos um, não enviar local para evitar duplicações

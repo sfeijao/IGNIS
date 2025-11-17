@@ -10,9 +10,13 @@ async function publishGiveaway(giveaway){
     const channel = await client.channels.fetch(giveaway.channel_id).catch(()=>null);
     if (!channel || !channel.send) return { ok:false, error:'invalid_channel' };
     // Permissions basic check
-    const me = channel.guild?.members?.me || (await channel.guild.members.fetch(client.user.id));
+    const me = channel.guild?.members?.me || (await channel.guild.members.fetch(client.user.id).catch(()=>null));
+    if (!me) return { ok:false, error:'cannot_fetch_bot_member' };
     const perms = channel.permissionsFor(me);
     if (!perms?.has(PermissionsBitField.Flags.SendMessages)) return { ok:false, error:'missing_perm_send' };
+    if (giveaway.method === 'reaction' && !perms?.has(PermissionsBitField.Flags.AddReactions)) {
+      return { ok:false, error:'missing_perm_add_reactions' };
+    }
 
     const embed = new EmbedBuilder()
       .setTitle(`${giveaway.icon_emoji || '🎉'} ${giveaway.title}`)

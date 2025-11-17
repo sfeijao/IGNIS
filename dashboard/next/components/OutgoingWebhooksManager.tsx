@@ -138,18 +138,18 @@ export default function OutgoingWebhooksManager(){
 			<div className='card p-4 space-y-3'>
 				<div className='flex flex-wrap gap-4'>
 					<div>
-						<label className='text-xs text-neutral-400'>Tipo</label>
-						<select className='mt-1 bg-neutral-900 border border-neutral-700 rounded px-2 py-1' value={form.type} onChange={e=> setForm(f=>({...f, type:e.target.value}))}>
+						<label htmlFor='out-type' className='text-xs text-neutral-400'>Tipo</label>
+						<select id='out-type' name='type' className='mt-1 bg-neutral-900 border border-neutral-700 rounded px-2 py-1' value={form.type} onChange={e=> setForm(f=>({...f, type:e.target.value}))}>
 							{TYPES.map(t=> <option key={t} value={t}>{t}</option>)}
 						</select>
 					</div>
 					<div className='flex-1 min-w-[240px]'>
-						<label className='text-xs text-neutral-400'>URL (https)</label>
-						<input className='mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1' value={form.url} onChange={e=> setForm(f=>({...f, url:e.target.value}))} placeholder='https://example.com/webhook' />
+						<label htmlFor='out-url' className='text-xs text-neutral-400'>URL (https)</label>
+						<input id='out-url' name='url' className='mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1' value={form.url} onChange={e=> setForm(f=>({...f, url:e.target.value}))} placeholder='https://example.com/webhook' />
 					</div>
 					<div>
-						<label className='text-xs text-neutral-400'>ChannelId (opcional)</label>
-						<input className='mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1' value={form.channelId} onChange={e=> setForm(f=>({...f, channelId:e.target.value}))} placeholder='1234567890' />
+						<label htmlFor='out-channelId' className='text-xs text-neutral-400'>ChannelId (opcional)</label>
+						<input id='out-channelId' name='channelId' className='mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1' value={form.channelId} onChange={e=> setForm(f=>({...f, channelId:e.target.value}))} placeholder='1234567890' />
 					</div>
 					<button type='button' disabled={loading} onClick={create} className='self-end mt-5 px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 disabled:opacity-50'>Criar</button>
 				</div>
@@ -162,8 +162,8 @@ export default function OutgoingWebhooksManager(){
 				</div>
 				{bulkTestOpen && (
 					<div>
-						<label className='text-xs text-neutral-400'>Payload JSON para todos</label>
-						<textarea className='mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs h-24' value={bulkPayload} onChange={e=> setBulkPayload(e.target.value)} />
+						<label htmlFor='out-bulk-payload' className='text-xs text-neutral-400'>Payload JSON para todos</label>
+						<textarea id='out-bulk-payload' name='bulkPayload' className='mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs h-24' value={bulkPayload} onChange={e=> setBulkPayload(e.target.value)} />
 						<p className='text-[10px] text-neutral-500 mt-1'>Este payload será enviado a todos os webhooks ativos.</p>
 					</div>
 				)}
@@ -204,13 +204,13 @@ export default function OutgoingWebhooksManager(){
 							</div>
 							{editing?.id === i.id && (
 								<div className='flex gap-2 items-center'>
-									<input className='flex-1 bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs' placeholder='https://example.com/webhook' value={editing.url} onChange={e=> setEditing(ed=> ed ? { ...ed, url: e.target.value } : ed)} />
+									<input aria-label='Editar URL do webhook' className='flex-1 bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs' placeholder='https://example.com/webhook' value={editing.url} onChange={e=> setEditing(ed=> ed ? { ...ed, url: e.target.value } : ed)} />
 									<button type='button' onClick={()=> setEditing(null)} className='px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700'>Cancelar</button>
 								</div>
 							)}
 							{testing?.id === i.id && (
 								<div className='space-y-2'>
-									<textarea className='w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs h-20' value={testing.payload} onChange={e=> setTesting(t=> t ? { ...t, payload: e.target.value } : t)} />
+									<textarea aria-label='Payload de teste' className='w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs h-20' value={testing.payload} onChange={e=> setTesting(t=> t ? { ...t, payload: e.target.value } : t)} />
 									<div className='flex gap-2'>
 										<button type='button' onClick={sendTestPayload} className='px-3 py-1 text-xs rounded bg-brand-600 hover:bg-brand-700'>Enviar Teste</button>
 										<button type='button' onClick={()=> setTesting(null)} className='px-3 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700'>Cancelar</button>

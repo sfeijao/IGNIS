@@ -473,19 +473,6 @@ module.exports = {
                             .setTimestamp();
 
                         logger.debug(`Enviando embed de fechamento`);
-                        // Construir transcript simples (últimas 200 mensagens)
-                        let transcriptText = '';
-                        try {
-                            const fetched = await interaction.channel.messages.fetch({ limit: 200 }).catch(() => null);
-                            const messages = fetched ? Array.from(fetched.values()).sort((a,b)=>a.createdTimestamp-b.createdTimestamp) : [];
-                            transcriptText = `TRANSCRICAO TICKET ${interaction.channel.name} (ID canal ${interaction.channel.id})\nServidor: ${interaction.guild?.name} (${interaction.guildId})\nFechado por: ${interaction.user.tag} em ${new Date().toISOString()}\n\n`;
-                            for (const msg of messages) {
-                                const ts = new Date(msg.createdTimestamp).toISOString();
-                                const author = msg.author?.tag || msg.author?.id || 'Desconhecido';
-                                const content = msg.content?.replace(/\n/g,' ') || '';
-                                transcriptText += `${ts} - ${author}: ${content}\n`;
-                            }
-                        } catch(_) {}
                         await interaction.channel.send({ embeds: [closedEmbed] });
                         // Persistir status e enviar logs simplificados (compatibilidade)
                         try {
@@ -496,17 +483,24 @@ module.exports = {
                                 await storage.updateTicket(ticketRecord.id, { status: 'closed', closed_by: interaction.user.id, closed_at: new Date().toISOString(), archived: 1 });
                                 // Opcional: enviar transcript para canal de logs se configurado
                                 try {
+                                    const transcriptHelper = require('../utils/transcriptHelper');
+                                    const { text, attachment } = await transcriptHelper.generateFullTranscript({
+                                        channel: interaction.channel,
+                                        ticketId: ticketRecord.id.toString(),
+                                        closedByTag: interaction.user.tag,
+                                        action: 'fechado',
+                                        maxMessages: 200
+                                    });
+                                    
                                     const cfg = await storage.getGuildConfig(interaction.guild.id);
                                     const logChannelId = cfg?.channels?.logs || null;
-                                    if (logChannelId) {
+                                    if (logChannelId && attachment) {
                                         const logCh = interaction.guild.channels.cache.get(logChannelId) || await client.channels.fetch(logChannelId).catch(()=>null);
                                         if (logCh && logCh.send) {
-                                            await logCh.send({ content: `📄 Transcript do ticket #${ticketRecord.id} (${interaction.channel.name}) fechado por ${interaction.user.tag}` });
-                                            if (transcriptText) {
-                                                const { AttachmentBuilder } = require('discord.js');
-                                                const attach = new AttachmentBuilder(Buffer.from(transcriptText,'utf8'), { name: `transcript-ticket-${ticketRecord.id}.txt` });
-                                                await logCh.send({ files: [attach] }).catch(()=>null);
-                                            }
+                                            await logCh.send({ 
+                                                content: `📄 Transcript do ticket #${ticketRecord.id} (${interaction.channel.name}) fechado por ${interaction.user.tag}`,
+                                                files: [attachment]
+                                            });
                                         }
                                     }
                                 } catch (logSendErr) {

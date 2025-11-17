@@ -154,16 +154,16 @@ export default function WebhooksManager() {
       {!guildId && <div className="card p-4 text-sm text-neutral-400">{t('webhooks.selectGuild')}</div>}
       <div className="card p-4 flex flex-wrap items-end gap-3">
         <div>
-          <label className="text-xs text-neutral-400">{t('webhooks.type')}</label>
-          <select className="mt-1 w-40 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={type} onChange={e=> setType(e.target.value)} title="Tipo de webhook">
+          <label htmlFor="wh-type" className="text-xs text-neutral-400">{t('webhooks.type')}</label>
+          <select id="wh-type" name="type" className="mt-1 w-40 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={type} onChange={e=> setType(e.target.value)} title="Tipo de webhook">
             <option value="logs">logs</option>
             <option value="tickets">tickets</option>
             <option value="updates">updates</option>
           </select>
         </div>
         <div>
-          <label className="text-xs text-neutral-400">{t('webhooks.channelId')}</label>
-          <select className="mt-1 w-64 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={channel} onChange={e=> setChannel(e.target.value)} title="Canal para criar webhook">
+          <label htmlFor="wh-channel" className="text-xs text-neutral-400">{t('webhooks.channelId')}</label>
+          <select id="wh-channel" name="channel" className="mt-1 w-64 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={channel} onChange={e=> setChannel(e.target.value)} title="Canal para criar webhook">
             <option value="">—</option>
             {selectableChannels.map(ch => (
               <option key={ch.id} value={ch.id}>{`#${ch.name} (${channelTypeLabel(ch)})`}</option>
@@ -171,12 +171,12 @@ export default function WebhooksManager() {
           </select>
         </div>
         <div>
-          <label className="text-xs text-neutral-400">Pesquisar</label>
-          <input className="mt-1 w-44 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={channelQuery} onChange={e=> setChannelQuery(e.target.value)} placeholder="nome do canal…" />
+          <label htmlFor="wh-channel-search" className="text-xs text-neutral-400">Pesquisar</label>
+          <input id="wh-channel-search" name="channelQuery" className="mt-1 w-44 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={channelQuery} onChange={e=> setChannelQuery(e.target.value)} placeholder="nome do canal…" />
         </div>
         <div>
-          <label className="text-xs text-neutral-400">{t('webhooks.name')}</label>
-          <input className="mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={name} onChange={e=> setName(e.target.value)} placeholder="IGNIS" />
+          <label htmlFor="wh-name" className="text-xs text-neutral-400">{t('webhooks.name')}</label>
+          <input id="wh-name" name="name" className="mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={name} onChange={e=> setName(e.target.value)} placeholder="IGNIS" />
         </div>
   <button type="button" onClick={create} className="mt-5 px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 disabled:opacity-50" disabled={!guildId || !channel || loading}>{t('webhooks.create')}</button>
   <button type="button" onClick={() => guildId && api.autoSetupWebhook(guildId).then(()=>{ toast({ type:'success', title: t('webhooks.autosetup.ok') }); load(); }).catch((e:any)=> toast({ type:'error', title: t('webhooks.autosetup.fail'), description: e?.message }))} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={!guildId || loading}>{t('webhooks.autosetup')}</button>
@@ -185,20 +185,20 @@ export default function WebhooksManager() {
       {/* Manual Discord webhook paste form */}
       <div className="card p-4 flex flex-wrap items-end gap-3">
         <div>
-          <label className="text-xs text-neutral-400">Tipo (manual)</label>
-          <select className="mt-1 w-40 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={manualType} onChange={e=> setManualType(e.target.value)}>
+          <label htmlFor="wh-manual-type" className="text-xs text-neutral-400">Tipo (manual)</label>
+          <select id="wh-manual-type" name="manualType" className="mt-1 w-40 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={manualType} onChange={e=> setManualType(e.target.value)}>
             <option value="logs">logs</option>
             <option value="tickets">tickets</option>
             <option value="updates">updates</option>
           </select>
         </div>
         <div>
-          <label className="text-xs text-neutral-400">Nome (manual)</label>
-          <input className="mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={manualName} onChange={e=> setManualName(e.target.value)} placeholder="IGNIS" />
+          <label htmlFor="wh-manual-name" className="text-xs text-neutral-400">Nome (manual)</label>
+          <input id="wh-manual-name" name="manualName" className="mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={manualName} onChange={e=> setManualName(e.target.value)} placeholder="IGNIS" />
         </div>
         <div className="flex-1 min-w-[320px]">
-          <label className="text-xs text-neutral-400">URL do Webhook (Discord)</label>
-          <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={manualUrl} onChange={e=> setManualUrl(e.target.value)} placeholder="https://discord.com/api/webhooks/..." />
+          <label htmlFor="wh-manual-url" className="text-xs text-neutral-400">URL do Webhook (Discord)</label>
+          <input id="wh-manual-url" name="manualUrl" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={manualUrl} onChange={e=> setManualUrl(e.target.value)} placeholder="https://discord.com/api/webhooks/..." />
           <p className="text-[10px] text-neutral-500 mt-1">Cole a URL de um webhook já criado em Integrações &gt; Webhooks no Discord.</p>
         </div>
         <button type="button" onClick={createManual} disabled={loading || !manualUrl.trim()} className="mt-5 px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 disabled:opacity-50">Guardar Manual</button>

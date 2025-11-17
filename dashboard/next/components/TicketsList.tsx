@@ -264,22 +264,22 @@ export default function TicketsList() {
       )}
   <div className="card p-4 grid grid-cols-1 md:grid-cols-8 gap-3 items-end">
         <div>
-          <label className="text-xs text-neutral-400">{tr('tickets.status')}</label>
-    <select className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" aria-label="Filter by status" title="Filter by status"
+          <label htmlFor="tk-filter-status" className="text-xs text-neutral-400">{tr('tickets.status')}</label>
+    <select id="tk-filter-status" name="status" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" aria-label="Filter by status" title="Filter by status"
                     value={status} onChange={(e: ChangeEvent<HTMLSelectElement>)=>{ setPage(1); setStatus(e.target.value) }}>
             {statuses.map(s => <option key={s} value={s}>{s || tr('common.any')}</option>)}
           </select>
         </div>
         <div>
-          <label className="text-xs text-neutral-400">{tr('tickets.priority')}</label>
-    <select className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" aria-label="Filter by priority" title="Filter by priority"
+          <label htmlFor="tk-filter-priority" className="text-xs text-neutral-400">{tr('tickets.priority')}</label>
+    <select id="tk-filter-priority" name="priority" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" aria-label="Filter by priority" title="Filter by priority"
                     value={priority} onChange={(e: ChangeEvent<HTMLSelectElement>)=>{ setPage(1); setPriority(e.target.value) }}>
             {priorities.map(p => <option key={p} value={p}>{p || tr('common.any')}</option>)}
           </select>
         </div>
         <div className="md:col-span-2">
-          <label className="text-xs text-neutral-400">{tr('tickets.search')}</label>
-     <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1"
+          <label htmlFor="tk-filter-q" className="text-xs text-neutral-400">{tr('tickets.search')}</label>
+     <input id="tk-filter-q" name="q" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1"
        placeholder={tr('tickets.search.placeholder')}
                  value={q} onChange={e=>{ setPage(1); setQ(e.target.value) }} />
         </div>
@@ -287,15 +287,15 @@ export default function TicketsList() {
           <button type="button" onClick={onExport} className="mt-5 bg-neutral-800 hover:bg-neutral-700 text-sm px-3 py-2 rounded border border-neutral-700">{tr('tickets.export')}</button>
           <div className="ml-auto flex items-end gap-2">
             <div>
-              <label className="text-xs text-neutral-400">{tr('tickets.staffRole')}</label>
-              <select className="mt-1 w-40 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" aria-label="Staff role" title="Staff role" value={staffRole} onChange={(e: ChangeEvent<HTMLSelectElement>)=>{ setStaffRole(e.target.value); setAssignee('') }}>
+              <label htmlFor="tk-filter-staffrole" className="text-xs text-neutral-400">{tr('tickets.staffRole')}</label>
+              <select id="tk-filter-staffrole" name="staffRole" className="mt-1 w-40 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" aria-label="Staff role" title="Staff role" value={staffRole} onChange={(e: ChangeEvent<HTMLSelectElement>)=>{ setStaffRole(e.target.value); setAssignee('') }}>
                 <option value="">{tr('tickets.selectRole')}</option>
                 {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-neutral-400">{tr('tickets.assignee')}</label>
-              <select className="mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" aria-label="Assignee" title="Assignee" value={assignee} onChange={(e: ChangeEvent<HTMLSelectElement>)=> setAssignee(e.target.value)}>
+              <label htmlFor="tk-filter-assignee" className="text-xs text-neutral-400">{tr('tickets.assignee')}</label>
+              <select id="tk-filter-assignee" name="assignee" className="mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" aria-label="Assignee" title="Assignee" value={assignee} onChange={(e: ChangeEvent<HTMLSelectElement>)=> setAssignee(e.target.value)}>
                 <option value="">{tr('tickets.selectMember')}</option>
                 {assignees.map(m => <option key={m.id} value={m.id}>{m.nick ? `${m.nick} (${m.username}#${m.discriminator})` : `${m.username}#${m.discriminator}`}</option>)}
               </select>

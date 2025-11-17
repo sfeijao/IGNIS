@@ -719,18 +719,19 @@ app.get('/api/guilds', async (req, res) => {
 });
 
 // Unified Webhooks list route (supports both legacy/sqlite and mongo, returns items + webhooks arrays)
+const { Errors } = require('./middleware/responseHelpers');
 app.get('/api/guild/:guildId/webhooks', async (req, res) => {
-    if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    if (!req.isAuthenticated || !req.isAuthenticated()) return Errors.NOT_AUTHENTICATED(res);
     try {
         const guildId = req.params.guildId;
         const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        if (!client) return Errors.BOT_UNAVAILABLE(res);
         const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        if (!guild) return Errors.GUILD_NOT_FOUND(res);
         const member = await guild.members.fetch(req.user.id).catch(() => null);
-        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+        if (!member) return Errors.NOT_GUILD_MEMBER(res);
         const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
-        if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
+        if (!canManage) return Errors.MISSING_PERMISSION(res);
         const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
         const loadedTypes = (global.discordClient?.webhooks?.getLoadedTypes?.(guildId)) || [];
         if (!hasMongoEnv || LEGACY_WEBHOOKS) {
