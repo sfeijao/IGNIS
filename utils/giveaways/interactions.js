@@ -9,7 +9,7 @@ async function handleGiveawayEntry(interaction, giveawayId) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         // Validate giveaway exists and is active
-        const { GiveawayModel } = require('../db/giveawayModels');
+        const { GiveawayModel, GiveawayEntryModel } = require('../db/giveawayModels');
         const giveaway = await GiveawayModel.findById(giveawayId);
 
         if (!giveaway) {
@@ -20,28 +20,36 @@ async function handleGiveawayEntry(interaction, giveawayId) {
             return await interaction.editReply({ content: '❌ Este sorteio não está mais ativo.' });
         }
 
-        // Check if already entered
-        const userId = interaction.user.id;
-        const alreadyEntered = giveaway.entries && giveaway.entries.some(e => e.user_id === userId);
-
-        if (alreadyEntered) {
-            return await interaction.editReply({ content: '⚠️ Você já está participando deste sorteio!' });
-        }
-
         // Check if giveaway has ended
-        if (giveaway.end_at && new Date(giveaway.end_at) < new Date()) {
+        if (giveaway.ends_at && new Date(giveaway.ends_at) < new Date()) {
             return await interaction.editReply({ content: '❌ Este sorteio já terminou.' });
         }
 
-        // Add entry
-        if (!giveaway.entries) giveaway.entries = [];
-        giveaway.entries.push({
-            user_id: userId,
-            username: interaction.user.username,
-            entered_at: new Date()
+        // Check if already entered
+        const userId = interaction.user.id;
+        const existingEntry = await GiveawayEntryModel.findOne({
+            giveaway_id: giveawayId,
+            user_id: userId
         });
 
-        await giveaway.save();
+        if (existingEntry) {
+            return await interaction.editReply({ content: '⚠️ Você já está participando deste sorteio!' });
+        }
+
+        // Create entry
+        await GiveawayEntryModel.create({
+            giveaway_id: giveawayId,
+            guild_id: giveaway.guild_id,
+            user_id: userId,
+            username: interaction.user.username,
+            avatar: interaction.user.avatar,
+            method: 'button',
+            joined_at: new Date(),
+            weight: 1
+        });
+
+        // Count total entries
+        const totalEntries = await GiveawayEntryModel.countDocuments({ giveaway_id: giveawayId });
 
         // Emit socket event for live updates
         try {
@@ -61,11 +69,11 @@ async function handleGiveawayEntry(interaction, giveawayId) {
             giveawayId: giveaway._id.toString(),
             userId,
             guildId: giveaway.guild_id,
-            totalEntries: giveaway.entries.length
+            totalEntries
         });
 
         await interaction.editReply({
-            content: `✅ **Entrada confirmada!**\n🎉 Você está participando de **${giveaway.title}**\n👥 Total de participantes: **${giveaway.entries.length}**`
+            content: `✅ **Entrada confirmada!**\n🎉 Você está participando de **${giveaway.title}**\n👥 Total de participantes: **${totalEntries}**`
         });
 
     } catch (error) {
@@ -85,7 +93,7 @@ async function handleGiveawayLeave(interaction, giveawayId) {
     try {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-        const { GiveawayModel } = require('../db/giveawayModels');
+        const { GiveawayModel, GiveawayEntryModel } = require('../db/giveawayModels');
         const giveaway = await GiveawayModel.findById(giveawayId);
 
         if (!giveaway) {
@@ -93,15 +101,20 @@ async function handleGiveawayLeave(interaction, giveawayId) {
         }
 
         const userId = interaction.user.id;
-        const entryIndex = giveaway.entries ? giveaway.entries.findIndex(e => e.user_id === userId) : -1;
+        const entry = await GiveawayEntryModel.findOne({
+            giveaway_id: giveawayId,
+            user_id: userId
+        });
 
-        if (entryIndex === -1) {
+        if (!entry) {
             return await interaction.editReply({ content: '⚠️ Você não está participando deste sorteio.' });
         }
 
         // Remove entry
-        giveaway.entries.splice(entryIndex, 1);
-        await giveaway.save();
+        await GiveawayEntryModel.deleteOne({ _id: entry._id });
+
+        // Count remaining entries
+        const totalEntries = await GiveawayEntryModel.countDocuments({ giveaway_id: giveawayId });
 
         // Emit socket event
         try {
@@ -121,11 +134,11 @@ async function handleGiveawayLeave(interaction, giveawayId) {
             giveawayId: giveaway._id.toString(),
             userId,
             guildId: giveaway.guild_id,
-            totalEntries: giveaway.entries.length
+            totalEntries
         });
 
         await interaction.editReply({
-            content: `✅ Você saiu do sorteio **${giveaway.title}**`
+            content: `✅ Você saiu do sorteio **${giveaway.title}**\n👥 Participantes restantes: **${totalEntries}**`
         });
 
     } catch (error) {
