@@ -34,12 +34,12 @@ export default function MemberModal({ guildId, member, onClose, onChanged }: Pro
       const add = Array.from(next).filter(id => !current.has(id))
       const remove = Array.from(current).filter((id: string) => !next.has(id))
       const response = await api.updateMemberRoles(guildId, member.id, { add, remove })
-      
+
       // Update local state with the successfully applied changes from backend
       if (response?.details) {
         const actuallyAdded = response.details.added || []
         const actuallyRemoved = response.details.removed || []
-        
+
         setSelectedRoles(prev => {
           const updated = new Set(prev)
           actuallyAdded.forEach((roleId: string) => updated.add(roleId))
@@ -47,7 +47,7 @@ export default function MemberModal({ guildId, member, onClose, onChanged }: Pro
           return updated
         })
       }
-      
+
       toast({ type:'success', title:'Cargos atualizados' })
       onChanged()
     } catch (e:any) { toast({ type:'error', title:'Falha ao atualizar cargos', description:e?.message }) }

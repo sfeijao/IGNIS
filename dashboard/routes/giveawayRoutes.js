@@ -24,6 +24,7 @@ router.patch('/guilds/:guildId/giveaways/:giveawayId', checkAuth, checkGuildAdmi
 router.post('/guilds/:guildId/giveaways/:giveawayId/end', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.endNow);
 router.post('/guilds/:guildId/giveaways/:giveawayId/reroll', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.reroll);
 router.post('/guilds/:guildId/giveaways/:giveawayId/enter', checkAuth, giveawayController.enter);
+router.get('/guilds/:guildId/giveaways/:giveawayId/entries', checkAuth, giveawayController.getEntries);
 router.get('/guilds/:guildId/giveaways/:giveawayId/entries/export', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.exportEntriesCsv);
 router.post('/guilds/:guildId/giveaways/:giveawayId/publish', checkAuth, checkGuildAdmin, requireGiveawayManage, async (req, res) => {
   try {

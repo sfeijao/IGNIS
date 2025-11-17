@@ -303,4 +303,39 @@ function safeCsv(value){
   return s;
 }
 
-module.exports = { createGiveaway, listGiveaways, getGiveaway, updateGiveaway, endNow, reroll, enter, exportEntriesCsv };
+async function getEntries(req, res){
+  try {
+    const guildId = req.params.guildId;
+    const gid = req.params.giveawayId;
+    if (!guildId || !gid) return res.status(400).json({ error: 'missing_params' });
+
+    const page = Math.max(1, parseInt(req.query.page || '1'));
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '20')));
+    const skip = (page - 1) * limit;
+
+    const total = await GiveawayEntryModel.countDocuments({ giveaway_id: gid, guild_id: guildId });
+    const entries = await GiveawayEntryModel.find({ giveaway_id: gid, guild_id: guildId })
+      .sort({ joined_at: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    return res.json({ 
+      ok: true, 
+      entries: entries.map(e => ({
+        user_id: e.user_id,
+        username: e.username,
+        avatar: e.avatar,
+        joined_at: e.joined_at
+      })),
+      total,
+      page,
+      limit
+    });
+  } catch (e) {
+    console.error('getEntries error', e);
+    return res.status(500).json({ error: 'internal_error' });
+  }
+}
+
+module.exports = { createGiveaway, listGiveaways, getGiveaway, updateGiveaway, endNow, reroll, enter, getEntries, exportEntriesCsv };

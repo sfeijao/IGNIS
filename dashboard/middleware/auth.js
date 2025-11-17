@@ -9,7 +9,7 @@ function checkAuth(req, res, next) {
   // Log for debugging
   const isAuthFn = typeof req.isAuthenticated === 'function';
   const isAuth = isAuthFn ? req.isAuthenticated() : false;
-  
+
   if (process.env.NODE_ENV !== 'production') {
     console.log('[checkAuth]', {
       path: req.path,
@@ -19,10 +19,10 @@ function checkAuth(req, res, next) {
       sessionID: req.sessionID
     });
   }
-  
+
   if (!req.isAuthenticated || !req.isAuthenticated()) {
-    return res.status(401).json({ 
-      success: false, 
+    return res.status(401).json({
+      success: false,
       error: 'Not authenticated',
       message: 'You must be logged in to access this resource'
     });
@@ -37,18 +37,18 @@ function checkAuth(req, res, next) {
  */
 function checkGuildAdmin(req, res, next) {
   const guildId = req.params.guildId;
-  
+
   if (!guildId) {
-    return res.status(400).json({ 
-      success: false, 
+    return res.status(400).json({
+      success: false,
       error: 'missing_guild_id',
       message: 'Guild ID is required'
     });
   }
 
   if (!req.user) {
-    return res.status(401).json({ 
-      success: false, 
+    return res.status(401).json({
+      success: false,
       error: 'unauthorized',
       message: 'User session not found'
     });
@@ -80,8 +80,8 @@ function checkGuildAdmin(req, res, next) {
     console.warn('Guild admin check error:', e);
   }
 
-  return res.status(403).json({ 
-    success: false, 
+  return res.status(403).json({
+    success: false,
     error: 'forbidden',
     message: 'You do not have permission to manage this guild'
   });
@@ -94,7 +94,7 @@ function checkGuildAdmin(req, res, next) {
 function checkPermission(permission) {
   return function(req, res, next) {
     const guildId = req.params.guildId;
-    
+
     if (!req.user) {
       return res.status(401).json({ success: false, error: 'unauthorized' });
     }
@@ -118,8 +118,8 @@ function checkPermission(permission) {
       console.warn(`Permission check (${permission}) error:`, e);
     }
 
-    return res.status(403).json({ 
-      success: false, 
+    return res.status(403).json({
+      success: false,
       error: 'forbidden',
       message: `Missing required permission: ${permission}`
     });

@@ -8,23 +8,23 @@ import { useGiveawaysI18n } from '@/lib/useI18nGiveaways'
 function parseDuration(input: string): number | null {
   const str = input.trim().toLowerCase()
   if (!str) return null
-  
+
   // Match pattern like: 3d12h30m or 1h or 30m
   const dayMatch = str.match(/(\d+)d/)
   const hourMatch = str.match(/(\d+)h/)
   const minMatch = str.match(/(\d+)m/)
-  
+
   const days = dayMatch ? parseInt(dayMatch[1]) : 0
   const hours = hourMatch ? parseInt(hourMatch[1]) : 0
   const minutes = minMatch ? parseInt(minMatch[1]) : 0
-  
+
   // If no valid units found, try parsing as plain number (assume minutes)
   if (days === 0 && hours === 0 && minutes === 0) {
     const num = parseInt(str)
     if (!isNaN(num) && num > 0) return num * 60 * 1000
     return null
   }
-  
+
   return (days * 24 * 60 + hours * 60 + minutes) * 60 * 1000
 }
 
@@ -50,23 +50,23 @@ export default function GiveawayWizard(){
     if (!guildId) { setError('Select a guild first'); return }
     if (!title.trim()) { setError('Title is required'); return }
     if (!channelId) { setError('Please select a channel'); return }
-    
+
     const durationMs = parseDuration(duration)
-    if (!durationMs || durationMs < 60000) { 
+    if (!durationMs || durationMs < 60000) {
       setError('Invalid duration. Use format like "1h", "3d12h", "30m" (minimum 1 minute)')
-      return 
+      return
     }
-    
+
     setCreating(true); setError(null)
     try {
       const ends_at = new Date(Date.now() + durationMs).toISOString()
       const res = await fetch(`/api/guilds/${guildId}/giveaways`, {
-        method: 'POST', 
-        credentials: 'include', 
+        method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          title: title.trim(), 
-          description: description.trim(), 
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
           winners_count: winners,
           ends_at,
           channel_id: channelId,
@@ -85,13 +85,13 @@ export default function GiveawayWizard(){
     if (open && guildId) {
       // Focus first field
       setTimeout(() => { try { firstFieldRef.current?.focus() } catch {} }, 0)
-      
+
       // Fetch active giveaway count
       fetch(`/api/guilds/${guildId}/giveaways?status=active`, { credentials: 'include' })
         .then(r => r.json().then(j => ({ ok: r.ok, data: j })))
         .then(({ ok, data }) => { if (ok && data && Array.isArray(data.giveaways)) setActiveCount(data.giveaways.length) })
         .catch(()=>{})
-      
+
       // Fetch text channels
       fetch(`/api/guild/${guildId}/channels`, { credentials: 'include' })
         .then(r => r.json())
