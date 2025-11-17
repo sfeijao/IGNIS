@@ -2811,8 +2811,8 @@ app.get('/api/guild/:guildId/channels', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const channels = check.guild.channels.cache
-            .filter(c => c.type === 0) // text
-            .map(c => ({ id: c.id, name: c.name }))
+            .filter(c => c.type === 0 || c.type === 5) // text (0) and announcement (5) channels
+            .map(c => ({ id: c.id, name: c.name, type: c.type }))
             .sort((a,b) => a.name.localeCompare(b.name));
         res.json({ success: true, channels });
     } catch (e) {
