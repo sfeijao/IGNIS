@@ -20,14 +20,14 @@ let { requireGiveawayManage, rateLimitCreate } = (()=>{ try { return require('..
 router.get('/guilds/:guildId/giveaways', checkAuth, checkGuildAdmin, giveawayController.listGiveaways);
 router.post('/guilds/:guildId/giveaways', checkAuth, checkGuildAdmin, rateLimitCreate, giveawayController.createGiveaway);
 router.get('/guilds/:guildId/giveaways/:giveawayId', checkAuth, checkGuildAdmin, giveawayController.getGiveaway);
-router.patch('/guilds/:guildId/giveaways/:giveawayId', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.updateGiveaway);
-router.delete('/guilds/:guildId/giveaways/:giveawayId', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.deleteGiveaway);
-router.post('/guilds/:guildId/giveaways/:giveawayId/end', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.endNow);
-router.post('/guilds/:guildId/giveaways/:giveawayId/reroll', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.reroll);
+router.patch('/guilds/:guildId/giveaways/:giveawayId', checkAuth, checkGuildAdmin, giveawayController.updateGiveaway);
+router.delete('/guilds/:guildId/giveaways/:giveawayId', checkAuth, checkGuildAdmin, giveawayController.deleteGiveaway);
+router.post('/guilds/:guildId/giveaways/:giveawayId/end', checkAuth, checkGuildAdmin, giveawayController.endNow);
+router.post('/guilds/:guildId/giveaways/:giveawayId/reroll', checkAuth, checkGuildAdmin, giveawayController.reroll);
 router.post('/guilds/:guildId/giveaways/:giveawayId/enter', checkAuth, giveawayController.enter);
 router.get('/guilds/:guildId/giveaways/:giveawayId/entries', checkAuth, giveawayController.getEntries);
-router.get('/guilds/:guildId/giveaways/:giveawayId/entries/export', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.exportEntriesCsv);
-router.post('/guilds/:guildId/giveaways/:giveawayId/publish', checkAuth, checkGuildAdmin, requireGiveawayManage, async (req, res) => {
+router.get('/guilds/:guildId/giveaways/:giveawayId/entries/export', checkAuth, checkGuildAdmin, giveawayController.exportEntriesCsv);
+router.post('/guilds/:guildId/giveaways/:giveawayId/publish', checkAuth, checkGuildAdmin, async (req, res) => {
   try {
     const { GiveawayModel } = require('../../utils/db/giveawayModels');
     const { publishGiveaway } = require('../../utils/giveaways/discord');
