@@ -5,15 +5,16 @@ const Joi = require('joi');
 // Basic validation schemas
 const createSchema = Joi.object({
   title: Joi.string().min(2).max(150).required(),
-  description: Joi.string().allow('').max(2000),
+  description: Joi.string().allow('').max(2000).default(''),
   banner_url: Joi.string().uri().allow(''),
-  icon_emoji: Joi.string().max(15).allow(''),
-  method: Joi.string().valid('reaction','button','command').default('reaction'),
+  icon_emoji: Joi.string().max(15).allow('').default('🎉'),
+  method: Joi.string().valid('reaction','button','command').default('button'),
   winners_count: Joi.number().integer().min(1).max(100).default(1),
+  channel_id: Joi.string().pattern(/^\d+$/).required(),
   scheduled_at: Joi.date().optional(),
   starts_at: Joi.date().optional(),
   ends_at: Joi.date().required(),
-  announcement_markdown: Joi.string().allow('').max(5000),
+  announcement_markdown: Joi.string().allow('').max(5000).default(''),
   rules: Joi.object({
     roles_required: Joi.array().items(Joi.string()).default([]),
     min_join_duration_ms: Joi.number().integer().min(0).default(0),
@@ -34,41 +35,59 @@ async function createGiveaway(req, res){
   try {
     const guildId = req.params.guildId;
     if (!guildId) return res.status(400).json({ error: 'missing_guild_id' });
-    const { value, error } = createSchema.validate(req.body || {});
+    const { value, error } = createSchema.validate(req.body || {}, { abortEarly: false });
     if (error) return res.status(400).json({ error: 'validation_error', details: error.details.map(d=>d.message) });
 
     // Basic permission placeholder (to be replaced with actual staff role checks)
     if (!req.user) return res.status(401).json({ error: 'unauthorized' });
 
-    // Rate limiting placeholder (implement later)
+    // Verify channel exists and is accessible
+    try {
+      const client = global.discordClient;
+      if (client) {
+        const guild = client.guilds.cache.get(guildId);
+        if (guild) {
+          const channel = guild.channels.cache.get(value.channel_id);
+          if (!channel) {
+            return res.status(404).json({ error: 'channel_not_found', message: 'Selected channel not found in this server' });
+          }
+          // Check if it's a text channel (type 0) or announcement channel (type 5)
+          if (channel.type !== 0 && channel.type !== 5) {
+            return res.status(400).json({ error: 'invalid_channel_type', message: 'Channel must be a text or announcement channel' });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Channel validation error:', e);
+    }
 
     // Ensure ends_at > now and > starts_at if provided
     const now = Date.now();
     const endsAtMs = new Date(value.ends_at).getTime();
-    if (isNaN(endsAtMs) || endsAtMs <= now + 30 * 1000) { // minimum 30s duration
-      return res.status(400).json({ error: 'duration_too_short' });
+    if (isNaN(endsAtMs) || endsAtMs <= now + 60 * 1000) { // minimum 1 minute duration
+      return res.status(400).json({ error: 'duration_too_short', message: 'Giveaway must last at least 1 minute' });
     }
     if (value.starts_at) {
       const startsMs = new Date(value.starts_at).getTime();
-      if (startsMs >= endsAtMs) return res.status(400).json({ error: 'start_after_end' });
+      if (startsMs >= endsAtMs) return res.status(400).json({ error: 'start_after_end', message: 'Start time must be before end time' });
     }
 
     const doc = await GiveawayModel.create({
       guild_id: guildId,
-      channel_id: value.channel_id || null,
+      channel_id: value.channel_id,
       title: value.title,
-      description: value.description,
-      banner_url: value.banner_url,
+      description: value.description || '',
+      banner_url: value.banner_url || '',
       icon_emoji: value.icon_emoji || '🎉',
-      method: value.method,
+      method: value.method || 'button',
       winners_count: value.winners_count,
       scheduled_at: value.scheduled_at || null,
       starts_at: value.starts_at || new Date(),
       ends_at: value.ends_at,
       created_by: req.user.id,
       announcement_markdown: value.announcement_markdown || '',
-      rules: value.rules,
-      options: value.options,
+      rules: value.rules || {},
+      options: value.options || {},
       status: value.scheduled_at ? 'scheduled' : 'active'
     });
 
