@@ -135,7 +135,7 @@ export default function GiveawaysList(){
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
           {items.map(it => (
             <div key={it._id} className="relative group">
-              <Link href={`/next/giveaways/${it._id}`} className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 hover:border-brand-600 transition block">
+              <Link href={`/giveaways/${it._id}`} className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 hover:border-brand-600 transition block">
                 <div className="text-lg font-medium flex items-center gap-2">
                   <span>🎉</span>
                   <span>{it.title}</span>

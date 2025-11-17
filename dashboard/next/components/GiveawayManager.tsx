@@ -90,7 +90,7 @@ export default function GiveawayManager({ giveaway, guildId, onUpdate }: Giveawa
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'Falha ao eliminar')
       // Redirecionar para lista após delete
-      router.push('/next/giveaways')
+      router.push('/giveaways')
     } catch (e: any) {
       setError(e.message)
       setLoading(false)
