@@ -17,7 +17,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
-    "ignoreDeprecations": "5.0",
     "baseUrl": ".",
     "paths": {
       "@/components/*": [
@@ -27,12 +26,7 @@
         "lib/*"
       ]
     },
-  // Silence deprecation diagnostics on CI using TS 5.x compatible value.
-  // NOTE: Some deprecations (introduced after 5.0) may still show locally if using newer TS,
-  // but this avoids "Invalid value for --ignoreDeprecations" in Docker builds.
-  "ignoreDeprecations": "5.0",
-  // If your local TypeScript is 6.x and you still see noisy deprecation warnings,
-  // you may temporarily bump this to "6.0" locally, but keep "5.0" committed for CI compatibility.
+    "ignoreDeprecations": "6.0",
     "incremental": true,
     "plugins": [
       {
