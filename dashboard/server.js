@@ -1093,6 +1093,7 @@ app.patch('/api/guild/:guildId/roles/:roleId', async (req,res)=>{
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
         const guildId = req.params.guildId; const roleId = req.params.roleId;
+        logger.info(`PATCH role ${roleId} - Request body:`, JSON.stringify(req.body));
         const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
         const guild = client.guilds.cache.get(guildId); if(!guild) return res.status(404).json({ success:false, error:'Guild not found' });
         const role = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(()=>null);
@@ -1104,7 +1105,7 @@ app.patch('/api/guild/:guildId/roles/:roleId', async (req,res)=>{
         // Validate input
         const bodySchema = Joi.object({
             name: Joi.string().min(1).max(100).optional(),
-            color: Joi.string().pattern(/^#?[0-9a-fA-F]{6}$/).optional(),
+            color: Joi.string().pattern(/^#?[0-9a-fA-F]{6}$/).optional().allow('').allow(null),
             hoist: Joi.boolean().optional(),
             mentionable: Joi.boolean().optional(),
             permissions: Joi.alternatives().try(
@@ -1114,7 +1115,10 @@ app.patch('/api/guild/:guildId/roles/:roleId', async (req,res)=>{
             ).optional()
         }).unknown(false);
         const { error: vErr, value } = bodySchema.validate(req.body || {}, { abortEarly:false });
-        if (vErr) return res.status(400).json({ success:false, error:'validation_failed', details: vErr.details.map(d=>d.message) });
+        if (vErr) {
+            logger.error('Role PATCH validation failed:', { body: req.body, errors: vErr.details.map(d => ({ message: d.message, path: d.path, type: d.type })) });
+            return res.status(400).json({ success:false, error:'validation_failed', details: vErr.details.map(d=>d.message) });
+        }
         const patch = {};
         if (Object.prototype.hasOwnProperty.call(value,'name')) patch.name = value.name;
         if (Object.prototype.hasOwnProperty.call(value,'color')) {
