@@ -38,7 +38,7 @@ export default function ParticipantsList({ guildId, giveawayId }: ParticipantsLi
       )
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'Falha ao carregar participantes')
-      
+
       setParticipants(json.entries || [])
       setTotalCount(json.total || 0)
       setTotalPages(Math.ceil((json.total || 0) / pageSize))
@@ -106,7 +106,7 @@ export default function ParticipantsList({ guildId, giveawayId }: ParticipantsLi
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-sm font-bold">
                 {participant.username?.[0]?.toUpperCase() || '?'}
               </div>
-              
+
               {/* Info */}
               <div className="flex-1">
                 <div className="font-medium">
@@ -136,11 +136,11 @@ export default function ParticipantsList({ guildId, giveawayId }: ParticipantsLi
           >
             ← Anterior
           </button>
-          
+
           <span className="px-4 text-sm">
             Página {page} de {totalPages}
           </span>
-          
+
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}

@@ -14,28 +14,28 @@ export default function GiveawayStats({ giveaway, entriesCount }: GiveawayStatsP
     const now = new Date()
     const endsAt = new Date(giveaway.ends_at)
     const createdAt = new Date(giveaway.created_at || giveaway.starts_at)
-    
+
     // Tempo restante
     const timeRemaining = endsAt.getTime() - now.getTime()
     const daysLeft = Math.floor(timeRemaining / (1000 * 60 * 60 * 24))
     const hoursLeft = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
     const minutesLeft = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60))
-    
+
     // Duração total
     const totalDuration = endsAt.getTime() - createdAt.getTime()
     const elapsedTime = now.getTime() - createdAt.getTime()
     const progressPercent = Math.min(100, Math.max(0, (elapsedTime / totalDuration) * 100))
-    
+
     // Taxa de participação
     const hoursElapsed = Math.max(1, elapsedTime / (1000 * 60 * 60))
     const entriesPerHour = (entriesCount / hoursElapsed).toFixed(1)
-    
+
     // Projeção de participantes no final
     const hoursTotal = totalDuration / (1000 * 60 * 60)
     const projectedEntries = Math.round((entriesCount / hoursElapsed) * hoursTotal)
-    
+
     // Probabilidade de ganhar
-    const winChance = entriesCount > 0 
+    const winChance = entriesCount > 0
       ? ((giveaway.winners_count / entriesCount) * 100).toFixed(2)
       : '0.00'
 
@@ -62,7 +62,7 @@ export default function GiveawayStats({ giveaway, entriesCount }: GiveawayStatsP
             <span className="font-medium text-blue-400">{stats.timeRemaining}</span>
           </div>
           <div className="w-full bg-neutral-800 rounded-full h-3 overflow-hidden">
-            <div 
+            <div
               className="bg-gradient-to-r from-blue-600 to-purple-600 h-full rounded-full transition-all duration-500"
               style={{ width: `${stats.progressPercent}%` }}
             />

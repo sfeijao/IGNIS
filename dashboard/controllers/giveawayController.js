@@ -320,8 +320,8 @@ async function getEntries(req, res){
       .limit(limit)
       .lean();
 
-    return res.json({ 
-      ok: true, 
+    return res.json({
+      ok: true,
       entries: entries.map(e => ({
         user_id: e.user_id,
         username: e.username,

@@ -67,8 +67,8 @@
     try { const d = await api(`/api/guild/${guildId}/channels`); logsSel.innerHTML = `<option value="">—</option>` + d.channels.map(c => `<option value="${c.id}">${c.name}</option>`).join(''); } catch {}
   }
   async function loadRoles() {
-    try { 
-      const d = await api(`/api/guild/${guildId}/roles`); 
+    try {
+      const d = await api(`/api/guild/${guildId}/roles`);
       const options = `<option value="">—</option>` + d.roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
       roleSel.innerHTML = options;
       if (giveawayRoleSel) giveawayRoleSel.innerHTML = options;

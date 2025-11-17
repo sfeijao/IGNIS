@@ -21,7 +21,7 @@ async function publishGiveaway(giveaway){
     // Calcular tempo até o fim
     const endsAt = new Date(giveaway.ends_at);
     const timestamp = Math.floor(endsAt.getTime() / 1000);
-    
+
     // Criar embed profissional
     const embed = new EmbedBuilder()
       .setTitle(`${giveaway.icon_emoji || '🎉'} Giveaway Started ${giveaway.icon_emoji || '🎉'}`)
@@ -98,7 +98,7 @@ async function announceWinners(giveaway, winners){
     if (!channel) return { ok:false, error:'channel_not_found' };
     const msg = await channel.messages.fetch(giveaway.message_id).catch(()=>null);
     if (!msg) return { ok:false, error:'message_not_found' };
-    
+
     // Criar embed de anúncio de vencedores
     const winnerEmbed = new EmbedBuilder()
       .setTitle(`${giveaway.icon_emoji || '🎉'} Giveaway Ended! ${giveaway.icon_emoji || '🎉'}`)
@@ -126,11 +126,11 @@ async function announceWinners(giveaway, winners){
     });
 
     // Anunciar vencedores
-    await channel.send({ 
+    await channel.send({
       content: winners && winners.length ? winners.map(w=>`<@${w.user_id}>`).join(' ') : null,
-      embeds: [winnerEmbed] 
+      embeds: [winnerEmbed]
     });
-    
+
     // Atualizar mensagem original para mostrar que terminou
     try {
       const oldEmbed = msg.embeds[0];
@@ -138,14 +138,14 @@ async function announceWinners(giveaway, winners){
         const endedEmbed = EmbedBuilder.from(oldEmbed)
           .setColor(0x95A5A6) // Cinza para indicar terminado
           .setTitle(`${giveaway.icon_emoji || '🎉'} Giveaway Ended ${giveaway.icon_emoji || '🎉'}`);
-        
+
         await msg.edit({ embeds: [endedEmbed], components: [] });
       }
     } catch {}
-    
+
     return { ok:true };
-  } catch (e) { 
-    return { ok:false, error: e && e.message || String(e) }; 
+  } catch (e) {
+    return { ok:false, error: e && e.message || String(e) };
   }
 }
 

@@ -78,7 +78,7 @@ export default function GiveawaysList(){
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    
+
     if (!confirm('Tens a certeza que queres eliminar este giveaway? Esta ação não pode ser desfeita!')) {
       return
     }
@@ -147,7 +147,7 @@ export default function GiveawaysList(){
                   {typeof it.entries_count === 'number' && <span>{t('giveaways.field.entries','Entries')}: {it.entries_count}</span>}
                 </div>
               </Link>
-              
+
               {/* Botão Delete */}
               <button
                 onClick={(e) => handleDelete(it._id, e)}

@@ -72,7 +72,7 @@ export default function GiveawayDetailPage(){
   })
 
   if (!id) return <div className="p-4">{t('giveaways.error.invalidId','Invalid ID')}</div>
-  
+
   return (
     <div className="p-4 flex flex-col gap-4">
       {error && <div className="text-red-400 text-sm">{error}</div>}
@@ -92,7 +92,7 @@ export default function GiveawayDetailPage(){
                   <div className="mt-2 text-neutral-300">{data.giveaway.description}</div>
                 )}
               </div>
-              
+
               {/* Badge de Status */}
               <div className={`px-3 py-1 rounded-full text-sm font-medium ${
                 data.giveaway?.status === 'active' ? 'bg-green-900/30 text-green-400 border border-green-700' :
@@ -141,9 +141,9 @@ export default function GiveawayDetailPage(){
 
             {/* Ações de Gestão */}
             <div className="mt-6">
-              <GiveawayManager 
-                giveaway={data.giveaway} 
-                guildId={guildId!} 
+              <GiveawayManager
+                giveaway={data.giveaway}
+                guildId={guildId!}
                 onUpdate={reload}
               />
             </div>
@@ -154,8 +154,8 @@ export default function GiveawayDetailPage(){
             <button
               onClick={() => setActiveTab('overview')}
               className={`px-4 py-2 font-medium transition-colors ${
-                activeTab === 'overview' 
-                  ? 'border-b-2 border-blue-500 text-blue-400' 
+                activeTab === 'overview'
+                  ? 'border-b-2 border-blue-500 text-blue-400'
                   : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
@@ -164,8 +164,8 @@ export default function GiveawayDetailPage(){
             <button
               onClick={() => setActiveTab('participants')}
               className={`px-4 py-2 font-medium transition-colors ${
-                activeTab === 'participants' 
-                  ? 'border-b-2 border-blue-500 text-blue-400' 
+                activeTab === 'participants'
+                  ? 'border-b-2 border-blue-500 text-blue-400'
                   : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
@@ -174,8 +174,8 @@ export default function GiveawayDetailPage(){
             <button
               onClick={() => setActiveTab('roulette')}
               className={`px-4 py-2 font-medium transition-colors ${
-                activeTab === 'roulette' 
-                  ? 'border-b-2 border-blue-500 text-blue-400' 
+                activeTab === 'roulette'
+                  ? 'border-b-2 border-blue-500 text-blue-400'
                   : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
@@ -218,8 +218,8 @@ export default function GiveawayDetailPage(){
 
                 {/* Ações */}
                 <div className="flex gap-2">
-                  <a 
-                    href={`/api/guilds/${guildId}/giveaways/${id}/entries/export`} 
+                  <a
+                    href={`/api/guilds/${guildId}/giveaways/${id}/entries/export`}
                     className="px-4 py-2 rounded-lg bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 transition-colors inline-flex items-center gap-2"
                   >
                     📥 Exportar CSV

@@ -17,17 +17,17 @@ export default function GiveawayRoulette({ participants, winnersCount, onComplet
 
   const startSpin = () => {
     if (participants.length === 0 || winners.length >= winnersCount) return
-    
+
     setIsSpinning(true)
     let count = 0
     const maxSpins = 30 + Math.floor(Math.random() * 20)
-    
+
     intervalRef.current = setInterval(() => {
       // Escolhe participante aleatório para mostrar
       const randomIndex = Math.floor(Math.random() * participants.length)
       const participant = participants[randomIndex]
       setCurrentDisplay(participant.username || participant.user_id)
-      
+
       count++
       if (count >= maxSpins) {
         stopSpin()
@@ -40,20 +40,20 @@ export default function GiveawayRoulette({ participants, winnersCount, onComplet
       clearInterval(intervalRef.current)
       intervalRef.current = null
     }
-    
+
     // Seleciona vencedor final (excluindo já escolhidos)
     const availableParticipants = participants.filter(
       p => !winners.includes(p.user_id)
     )
-    
+
     if (availableParticipants.length > 0) {
       const winnerIndex = Math.floor(Math.random() * availableParticipants.length)
       const winner = availableParticipants[winnerIndex]
-      
+
       setCurrentDisplay(winner.username || winner.user_id)
       setWinners(prev => [...prev, winner.user_id])
       setStage(prev => prev + 1)
-      
+
       setTimeout(() => {
         setIsSpinning(false)
       }, 1000)
@@ -79,13 +79,13 @@ export default function GiveawayRoulette({ participants, winnersCount, onComplet
   return (
     <div className="flex flex-col items-center gap-6 p-6">
       {/* Display da Roleta */}
-      <div 
+      <div
         className={`
           relative w-full max-w-md h-48 rounded-xl border-2
           flex items-center justify-center text-2xl font-bold
           transition-all duration-300
-          ${isSpinning 
-            ? 'border-yellow-500 bg-gradient-to-br from-yellow-900/30 to-orange-900/30 animate-pulse' 
+          ${isSpinning
+            ? 'border-yellow-500 bg-gradient-to-br from-yellow-900/30 to-orange-900/30 animate-pulse'
             : 'border-neutral-700 bg-neutral-900/50'
           }
         `}
@@ -99,7 +99,7 @@ export default function GiveawayRoulette({ participants, winnersCount, onComplet
             {participants.length === 0 ? 'Sem participantes' : 'Pronto para sortear'}
           </div>
         )}
-        
+
         {isSpinning && (
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-2 left-2 w-3 h-3 bg-yellow-500 rounded-full animate-ping" />
@@ -156,7 +156,7 @@ export default function GiveawayRoulette({ participants, winnersCount, onComplet
             {winners.map((userId, idx) => {
               const participant = participants.find(p => p.user_id === userId)
               return (
-                <div 
+                <div
                   key={userId}
                   className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border border-yellow-700/30"
                 >

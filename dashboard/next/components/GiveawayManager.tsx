@@ -146,7 +146,7 @@ export default function GiveawayManager({ giveaway, guildId, onUpdate }: Giveawa
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-neutral-900 rounded-xl border border-neutral-700 max-w-lg w-full p-6">
             <h3 className="text-xl font-semibold mb-4">Editar Giveaway</h3>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Título</label>
@@ -157,7 +157,7 @@ export default function GiveawayManager({ giveaway, guildId, onUpdate }: Giveawa
                   className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-neutral-700 focus:border-blue-500 outline-none"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-1">Descrição</label>
                 <textarea
@@ -195,7 +195,7 @@ export default function GiveawayManager({ giveaway, guildId, onUpdate }: Giveawa
           <div className="bg-neutral-900 rounded-xl border border-neutral-700 max-w-md w-full p-6">
             <h3 className="text-xl font-semibold mb-4">Terminar Giveaway</h3>
             <p className="text-neutral-300 mb-6">
-              Tens a certeza que queres terminar este giveaway antecipadamente? 
+              Tens a certeza que queres terminar este giveaway antecipadamente?
               Os vencedores serão escolhidos agora.
             </p>
 

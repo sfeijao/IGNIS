@@ -19,7 +19,7 @@ async function hasManagerPermission(req, guildId){
     if (!req.user) return false;
     if (req.user.admin) return true;
     if (Array.isArray(req.user.manageGuilds) && req.user.manageGuilds.includes(guildId)) return true;
-    
+
     // Check for giveaway manager role from guild config
     try {
       const storage = require('../../utils/storage');
@@ -30,7 +30,7 @@ async function hasManagerPermission(req, guildId){
         return true;
       }
     } catch {}
-    
+
     // Fallback to env-based role check
     const allowedEnv = (process.env.GIVEAWAYS_MANAGER_ROLES || '').split(',').map(s=>s.trim()).filter(Boolean);
     const roles = req.user.guildRoles && req.user.guildRoles[guildId];

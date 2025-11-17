@@ -228,6 +228,6 @@ Se encontrares problemas:
 2. Verificar logs: `railway logs`
 3. Consultar este guia
 
-**Versão:** 2.0.0  
-**Data:** Novembro 2025  
+**Versão:** 2.0.0
+**Data:** Novembro 2025
 **Status:** ✅ Produção Ready
