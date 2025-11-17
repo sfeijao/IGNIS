@@ -10,8 +10,8 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "types": ["node"],
-    "moduleResolution": "node",
-    "baseUrl": "."
+    "moduleResolution": "bundler",
+    "ignoreDeprecations": "5.0"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dashboard", "tests", "dist"]
