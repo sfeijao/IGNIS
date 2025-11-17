@@ -127,6 +127,30 @@ module.exports = {
                     return;
                 }
 
+                // Handler para botões de giveaway (gw-enter, gw-leave)
+                if (customId?.startsWith('gw-')) {
+                    try {
+                        const [action, giveawayId] = customId.split(':');
+                        if (!giveawayId) {
+                            logger.warn('Giveaway button without ID', { customId });
+                            return await interaction.reply({ content: '❌ ID do sorteio inválido.', flags: MessageFlags.Ephemeral });
+                        }
+
+                        if (action === 'gw-enter') {
+                            const { handleGiveawayEntry } = require('../utils/giveaways/interactions');
+                            await handleGiveawayEntry(interaction, giveawayId);
+                        } else if (action === 'gw-leave') {
+                            const { handleGiveawayLeave } = require('../utils/giveaways/interactions');
+                            await handleGiveawayLeave(interaction, giveawayId);
+                        }
+                        logger.interaction('button', customId, interaction, true);
+                    } catch (error) {
+                        logger.error('Error handling giveaway button:', error);
+                        await errorHandler.handleInteractionError(interaction, error, 'Giveaway Button');
+                    }
+                    return;
+                }
+
                 logger.debug(`Botão pressionado - ID: "${customId}" por ${interaction.user.tag}`);
                 logger.debug(`IDs disponíveis - CLOSE_TICKET: "${BUTTON_IDS.CLOSE_TICKET}", CONFIRM_CLOSE: "${BUTTON_IDS.CONFIRM_CLOSE}"`);
 
