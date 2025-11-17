@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from 'react'
+import Link from 'next/link'
 import { useGuildId } from '@/lib/guild'
 import useGiveawaySocket from '@/lib/useGiveawaySocket'
 import { useGiveawaysI18n } from '@/lib/useI18nGiveaways'
@@ -12,6 +13,7 @@ export default function GiveawaysList(){
   const [status, setStatus] = useState('open')
   const [search, setSearch] = useState('')
   const [error, setError] = useState<string|null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const liveRegionRef = useRef<HTMLDivElement|null>(null)
 
   const guildId = useGuildId()
@@ -73,6 +75,33 @@ export default function GiveawaysList(){
 
   useEffect(()=>{ fetchList() }, [guildId, status])
 
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (!confirm('Tens a certeza que queres eliminar este giveaway? Esta ação não pode ser desfeita!')) {
+      return
+    }
+
+    setDeletingId(id)
+    try {
+      const res = await fetch(`/api/guilds/${guildId}/giveaways/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+      if (!res.ok) {
+        const json = await res.json()
+        throw new Error(json?.error || 'Falha ao eliminar')
+      }
+      // Remove da lista
+      setItems(prev => prev.filter(item => item._id !== id))
+    } catch (e: any) {
+      alert('Erro: ' + e.message)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   if (!guildId) {
     return (
       <div className="flex flex-col gap-3">
@@ -105,18 +134,30 @@ export default function GiveawaysList(){
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
           {items.map(it => (
-            <a key={it._id} href={`/giveaways/${it._id}`} className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 hover:border-brand-600 transition">
-              <div className="text-lg font-medium flex items-center gap-2">
-                <span>🎉</span>
-                <span>{it.title}</span>
-              </div>
-              <div className="mt-2 text-sm opacity-80 line-clamp-3">{it.description}</div>
-              <div className="mt-3 text-xs opacity-70 flex gap-3">
-                <span>{t('giveaways.label.status','Status')}: {it.status}</span>
-                <span>{t('giveaways.field.winners')}: {it.winners_count}</span>
-                {typeof it.entries_count === 'number' && <span>{t('giveaways.field.entries','Entries')}: {it.entries_count}</span>}
-              </div>
-            </a>
+            <div key={it._id} className="relative group">
+              <Link href={`/giveaways/${it._id}`} className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 hover:border-brand-600 transition block">
+                <div className="text-lg font-medium flex items-center gap-2">
+                  <span>🎉</span>
+                  <span>{it.title}</span>
+                </div>
+                <div className="mt-2 text-sm opacity-80 line-clamp-3">{it.description}</div>
+                <div className="mt-3 text-xs opacity-70 flex gap-3">
+                  <span>{t('giveaways.label.status','Status')}: {it.status}</span>
+                  <span>{t('giveaways.field.winners')}: {it.winners_count}</span>
+                  {typeof it.entries_count === 'number' && <span>{t('giveaways.field.entries','Entries')}: {it.entries_count}</span>}
+                </div>
+              </Link>
+              
+              {/* Botão Delete */}
+              <button
+                onClick={(e) => handleDelete(it._id, e)}
+                disabled={deletingId === it._id}
+                className="absolute top-2 right-2 p-2 rounded-lg bg-neutral-900/90 border border-red-700/50 text-red-400 hover:bg-red-900/50 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+                title="Eliminar giveaway"
+              >
+                {deletingId === it._id ? '⏳' : '🗑️'}
+              </button>
+            </div>
           ))}
           {!items.length && <div className="opacity-70">{t('giveaways.none')}</div>}
         </div>

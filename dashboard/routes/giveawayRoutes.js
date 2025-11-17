@@ -21,6 +21,7 @@ router.get('/guilds/:guildId/giveaways', checkAuth, giveawayController.listGivea
 router.post('/guilds/:guildId/giveaways', checkAuth, rateLimitCreate, giveawayController.createGiveaway);
 router.get('/guilds/:guildId/giveaways/:giveawayId', checkAuth, giveawayController.getGiveaway);
 router.patch('/guilds/:guildId/giveaways/:giveawayId', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.updateGiveaway);
+router.delete('/guilds/:guildId/giveaways/:giveawayId', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.deleteGiveaway);
 router.post('/guilds/:guildId/giveaways/:giveawayId/end', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.endNow);
 router.post('/guilds/:guildId/giveaways/:giveawayId/reroll', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.reroll);
 router.post('/guilds/:guildId/giveaways/:giveawayId/enter', checkAuth, giveawayController.enter);

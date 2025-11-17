@@ -338,4 +338,44 @@ async function getEntries(req, res){
   }
 }
 
-module.exports = { createGiveaway, listGiveaways, getGiveaway, updateGiveaway, endNow, reroll, enter, getEntries, exportEntriesCsv };
+async function deleteGiveaway(req, res){
+  try {
+    const guildId = req.params.guildId;
+    const gid = req.params.giveawayId;
+    if (!guildId || !gid) return res.status(400).json({ error: 'missing_params' });
+
+    const giveaway = await GiveawayModel.findOne({ _id: gid, guild_id: guildId });
+    if (!giveaway) return res.status(404).json({ error: 'not_found' });
+
+    // Delete all related data
+    await Promise.all([
+      GiveawayModel.deleteOne({ _id: gid }),
+      GiveawayEntryModel.deleteMany({ giveaway_id: gid }),
+      GiveawayWinnerModel.deleteMany({ giveaway_id: gid }),
+      GiveawayLogModel.deleteMany({ giveaway_id: gid })
+    ]);
+
+    // Log deletion
+    await GiveawayLogModel.create({
+      giveaway_id: gid,
+      guild_id: guildId,
+      actor_id: req.user?.id || null,
+      action: 'delete',
+      payload: { title: giveaway.title }
+    });
+
+    // Broadcast deletion
+    try {
+      if (global.socketManager) {
+        global.socketManager.broadcast('giveaway_delete', { giveawayId: gid }, guildId);
+      }
+    } catch {}
+
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('deleteGiveaway error', e);
+    return res.status(500).json({ error: 'internal_error' });
+  }
+}
+
+module.exports = { createGiveaway, listGiveaways, getGiveaway, updateGiveaway, endNow, reroll, enter, getEntries, exportEntriesCsv, deleteGiveaway };

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface GiveawayManagerProps {
   giveaway: any
@@ -9,8 +10,10 @@ interface GiveawayManagerProps {
 }
 
 export default function GiveawayManager({ giveaway, guildId, onUpdate }: GiveawayManagerProps) {
+  const router = useRouter()
   const [showEditModal, setShowEditModal] = useState(false)
   const [showEndModal, setShowEndModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [editForm, setEditForm] = useState({
     title: giveaway?.title || '',
     description: giveaway?.description || '',
@@ -76,6 +79,24 @@ export default function GiveawayManager({ giveaway, guildId, onUpdate }: Giveawa
     }
   }
 
+  const handleDelete = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/guilds/${guildId}/giveaways/${giveaway._id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || 'Falha ao eliminar')
+      // Redirecionar para lista após delete
+      router.push('/giveaways')
+    } catch (e: any) {
+      setError(e.message)
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="flex flex-wrap gap-2">
       <button
@@ -106,6 +127,13 @@ export default function GiveawayManager({ giveaway, guildId, onUpdate }: Giveawa
           🔄 Sortear Novamente
         </button>
       )}
+
+      <button
+        onClick={() => setShowDeleteModal(true)}
+        className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-red-700 text-red-400 hover:bg-red-900/30 transition-colors"
+      >
+        🗑️ Eliminar
+      </button>
 
       {error && (
         <div className="w-full p-3 rounded-lg bg-red-900/30 border border-red-700 text-red-400 text-sm">
@@ -181,6 +209,39 @@ export default function GiveawayManager({ giveaway, guildId, onUpdate }: Giveawa
               </button>
               <button
                 onClick={() => setShowEndModal(false)}
+                disabled={loading}
+                className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação para Eliminar */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-neutral-900 rounded-xl border border-red-700 max-w-md w-full p-6">
+            <h3 className="text-xl font-semibold mb-4 text-red-400">⚠️ Eliminar Giveaway</h3>
+            <p className="text-neutral-300 mb-6">
+              Tens a certeza que queres <strong>eliminar permanentemente</strong> este giveaway?
+              <br /><br />
+              <strong>Esta ação não pode ser desfeita!</strong>
+              <br />
+              Todos os dados (participantes, vencedores, logs) serão removidos.
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleDelete}
+                disabled={loading}
+                className="flex-1 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-50 transition-colors font-semibold"
+              >
+                {loading ? 'Eliminando...' : 'Sim, Eliminar Permanentemente'}
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(false)}
                 disabled={loading}
                 className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 transition-colors"
               >
