@@ -1046,11 +1046,27 @@ app.post('/api/guild/:guildId/roles/:roleId/move', async (req,res)=>{
 app.get('/api/guild/:guildId/roles/:roleId', async (req,res)=>{
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
-        const guildId = req.params.guildId; const roleId = req.params.roleId;
-        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
-        const guild = client.guilds.cache.get(guildId); if(!guild) return res.status(404).json({ success:false, error:'Guild not found' });
-        const role = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(()=>null);
+        const guildId = req.params.guildId; 
+        const roleId = req.params.roleId;
+        
+        // Validação básica dos parâmetros
+        if (!guildId || !roleId) {
+            return res.status(400).json({ success:false, error:'Missing guildId or roleId' });
+        }
+        
+        const client = global.discordClient; 
+        if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        
+        const guild = client.guilds.cache.get(guildId); 
+        if(!guild) return res.status(404).json({ success:false, error:'Guild not found' });
+        
+        const role = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch((err)=>{
+            logger.warn(`Failed to fetch role ${roleId}:`, err.message);
+            return null;
+        });
+        
         if(!role) return res.status(404).json({ success:false, error:'Role not found' });
+        
         const me = guild.members.me || guild.members.cache.get(client.user.id);
         const myHighest = me?.roles?.highest?.position ?? 0;
         const manageable = !role.managed && role.position < myHighest;
@@ -1066,7 +1082,10 @@ app.get('/api/guild/:guildId/roles/:roleId', async (req,res)=>{
             manageable
         };
         return res.json({ success:true, role: out });
-    } catch(e){ logger.error('role details error', e); return res.status(500).json({ success:false, error:'role_details_failed' }); }
+    } catch(e){ 
+        logger.error('role details error', e); 
+        return res.status(500).json({ success:false, error:'role_details_failed', message: e.message }); 
+    }
 });
 
 // Update role properties (name/color/hoist/mentionable/permissions)
@@ -5674,28 +5693,53 @@ app.get('/api/guild/:guildId/tickets/:ticketId/messages', async (req, res) => {
     }
     try {
         const { guildId, ticketId } = req.params;
+        
+        logger.info(`Fetching messages for ticket ${ticketId} in guild ${guildId}`);
+        
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        
         const guild = client.guilds.cache.get(guildId);
         if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
 
         const storage = require('../utils/storage');
         const tickets = await storage.getTickets(guildId);
-        const ticket = tickets.find(t => `${t.id}` === `${ticketId}`);
-        if (!ticket) return res.status(404).json({ success: false, error: 'Ticket not found' });
+        
+        // Try to find ticket by ID (support both string and number comparison)
+        const ticket = tickets.find(t => {
+            const tId = String(t.id || t._id || '');
+            const searchId = String(ticketId);
+            return tId === searchId || tId.includes(searchId) || searchId.includes(tId);
+        });
+        
+        if (!ticket) {
+            logger.warn(`Ticket ${ticketId} not found in guild ${guildId}. Available tickets: ${tickets.map(t => t.id).join(', ')}`);
+            return res.status(404).json({ success: false, error: 'Ticket not found', ticketId });
+        }
 
         const channel = guild.channels.cache.get(ticket.channel_id);
-        if (!channel || !channel.messages?.fetch) return res.status(404).json({ success: false, error: 'Channel not found' });
+        if (!channel || !channel.messages?.fetch) {
+            logger.warn(`Channel ${ticket.channel_id} not found or not accessible`);
+            return res.status(404).json({ success: false, error: 'Channel not found' });
+        }
+        
         let limit = parseInt(String(req.query.limit||'100'), 10);
         if (!Number.isFinite(limit) || limit <= 0) limit = 100;
         limit = Math.max(1, Math.min(100, limit));
+        
         const before = (req.query.before || '').toString().trim() || undefined;
-        const fetched = await channel.messages.fetch(before ? { limit, before } : { limit }).catch(() => null);
+        const fetched = await channel.messages.fetch(before ? { limit, before } : { limit }).catch((err) => {
+            logger.error('Error fetching messages:', err.message);
+            return null;
+        });
+        
         const list = fetched ? Array.from(fetched.values()) : [];
         // Sort ascending by time
         list.sort((a,b) => a.createdTimestamp - b.createdTimestamp);
+        
         const messages = list.map(msg => ({
             id: msg.id,
             content: msg.content,
@@ -5708,11 +5752,13 @@ app.get('/api/guild/:guildId/tickets/:ticketId/messages', async (req, res) => {
             timestamp: msg.createdAt,
             embeds: msg.embeds.map(embed => ({ title: embed.title, description: embed.description, color: embed.color }))
         }));
+        
         const nextBefore = messages.length ? messages[0].id : null; // for fetching older pages
+        
         return res.json({ success: true, messages, nextBefore });
     } catch (e) {
         logger.error('Error fetching ticket messages:', e);
-        return res.status(500).json({ success: false, error: 'Failed to fetch ticket messages' });
+        return res.status(500).json({ success: false, error: 'Failed to fetch ticket messages', message: e.message });
     }
 });
 
