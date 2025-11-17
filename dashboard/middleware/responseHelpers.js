@@ -12,8 +12,8 @@
  */
 function sendError(res, status, error, meta = {}) {
   if (res.headersSent) return;
-  res.status(status).json({ 
-    success: false, 
+  res.status(status).json({
+    success: false,
     error,
     ...meta
   });
@@ -27,9 +27,9 @@ function sendError(res, status, error, meta = {}) {
  */
 function sendSuccess(res, data, status = 200) {
   if (res.headersSent) return;
-  res.status(status).json({ 
-    success: true, 
-    ...data 
+  res.status(status).json({
+    success: true,
+    ...data
   });
 }
 
@@ -43,7 +43,7 @@ const Errors = {
   BAD_REQUEST: (res, message = 'Invalid request') => sendError(res, 400, message),
   INTERNAL_ERROR: (res, message = 'Internal server error') => sendError(res, 500, message),
   SERVICE_UNAVAILABLE: (res, service = 'Service') => sendError(res, 503, `${service} unavailable`),
-  
+
   // Specific cases
   BOT_UNAVAILABLE: (res) => sendError(res, 500, 'Bot not available'),
   GUILD_NOT_FOUND: (res) => sendError(res, 404, 'Guild not found'),
@@ -76,8 +76,8 @@ function asyncHandler(fn) {
     Promise.resolve(fn(req, res, next)).catch(err => {
       console.error('Route error:', err);
       if (!res.headersSent) {
-        sendError(res, 500, err.message || 'Internal server error', { 
-          stack: process.env.NODE_ENV === 'development' ? err.stack : undefined 
+        sendError(res, 500, err.message || 'Internal server error', {
+          stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
         });
       }
     });

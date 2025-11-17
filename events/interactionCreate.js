@@ -8,7 +8,7 @@ const { getTicketTypeInfo } = require('../utils/ticketModals');
 // Função auxiliar para obter ou criar categoria de tickets
 async function getOrCreateTicketCategory(guild) {
     let ticketCategory = guild.channels.cache.find(c => c.name === '📁 TICKETS' && c.type === ChannelType.GuildCategory);
-    
+
     if (!ticketCategory) {
         logger.debug(`Categoria '📁 TICKETS' não encontrada, criando automaticamente...`);
         try {
@@ -23,7 +23,7 @@ async function getOrCreateTicketCategory(guild) {
             throw new Error('FAILED_TO_CREATE_TICKET_CATEGORY');
         }
     }
-    
+
     return ticketCategory;
 }
 
@@ -38,7 +38,7 @@ async function sendTicketWebhook(ticketData) {
          }
 
         const webhook = new WebhookClient({ url: webhookUrl });
-        
+
         const embed = new EmbedBuilder()
             .setTitle('🎫 Novo Ticket Criado')
             .setDescription(`Um novo ticket foi criado no servidor **${ticketData.guildName}**`)
@@ -55,7 +55,7 @@ async function sendTicketWebhook(ticketData) {
 
         await webhook.send({ embeds: [embed] });
         logger.info('Ticket enviado via webhook com sucesso', { guild: ticketData.guildId, channelId: ticketData.channelId });
-         
+
      } catch (error) {
         logger.error('Erro ao enviar ticket via webhook:', { error: error.message || error });
     }
@@ -68,16 +68,16 @@ module.exports = {
     name: 'interactionCreate',
     async execute(interaction, client) {
         logger.debug(`interactionCreate chamado - client exists: ${!!client}, commands exists: ${!!client?.commands}`);
-        
+
         // Verificar se a interação ainda é válida (não expirou)
         const now = Date.now();
         const interactionTime = new Date(interaction.createdTimestamp).getTime();
         const timeDiff = now - interactionTime;
-        
+
         if (timeDiff > 2000) { // Se passou mais de 2 segundos
             logger.debug(`Interação potencialmente expirada (${timeDiff}ms), processando com cuidado`);
         }
-        
+
         try {
             // Comando Slash
             if (interaction.isChatInputCommand()) {
@@ -105,12 +105,12 @@ module.exports = {
                 try {
                     // Log comando sendo executado
                     logger.command(interaction.commandName, interaction, true);
-                    
+
                     await command.execute(interaction, client);
                 } catch (error) {
                     // Usar error handler centralizado
                     await errorHandler.handleInteractionError(interaction, error, 'Comando');
-                    
+
                     // Log estruturado do erro
                     logger.command(interaction.commandName, interaction, false);
                 }
@@ -120,13 +120,13 @@ module.exports = {
             // Botões
             if (interaction.isButton()) {
                 const customId = interaction.customId;
-                
+
                 // Delegar o novo sistema de tickets (prefixo 'ticket:') para o handler dedicado
                 if (customId?.startsWith('ticket:')) {
                     // Delegado para events/ticketHandler.js
                     return;
                 }
-                
+
                 logger.debug(`Botão pressionado - ID: "${customId}" por ${interaction.user.tag}`);
                 logger.debug(`IDs disponíveis - CLOSE_TICKET: "${BUTTON_IDS.CLOSE_TICKET}", CONFIRM_CLOSE: "${BUTTON_IDS.CONFIRM_CLOSE}"`);
 
@@ -148,7 +148,7 @@ module.exports = {
                         }
                         global.__verifyPressCache.set(key, Date.now());
                         // Check verification method
-                        
+
                         if ((vcfg.method || 'button') === 'image') {
                             // Start captcha flow (image)
                             const mode = vcfg.mode || 'easy';
@@ -185,7 +185,7 @@ module.exports = {
                             await interaction.showModal(modal);
                             return;
                         }
-                        
+
                         // Prefer role IDs from new verification config, fallback to legacy keys and name
                         let verifyRole = null;
                         let unverifiedRole = null;
@@ -332,7 +332,7 @@ module.exports = {
                     try {
                         const ticketType = customId.replace('ticket_create_', '');
                         const cacheKey = `${interaction.user.id}-${interaction.guild.id}-${ticketType}`;
-                        
+
                         // Verificar cache anti-duplicação (5 segundos)
                         if (ticketCreationCache.has(cacheKey)) {
                             const lastCreation = ticketCreationCache.get(cacheKey);
@@ -344,13 +344,13 @@ module.exports = {
                                          });
                                      }
                         }
-                        
+
                         // Marcar no cache
                         ticketCreationCache.set(cacheKey, Date.now());
-                        
+
                         logger.debug(`Criando ticket tipo: "${ticketType}" para ${interaction.user.tag}`);
                         logger.interaction('button', customId, interaction, true);
-                        
+
                         // Delegar IMEDIATAMENTE para o sistema de tickets - sem defer
                         const ticketManager = interaction.client.ticketManager;
                         if (!ticketManager) {
@@ -388,7 +388,7 @@ module.exports = {
                     try {
                         logger.debug(`Botão fechar ticket clicado por ${interaction.user.tag}`);
                         logger.interaction('button', customId, interaction, true);
-                        
+
                         const confirmEmbed = new EmbedBuilder()
                             .setTitle('⚠️ Confirmar Encerramento')
                             .setDescription('Tens a certeza que queres fechar este ticket?')
@@ -427,7 +427,7 @@ module.exports = {
 
                     } catch (error) {
                         logger.error('Erro na criação de ticket:', { error: error.message || error });
-                        
+
                         // Limpar cache em caso de erro (remover qualquer entrada para este user+guild)
                         try {
                             const prefix = `${interaction.user.id}-${interaction.guild.id}-`;
@@ -437,7 +437,7 @@ module.exports = {
                         } catch (e) {
                             logger.warn('Erro ao limpar ticketCreationCache no catch', { error: e && e.message ? e.message : e });
                         }
-                        
+
                         // Tentar responder apenas se a interação ainda estiver válida
                         try {
                             if (!interaction.replied && !interaction.deferred) {
@@ -462,7 +462,7 @@ module.exports = {
                     try {
                         logger.debug(`Confirmação de fecho de ticket por ${interaction.user.tag}`);
                         logger.interaction('button', customId, interaction, true);
-                        
+
                         const closedEmbed = new EmbedBuilder()
                             .setTitle('🔒 Ticket Fechado')
                             .setDescription(`Ticket fechado por ${interaction.user}`)
@@ -491,13 +491,13 @@ module.exports = {
                                         action: 'fechado',
                                         maxMessages: 200
                                     });
-                                    
+
                                     const cfg = await storage.getGuildConfig(interaction.guild.id);
                                     const logChannelId = cfg?.channels?.logs || null;
                                     if (logChannelId && attachment) {
                                         const logCh = interaction.guild.channels.cache.get(logChannelId) || await client.channels.fetch(logChannelId).catch(()=>null);
                                         if (logCh && logCh.send) {
-                                            await logCh.send({ 
+                                            await logCh.send({
                                                 content: `📄 Transcript do ticket #${ticketRecord.id} (${interaction.channel.name}) fechado por ${interaction.user.tag}`,
                                                 files: [attachment]
                                             });
@@ -516,7 +516,7 @@ module.exports = {
                                         try {
                                             const fetched = await interaction.channel.messages.fetch({ limit: 100 }).catch(() => null);
                                             const messages = fetched ? Array.from(fetched.values()).sort((a,b)=>a.createdTimestamp-b.createdTimestamp) : [];
-                                            
+
                                             // Gerar transcript textual
                                             transcriptText = `TRANSCRIÇÃO DO TICKET #${ticketRecord.id}
 ========================================
@@ -527,7 +527,7 @@ Servidor: ${interaction.guild.name}
 ========================================
 
 `;
-                                            
+
                                             if (messages && messages.length > 0) {
                                                 messages.forEach(msg => {
                                                     const timestamp = new Date(msg.createdTimestamp).toLocaleTimeString('pt-PT');
@@ -536,7 +536,7 @@ Servidor: ${interaction.guild.name}
                                             } else {
                                                 transcriptText += '(Nenhuma mensagem registrada)\n';
                                             }
-                                            
+
                                             transcriptText += `\n========================================
 Ticket fechado por: ${interaction.user.tag}
 Data de fechamento: ${new Date().toLocaleString('pt-PT')}
@@ -573,7 +573,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                         } catch (dbErr) {
                             logger.warn('Erro ao atualizar ticket no DB durante fechamento por interação', { error: dbErr && dbErr.message ? dbErr.message : dbErr });
                         }
-                        
+
                         // Log estruturado
                         logger.database('ticket_closed', {
                             userId: interaction.user.id,
@@ -627,7 +627,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                                 await channel.delete();
                                 logger.info('Canal deletado com sucesso', { channelId: channelIdToDelete });
                             } catch (error) {
-                                logger.error('Erro ao deletar canal de ticket', { 
+                                logger.error('Erro ao deletar canal de ticket', {
                                     channelId: channelIdToDelete,
                                     error: error.message || error
                                 });
@@ -796,7 +796,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                     try {
                         const tagName = customId.replace('request_tag_', '');
                         logger.interaction('button', customId, interaction, true);
-                        
+
                         const modal = new ModalBuilder()
                             .setCustomId(`tag_modal_${tagName}`)
                             .setTitle(`Solicitar Tag: ${tagName}`);
@@ -814,7 +814,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                         modal.addComponents(firstActionRow);
 
                         await interaction.showModal(modal);
-                        
+
                     } catch (error) {
                         await errorHandler.handleInteractionError(interaction, error);
                     }
@@ -1045,7 +1045,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                 // ========================================
                 // SISTEMA AVANÇADO DE PAINÉIS - NOVO
                 // ========================================
-                
+
                 // Handler para menu de seleção de categoria
                 if (customId === 'ticket_category_select') {
                     // Fluxo de seleção de categoria legado desativado no novo sistema
@@ -1053,13 +1053,13 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                     try {
                         const selectedCategory = interaction.values[0];
                         const categoryType = selectedCategory.replace('ticket_', '');
-                        
+
                         // Verificar se usuário já tem ticket aberto
-                        const existingTicket = interaction.guild.channels.cache.find(channel => 
-                            channel.name.includes(interaction.user.username.toLowerCase()) && 
+                        const existingTicket = interaction.guild.channels.cache.find(channel =>
+                            channel.name.includes(interaction.user.username.toLowerCase()) &&
                             channel.name.includes('ticket')
                         );
-                        
+
                         if (existingTicket) {
                             return await interaction.reply({
                                 content: `⚠️ **Ticket Existente**\\nVocê já possui um ticket aberto: ${existingTicket}\\nFeche o ticket atual antes de abrir um novo.`,
@@ -1178,7 +1178,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                             '### 🟢 **SISTEMA OPERACIONAL**',
                             '',
                             '✅ **Bot:** Online',
-                            '✅ **Base de Dados:** Conectada', 
+                            '✅ **Base de Dados:** Conectada',
                             '✅ **Tickets:** Funcionais',
                             `✅ **Latência:** ${interaction.client.ws.ping}ms`,
                             '',
@@ -1192,8 +1192,8 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                 }
 
                 if (customId === 'ticket_my_tickets') {
-                    const userTickets = interaction.guild.channels.cache.filter(channel => 
-                        channel.name.includes(interaction.user.username.toLowerCase()) && 
+                    const userTickets = interaction.guild.channels.cache.filter(channel =>
+                        channel.name.includes(interaction.user.username.toLowerCase()) &&
                         channel.name.includes('ticket')
                     );
 
@@ -1201,7 +1201,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                         .setColor('#5865F2')
                         .setTitle('📋 Meus Tickets')
                         .setDescription(
-                            userTickets.size > 0 
+                            userTickets.size > 0
                                 ? `Você possui **${userTickets.size}** ticket(s) ativo(s):\\n${userTickets.map(t => `• ${t}`).join('\\n')}`
                                 : 'Você não possui tickets ativos no momento.'
                         )
@@ -1290,9 +1290,9 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
 
                         // Criar e enviar o novo painel
                         const panelData = await panelManager.createCompletePanel(
-                            ticketData, 
-                            interaction.guild, 
-                            interaction.user, 
+                            ticketData,
+                            interaction.guild,
+                            interaction.user,
                             null // Nenhum staff atribuído inicialmente
                         );
 

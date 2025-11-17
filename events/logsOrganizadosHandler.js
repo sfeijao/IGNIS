@@ -61,7 +61,7 @@ module.exports = {
                     });
 
                     await this.salvarConfiguracao(interaction, servidorOrigem, canal, novoWebhook);
-                    
+
                 } catch (webhookError) {
                     logger.warn(`Erro ao criar webhook automaticamente: ${webhookError.message}`);
                     return await interaction.editReply({
@@ -88,9 +88,9 @@ module.exports = {
         try {
             // Salvar configuração
             const config = await storage.getGuildConfig(interaction.guild.id) || {};
-            
+
             if (!config.logsOrganizados) config.logsOrganizados = {};
-            
+
             config.logsOrganizados[servidorOrigem] = {
                 canalId: canal.id,
                 canalNome: canal.name,

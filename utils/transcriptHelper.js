@@ -25,10 +25,10 @@ async function fetchChannelMessages(channel, maxMessages = 2000) {
 
       const batch = Array.from(fetched.values());
       messages.push(...batch);
-      
+
       const last = batch[batch.length - 1];
       lastId = last?.id;
-      
+
       if (fetched.size < 100) break; // No more messages
     } catch (err) {
       logger.warn(`Error fetching messages batch ${i}:`, err?.message || err);
@@ -68,8 +68,8 @@ function generateTextTranscript({ messages, ticketId, channelName, channelId, gu
     const ts = new Date(m.createdTimestamp).toISOString();
     const author = m.author?.tag || m.author?.id || 'Desconhecido';
     const content = (m.content || '').replace(/\n/g, ' ');
-    const atts = m.attachments?.size > 0 
-      ? ` [anexos: ${Array.from(m.attachments.values()).map(a => a.name).join(', ')}]` 
+    const atts = m.attachments?.size > 0
+      ? ` [anexos: ${Array.from(m.attachments.values()).map(a => a.name).join(', ')}]`
       : '';
     return `[${ts}] ${author}: ${content}${atts}`;
   });
@@ -89,17 +89,17 @@ function createTranscriptAttachment(transcriptText, filename = null) {
   // Discord webhook limit is 25MB, be conservative
   const MAX_SIZE = 20 * 1024 * 1024; // 20MB
   const buffer = Buffer.from(transcriptText, 'utf8');
-  
+
   if (buffer.length > MAX_SIZE) {
     logger.warn(`Transcript too large (${(buffer.length / 1024 / 1024).toFixed(2)}MB), truncating...`);
     const truncated = transcriptText.slice(0, MAX_SIZE - 100) + '\n\n[TRANSCRIPT TRUNCATED DUE TO SIZE]';
-    return new AttachmentBuilder(Buffer.from(truncated, 'utf8'), { 
-      name: filename || `transcript-truncated-${Date.now()}.txt` 
+    return new AttachmentBuilder(Buffer.from(truncated, 'utf8'), {
+      name: filename || `transcript-truncated-${Date.now()}.txt`
     });
   }
 
-  return new AttachmentBuilder(buffer, { 
-    name: filename || `transcript-${Date.now()}.txt` 
+  return new AttachmentBuilder(buffer, {
+    name: filename || `transcript-${Date.now()}.txt`
   });
 }
 
@@ -116,7 +116,7 @@ function createTranscriptAttachment(transcriptText, filename = null) {
 async function generateFullTranscript({ channel, ticketId, closedByTag, action = 'closed', maxMessages = 2000 }) {
   try {
     const messages = await fetchChannelMessages(channel, maxMessages);
-    
+
     const text = generateTextTranscript({
       messages,
       ticketId,
@@ -132,9 +132,9 @@ async function generateFullTranscript({ channel, ticketId, closedByTag, action =
     return { text, attachment };
   } catch (err) {
     logger.error('Error generating full transcript:', err);
-    return { 
-      text: `Error generating transcript: ${err?.message || err}`, 
-      attachment: null 
+    return {
+      text: `Error generating transcript: ${err?.message || err}`,
+      attachment: null
     };
   }
 }
