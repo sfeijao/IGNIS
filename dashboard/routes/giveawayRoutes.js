@@ -18,7 +18,7 @@ let { requireGiveawayManage, rateLimitCreate } = (()=>{ try { return require('..
 
 // Routes base: /api/guilds/:guildId/giveaways
 router.get('/guilds/:guildId/giveaways', checkAuth, giveawayController.listGiveaways);
-router.post('/guilds/:guildId/giveaways', checkAuth, checkGuildAdmin, requireGiveawayManage, rateLimitCreate, giveawayController.createGiveaway);
+router.post('/guilds/:guildId/giveaways', checkAuth, rateLimitCreate, giveawayController.createGiveaway);
 router.get('/guilds/:guildId/giveaways/:giveawayId', checkAuth, giveawayController.getGiveaway);
 router.patch('/guilds/:guildId/giveaways/:giveawayId', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.updateGiveaway);
 router.post('/guilds/:guildId/giveaways/:giveawayId/end', checkAuth, checkGuildAdmin, requireGiveawayManage, giveawayController.endNow);
