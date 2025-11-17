@@ -14,11 +14,24 @@ const CREATE_COOLDOWN_MS = parseInt(process.env.GIVEAWAYS_CREATE_COOLDOWN_MS || 
 // In-memory structures (reset on process restart – acceptable for rate limiting UI actions)
 const lastCreatePerGuild = new Map(); // guildId -> timestamp
 
-function hasManagerPermission(req, guildId){
+async function hasManagerPermission(req, guildId){
   try {
     if (!req.user) return false;
     if (req.user.admin) return true;
     if (Array.isArray(req.user.manageGuilds) && req.user.manageGuilds.includes(guildId)) return true;
+    
+    // Check for giveaway manager role from guild config
+    try {
+      const storage = require('../../utils/storage');
+      const config = await storage.getGuildConfig(guildId);
+      const giveawayRoleId = config?.giveaway_manager_role_id;
+      const userRoles = req.user.guildRoles && req.user.guildRoles[guildId];
+      if (giveawayRoleId && userRoles && userRoles.includes(giveawayRoleId)) {
+        return true;
+      }
+    } catch {}
+    
+    // Fallback to env-based role check
     const allowedEnv = (process.env.GIVEAWAYS_MANAGER_ROLES || '').split(',').map(s=>s.trim()).filter(Boolean);
     const roles = req.user.guildRoles && req.user.guildRoles[guildId];
     if (roles && allowedEnv.length && roles.some(r => allowedEnv.includes(r))) return true;
@@ -26,11 +39,12 @@ function hasManagerPermission(req, guildId){
   return false;
 }
 
-function requireGiveawayManage(req, res, next){
+async function requireGiveawayManage(req, res, next){
   const guildId = req.params.guildId;
   if (!guildId) return res.status(400).json({ error: 'missing_guild_id' });
   if (!req.user) return res.status(401).json({ error: 'unauthorized' });
-  if (!hasManagerPermission(req, guildId)) return res.status(403).json({ error: 'forbidden' });
+  const hasPermission = await hasManagerPermission(req, guildId);
+  if (!hasPermission) return res.status(403).json({ error: 'forbidden' });
   next();
 }
 

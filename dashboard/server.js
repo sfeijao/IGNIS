@@ -3324,7 +3324,12 @@ app.get('/api/guild/:guildId/bot-settings', async (req, res) => {
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
         const cfg = await storage.getGuildConfig(req.params.guildId);
-        return res.json({ success: true, settings: (cfg && cfg.botSettings) || {} });
+        const settings = (cfg && cfg.botSettings) || {};
+        // Include giveaway_manager_role_id at top level for easy access
+        if (cfg && cfg.giveaway_manager_role_id) {
+            settings.giveaway_manager_role_id = cfg.giveaway_manager_role_id;
+        }
+        return res.json({ success: true, settings });
     } catch (e) {
         logger.error('Error fetching bot settings:', e);
         return res.status(500).json({ success: false, error: 'Failed to fetch bot settings' });
@@ -3357,6 +3362,7 @@ app.post('/api/guild/:guildId/bot-settings', async (req, res) => {
             adminRoleId: Joi.string().trim().pattern(/^\d+$/).allow(''),
             verifiedRoleId: Joi.string().trim().pattern(/^\d+$/).allow(''),
             unverifiedRoleId: Joi.string().trim().pattern(/^\d+$/).allow(''),
+            giveawayManagerRoleId: Joi.string().trim().pattern(/^\d+$/).allow(''),
             // allow arbitrary extra keys for future
         }).unknown(true);
         const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: false });
@@ -3370,6 +3376,8 @@ app.post('/api/guild/:guildId/bot-settings', async (req, res) => {
         next.roles = { ...(next.roles || {}) };
         if (Object.prototype.hasOwnProperty.call(value, 'staffRoleId')) next.roles.staff = value.staffRoleId || '';
         if (Object.prototype.hasOwnProperty.call(value, 'adminRoleId')) next.roles.admin = value.adminRoleId || '';
+        // Save giveaway manager role at top-level for easy access
+        if (Object.prototype.hasOwnProperty.call(value, 'giveawayManagerRoleId')) next.giveaway_manager_role_id = value.giveawayManagerRoleId || '';
         // Also wire verification roles into verification config (if present)
         if (Object.prototype.hasOwnProperty.call(value, 'verifiedRoleId') || Object.prototype.hasOwnProperty.call(value, 'unverifiedRoleId')) {
             next.verification = { ...(next.verification || {}) };

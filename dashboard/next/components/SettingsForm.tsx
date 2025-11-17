@@ -25,6 +25,7 @@ type BotSettings = {
   adminRoleId?: string
   verifiedRoleId?: string
   unverifiedRoleId?: string
+  giveawayManagerRoleId?: string
 }
 
 type Role = { id: string; name: string }
@@ -48,7 +49,8 @@ export default function SettingsForm() {
     staffRoleId: '',
     adminRoleId: '',
     verifiedRoleId: '',
-    unverifiedRoleId: ''
+    unverifiedRoleId: '',
+    giveawayManagerRoleId: ''
   })
   const [uploading, setUploading] = useState(false)
   const [uploadingIcon, setUploadingIcon] = useState(false)
@@ -119,7 +121,8 @@ export default function SettingsForm() {
           staffRoleId: typeof s.staffRoleId === 'string' ? s.staffRoleId : (s.roles?.staff || ''),
           adminRoleId: typeof s.adminRoleId === 'string' ? s.adminRoleId : (s.roles?.admin || ''),
           verifiedRoleId: typeof s.verifiedRoleId === 'string' ? s.verifiedRoleId : (s.verification?.verifiedRoleId || ''),
-          unverifiedRoleId: typeof s.unverifiedRoleId === 'string' ? s.unverifiedRoleId : (s.verification?.unverifiedRoleId || '')
+          unverifiedRoleId: typeof s.unverifiedRoleId === 'string' ? s.unverifiedRoleId : (s.verification?.unverifiedRoleId || ''),
+          giveawayManagerRoleId: typeof s.giveawayManagerRoleId === 'string' ? s.giveawayManagerRoleId : (s.giveaway_manager_role_id || '')
         }))
       } catch {}
       try {
@@ -195,6 +198,7 @@ export default function SettingsForm() {
       if (botSettings.adminRoleId) payload.adminRoleId = botSettings.adminRoleId
       if (botSettings.verifiedRoleId) payload.verifiedRoleId = botSettings.verifiedRoleId
       if (botSettings.unverifiedRoleId) payload.unverifiedRoleId = botSettings.unverifiedRoleId
+      if (botSettings.giveawayManagerRoleId) payload.giveawayManagerRoleId = botSettings.giveawayManagerRoleId
       await api.postBotSettings?.(guildId, payload)
       toast({ type: 'success', title: t('settings.saveSuccess') })
     } catch (err) {
@@ -492,6 +496,21 @@ export default function SettingsForm() {
                   {!rolesLoading && roles.length === 0 && !rolesError && <option disabled value="">{guildId ? t('settings.bot.systemRoles.selectGuildFirst') : t('settings.bot.systemRoles.selectGuildFirst')}</option>}
                 </select>
                 <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.admin.hint')}</p>
+              </div>
+              <div>
+                <label htmlFor="giveawayManagerRoleId" className="block text-sm mb-1">{t('settings.bot.systemRoles.giveawayManager')}</label>
+                <select
+                  id="giveawayManagerRoleId"
+                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+                  value={botSettings.giveawayManagerRoleId || ''}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, giveawayManagerRoleId: e.target.value }))}
+                >
+                  <option value="">—</option>
+                  {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
+                  {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+                  {!rolesLoading && roles.length === 0 && !rolesError && <option disabled value="">{guildId ? t('settings.bot.systemRoles.selectGuildFirst') : t('settings.bot.systemRoles.selectGuildFirst')}</option>}
+                </select>
+                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.giveawayManager.hint')}</p>
               </div>
               <div>
                 <label htmlFor="verifiedRoleId" className="block text-sm mb-1">{t('verification.verifiedRole')}</label>

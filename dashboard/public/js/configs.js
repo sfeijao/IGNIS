@@ -26,6 +26,7 @@
   const guildId = params.get('guildId');
   const logsSel = document.getElementById('cfgLogsChannel');
   const roleSel = document.getElementById('cfgStaffRole');
+  const giveawayRoleSel = document.getElementById('cfgGiveawayRole');
   const btn = document.getElementById('cfgSave');
   const autoRefreshChk = document.getElementById('cfgAutoRefreshPanels');
   const routeCreate = document.getElementById('routeCreate');
@@ -66,7 +67,12 @@
     try { const d = await api(`/api/guild/${guildId}/channels`); logsSel.innerHTML = `<option value="">—</option>` + d.channels.map(c => `<option value="${c.id}">${c.name}</option>`).join(''); } catch {}
   }
   async function loadRoles() {
-    try { const d = await api(`/api/guild/${guildId}/roles`); roleSel.innerHTML = `<option value="">—</option>` + d.roles.map(r => `<option value="${r.id}">${r.name}</option>`).join(''); } catch {}
+    try { 
+      const d = await api(`/api/guild/${guildId}/roles`); 
+      const options = `<option value="">—</option>` + d.roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+      roleSel.innerHTML = options;
+      if (giveawayRoleSel) giveawayRoleSel.innerHTML = options;
+    } catch {}
   }
   async function loadConfig() {
     try {
@@ -74,6 +80,7 @@
       const cfg = d.config || {};
       if (cfg.logs_channel_id) logsSel.value = cfg.logs_channel_id;
       if (cfg.staff_role_id) roleSel.value = cfg.staff_role_id;
+      if (cfg.giveaway_manager_role_id && giveawayRoleSel) giveawayRoleSel.value = cfg.giveaway_manager_role_id;
       if (autoRefreshChk) autoRefreshChk.checked = (cfg.autoRefreshPanels !== false);
   const routing = (cfg.webhookRouting) || {};
       if (routeCreate) routeCreate.value = routing.create || 'tickets';
@@ -103,6 +110,7 @@
       const updates = {
         logs_channel_id: logsSel.value || null,
         staff_role_id: roleSel.value || null,
+        giveaway_manager_role_id: giveawayRoleSel?.value || null,
         autoRefreshPanels: autoRefreshChk ? !!autoRefreshChk.checked : true,
         webhookRouting: {
           create: routeCreate?.value || 'tickets',
