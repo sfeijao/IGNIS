@@ -269,18 +269,6 @@ try {
 } catch {}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// Mount giveaway API router
-try {
-    const giveawayRoutes = require('./routes/giveawayRoutes');
-    app.use('/api', giveawayRoutes);
-} catch (e) {
-    try { console.warn('Giveaway routes not mounted:', e.message); } catch {}
-}
-// Start giveaway background worker (Mongo dependent)
-try {
-    const { initGiveawayWorker } = require('../utils/giveaways/worker');
-    initGiveawayWorker();
-} catch (e) { try { console.warn('Giveaway worker not started:', e.message); } catch {} }
 
 // Reusable helper to call Discord OAuth user-scoped endpoints with session cache and backoff
 async function oauthFetchWithSessionCache(req, url, opts={}){
@@ -402,6 +390,20 @@ app.use((req, res, next) => {
     } catch {}
     next();
 });
+
+// Mount giveaway API router (must be after Passport initialization)
+try {
+    const giveawayRoutes = require('./routes/giveawayRoutes');
+    app.use('/api', giveawayRoutes);
+} catch (e) {
+    try { console.warn('Giveaway routes not mounted:', e.message); } catch {}
+}
+
+// Start giveaway background worker (Mongo dependent)
+try {
+    const { initGiveawayWorker } = require('../utils/giveaways/worker');
+    initGiveawayWorker();
+} catch (e) { try { console.warn('Giveaway worker not started:', e.message); } catch {} }
 
 // Discord OAuth Strategy
 passport.use(new DiscordStrategy({

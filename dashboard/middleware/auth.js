@@ -6,6 +6,20 @@
  * Returns 401 if not authenticated
  */
 function checkAuth(req, res, next) {
+  // Log for debugging
+  const isAuthFn = typeof req.isAuthenticated === 'function';
+  const isAuth = isAuthFn ? req.isAuthenticated() : false;
+  
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[checkAuth]', {
+      path: req.path,
+      hasFunction: isAuthFn,
+      isAuthenticated: isAuth,
+      hasUser: !!req.user,
+      sessionID: req.sessionID
+    });
+  }
+  
   if (!req.isAuthenticated || !req.isAuthenticated()) {
     return res.status(401).json({ 
       success: false, 
