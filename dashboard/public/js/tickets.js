@@ -51,6 +51,19 @@
   let suggestTimer;
 
   function notify(msg, type='info') {
+    // ✨ Usar novo sistema de toast se disponível
+    if (window.IGNIS_UI && window.IGNIS_UI.toast) {
+      const typeMap = {
+        'info': 'info',
+        'success': 'success',
+        'error': 'error',
+        'warning': 'warning'
+      };
+      IGNIS_UI.toast({ type: typeMap[type] || 'info', message: msg });
+      return;
+    }
+
+    // Fallback: Toast antigo
     const div = document.createElement('div');
     div.className = `notification notification-${type} slide-up`;
     div.innerHTML = `<i class="fas ${type==='error'?'fa-exclamation-circle': type==='success'? 'fa-check-circle':'fa-info-circle'}"></i><span>${msg}</span>`;

@@ -5,13 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IGNIS - Tickets</title>
   <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/tickets.css" />
+  <link rel="stylesheet" href="/css/ux-ui-enhancements.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-  <link rel="stylesheet" href="/css/tickets.css" />
 </head>
 <body class="dense">
+  <a href="#main-content" class="skip-to-main">Saltar para conteúdo principal</a>
+  
   <nav class="navbar">
     <div class="navbar-container">
       <div class="navbar-brand"><i class="fas fa-ticket-alt"></i> Tickets</div>
@@ -22,12 +25,12 @@
         </span>
         <img id="userAvatar" src="/default-avatar.svg" alt="Avatar" class="user-avatar">
         <span id="userName">Carregando...</span>
-        <a href="/dashboard" class="btn btn-glass"><i class="fas fa-home"></i> Dashboard</a>
-        <a href="/logout" class="btn btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        <a href="/dashboard" class="btn btn-glass"><i class="fas fa-home"></i> <span class="hide-mobile">Dashboard</span></a>
+        <a href="/logout" class="btn btn-logout"><i class="fas fa-sign-out-alt"></i> <span class="hide-mobile">Logout</span></a>
       </div>
     </div>
   </nav>
-  <main class="main-content">
+  <main id="main-content" class="main-content">
     <div class="container">
       <section class="dashboard-section fade-in">
         <div class="section-header">
@@ -129,6 +132,7 @@
     </div>
   </main>
   <script src="/js/utils/fetch-cache.js"></script>
+  <script src="/js/ux-ui.js"></script>
   <script src="/js/tickets.js"></script>
 
   <script>

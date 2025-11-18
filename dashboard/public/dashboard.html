@@ -5,12 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IGNIS Bot - Dashboard</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/ux-ui-enhancements.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
+    <!-- ✨ Accessibility: Skip to main content -->
+    <a href="#main-content" class="skip-to-main">Saltar para conteúdo principal</a>
+    
     <!-- Navigation -->
     <nav class="navbar">
         <div class="navbar-container">
@@ -27,18 +31,19 @@
                 <span id="userName">Carregando...</span>
                 <a href="/dashboard" class="btn btn-glass" id="btnBackServers">
                     <i class="fas fa-arrow-left"></i>
-                    Voltar à seleção de servidores
+                    <span class="hide-mobile">Voltar à seleção de servidores</span>
+                    <span class="hide-desktop">Voltar</span>
                 </a>
                 <a href="/logout" class="btn btn-logout">
                     <i class="fas fa-sign-out-alt"></i>
-                    Logout
+                    <span class="hide-mobile">Logout</span>
                 </a>
             </div>
         </div>
     </nav>
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main id="main-content" class="main-content">
         <div class="container">
             <!-- Server Selection -->
             <section id="serverSelection" class="dashboard-section fade-in">
@@ -317,5 +322,7 @@
             })();
         </script>
 
+    <!-- ✨ UX/UI Library -->
+    <script src="/js/ux-ui.js"></script>
 </body>
 </html>
