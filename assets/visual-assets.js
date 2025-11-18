@@ -16,13 +16,13 @@ module.exports = {
     // URLs de imagens relacionadas ao gaming/servidor mais animadas
     realImages: {
         // Banners gaming/server themed
-        supportBanner: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&h=200&fit=crop&crop=center', // Setup gamer
-        successBanner: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&h=200&fit=crop&crop=center', // Conquista/vitória
+        supportBanner: 'https://cdn.discordapp.com/banners/1283603691538088027/53267e9c70b9c6e75b6a0fdae8c4ce78.png?size=512', // Banner do servidor
+        successBanner: 'https://cdn.discordapp.com/banners/1283603691538088027/53267e9c70b9c6e75b6a0fdae8c4ce78.png?size=512', // Banner do servidor
         errorBanner: 'https://images.unsplash.com/photo-1561736778-92e52a7769ef?w=800&h=200&fit=crop&crop=center', // Alerta tech
         
         // Thumbnails mais relacionados ao servidor
-        supportIcon: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=128&h=128&fit=crop&crop=center', // Gaming setup
-        successIcon: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=128&h=128&fit=crop&crop=center', // Troféu/sucesso  
+        supportIcon: 'https://cdn.discordapp.com/icons/1283603691538088027/78d8c2156906c4d3ea4f11bb1f06b51c.png?size=128', // Ícone do servidor
+        successIcon: 'https://cdn.discordapp.com/icons/1283603691538088027/78d8c2156906c4d3ea4f11bb1f06b51c.png?size=128', // Ícone do servidor
         errorIcon: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=128&h=128&fit=crop&crop=center' // Código/erro
     },
     
