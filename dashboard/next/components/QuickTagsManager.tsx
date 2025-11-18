@@ -1,31 +1,21 @@
 "use client"
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useGuildId } from '@/lib/guild'
 import { api } from '@/lib/apiClient'
 import { useI18n } from '@/lib/i18n'
 import { useToast } from '@/components/Toaster'
 
 type Tag = { id: string; name: string; prefix: string; color?: string; icon?: string; roleIds?: string[] }
-type Role = { id: string; name: string; manageable?: boolean }
 
 export default function QuickTagsManager() {
   const guildId = useGuildId()
   const { t } = useI18n()
   const { toast } = useToast()
   const [tags, setTags] = useState<Tag[]>([])
-  const [editing, setEditing] = useState<Tag | null>(null)
-  const [q, setQ] = useState('')
+  const [enabled, setEnabled] = useState(true)
   const [loading, setLoading] = useState(false)
-  const [roles, setRoles] = useState<Role[]>([])
-  const [applyOpen, setApplyOpen] = useState(false)
-  const [applyTagId, setApplyTagId] = useState<string>('')
-  const [memberQuery, setMemberQuery] = useState('')
-  const [members, setMembers] = useState<Array<{ id: string; username: string; discriminator: string; nick?: string; manageable?: boolean }>>([])
-  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set())
-  const [expireSeconds, setExpireSeconds] = useState<number | ''>('')
-
-  const filtered = useMemo(() => tags.filter(t => !q || t.name.toLowerCase().includes(q.toLowerCase()) || t.prefix.toLowerCase().includes(q.toLowerCase())), [tags, q])
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const load = async () => {
     if (!guildId) return
@@ -33,210 +23,165 @@ export default function QuickTagsManager() {
     try {
       const res = await api.getTags(guildId)
       setTags(res.tags || [])
-      // Load roles for optional association
-      try {
-        const r = await api.getRoles(guildId)
-        const list: Role[] = (r.roles || r || []).map((x:any)=> ({ id: x.id, name: x.name, manageable: x.manageable }))
-        setRoles(list)
-      } catch { setRoles([]) }
-    } finally { setLoading(false) }
+    } finally { 
+      setLoading(false) 
+    }
   }
 
   useEffect(() => { load() }, [guildId])
 
-  const startNew = () => setEditing({ id: '', name: '', prefix: '', color: '', icon: '', roleIds: [] })
-
-  function normalizeHexColor(input?: string) {
-    const v = (input || '').trim();
-    if (!v) return '';
-    const m3 = v.match(/^#?([0-9a-fA-F]{3})$/);
-    const m6 = v.match(/^#?([0-9a-fA-F]{6})$/);
-    if (m3) {
-      const [r, g, b] = m3[1].split('');
-      return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
-    }
-    if (m6) return `#${m6[1].toLowerCase()}`;
-    return ''; // invalid -> clear it
-  }
-
-  const save = async () => {
-    if (!guildId || !editing) return
-    const name = (editing.name || '').trim()
-    const prefix = (editing.prefix || '').trim()
-    if (!name || !prefix) {
-      toast({ type: 'error', title: t('common.saveFailed') || 'Falha ao guardar', description: t('tags.validation.namePrefix') || 'Nome e prefixo são obrigatórios.' })
-      return
-    }
-    const color = normalizeHexColor(editing.color)
-    const icon = (editing.icon || '').slice(0, 32)
-    const roleIds = Array.isArray(editing.roleIds) ? editing.roleIds.map(String).filter(Boolean).slice(0, 20) : []
-    const payload = { id: editing.id || undefined, name, prefix, color, icon, roleIds }
+  const saveTag = async (tag: Tag) => {
+    if (!guildId) return
     setLoading(true)
     try {
-      await api.upsertTag(guildId, payload)
-      setEditing(null)
-      toast({ type:'success', title: t('common.saved') || 'Guardado!' })
+      await api.upsertTag(guildId, tag)
+      toast({ type: 'success', title: 'Tag guardada!' })
       await load()
+      setEditingId(null)
     } catch (e: any) {
-      toast({ type: 'error', title: t('common.saveFailed') || 'Falha ao guardar', description: e?.message || 'Erro desconhecido' })
-    } finally { setLoading(false) }
+      toast({ type: 'error', title: 'Erro ao guardar', description: e?.message })
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const remove = async (id: string) => {
-    if (!guildId) return
-    if (!confirm(t('tags.remove.confirm') || 'Remover tag?')) return
+  const deleteTag = async (id: string) => {
+    if (!guildId || !confirm('Remover esta tag?')) return
     setLoading(true)
     try {
       await api.deleteTag(guildId, id)
-      toast({ type:'success', title: t('common.saved') || 'Guardado!' })
+      toast({ type: 'success', title: 'Tag removida!' })
       await load()
-    } finally { setLoading(false) }
-  }
-
-  const openApply = async (id: string) => {
-    setApplyTagId(id)
-    setApplyOpen(true)
-    setSelectedUserIds(new Set())
-    setMemberQuery('')
-    if (!guildId) return
-    try {
-      const res = await api.getMembers(guildId, { limit: 50 })
-      setMembers(res.members || res || [])
-    } catch { setMembers([]) }
-  }
-
-  const searchMembers = async () => {
-    if (!guildId) return
-    try {
-      const res = await api.getMembers(guildId, { q: memberQuery, limit: 50, refresh: true })
-      setMembers(res.members || res || [])
-    } catch { setMembers([]) }
-  }
-
-  const toggleUser = (uid: string) => setSelectedUserIds(prev => { const n = new Set(prev); if (n.has(uid)) n.delete(uid); else n.add(uid); return n })
-
-  const apply = async () => {
-    if (!guildId || !applyTagId || selectedUserIds.size === 0) return
-    setLoading(true)
-    try {
-      const res = await api.applyTag(guildId, { tagId: applyTagId, userIds: Array.from(selectedUserIds), expireSeconds: typeof expireSeconds === 'number' ? expireSeconds : undefined })
-      try {
-        const results = Array.isArray(res?.results) ? res.results : []
-        const ok = results.filter((r:any)=> r?.ok).length
-        const rolesAdded = results.reduce((acc:number, r:any)=> acc + (Array.isArray(r?.addedRoles) ? r.addedRoles.length : (r?.roleAdded ? 1 : 0)), 0)
-        toast({ type: 'success', title: t('tags.apply.done') || 'Tag applied', description: `${ok} ${t('guild.members') || 'members'}; ${rolesAdded} ${t('guild.roles') || 'roles'}` })
-      } catch {}
-      setApplyOpen(false)
-      setSelectedUserIds(new Set())
-    } catch (e: any) {
-      toast({ type: 'error', title: t('common.saveFailed') || 'Failed', description: e?.message })
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="space-y-3">
-      <div className="card p-4 flex flex-wrap items-end gap-3">
-        <div className="md:w-64">
-          <label className="text-xs text-neutral-400">{t('tags.search') || 'Pesquisar'}</label>
-          <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={q} onChange={e=> setQ(e.target.value)} placeholder={t('tags.search.placeholder') || 'Procurar por nome/prefixo'} />
-        </div>
-  <button type="button" onClick={startNew} className="mt-5 px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 disabled:opacity-50">{t('tags.new') || 'Nova tag'}</button>
-  <button type="button" onClick={load} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={loading}>{t('common.refresh') || 'Atualizar'}</button>
-      </div>
-
-      {editing && (
-        <div className="card p-4 grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
-          <div>
-            <label className="text-xs text-neutral-400">{t('tags.name') || 'Nome'}</label>
-            <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={editing.name} onChange={e=> setEditing({ ...editing, name: e.target.value })} placeholder="Owner" />
-          </div>
-          <div>
-            <label className="text-xs text-neutral-400">{t('tags.prefix') || 'Prefixo'}</label>
-            <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={editing.prefix} onChange={e=> setEditing({ ...editing, prefix: e.target.value })} placeholder="Owner | " />
-          </div>
-          <div>
-            <label className="text-xs text-neutral-400">{t('tags.color') || 'Cor'}</label>
-            <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={editing.color||''} onChange={e=> setEditing({ ...editing, color: e.target.value })} placeholder="#a855f7" />
-          </div>
-          <div>
-            <label className="text-xs text-neutral-400">{t('tags.icon') || 'Ícone'}</label>
-            <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={editing.icon||''} onChange={e=> setEditing({ ...editing, icon: e.target.value })} placeholder="⭐" />
-          </div>
-          <div>
-            <label htmlFor="quicktag-roles" className="text-xs text-neutral-400">{t('tags.roles') || t('tags.role') || 'Cargos (opcional)'}</label>
-            <select
-              id="quicktag-roles"
-              title={t('tags.roles') || 'Cargos (opcional)'}
-              multiple
-              className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 h-28"
-              value={Array.isArray(editing.roleIds) ? editing.roleIds : []}
-              onChange={e=> {
-                const selected = Array.from(e.target.selectedOptions).map(o => o.value).filter(Boolean)
-                setEditing(prev => ({ ...(prev as Tag), roleIds: selected }))
-              }}
-            >
-              {roles.map(r => (
-                <option key={r.id} value={r.id} disabled={r.manageable===false}>{`@${r.name}`}{r.manageable===false ? ' (não gerenciável)' : ''}</option>
-              ))}
-            </select>
-            <div className="text-[11px] text-neutral-500 mt-1">{t('tags.roles.hint') || 'Note: roles at/above the bot’s highest role or managed roles are skipped automatically.'}</div>
-          </div>
-          <div className="flex gap-2">
-            <button type="button" onClick={save} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={loading}>{t('common.save') || 'Guardar'}</button>
-            <button type="button" onClick={()=> setEditing(null)} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('common.cancel') || 'Cancelar'}</button>
-          </div>
-        </div>
-      )}
-
-      <div className="card p-0 overflow-hidden">
-        <div className="divide-y divide-neutral-800">
-          {loading && <div className="p-6 text-neutral-400">{t('common.loading') || 'A carregar…'}</div>}
-          {filtered.map(tg => (
-            <div key={tg.id} className="p-4 flex items-center gap-3">
-              <div className="h-6 w-6 rounded bg-neutral-800 border border-neutral-700 flex items-center justify-center" title={tg.icon || ''}>{tg.icon || '🏷️'}</div>
-              <div className="flex-1 min-w-0">
-                <div className="text-neutral-200 truncate">{tg.name} <span className="text-neutral-500">({tg.prefix})</span></div>
-              </div>
-              <button type="button" className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setEditing(tg)} title="Editar">{t('common.edit') || 'Editar'}</button>
-              <button type="button" className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> openApply(tg.id)} title="Aplicar">{t('tags.apply') || 'Aplicar'}</button>
-              <button type="button" className="px-2 py-1 text-xs rounded bg-rose-600 hover:bg-rose-500" onClick={()=> remove(tg.id)} title="Remover">{t('common.remove') || 'Remover'}</button>
+    <div className="space-y-6">
+      {/* Header with Toggle */}
+      <div className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-4xl">🏷️</span>
+            <div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
+                Sistema de Tags
+              </h2>
+              <p className="text-gray-400 text-sm mt-1">Respostas rápidas e painéis personalizados</p>
             </div>
-          ))}
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => setEnabled(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-14 h-7 bg-gray-700 peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-purple-600 peer-checked:to-pink-600"></div>
+          </label>
         </div>
       </div>
 
-      {applyOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal>
-          <div className="bg-neutral-900 border border-neutral-700 rounded-xl w-full max-w-3xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="text-lg font-semibold">{t('tags.apply.modalTitle') || 'Aplicar tag'}</div>
-              <button type="button" onClick={()=> setApplyOpen(false)} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('common.close') || 'Fechar'}</button>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-yellow-600/20 to-orange-600/20 flex items-center justify-center">
+              <span className="text-2xl">📝</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-              <div className="md:col-span-2">
-                <label className="text-xs text-neutral-400">{t('tags.members.search') || 'Pesquisar membros'}</label>
-                <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={memberQuery} onChange={e=> setMemberQuery(e.target.value)} placeholder="nome ou id" />
-              </div>
-              <button type="button" onClick={searchMembers} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('common.search') || 'Pesquisar'}</button>
-              <div>
-                <label className="text-xs text-neutral-400">{t('tags.expireSeconds') || 'Expiração (segundos, opcional)'}</label>
-                <input type="number" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={expireSeconds as any} onChange={e=> setExpireSeconds(e.target.value ? parseInt(e.target.value, 10) : '')} placeholder="3600" />
-              </div>
-            </div>
-            <div className="h-64 overflow-auto border border-neutral-800 rounded">
-              {members.map(m => (
-                <label key={m.id} className="flex items-center gap-3 p-2 border-b border-neutral-800">
-                  <input type="checkbox" checked={selectedUserIds.has(m.id)} onChange={()=> toggleUser(m.id)} />
-                  <span className="flex-1 min-w-0 text-neutral-200 truncate">{m.nick ? `${m.nick} (${m.username}#${m.discriminator})` : `${m.username}#${m.discriminator}`}</span>
-                  <span className="text-xs text-neutral-500">{m.id}</span>
-                </label>
-              ))}
-            </div>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={apply} className="px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 disabled:opacity-50" disabled={selectedUserIds.size===0}>{t('tags.applyNow') || 'Aplicar agora'}</button>
-              <button type="button" onClick={()=> setApplyOpen(false)} className="px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('common.cancel') || 'Cancelar'}</button>
+            <div>
+              <p className="text-gray-400 text-sm">Total de Tags</p>
+              <p className="text-2xl font-bold">{tags.length}</p>
             </div>
           </div>
+        </div>
+        <div className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-600/20 to-emerald-600/20 flex items-center justify-center">
+              <span className="text-2xl">✅</span>
+            </div>
+            <div>
+              <p className="text-gray-400 text-sm">Tags Ativas</p>
+              <p className="text-2xl font-bold">{tags.filter(t => !t.roleIds?.length).length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center">
+              <span className="text-2xl">🎭</span>
+            </div>
+            <div>
+              <p className="text-gray-400 text-sm">Com Restrições</p>
+              <p className="text-2xl font-bold">{tags.filter(t => t.roleIds?.length).length}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Add New Tag Button */}
+      <button
+        onClick={() => setEditingId('new')}
+        className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2"
+      >
+        <span className="text-xl">➕</span>
+        <span>Criar Nova Tag</span>
+      </button>
+
+      {/* Tags List */}
+      <div className="space-y-4">
+        {tags.map((tag) => (
+          <div
+            key={tag.id}
+            className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 rounded-xl p-5 hover:border-purple-500/50 transition-all"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  {tag.icon && <span className="text-2xl">{tag.icon}</span>}
+                  <h3 className="text-lg font-semibold">{tag.name}</h3>
+                  <span className="px-3 py-1 bg-gray-700/50 rounded-lg text-sm font-mono text-purple-300">
+                    {tag.prefix}
+                  </span>
+                  {tag.color && (
+                    <div
+                      className="w-6 h-6 rounded-full border-2 border-gray-600"
+                      style={{ backgroundColor: tag.color }}
+                    />
+                  )}
+                </div>
+                {tag.roleIds && tag.roleIds.length > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <span>🎭</span>
+                    <span>{tag.roleIds.length} cargo(s) requerido(s)</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setEditingId(tag.id)}
+                  className="px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 rounded-lg transition-all"
+                >
+                  ✏️ Editar
+                </button>
+                <button
+                  onClick={() => deleteTag(tag.id)}
+                  className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 rounded-lg transition-all"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {tags.length === 0 && !loading && (
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">🏷️</div>
+          <h3 className="text-xl font-semibold text-gray-300 mb-2">Nenhuma tag criada</h3>
+          <p className="text-gray-500">Clique em "Criar Nova Tag" para começar</p>
         </div>
       )}
     </div>

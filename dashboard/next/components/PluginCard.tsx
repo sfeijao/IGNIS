@@ -67,10 +67,9 @@ export default function PluginCard({ name, desc, badge, icon = 'plugins', tip, h
           )}
         </div>
         {tip && (
-          <div className="pt-2 border-t border-gray-700/30">
-            <p className="text-xs text-gray-500 flex items-start gap-2">
-              <Icon name="info" className="mt-0.5 flex-shrink-0" />
-              <span>{tip}</span>
+          <div className="pt-3 border-t border-gray-700/30">
+            <p className="text-xs text-gray-400 leading-relaxed">
+              💡 {tip}
             </p>
           </div>
         )}
