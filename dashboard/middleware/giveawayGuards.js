@@ -17,10 +17,10 @@ const lastCreatePerGuild = new Map(); // guildId -> timestamp
 async function hasManagerPermission(req, guildId){
   try {
     if (!req.user) return false;
-    
+
     // Bot owner/admin bypass
     if (req.user.admin) return true;
-    
+
     // Guild admin/MANAGE_GUILD permission
     if (Array.isArray(req.user.manageGuilds) && req.user.manageGuilds.includes(guildId)) return true;
 

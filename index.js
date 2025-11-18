@@ -306,6 +306,19 @@ client.once('ready', () => {
         if (client.webhooks?.hydrateFromStorage) client.webhooks.hydrateFromStorage();
     } catch {}
 
+    // Cleanup job: liberar giveaways presos em 'processing' a cada 10 minutos
+    try {
+        const { cleanupStaleLocks } = require('./utils/giveaways/service');
+        setInterval(async () => {
+            try {
+                await cleanupStaleLocks();
+            } catch (e) {
+                logger.warn('[GiveawayCleanup] Erro no cleanup:', e?.message || e);
+            }
+        }, 10 * 60 * 1000); // 10 minutos
+        logger.info('🧹 Job de cleanup de giveaways iniciado (10 min)');
+    } catch {}
+
     // Restaurar painéis de tickets e verificação do storage (Mongo/SQLite)
     // Agora DESATIVADO por padrão. Só ativa se:
     //  - process.env.AUTO_RESTORE_PANELS === 'true' (global)

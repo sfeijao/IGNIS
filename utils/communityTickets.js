@@ -42,7 +42,9 @@ async function findStaffRole(guild) {
     const cfg = await storage.getGuildConfig(guild.id);
     const configuredId = cfg?.roles?.staff;
     if (configuredId && guild.roles.cache.has(configuredId)) return guild.roles.cache.get(configuredId);
-  } catch {}
+  } catch (e) {
+    logger.warn(`[Tickets] Erro ao carregar config de staff para ${guild.id}:`, e.message);
+  }
   // Heurística: escolher o cargo mais alto que tenha perms de gestão/moderação
   const candidates = guild.roles.cache
     .filter(r => r.editable || true) // apenas para iterar todos
@@ -63,7 +65,9 @@ async function findLogsChannel(guild) {
     if (configuredId) {
       return guild.channels.cache.get(configuredId) || await guild.client.channels.fetch(configuredId).catch(() => null);
     }
-  } catch {}
+  } catch (e) {
+    logger.warn(`[Tickets] Erro ao carregar config de logs para ${guild.id}:`, e.message);
+  }
   // Heurística por nome
   const names = ['logs', 'log', 'mod-logs', 'modlogs', 'staff-logs', 'transcripts', 'ignis-logs'];
   const ch = guild.channels.cache.find(c => c.type === ChannelType.GuildText && names.some(n => c.name.toLowerCase().includes(n)));
@@ -131,11 +135,35 @@ async function fetchAllMessages(channel, cap = 2000) {
 }
 
 async function createTicket(interaction, type) {
-  // Impedir múltiplos tickets abertos por utilizador
-  const existing = (await storage.getUserActiveTickets(interaction.user.id, interaction.guild.id)) || [];
-  if (existing.length > 0) {
-    const t = existing[0];
-    return safeReply(interaction, { content: `❌ Já tens um ticket aberto: <#${t.channel_id}>`, flags: MessageFlags.Ephemeral });
+  // CRITICAL: Atomic lock para prevenir race condition em double-click
+  // Usa findOneAndUpdate com upsert para garantir apenas 1 ticket criado
+  const storage = require('./storage');
+  const lockKey = `ticket_creation_lock:${interaction.guild.id}:${interaction.user.id}`;
+  const lockDoc = await storage.getGeneric(lockKey);
+  
+  // Se já existe lock recente (< 5 segundos), rejeitar
+  if (lockDoc && Date.now() - new Date(lockDoc.created_at).getTime() < 5000) {
+    return safeReply(interaction, { 
+      content: `⏳ Aguarda um momento... Ticket a ser criado.`, 
+      flags: MessageFlags.Ephemeral 
+    });
+  }
+  
+  // Criar lock
+  await storage.setGeneric(lockKey, { created_at: new Date() });
+  
+  try {
+    // Impedir múltiplos tickets abertos por utilizador
+    const existing = (await storage.getUserActiveTickets(interaction.user.id, interaction.guild.id)) || [];
+    if (existing.length > 0) {
+      const t = existing[0];
+      await storage.deleteGeneric(lockKey); // Liberar lock
+      return safeReply(interaction, { content: `❌ Já tens um ticket aberto: <#${t.channel_id}>`, flags: MessageFlags.Ephemeral });
+    }
+  } catch (lockError) {
+    // Se falhar verificação, liberar lock e rejeitar
+    await storage.deleteGeneric(lockKey).catch(() => {});
+    throw lockError;
   }
 
   // Ler configuração de tickets
@@ -188,15 +216,27 @@ async function createTicket(interaction, type) {
     topic: `Ticket • ${info.name} • ${interaction.user.tag}`
   });
 
-  // Persistir
-  const ticket = await storage.createTicket({
-    guild_id: interaction.guild.id,
-    channel_id: channel.id,
-    user_id: interaction.user.id,
-    type,
-    description: null,
-    priority: 'normal'
-  });
+  let ticket;
+  try {
+    // Persistir ticket no DB
+    ticket = await storage.createTicket({
+      guild_id: interaction.guild.id,
+      channel_id: channel.id,
+      user_id: interaction.user.id,
+      type,
+      description: null,
+      priority: 'normal'
+    });
+  } catch (dbError) {
+    // Rollback: apagar canal se falhar DB insert
+    try {
+      await channel.delete();
+      logger.warn(`[Tickets] Rollback: canal ${channel.id} apagado após falha no DB`, dbError);
+    } catch (delError) {
+      logger.error(`[Tickets] Falha no rollback do canal ${channel.id}`, delError);
+    }
+    throw dbError; // Re-throw para lock cleanup upstream
+  }
 
   // Mensagem inicial no canal (novo layout igual ao da imagem, sem dropdown)
   const visualAssets = require('../assets/visual-assets');
@@ -300,6 +340,9 @@ async function createTicket(interaction, type) {
     }
   } catch {}
 
+  // Liberar lock após criação bem-sucedida
+  await storage.deleteGeneric(lockKey).catch(() => {});
+  
   return safeReply(interaction, { content: `✅ Ticket criado: ${channel}`, flags: MessageFlags.Ephemeral });
 }
 

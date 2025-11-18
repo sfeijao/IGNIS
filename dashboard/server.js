@@ -2,7 +2,12 @@ const express = require('express');
 const http = require('http');
 const { spawn } = require('child_process');
 const session = require('express-session');
-let MongoStore = null; try { MongoStore = require('connect-mongo'); } catch {}
+let MongoStore = null; 
+try { 
+    MongoStore = require('connect-mongo'); 
+} catch (e) {
+    console.warn('[Dashboard] connect-mongo não disponível:', e.message);
+}
 const passport = require('passport');
 const DiscordStrategy = require('passport-discord').Strategy;
 const path = require('path');
@@ -26,7 +31,9 @@ if (process.env.DASHBOARD_TEST_MODE === 'true') {
             channels: { cache: new Map() }
         };
         global.discordClient = { guilds: { cache: new Map([['test', fakeGuild]]) } };
-    } catch {}
+    } catch (e) {
+        console.warn('[Dashboard] Test mode setup failed:', e.message);
+    }
 }
 // When running behind a reverse proxy (Railway/Heroku), trust the proxy so secure cookies work
 try { app.set('trust proxy', 1); } catch {}

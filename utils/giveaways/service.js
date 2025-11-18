@@ -6,7 +6,7 @@ async function endGiveaway(giveawayId, guildId, opts={}){
   // Acquire lock by setting processing=true atomically if active and not already processing
   const lockDoc = await GiveawayModel.findOneAndUpdate(
     { _id: giveawayId, guild_id: guildId, status: 'active', $or: [ { processing: { $exists: false } }, { processing: false } ] },
-    { $set: { processing: true, ended_at: new Date() } },
+    { $set: { processing: true, processing_started_at: new Date(), ended_at: new Date() } },
     { new: true }
   );
   if (!lockDoc) {
@@ -96,4 +96,24 @@ async function enterGiveaway(giveawayId, guildId, entry){
   }
 }
 
-module.exports = { endGiveaway, rerollGiveaway, enterGiveaway };
+/**
+ * Cleanup giveaways stuck in 'processing' for more than 5 minutes.
+ * Returns count of locks released.
+ */
+async function cleanupStaleLocks() {
+  const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+  const cutoff = new Date(Date.now() - TIMEOUT_MS);
+  
+  const result = await GiveawayModel.updateMany(
+    { processing: true, processing_started_at: { $lt: cutoff } },
+    { $set: { processing: false }, $unset: { processing_started_at: '' } }
+  );
+  
+  if (result.modifiedCount > 0) {
+    console.log(`[GiveawayService] Released ${result.modifiedCount} stale processing locks`);
+  }
+  
+  return result.modifiedCount;
+}
+
+module.exports = { endGiveaway, rerollGiveaway, enterGiveaway, cleanupStaleLocks };
