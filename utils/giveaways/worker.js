@@ -1,6 +1,7 @@
 const { GiveawayModel } = require('../db/giveawayModels');
 const { endGiveaway } = require('./service');
 const { isReady } = require('../db/mongoose');
+const { createGiveawayWinnerTicket, checkExpiredGiveawayTickets } = require('./autoWinner');
 
 function initGiveawayWorker(){
   const enabled = (process.env.GIVEAWAYS_WORKER_ENABLED || 'true').toLowerCase() !== 'false';
@@ -55,6 +56,28 @@ function initGiveawayWorker(){
                 const announceResult = await announceWinners(fresh, result.winners || []);
                 if (announceResult.ok) {
                   await GiveawayModel.updateOne({ _id: fresh._id }, { $set: { winners_announced: true } });
+                  
+                  // 🆕 CRIAR TICKETS AUTOMÁTICOS PARA VENCEDORES
+                  if (result.winners && result.winners.length > 0) {
+                    const { getClient } = require('../discordClient');
+                    const client = getClient();
+                    if (client) {
+                      for (const winner of result.winners) {
+                        try {
+                          await createGiveawayWinnerTicket({
+                            guildId: fresh.guild_id,
+                            userId: winner.user_id,
+                            giveaway: fresh,
+                            client
+                          });
+                          console.log(`[GiveawayWorker] Created ticket for winner ${winner.user_id} in giveaway ${fresh._id}`);
+                        } catch (ticketErr) {
+                          console.warn(`[GiveawayWorker] Failed to create ticket for ${winner.user_id}:`, ticketErr.message);
+                        }
+                      }
+                    }
+                  }
+                  
                 } else {
                   console.warn(`[GiveawayWorker] Failed to announce winners for ${g._id}: ${announceResult.error || 'unknown'}`);
                   // Retry announcement on next tick (don't mark as announced)
@@ -117,12 +140,38 @@ function initGiveawayWorker(){
     fn();
   }
 
+  // 🆕 Worker para verificar tickets expirados
+  async function tickCheckExpiredTickets() {
+    try {
+      const { getClient } = require('../discordClient');
+      const client = getClient();
+      if (client) {
+        await checkExpiredGiveawayTickets(client);
+      }
+    } catch (e) {
+      try { console.warn('[GiveawayWorker] expired tickets check error:', e && e.message || e); } catch {}
+    }
+  }
+
   const i1 = setInterval(() => guarded(tickPromoteScheduled), 10_000);
   const i2 = setInterval(() => guarded(tickEndDue), 8_000);
   const i3 = setInterval(() => guarded(tickLiveUpdates), 30_000);
+  const i4 = setInterval(() => guarded(tickCheckExpiredTickets), 60_000); // A cada 1 minuto
+  
   // run soon after start
-  setTimeout(()=>{ guarded(tickPromoteScheduled); guarded(tickEndDue); guarded(tickLiveUpdates); }, 2000);
-  return () => { clearInterval(i1); clearInterval(i2); clearInterval(i3); };
+  setTimeout(()=>{ 
+    guarded(tickPromoteScheduled); 
+    guarded(tickEndDue); 
+    guarded(tickLiveUpdates);
+    guarded(tickCheckExpiredTickets);
+  }, 2000);
+  
+  return () => { 
+    clearInterval(i1); 
+    clearInterval(i2); 
+    clearInterval(i3); 
+    clearInterval(i4);
+  };
 }
 
 module.exports = { initGiveawayWorker };

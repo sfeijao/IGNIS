@@ -586,6 +586,51 @@ async function handleButton(interaction) {
   if (id === 'ticket:close:confirm') return confirmClose(interaction);
   if (id === 'ticket:close:cancel') return interaction.update({ content: '❎ Cancelado.', components: [] });
 
+  // 🆕 Botões de Giveaway Winner Ticket
+  if (id === 'giveaway_ticket:confirm_receipt') {
+    try {
+      const ticket = await storage.getTicketByChannel(interaction.channel.id);
+      if (ticket) {
+        await storage.updateTicket(ticket.id, { responded: true });
+        const embed = new EmbedBuilder()
+          .setColor(0x10B981)
+          .setTitle('✅ Recebimento Confirmado')
+          .setDescription(
+            `${interaction.user} confirmou o recebimento do prêmio.\n\n` +
+            `A equipe será notificada.`
+          )
+          .setTimestamp();
+        await interaction.channel.send({ embeds: [embed] });
+        return safeReply(interaction, { 
+          content: '✅ Obrigado pela confirmação!', 
+          flags: MessageFlags.Ephemeral 
+        });
+      }
+    } catch (err) {
+      logger.error('[GiveawayTicket] confirm_receipt error:', err);
+    }
+    return safeReply(interaction, { 
+      content: '✅ Confirmação registada.', 
+      flags: MessageFlags.Ephemeral 
+    });
+  }
+
+  if (id === 'giveaway_ticket:need_help') {
+    const embed = new EmbedBuilder()
+      .setColor(0x3B82F6)
+      .setTitle('❓ Solicitação de Ajuda')
+      .setDescription(
+        `${interaction.user} solicitou ajuda adicional.\n\n` +
+        `A equipe responderá em breve.`
+      )
+      .setTimestamp();
+    await interaction.channel.send({ embeds: [embed] });
+    return safeReply(interaction, { 
+      content: '✅ Equipe notificada. Aguarda resposta.', 
+      flags: MessageFlags.Ephemeral 
+    });
+  }
+
   // --- Novos botões do layout unificado (quando canal é legado e não existe TicketModel TS) ---
   // Para estes IDs o handler TS não responde porque resolveTicket() retorna null.
   // Implementamos respostas básicas aqui.
