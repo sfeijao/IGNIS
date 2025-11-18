@@ -535,12 +535,12 @@ export const api = {
 
   // Server Stats counters
   async getStatsConfig(guildId: string) {
-    const res = await fetch(`/api/guild/${guildId}/stats`, { credentials: 'include' })
+    const res = await fetch(`/api/guild/${guildId}/stats/config`, { credentials: 'include' })
     if (!res.ok) throw new Error('Failed to fetch stats config')
     return res.json()
   },
   async saveStatsConfig(guildId: string, payload: Record<string, any>) {
-    const res = await fetch(`/api/guild/${guildId}/stats`, {
+    const res = await fetch(`/api/guild/${guildId}/stats/config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

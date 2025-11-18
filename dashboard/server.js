@@ -3051,6 +3051,158 @@ app.post('/api/guild/:guildId/config', async (req, res) => {
     }
 });
 
+// ===================== Welcome/Goodbye System =====================
+app.get('/api/guild/:guildId/welcome', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const storage = require('../utils/storage');
+        const config = await storage.getGuildConfig(req.params.guildId);
+        
+        res.json({
+            success: true,
+            welcome: config.welcome || {
+                enabled: false,
+                channelId: '',
+                message: 'Bem-vindo(a) {user}! 🎉',
+                embedEnabled: true,
+                embedTitle: 'Novo Membro! 👋',
+                embedDescription: '{user} acabou de entrar no servidor!',
+                embedColor: '#7C3AED',
+                embedImage: '',
+                embedThumbnail: '{avatar}'
+            },
+            goodbye: config.goodbye || {
+                enabled: false,
+                channelId: '',
+                message: '{user} saiu do servidor. 😢',
+                embedEnabled: true,
+                embedTitle: 'Membro Saiu 👋',
+                embedDescription: '{user} deixou o servidor.',
+                embedColor: '#EF4444'
+            }
+        });
+    } catch (e) {
+        logger.error('Error fetching welcome config:', e);
+        res.status(500).json({ success: false, error: 'Failed to fetch welcome config' });
+    }
+});
+
+app.post('/api/guild/:guildId/welcome', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const { welcome, goodbye } = req.body || {};
+        const storage = require('../utils/storage');
+        await storage.updateGuildConfig(req.params.guildId, { welcome, goodbye });
+        
+        res.json({ success: true, message: 'Welcome/Goodbye config updated' });
+    } catch (e) {
+        logger.error('Error updating welcome config:', e);
+        res.status(500).json({ success: false, error: 'Failed to update welcome config' });
+    }
+});
+
+// ===================== Server Stats Counters =====================
+app.get('/api/guild/:guildId/stats/config', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const storage = require('../utils/storage');
+        const config = await storage.getGuildConfig(req.params.guildId);
+        
+        res.json({
+            success: true,
+            config: config.statsCounters || {
+                enabled: false,
+                updateInterval: 5,
+                totalMembers: { enabled: true, channelId: '', format: '👥 Membros: {count}' },
+                onlineMembers: { enabled: false, channelId: '', format: '🟢 Online: {count}' },
+                botCount: { enabled: false, channelId: '', format: '🤖 Bots: {count}' },
+                channelCount: { enabled: false, channelId: '', format: '📝 Canais: {count}' },
+                roleCount: { enabled: false, channelId: '', format: '🎭 Cargos: {count}' }
+            }
+        });
+    } catch (e) {
+        logger.error('Error fetching stats config:', e);
+        res.status(500).json({ success: false, error: 'Failed to fetch stats config' });
+    }
+});
+
+app.post('/api/guild/:guildId/stats/config', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const { config } = req.body || {};
+        const storage = require('../utils/storage');
+        await storage.updateGuildConfig(req.params.guildId, { statsCounters: config });
+        
+        res.json({ success: true, message: 'Stats config updated' });
+    } catch (e) {
+        logger.error('Error updating stats config:', e);
+        res.status(500).json({ success: false, error: 'Failed to update stats config' });
+    }
+});
+
+// ===================== Time Tracking (Bate-Ponto) =====================
+app.get('/api/guild/:guildId/time-tracking', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const storage = require('../utils/storage');
+        const data = await storage.getGuildData(req.params.guildId, 'timeTracking') || { entries: [] };
+        
+        // Calculate summaries
+        const summaries = new Map();
+        (data.entries || []).forEach(entry => {
+            if (!summaries.has(entry.userId)) {
+                summaries.set(entry.userId, {
+                    userId: entry.userId,
+                    userName: entry.userName,
+                    totalTime: 0,
+                    entries: 0,
+                    lastAction: null
+                });
+            }
+            const summary = summaries.get(entry.userId);
+            summary.entries++;
+            if (entry.duration) summary.totalTime += entry.duration;
+            if (!summary.lastAction || new Date(entry.timestamp) > new Date(summary.lastAction)) {
+                summary.lastAction = entry.action;
+            }
+        });
+        
+        res.json({
+            success: true,
+            entries: data.entries || [],
+            summaries: Array.from(summaries.values())
+        });
+    } catch (e) {
+        logger.error('Error fetching time tracking data:', e);
+        res.status(500).json({ success: false, error: 'Failed to fetch time tracking data' });
+    }
+});
+
 // ===================== Moderation APIs (Mongo only for persistence) =====================
 // Guard: only when bot available and user is guild admin
 function ensureMongoAvailable() {
