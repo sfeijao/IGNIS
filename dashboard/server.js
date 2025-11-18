@@ -431,6 +431,14 @@ try {
     try { console.warn('Welcome routes not mounted:', e.message); } catch {}
 }
 
+try {
+    const serverStatsRoutes = require('./routes/serverStatsRoutes');
+    app.use('/api', serverStatsRoutes);
+    logger.info('✅ Server Stats routes mounted successfully');
+} catch (e) {
+    try { console.warn('Server Stats routes not mounted:', e.message); } catch {}
+}
+
 // Start giveaway background worker (Mongo dependent)
 try {
     const { initGiveawayWorker } = require('../utils/giveaways/worker');

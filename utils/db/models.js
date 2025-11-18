@@ -95,6 +95,18 @@ const WelcomeConfigSchema = new mongoose.Schema({
       show_footer_timestamp: { type: Boolean, default: true }
     }
   },
+  server_stats: {
+    enabled: { type: Boolean, default: false },
+    category_id: { type: String },
+    channels: {
+      total_members: { type: String },
+      humans: { type: String },
+      bots: { type: String },
+      boosters: { type: String },
+      online: { type: String }
+    },
+    update_interval: { type: Number, default: 10 } // minutos
+  },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
 }, { timestamps: true });

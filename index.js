@@ -231,6 +231,15 @@ client.once('ready', () => {
     // Update bot status
     client.user.setActivity('🤖 Bot ativo | /ajuda', { type: 'WATCHING' });
 
+    // 🆕 Iniciar Server Stats Worker
+    try {
+        const { initStatsWorker } = require('./utils/serverStats');
+        initStatsWorker(client);
+        logger.info('✅ Server Stats Worker initialized');
+    } catch (statsErr) {
+        logger.warn('⚠️ Server Stats Worker not started:', statsErr.message);
+    }
+
     // Atualizar avatar/banner do bot no arranque se variáveis estiverem definidas
     (async () => {
         try {
