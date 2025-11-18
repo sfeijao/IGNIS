@@ -154,6 +154,27 @@ module.exports = {
                 logger.debug(`Botão pressionado - ID: "${customId}" por ${interaction.user.tag}`);
                 logger.debug(`IDs disponíveis - CLOSE_TICKET: "${BUTTON_IDS.CLOSE_TICKET}", CONFIRM_CLOSE: "${BUTTON_IDS.CONFIRM_CLOSE}"`);
 
+                // ⏱️ Sistema de Time Tracking / Bate-Ponto
+                if (customId?.startsWith('timetrack:')) {
+                    try {
+                        const { pauseTracking, continueTracking, endTracking } = require('../utils/timeTracking');
+                        
+                        if (customId === 'timetrack:pause') {
+                            await pauseTracking(interaction);
+                        } else if (customId === 'timetrack:continue') {
+                            await continueTracking(interaction);
+                        } else if (customId === 'timetrack:end') {
+                            await endTracking(interaction);
+                        }
+
+                        logger.interaction('button', customId, interaction, true);
+                    } catch (error) {
+                        logger.error('[TimeTracking] Button error:', error);
+                        await errorHandler.handleInteractionError(interaction, error, 'Time Tracking Button');
+                    }
+                    return;
+                }
+
                 // Sistema de Verificação
                 if (customId === BUTTON_IDS.VERIFY_USER) {
                     try {
