@@ -27,7 +27,10 @@ async function getOrCreateTicketCategory(guild) {
     return ticketCategory;
 }
 
-// Função para enviar ticket via webhook
+// ✨ Advanced Webhook Manager: Single message updates
+const { advancedWebhookManager } = require('../utils/advancedWebhookManager');
+
+// Função para enviar ticket via webhook (LEGACY - mantido para compatibilidade)
 async function sendTicketWebhook(ticketData) {
     try {
         // Verificar se há webhook de tickets configurado
@@ -37,6 +40,28 @@ async function sendTicketWebhook(ticketData) {
              return;
          }
 
+        // ✨ Usar Advanced Manager se disponível
+        const configured = advancedWebhookManager.setWebhook(ticketData.guildId, webhookUrl);
+        
+        if (configured) {
+            const messageId = await advancedWebhookManager.sendInitialMessage(ticketData.guildId, {
+                id: ticketData.ticketId || 'new',
+                guild: { name: ticketData.guildName },
+                user: { id: ticketData.userId, tag: ticketData.userName },
+                category: ticketData.ticketType || 'Geral',
+                subject: ticketData.subject || 'Novo ticket',
+                description: ticketData.description,
+                status: 'open',
+                priority: 'normal',
+                created_at: new Date(),
+                timeline: [{ action: 'Ticket criado', timestamp: new Date() }]
+            });
+
+            // Retornar messageId para salvar no DB
+            return { success: true, messageId };
+        }
+
+        // Fallback: Webhook legado
         const webhook = new WebhookClient({ url: webhookUrl });
 
         const embed = new EmbedBuilder()
@@ -55,9 +80,11 @@ async function sendTicketWebhook(ticketData) {
 
         await webhook.send({ embeds: [embed] });
         logger.info('Ticket enviado via webhook com sucesso', { guild: ticketData.guildId, channelId: ticketData.channelId });
+        return { success: true };
 
      } catch (error) {
         logger.error('Erro ao enviar ticket via webhook:', { error: error.message || error });
+        return { success: false };
     }
 }
 
@@ -538,6 +565,38 @@ module.exports = {
                             const ticketRecord = await storage.getTicketByChannel(interaction.channel.id);
                             if (ticketRecord) {
                                 await storage.updateTicket(ticketRecord.id, { status: 'closed', closed_by: interaction.user.id, closed_at: new Date().toISOString(), archived: 1 });
+                                
+                                // ✨ ATUALIZAR WEBHOOK MESSAGE (se existir)
+                                if (ticketRecord.webhook_message_id) {
+                                    try {
+                                        await advancedWebhookManager.updateMessage(
+                                            interaction.guild.id,
+                                            ticketRecord.webhook_message_id,
+                                            {
+                                                id: ticketRecord.id,
+                                                guild: { name: interaction.guild.name },
+                                                user: { id: ticketRecord.user_id, tag: interaction.user.tag },
+                                                category: ticketRecord.category,
+                                                subject: ticketRecord.subject,
+                                                description: ticketRecord.description,
+                                                status: 'closed',
+                                                priority: ticketRecord.priority,
+                                                created_at: ticketRecord.created_at,
+                                                closed_at: new Date(),
+                                                assigned_to: ticketRecord.assigned_to,
+                                                timeline: [
+                                                    { action: 'Ticket criado', timestamp: ticketRecord.created_at },
+                                                    { action: `Fechado por ${interaction.user.tag}`, timestamp: new Date() }
+                                                ]
+                                            },
+                                            'closed'
+                                        );
+                                        logger.info(`✅ Webhook updated for ticket #${ticketRecord.id}`);
+                                    } catch (webhookErr) {
+                                        logger.warn('Failed to update webhook message:', webhookErr);
+                                    }
+                                }
+                                
                                 // Opcional: enviar transcript para canal de logs se configurado
                                 try {
                                     const transcriptHelper = require('../utils/transcriptHelper');

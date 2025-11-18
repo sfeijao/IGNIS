@@ -15,7 +15,10 @@ const TicketSchema = new mongoose.Schema({
   closed_at: Date,
   notes: { type: Array, default: [] },
   panel_message_id: String,
-  locked: { type: Boolean, default: false }
+  locked: { type: Boolean, default: false },
+  // ✨ Webhook tracking: armazenar ID da mensagem webhook para updates
+  webhook_message_id: { type: String, default: null },
+  webhook_last_update: { type: Date, default: null }
 }, { timestamps: true });
 
 // Performance: Composite indexes para queries comuns
