@@ -5159,7 +5159,7 @@ app.post('/api/guild/:guildId/webhooks/add-external', async (req, res) => {
 // Simple uploads endpoint for guild-scoped images (e.g., banners)
 // Accepts JSON: { filename?: string, contentBase64: string }
 // Returns: { success: true, url }
-app.post('/api/guild/:guildId/uploads', express.json({ limit: '25mb' }), async (req, res) => {
+app.post('/api/guild/:guildId/uploads', express.json({ limit: '60mb' }), async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
         const client = global.discordClient;
@@ -5177,18 +5177,18 @@ app.post('/api/guild/:guildId/uploads', express.json({ limit: '25mb' }), async (
         let base64Data = contentBase64;
         const m = /^data:([^;]+);base64,(.+)$/i.exec(contentBase64);
         if (m) { mime = m[1]; base64Data = m[2]; }
-        const allowed = new Set(['image/png','image/jpeg','image/webp','image/gif']);
+        const allowed = new Set(['image/png','image/jpeg','image/webp','image/gif','image/avif','image/svg+xml']);
         if (!allowed.has(mime)) {
             return res.status(400).json({ success: false, error: 'unsupported_type' });
         }
         let buf;
         try { buf = Buffer.from(base64Data, 'base64'); } catch { return res.status(400).json({ success: false, error: 'invalid_base64' }); }
-    const MAX_BYTES = 20 * 1024 * 1024; // ~20MB to allow even larger animated GIFs
+    const MAX_BYTES = 50 * 1024 * 1024; // 50MB para suportar GIFs animados grandes e imagens de alta qualidade
         if (!buf || buf.length === 0 || buf.length > MAX_BYTES) {
             return res.status(400).json({ success: false, error: 'invalid_size' });
         }
 
-        const extMap = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/gif': '.gif' };
+        const extMap = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/gif': '.gif', 'image/avif': '.avif', 'image/svg+xml': '.svg' };
         const safeExt = extMap[mime] || '';
         const safeNameRaw = (typeof filename === 'string' && filename.trim()) ? filename.trim() : 'upload';
         const safeName = safeNameRaw.replace(/[^a-z0-9_\-\. ]/gi, '_').slice(0, 64) || 'upload';

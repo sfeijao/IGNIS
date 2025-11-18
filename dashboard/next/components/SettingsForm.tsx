@@ -210,12 +210,13 @@ export default function SettingsForm() {
 
   const onSelectBannerFile = async (file: File) => {
     if (!guildId || !file) return
-    if (!/^image\//i.test(file.type)) {
+    // Aceitar PNG, JPG, JPEG, WEBP, GIF, AVIF, SVG
+    if (!/^image\/(png|jpe?g|webp|gif|avif|svg\+xml)$/i.test(file.type)) {
       toast({ type: 'error', title: t('settings.bot.banner.typeError') })
       return
     }
-    // ~20MB cap client-side (GIFs allowed without compression)
-    if (file.size > 20 * 1024 * 1024) {
+    // Limite aumentado para 50MB
+    if (file.size > 50 * 1024 * 1024) {
       toast({ type: 'error', title: t('settings.bot.banner.sizeError') })
       return
     }
@@ -303,8 +304,10 @@ export default function SettingsForm() {
 
   const onSelectIconFile = async (file: File) => {
     if (!guildId || !file) return
-  if (!/^image\//i.test(file.type)) { toast({ type: 'error', title: t('settings.bot.icon.typeError') }); return }
-  if (file.size > 20 * 1024 * 1024) { toast({ type: 'error', title: t('settings.bot.icon.sizeError') }); return }
+  // Aceitar PNG, JPG, JPEG, WEBP, GIF, AVIF, SVG
+  if (!/^image\/(png|jpe?g|webp|gif|avif|svg\+xml)$/i.test(file.type)) { toast({ type: 'error', title: t('settings.bot.icon.typeError') }); return }
+  // Limite aumentado para 50MB
+  if (file.size > 50 * 1024 * 1024) { toast({ type: 'error', title: t('settings.bot.icon.sizeError') }); return }
     setUploadingIcon(true)
     try {
       const toDataUrl = (f: File) => new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result||'')); r.onerror = reject; r.readAsDataURL(f) })
