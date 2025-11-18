@@ -324,8 +324,17 @@ async function oauthFetchWithSessionCache(req, url, opts={}){
 
 // Session configuration
 const useMongoSession = ((process.env.NODE_ENV || 'production') === 'production') && !!(process.env.MONGO_URI || process.env.MONGODB_URI) && !!MongoStore;
+
+// SECURITY: Require SESSION_SECRET in production
+const SESSION_SECRET = process.env.SESSION_SECRET;
+if ((process.env.NODE_ENV || 'production') === 'production' && !SESSION_SECRET) {
+    logger.error('❌ FATAL: SESSION_SECRET environment variable is required in production!');
+    logger.error('Set SESSION_SECRET to a random string (min 32 chars) in your environment variables.');
+    process.exit(1);
+}
+
 const sessionOptions = {
-    secret: process.env.SESSION_SECRET || 'ignis-dashboard-development-secret-2024',
+    secret: SESSION_SECRET || 'ignis-dashboard-development-secret-2024',
     resave: false,
     saveUninitialized: false,
     cookie: {

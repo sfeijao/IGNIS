@@ -18,6 +18,12 @@ const TicketSchema = new mongoose.Schema({
   locked: { type: Boolean, default: false }
 }, { timestamps: true });
 
+// Performance: Composite indexes para queries comuns
+TicketSchema.index({ guild_id: 1, status: 1, created_at: -1 }); // Listar tickets por status
+TicketSchema.index({ guild_id: 1, user_id: 1, status: 1 }); // Tickets de um user específico
+TicketSchema.index({ guild_id: 1, assigned_to: 1, status: 1 }); // Tickets assignados a alguém
+TicketSchema.index({ guild_id: 1, category: 1, status: 1 }); // Por categoria
+
 const GuildConfigSchema = new mongoose.Schema({
   guild_id: { type: String, unique: true },
   data: { type: Object, default: {} }

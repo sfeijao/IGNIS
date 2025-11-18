@@ -158,9 +158,21 @@ module.exports = {
                 if (customId === BUTTON_IDS.VERIFY_USER) {
                     try {
                         logger.interaction('button', customId, interaction, true);
-                        // Per-user throttle (3s)
+                        // Per-user throttle (3s) with automatic TTL cleanup to prevent memory leak
                         const key = `verify:${interaction.user.id}`;
-                        if (!global.__verifyPressCache) global.__verifyPressCache = new Map();
+                        if (!global.__verifyPressCache) {
+                            global.__verifyPressCache = new Map();
+                            // Cleanup old entries every 5 minutes to prevent memory leak
+                            setInterval(() => {
+                                const now = Date.now();
+                                const MAX_AGE_MS = 60 * 60 * 1000; // 1 hora
+                                for (const [k, timestamp] of global.__verifyPressCache.entries()) {
+                                    if (now - timestamp > MAX_AGE_MS) {
+                                        global.__verifyPressCache.delete(k);
+                                    }
+                                }
+                            }, 5 * 60 * 1000);
+                        }
                         const last = global.__verifyPressCache.get(key) || 0;
                         // Optional configurable cooldown from dashboard (overrides default)
                         let vcfg = {};
