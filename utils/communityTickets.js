@@ -3,6 +3,7 @@ const { ensureDeferred, safeReply, safeUpdate } = require('./interactionHelpers'
 const storage = require('./storage');
 const logger = require('./logger');
 const { KeyedRateLimiter } = require('./retryHelper');
+const { TicketCategoryModel } = require('./db/models');
 
 // Rate limiter: 2 tickets por minuto por usuário
 const ticketRateLimiter = new KeyedRateLimiter(2, 2 / 60); // 2 tokens, refill 2 por 60s
@@ -139,7 +140,80 @@ async function fetchAllMessages(channel, cap = 2000) {
   return all.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
 }
 
-async function createTicket(interaction, type) {
+/**
+ * 🎫 CRIAR TICKET COM SELEÇÃO DE CATEGORIA
+ * 
+ * Se o servidor tiver categorias customizáveis habilitadas:
+ * 1. Mostra StringSelectMenu com categorias disponíveis
+ * 2. User escolhe categoria
+ * 3. Cria ticket com categoria escolhida
+ * 
+ * Se não tiver categorias custom → usa fluxo tradicional (departmentInfo)
+ */
+async function createTicketWithCategorySelection(interaction, defaultType) {
+  try {
+    // Buscar categorias customizáveis do servidor
+    const customCategories = await TicketCategoryModel
+      .find({ guild_id: interaction.guild.id, enabled: true })
+      .sort({ order: 1 })
+      .lean();
+
+    // Se não existirem categorias custom, usar fluxo tradicional
+    if (!customCategories || customCategories.length === 0) {
+      return createTicket(interaction, defaultType);
+    }
+
+    // Se só existe 1 categoria, criar direto sem mostrar menu
+    if (customCategories.length === 1) {
+      return createTicket(interaction, defaultType, customCategories[0]);
+    }
+
+    // Mostrar seletor de categorias
+    const options = customCategories.map((cat, idx) => ({
+      label: cat.name,
+      value: cat._id.toString(),
+      description: cat.description || `Categoria ${idx + 1}`,
+      emoji: cat.emoji
+    }));
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId('ticket:category:select')
+      .setPlaceholder('📋 Escolhe a categoria do ticket...')
+      .addOptions(options);
+
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+
+    const embed = new EmbedBuilder()
+      .setColor(0x7C3AED)
+      .setTitle('🎫 Escolhe a Categoria')
+      .setDescription(
+        'Seleciona a categoria que melhor descreve o motivo do teu ticket.\n' +
+        'Esta informação ajuda a equipa a direcionar o teu pedido corretamente.'
+      )
+      .setFooter({ text: 'Aguardamos a tua escolha...' });
+
+    await safeReply(interaction, {
+      embeds: [embed],
+      components: [row],
+      flags: MessageFlags.Ephemeral
+    });
+
+    // Guardar contexto temporário (tipo original) para usar depois
+    // Quando user selecionar, handleSelect irá criar o ticket
+    const tempKey = `ticket_category_context:${interaction.guild.id}:${interaction.user.id}`;
+    await storage.setGeneric(tempKey, { 
+      defaultType, 
+      timestamp: Date.now() 
+    }, 60); // 60s TTL
+
+  } catch (error) {
+    logger.error('[Tickets] Error in category selection:', error);
+    // Fallback para fluxo tradicional
+    return createTicket(interaction, defaultType);
+  }
+}
+
+async function createTicket(interaction, type, customCategory = null) {
   // Rate limiting: 2 tickets por minuto por usuário
   const rateLimitKey = `${interaction.guild.id}:${interaction.user.id}`;
   const rateCheck = ticketRateLimiter.check(rateLimitKey);
@@ -204,7 +278,19 @@ async function createTicket(interaction, type) {
     cat = await ensureCategory(interaction.guild);
     parentCategoryId = cat.id;
   }
-  const info = departmentInfo(type);
+  
+  // Determinar info da categoria (custom ou padrão)
+  let info;
+  if (customCategory) {
+    info = {
+      name: customCategory.name,
+      emoji: customCategory.emoji,
+      color: customCategory.color
+    };
+  } else {
+    info = departmentInfo(type);
+  }
+  
   const channelName = `${info.emoji}-${interaction.user.username}`.toLowerCase();
 
   // Verificar permissões do bot ANTES de criar canal
@@ -265,15 +351,23 @@ async function createTicket(interaction, type) {
 
   let ticket;
   try {
-    // Persistir ticket no DB
-    ticket = await storage.createTicket({
+    // Persistir ticket no DB (com categoria customizada se existir)
+    const ticketData = {
       guild_id: interaction.guild.id,
       channel_id: channel.id,
       user_id: interaction.user.id,
       type,
       description: null,
       priority: 'normal'
-    });
+    };
+    
+    // Se foi usada categoria customizada, guardar referência
+    if (customCategory) {
+      ticketData.category_id = customCategory._id.toString();
+      ticketData.category_name = customCategory.name;
+    }
+    
+    ticket = await storage.createTicket(ticketData);
   } catch (dbError) {
     // Rollback: apagar canal se falhar DB insert
     try {
@@ -485,7 +579,8 @@ async function handleButton(interaction) {
   const id = interaction.customId;
   if (id.startsWith('ticket:create:')) {
     const type = id.split(':')[2];
-    return createTicket(interaction, type);
+    // Verificar se existem categorias customizáveis para este servidor
+    return createTicketWithCategorySelection(interaction, type);
   }
   if (id === 'ticket:close:request') return requestClose(interaction);
   if (id === 'ticket:close:confirm') return confirmClose(interaction);
@@ -1155,6 +1250,60 @@ async function handleModal(interaction) {
 
 async function handleSelect(interaction) {
   const id = interaction.customId;
+  
+  // 🆕 Handler para seleção de categoria customizável
+  if (id === 'ticket:category:select') {
+    try {
+      const categoryId = interaction.values?.[0];
+      if (!categoryId) {
+        return safeReply(interaction, { 
+          content: '❌ Nenhuma categoria selecionada.', 
+          flags: MessageFlags.Ephemeral 
+        });
+      }
+
+      // Buscar categoria escolhida
+      const category = await TicketCategoryModel.findOne({ 
+        _id: categoryId, 
+        guild_id: interaction.guild.id,
+        enabled: true
+      }).lean();
+
+      if (!category) {
+        return safeReply(interaction, { 
+          content: '❌ Categoria não encontrada ou desativada.', 
+          flags: MessageFlags.Ephemeral 
+        });
+      }
+
+      // Recuperar contexto original (tipo default)
+      const tempKey = `ticket_category_context:${interaction.guild.id}:${interaction.user.id}`;
+      const context = await storage.getGeneric(tempKey);
+      const defaultType = context?.defaultType || 'technical';
+
+      // Apagar contexto temporário
+      await storage.deleteGeneric(tempKey).catch(() => {});
+
+      // Atualizar mensagem de seleção
+      await interaction.update({ 
+        content: `✅ Categoria escolhida: **${category.emoji} ${category.name}**\n⏳ A criar ticket...`, 
+        embeds: [], 
+        components: [] 
+      });
+
+      // Criar ticket com categoria customizada
+      await createTicket(interaction, defaultType, category);
+
+    } catch (error) {
+      logger.error('[Tickets] Error handling category selection:', error);
+      return safeReply(interaction, { 
+        content: '❌ Erro ao processar seleção. Tenta novamente.', 
+        flags: MessageFlags.Ephemeral 
+      });
+    }
+    return;
+  }
+  
   // Handler para botões dinâmicos de mover (categoria direta)
   if (id.startsWith('ticket:move:cat:')) {
     const staff = await isStaff(interaction);
