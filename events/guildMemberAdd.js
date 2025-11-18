@@ -1,11 +1,111 @@
 const { Events, EmbedBuilder } = require('discord.js');
 const config = require('../utils/config');
 const { EMBED_COLORS, EMOJIS } = require('../constants/ui');
+const { WelcomeConfigModel } = require('../utils/db/models');
+const logger = require('../utils/logger');
+
+/**
+ * Substituir placeholders na mensagem
+ */
+function replacePlaceholders(text, member, guild) {
+  if (!text) return '';
+  
+  const memberCount = guild.memberCount;
+  const createdAt = Math.floor(member.user.createdTimestamp / 1000);
+  const joinedAt = Math.floor(Date.now() / 1000);
+  
+  return text
+    .replace(/\{user\}/g, `${member}`) // Menção
+    .replace(/\{user\.mention\}/g, `${member}`)
+    .replace(/\{user\.tag\}/g, member.user.tag)
+    .replace(/\{user\.username\}/g, member.user.username)
+    .replace(/\{user\.id\}/g, member.user.id)
+    .replace(/\{user\.avatar\}/g, member.user.displayAvatarURL({ dynamic: true }))
+    .replace(/\{server\}/g, guild.name)
+    .replace(/\{server\.name\}/g, guild.name)
+    .replace(/\{server\.icon\}/g, guild.iconURL({ dynamic: true }) || '')
+    .replace(/\{server\.id\}/g, guild.id)
+    .replace(/\{memberCount\}/g, memberCount.toString())
+    .replace(/\{joinedAt\}/g, `<t:${joinedAt}:R>`)
+    .replace(/\{createdAt\}/g, `<t:${createdAt}:R>`);
+}
 
 module.exports = {
     name: Events.GuildMemberAdd,
     async execute(member) {
         const guild = member.guild;
+        
+        // 🆕 SISTEMA DE BOAS-VINDAS CUSTOMIZÁVEL
+        try {
+          const welcomeConfig = await WelcomeConfigModel.findOne({ 
+            guild_id: guild.id 
+          }).lean();
+          
+          if (welcomeConfig?.welcome?.enabled && welcomeConfig.welcome.channel_id) {
+            const channel = guild.channels.cache.get(welcomeConfig.welcome.channel_id) ||
+                           await guild.channels.fetch(welcomeConfig.welcome.channel_id).catch(() => null);
+            
+            if (channel) {
+              const payload = {};
+              
+              // Mensagem de texto (opcional)
+              if (welcomeConfig.welcome.message) {
+                payload.content = replacePlaceholders(welcomeConfig.welcome.message, member, guild);
+              }
+              
+              // Embed (se habilitado)
+              if (welcomeConfig.welcome.embed?.enabled) {
+                const embedData = welcomeConfig.welcome.embed;
+                const embed = new EmbedBuilder()
+                  .setColor(embedData.color || 0x10B981);
+                
+                if (embedData.title) {
+                  embed.setTitle(replacePlaceholders(embedData.title, member, guild));
+                }
+                
+                if (embedData.description) {
+                  embed.setDescription(replacePlaceholders(embedData.description, member, guild));
+                }
+                
+                // Thumbnail
+                if (embedData.thumbnail) {
+                  const thumb = replacePlaceholders(embedData.thumbnail, member, guild);
+                  if (thumb) embed.setThumbnail(thumb);
+                }
+                
+                // Image (banner)
+                if (embedData.image) {
+                  const img = replacePlaceholders(embedData.image, member, guild);
+                  if (img) embed.setImage(img);
+                }
+                
+                // Footer
+                if (embedData.footer || embedData.show_footer_timestamp) {
+                  const footerText = embedData.footer ? 
+                    replacePlaceholders(embedData.footer, member, guild) : 
+                    null;
+                  embed.setFooter({ text: footerText || 'Conta criada' });
+                  if (embedData.show_footer_timestamp) {
+                    embed.setTimestamp(member.user.createdAt);
+                  }
+                }
+                
+                payload.embeds = [embed];
+              }
+              
+              // Enviar mensagem
+              if (payload.content || payload.embeds) {
+                await channel.send(payload);
+                logger.info(`[Welcome] Sent welcome message for ${member.user.tag} in ${guild.name}`);
+              }
+            }
+          }
+        } catch (welcomeError) {
+          logger.error('[Welcome] Error sending welcome message:', welcomeError);
+          // Não bloquear outros sistemas se falhar
+        }
+        
+        // Sistema de verificação legado (manter compatibilidade)
         const welcomeChannel = guild.channels.cache.get(config.CHANNELS.VERIFICATION);
         const logsChannel = guild.channels.cache.get(config.CHANNELS.LOGS);
         

@@ -423,6 +423,14 @@ try {
     try { console.warn('Ticket Category routes not mounted:', e.message); } catch {}
 }
 
+try {
+    const welcomeRoutes = require('./routes/welcomeRoutes');
+    app.use('/api', welcomeRoutes);
+    logger.info('✅ Welcome/Goodbye routes mounted successfully');
+} catch (e) {
+    try { console.warn('Welcome routes not mounted:', e.message); } catch {}
+}
+
 // Start giveaway background worker (Mongo dependent)
 try {
     const { initGiveawayWorker } = require('../utils/giveaways/worker');

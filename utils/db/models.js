@@ -62,6 +62,45 @@ TicketCategorySchema.index({ guild_id: 1, enabled: 1, order: 1 });
 
 const TicketCategoryModel = mongoose.models.TicketCategory || mongoose.model('TicketCategory', TicketCategorySchema);
 
+// ✨ NOVO: Schema para sistema de boas-vindas e saídas
+const WelcomeConfigSchema = new mongoose.Schema({
+  guild_id: { type: String, required: true, unique: true, index: true },
+  welcome: {
+    enabled: { type: Boolean, default: false },
+    channel_id: { type: String },
+    message: { type: String, default: 'Bem-vindo {user} ao **{server}**!' },
+    embed: {
+      enabled: { type: Boolean, default: true },
+      title: { type: String, default: '👋 Bem-vindo!' },
+      description: { type: String, default: 'Olá {user}, bem-vindo ao **{server}**!\n\nSomos agora **{memberCount}** membros! 🎉' },
+      color: { type: Number, default: 0x10B981 }, // Verde
+      thumbnail: { type: String }, // URL ou {user.avatar}, {server.icon}
+      image: { type: String }, // URL do banner
+      footer: { type: String, default: 'Conta criada' },
+      show_footer_timestamp: { type: Boolean, default: true }
+    }
+  },
+  goodbye: {
+    enabled: { type: Boolean, default: false },
+    channel_id: { type: String },
+    message: { type: String, default: '👋 **{user.tag}** saiu do servidor.' },
+    embed: {
+      enabled: { type: Boolean, default: true },
+      title: { type: String, default: '👋 Adeus!' },
+      description: { type: String, default: '**{user.tag}** saiu do servidor.\n\nAgora somos **{memberCount}** membros.' },
+      color: { type: Number, default: 0xEF4444 }, // Vermelho
+      thumbnail: { type: String },
+      image: { type: String },
+      footer: { type: String, default: 'Membro desde' },
+      show_footer_timestamp: { type: Boolean, default: true }
+    }
+  },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now }
+}, { timestamps: true });
+
+const WelcomeConfigModel = mongoose.models.WelcomeConfig || mongoose.model('WelcomeConfig', WelcomeConfigSchema);
+
 // Webhooks por guild (tipos: logs, updates, tickets)
 const WebhookSchema = new mongoose.Schema({
   guild_id: { type: String, index: true },
@@ -157,5 +196,6 @@ module.exports = {
   AppealModel, 
   NotificationModel, 
   AutomodEventModel,
-  TicketCategoryModel // ✨ NOVO
+  TicketCategoryModel, // ✨ NOVO
+  WelcomeConfigModel // ✨ NOVO - Welcome/Goodbye system
 };
