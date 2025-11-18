@@ -1,6 +1,7 @@
 const { MessageFlags } = require('discord.js');
 const logger = require('../logger');
 const { updateGiveawayMessage } = require('./messageUpdater');
+const { retryWithBackoff } = require('../retryHelper');
 
 /**
  * Handle giveaway entry button click
@@ -9,9 +10,16 @@ async function handleGiveawayEntry(interaction, giveawayId) {
     try {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-        // Validate giveaway exists and is active
+        // Validate giveaway exists and is active (com retry)
         const { GiveawayModel, GiveawayEntryModel } = require('../db/giveawayModels');
-        const giveaway = await GiveawayModel.findById(giveawayId);
+        const giveaway = await retryWithBackoff(
+            () => GiveawayModel.findById(giveawayId),
+            { 
+                maxRetries: 2, 
+                baseDelay: 500,
+                onRetry: (attempt, max) => logger.debug(`[Giveaway] Retry ${attempt}/${max} - findById`) 
+            }
+        );
 
         if (!giveaway) {
             return await interaction.editReply({ content: '❌ Este sorteio não existe ou foi removido.' });
@@ -37,17 +45,20 @@ async function handleGiveawayEntry(interaction, giveawayId) {
             return await interaction.editReply({ content: '⚠️ Você já está participando deste sorteio!' });
         }
 
-        // Create entry
-        await GiveawayEntryModel.create({
-            giveaway_id: giveawayId,
-            guild_id: giveaway.guild_id,
-            user_id: userId,
-            username: interaction.user.username,
-            avatar: interaction.user.avatar,
-            method: 'button',
-            joined_at: new Date(),
-            weight: 1
-        });
+        // Create entry (com retry para DB transient errors)
+        await retryWithBackoff(
+            () => GiveawayEntryModel.create({
+                giveaway_id: giveawayId,
+                guild_id: giveaway.guild_id,
+                user_id: userId,
+                username: interaction.user.username,
+                avatar: interaction.user.avatar,
+                method: 'button',
+                joined_at: new Date(),
+                weight: 1
+            }),
+            { maxRetries: 2, baseDelay: 500 }
+        );
 
         // Count total entries
         const totalEntries = await GiveawayEntryModel.countDocuments({ giveaway_id: giveawayId });

@@ -1,6 +1,11 @@
 const { ChannelType, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder } = require('discord.js');
 const { ensureDeferred, safeReply, safeUpdate } = require('./interactionHelpers');
 const storage = require('./storage');
+const logger = require('./logger');
+const { KeyedRateLimiter } = require('./retryHelper');
+
+// Rate limiter: 2 tickets por minuto por usuário
+const ticketRateLimiter = new KeyedRateLimiter(2, 2 / 60); // 2 tokens, refill 2 por 60s
 
 async function ensureCategory(guild) {
   let cat = guild.channels.cache.find(c => c.type === ChannelType.GuildCategory && (c.name === '📁 TICKETS' || c.name.toUpperCase() === 'TICKETS'));
@@ -135,6 +140,18 @@ async function fetchAllMessages(channel, cap = 2000) {
 }
 
 async function createTicket(interaction, type) {
+  // Rate limiting: 2 tickets por minuto por usuário
+  const rateLimitKey = `${interaction.guild.id}:${interaction.user.id}`;
+  const rateCheck = ticketRateLimiter.check(rateLimitKey);
+  
+  if (!rateCheck.allowed) {
+    const waitSeconds = Math.ceil(rateCheck.waitTime / 1000);
+    return safeReply(interaction, { 
+      content: `⏱️ Aguarda ${waitSeconds}s antes de criar outro ticket.`, 
+      flags: MessageFlags.Ephemeral 
+    });
+  }
+  
   // CRITICAL: Atomic lock para prevenir race condition em double-click
   // Usa findOneAndUpdate com upsert para garantir apenas 1 ticket criado
   const storage = require('./storage');
@@ -148,6 +165,9 @@ async function createTicket(interaction, type) {
       flags: MessageFlags.Ephemeral 
     });
   }
+  
+  // Consumir token (apenas depois do lock check)
+  await ticketRateLimiter.acquire(rateLimitKey, 1);
   
   // Criar lock
   await storage.setGeneric(lockKey, { created_at: new Date() });
