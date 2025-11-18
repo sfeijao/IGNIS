@@ -6,43 +6,73 @@ type Props = {
   name: string
   desc: string
   badge?: string
-  icon?: IconName
+  icon?: IconName | string
   tip?: string
   href?: string
   configHref?: string
   viewHref?: string
+  gradient?: string
 }
 
-export default function PluginCard({ name, desc, badge, icon = 'plugins', tip, href, configHref, viewHref }: Props) {
+export default function PluginCard({ name, desc, badge, icon = 'plugins', tip, href, configHref, viewHref, gradient }: Props) {
   // With Next.js basePath configured, pass clean hrefs (without manual "/next" prefix)
   const finalConfig = configHref || href
   const finalView = viewHref || href
+  
+  // Determine gradient based on category or use default
+  const gradientClass = gradient || 'from-purple-600/20 to-pink-600/20'
+  
   return (
-    <article className="card p-5 flex flex-col gap-3 transition-transform hover:-translate-y-0.5 hover:shadow-xl">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-lg inline-flex items-center" aria-hidden><Icon name={icon} /></span>
-          <h3 className="font-semibold">{name}</h3>
+    <article className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-purple-500/20">
+      <div className={`bg-gradient-to-r ${gradientClass} border-b border-gray-700/50 px-5 py-4 flex items-center justify-between`}>
+        <div className="flex items-center gap-3">
+          {typeof icon === 'string' && icon.length <= 2 ? (
+            <span className="text-2xl" aria-hidden>{icon}</span>
+          ) : (
+            <span className="text-xl inline-flex items-center" aria-hidden><Icon name={icon as IconName} /></span>
+          )}
+          <h3 className="font-bold text-lg">{name}</h3>
         </div>
-        {badge ? <span className="badge">{badge}</span> : null}
-      </div>
-      <p className="text-neutral-300 text-sm flex-1">{desc}</p>
-      <div className="flex gap-2">
-        {finalConfig || finalView ? (
-          <>
-            <Link href={finalConfig || '#'} className="px-3 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium transition-all hover:animate-glow" aria-label={`Configurar ${name}`}>Configurar</Link>
-            <Link href={finalView || finalConfig || '#'} className="px-3 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 transition-colors" aria-label={`Ver ${name}`}>Ver</Link>
-          </>
-        ) : (
-          <>
-            <button type="button" className="px-3 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium transition-all hover:animate-glow">Configurar</button>
-            <button type="button" className="px-3 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 transition-colors">Ver</button>
-          </>
-        )}
-        {tip && (
-          <span className="tip ml-auto text-neutral-400 text-xs inline-flex items-center" data-tip={tip} aria-label="Info">
-            <Icon name="info" />
+        {badge && (
+          <span className="px-3 py-1 bg-purple-600/30 border border-purple-500/50 rounded-full text-xs font-semibold text-purple-300">
+            {badge}
           </span>
+        )}
+      </div>
+      <div className="p-5 space-y-4">
+        <p className="text-gray-300 text-sm leading-relaxed min-h-[40px]">{desc}</p>
+        <div className="flex gap-2 pt-2">
+          {finalConfig || finalView ? (
+            <>
+              <Link 
+                href={finalConfig || '#'} 
+                className="flex-1 px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] text-center text-sm"
+                aria-label={`Configurar ${name}`}
+              >
+                ⚙️ Configurar
+              </Link>
+              <Link 
+                href={finalView || finalConfig || '#'} 
+                className="flex-1 px-4 py-2.5 rounded-lg bg-gray-700/50 hover:bg-gray-700 border border-gray-600/50 transition-all duration-200 text-center text-sm"
+                aria-label={`Ver ${name}`}
+              >
+                👁️ Ver
+              </Link>
+            </>
+          ) : (
+            <>
+              <button type="button" className="flex-1 px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 font-medium transition-all duration-200 transform hover:scale-[1.02] text-sm">⚙️ Configurar</button>
+              <button type="button" className="flex-1 px-4 py-2.5 rounded-lg bg-gray-700/50 hover:bg-gray-700 border border-gray-600/50 transition-all duration-200 text-sm">👁️ Ver</button>
+            </>
+          )}
+        </div>
+        {tip && (
+          <div className="pt-2 border-t border-gray-700/30">
+            <p className="text-xs text-gray-500 flex items-start gap-2">
+              <Icon name="info" className="mt-0.5 flex-shrink-0" />
+              <span>{tip}</span>
+            </p>
+          </div>
         )}
       </div>
     </article>
