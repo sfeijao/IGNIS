@@ -556,4 +556,31 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch time tracking data')
     return res.json()
   },
+
+  // Verification Config
+  async getVerificationConfig(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/verification/config`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch verification config')
+    return res.json()
+  },
+  async saveVerificationConfig(guildId: string, payload: Record<string, any>) {
+    const res = await fetch(`/api/guild/${guildId}/verification/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) throw new Error('Failed to save verification config')
+    return res.json()
+  },
+
+  // Webhooks Management
+  async deleteWebhook(guildId: string, webhookId: string) {
+    const res = await fetch(`/api/guild/${guildId}/webhooks/${webhookId}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    })
+    if (!res.ok) throw new Error('Failed to delete webhook')
+    return res.json()
+  },
 }
