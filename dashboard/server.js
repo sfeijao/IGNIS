@@ -2079,7 +2079,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 if (useMongoPanels) {
                     updated = await PanelModel.findByIdAndUpdate(panelId, { $set: { message_id: message.id } }, { new: true }).lean();
                 } else {
-                    const storage = require('../utils/storage');
+                    const storage = require('../utils/storage-sqlite');
                     updated = await storage.updatePanel(panelId, { message_id: message.id });
                 }
                 return res.json({ success: true, message: 'Panel resent', panel: updated });
@@ -2094,7 +2094,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 if (useMongoPanels) {
                     updated = await PanelModel.findByIdAndUpdate(panelId, { $set: { message_id: message.id } }, { new: true }).lean();
                 } else {
-                    const storage = require('../utils/storage');
+                    const storage = require('../utils/storage-sqlite');
                     updated = await storage.updatePanel(panelId, { message_id: message.id });
                 }
                 return res.json({ success: true, message: 'Panel recreated', panel: updated });
@@ -2110,7 +2110,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 if (useMongoPanels) {
                     await PanelModel.findByIdAndDelete(panelId);
                 } else {
-                    const storage = require('../utils/storage');
+                    const storage = require('../utils/storage-sqlite');
                     await storage.deletePanel(panelId);
                 }
                 return res.json({ success: true, message: 'Panel deleted' });
@@ -2119,7 +2119,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 const newTheme = (data?.theme === 'light') ? 'light' : 'dark';
                 const updatedTheme = useMongoPanels
                     ? await PanelModel.findByIdAndUpdate(panelId, { $set: { theme: newTheme } }, { new: true }).lean()
-                    : await (async () => { const storage = require('../utils/storage'); return await storage.updatePanel(panelId, { theme: newTheme }); })();
+                    : await (async () => { const storage = require('../utils/storage-sqlite'); return await storage.updatePanel(panelId, { theme: newTheme }); })();
                 return res.json({ success: true, message: 'Theme updated', theme: newTheme, panel: updatedTheme });
             }
             case 'template': {
@@ -2209,7 +2209,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 }
                 const updatedPanel = useMongoPanels
                     ? await PanelModel.findByIdAndUpdate(panelId, { $set: { template: tpl, payload: newPayload } }, { new: true }).lean()
-                    : await (async () => { const storage = require('../utils/storage'); return await storage.updatePanel(panelId, { template: tpl, payload: newPayload }); })();
+                    : await (async () => { const storage = require('../utils/storage-sqlite'); return await storage.updatePanel(panelId, { template: tpl, payload: newPayload }); })();
                 // Auto-sync open ticket panels to V2 after template updates
                 let synced = null;
                 try {
