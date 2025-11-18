@@ -43,6 +43,25 @@ const TicketModel = mongoose.models.Ticket || mongoose.model('Ticket', TicketSch
 const GuildConfigModel = mongoose.models.GuildConfig || mongoose.model('GuildConfig', GuildConfigSchema);
 const PanelModel = mongoose.models.Panel || mongoose.model('Panel', PanelSchema);
 
+// ✨ NOVO: Schema para categorias customizáveis de tickets
+const TicketCategorySchema = new mongoose.Schema({
+  guild_id: { type: String, required: true, index: true },
+  name: { type: String, required: true }, // Nome da categoria (ex: "Suporte Técnico")
+  emoji: { type: String, default: '📩' }, // Emoji opcional
+  description: { type: String }, // Descrição opcional
+  color: { type: Number, default: 0x7C3AED }, // Cor do embed
+  order: { type: Number, default: 0 }, // Ordem de exibição
+  enabled: { type: Boolean, default: true }, // Ativa/desativa
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now }
+}, { timestamps: true });
+
+// Index composto para queries eficientes
+TicketCategorySchema.index({ guild_id: 1, order: 1 });
+TicketCategorySchema.index({ guild_id: 1, enabled: 1, order: 1 });
+
+const TicketCategoryModel = mongoose.models.TicketCategory || mongoose.model('TicketCategory', TicketCategorySchema);
+
 // Webhooks por guild (tipos: logs, updates, tickets)
 const WebhookSchema = new mongoose.Schema({
   guild_id: { type: String, index: true },
@@ -127,4 +146,16 @@ const AutomodEventSchema = new mongoose.Schema({
 }, { timestamps: true });
 const AutomodEventModel = mongoose.models.AutomodEvent || mongoose.model('AutomodEvent', AutomodEventSchema);
 
-module.exports = { TicketModel, GuildConfigModel, PanelModel, TagModel, WebhookModel, TicketLogModel, ModerationCaseModel, AppealModel, NotificationModel, AutomodEventModel };
+module.exports = { 
+  TicketModel, 
+  GuildConfigModel, 
+  PanelModel, 
+  TagModel, 
+  WebhookModel, 
+  TicketLogModel, 
+  ModerationCaseModel, 
+  AppealModel, 
+  NotificationModel, 
+  AutomodEventModel,
+  TicketCategoryModel // ✨ NOVO
+};

@@ -407,12 +407,20 @@ app.use((req, res, next) => {
     next();
 });
 
-// Mount giveaway API router (must be after Passport initialization)
+// Mount API routers (must be after Passport initialization)
 try {
     const giveawayRoutes = require('./routes/giveawayRoutes');
     app.use('/api', giveawayRoutes);
 } catch (e) {
     try { console.warn('Giveaway routes not mounted:', e.message); } catch {}
+}
+
+try {
+    const ticketCategoryRoutes = require('./routes/ticketCategoryRoutes');
+    app.use('/api', ticketCategoryRoutes);
+    logger.info('✅ Ticket Category routes mounted successfully');
+} catch (e) {
+    try { console.warn('Ticket Category routes not mounted:', e.message); } catch {}
 }
 
 // Start giveaway background worker (Mongo dependent)
