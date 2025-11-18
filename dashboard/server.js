@@ -453,6 +453,26 @@ passport.use(new DiscordStrategy({
     scope: ['identify', 'guilds']
 }, (accessToken, refreshToken, profile, done) => {
     profile.accessToken = accessToken;
+    
+    // Process guilds to extract those where user has MANAGE_GUILD permission
+    // Discord permission bit for MANAGE_GUILD is 0x20 (32)
+    const MANAGE_GUILD = 0x20;
+    profile.manageGuilds = [];
+    
+    if (Array.isArray(profile.guilds)) {
+        profile.manageGuilds = profile.guilds
+            .filter(g => {
+                // Check if user has MANAGE_GUILD permission or is owner
+                const permissions = parseInt(g.permissions) || 0;
+                return g.owner || (permissions & MANAGE_GUILD) === MANAGE_GUILD;
+            })
+            .map(g => g.id);
+    }
+    
+    // Check if user is bot owner/admin
+    const botOwners = config.DISCORD?.BOT_OWNERS || [];
+    profile.admin = botOwners.includes(profile.id);
+    
     return done(null, profile);
 }));
 
