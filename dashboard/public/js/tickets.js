@@ -104,7 +104,16 @@
     if (!guildId) { notify('guildId em falta', 'error'); return; }
     if (loading) return;
     loading = true;
-    els.list.innerHTML = `<div class="loading"><span class="loading-spinner"></span> A carregar...</div>`;
+    
+    // ✅ Loading skeleton (3 placeholders)
+    els.list.innerHTML = `
+      <div class="loading-skeleton">
+        <div class="skeleton-item"></div>
+        <div class="skeleton-item"></div>
+        <div class="skeleton-item"></div>
+      </div>
+    `;
+    
     try {
       // Use cached GET when helper is available (reduces burst when filters change rapidly)
       let data;
@@ -125,7 +134,14 @@
       syncUrlBar();
     } catch (e) {
       console.error(e); notify(e.message, 'error');
-      els.list.innerHTML = `<div class="no-tickets">Erro ao carregar tickets</div>`;
+      els.list.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon"><i class="fas fa-exclamation-triangle"></i></div>
+          <div class="empty-state-title">Erro ao carregar tickets</div>
+          <div class="empty-state-text">${e.message || 'Ocorreu um erro desconhecido.'}</div>
+          <button class="btn btn-primary" onclick="location.reload()"><i class="fas fa-redo"></i> Tentar novamente</button>
+        </div>
+      `;
     } finally {
       loading = false;
     }
@@ -171,7 +187,24 @@
   }
 
   function renderList(items){
-    if (!items.length) { els.list.innerHTML = `<div class="no-tickets">Sem resultados</div>`; return; }
+    // ✅ Empty state ilustrado
+    if (!items.length) { 
+      els.list.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon"><i class="fas fa-inbox"></i></div>
+          <div class="empty-state-title">Nenhum ticket encontrado</div>
+          <div class="empty-state-text">
+            Não existem tickets que correspondam aos seus filtros atuais.<br>
+            Experimente ajustar os critérios de pesquisa.
+          </div>
+          <button class="btn btn-glass" onclick="document.getElementById('btnReset').click()">
+            <i class="fas fa-undo"></i> Limpar filtros
+          </button>
+        </div>
+      `;
+      return; 
+    }
+    
     const html = items.map(t => {
       const statusColor = t.status==='closed' ? '#10B981' : t.status==='claimed' ? '#F59E0B' : t.status==='pending' ? '#A78BFA' : '#60A5FA';
       return `
