@@ -49,7 +49,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   // Sidebar labels
   'nav.dashboard': 'Dashboard',
   'nav.plugins': 'Plugins',
-
+  'nav.giveaways': 'Giveaways',
   'nav.moderation': 'Moderação',
   'nav.members': 'Membros',
   'nav.roles': 'Cargos',
@@ -69,6 +69,10 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'nav.closeMenu': 'Fechar menu',
   'nav.diagnostics': 'Diagnósticos',
   'nav.performance': 'Performance',
+  'nav.guildFeatures': 'Funcionalidades do Servidor',
+  'nav.welcome': 'Boas-Vindas & Despedidas',
+  'nav.stats': 'Estatísticas do Servidor',
+  'nav.timeTracking': 'Time Tracking',
   // Members
   'members.selectGuild': 'Selecione um servidor para listar membros.',
   'members.search': 'Pesquisar',
@@ -707,7 +711,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     // Sidebar labels
     'nav.dashboard': 'Dashboard',
     'nav.plugins': 'Plugins',
-
+    'nav.giveaways': 'Giveaways',
     'nav.moderation': 'Moderation',
     'nav.members': 'Members',
     'nav.roles': 'Roles',
@@ -727,6 +731,10 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     'nav.closeMenu': 'Close menu',
     'nav.diagnostics': 'Diagnostics',
     'nav.performance': 'Performance',
+    'nav.guildFeatures': 'Server Features',
+    'nav.welcome': 'Welcome & Goodbye',
+    'nav.stats': 'Server Stats',
+    'nav.timeTracking': 'Time Tracking',
     // Members
     'members.selectGuild': 'Select a server to list members.',
     'members.search': 'Search',

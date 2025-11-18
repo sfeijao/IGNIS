@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { Icon } from './icons'
 import FeatureBadge from './FeatureBadge'
 import { useI18n } from '@/lib/i18n'
+import { useGuildId } from '@/lib/guild'
 
 const nav = [
   { href: '/', key: 'nav.dashboard', flag: 'stable' },
@@ -29,9 +30,17 @@ const nav = [
   { href: '/performance', key: 'nav.performance', flag: 'stable' },
 ]
 
+// Guild-specific pages (require guild selection)
+const guildNav = [
+  { href: '/guild/{gid}/welcome', key: 'nav.welcome', icon: '👋', flag: 'new' },
+  { href: '/guild/{gid}/stats', key: 'nav.stats', icon: '📊', flag: 'new' },
+  { href: '/guild/{gid}/time-tracking', key: 'nav.timeTracking', icon: '⏱️', flag: 'new' },
+]
+
 export default function Sidebar() {
   const pathname = usePathname()
   const { t } = useI18n()
+  const guildId = useGuildId()
 
   const iconFor = (key: string) => {
     switch (key) {
@@ -85,8 +94,39 @@ export default function Sidebar() {
             </Link>
           )
         })}
+
+        {/* Guild-specific features */}
+        {guildId && (
+          <>
+            <div className="mt-4 mb-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              {t('nav.guildFeatures')}
+            </div>
+            {guildNav.map((n) => {
+              const href = n.href.replace('{gid}', guildId)
+              const active = pathname === href
+              return (
+                <Link
+                  key={n.href}
+                  href={href}
+                  className={`relative rounded-lg px-3 py-2 hover:bg-neutral-800/80 transition-colors tip ${active ? 'bg-neutral-800 text-white animate-glow' : ''}`}
+                  data-tip={t(n.key)}
+                  title={t(n.key)}
+                >
+                  <span className={`absolute left-0 top-1 bottom-1 w-1 rounded-full bg-gradient-to-b from-purple-500 to-pink-500 ${active ? 'opacity-100 animate-pulseLine' : 'opacity-0'}`} />
+                  <span className="icon mr-2 inline-flex items-center text-lg">{n.icon}</span>
+                  <span className="label flex items-center gap-2">
+                    {t(n.key)}
+                    <FeatureBadge flag={n.flag as any} />
+                  </span>
+                </Link>
+              )
+            })}
+          </>
+        )}
+
         {/* Legacy moderation center link removed; integrated into /moderation */}
       </nav>
     </aside>
   )
 }
+

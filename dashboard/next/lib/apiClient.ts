@@ -515,4 +515,45 @@ export const api = {
     if (!res.ok) throw new Error('Failed to remove tag')
     return res.json()
   },
+
+  // Welcome/Goodbye system
+  async getWelcomeConfig(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/welcome`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch welcome config')
+    return res.json()
+  },
+  async saveWelcomeConfig(guildId: string, payload: Record<string, any>) {
+    const res = await fetch(`/api/guild/${guildId}/welcome`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) throw new Error('Failed to save welcome config')
+    return res.json()
+  },
+
+  // Server Stats counters
+  async getStatsConfig(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/stats`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch stats config')
+    return res.json()
+  },
+  async saveStatsConfig(guildId: string, payload: Record<string, any>) {
+    const res = await fetch(`/api/guild/${guildId}/stats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) throw new Error('Failed to save stats config')
+    return res.json()
+  },
+
+  // Time Tracking
+  async getTimeTracking(guildId: string) {
+    const res = await fetch(`/api/guild/${guildId}/time-tracking`, { credentials: 'include' })
+    if (!res.ok) throw new Error('Failed to fetch time tracking data')
+    return res.json()
+  },
 }
