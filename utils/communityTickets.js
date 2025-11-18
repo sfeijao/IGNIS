@@ -187,6 +187,33 @@ async function createTicket(interaction, type) {
   const info = departmentInfo(type);
   const channelName = `${info.emoji}-${interaction.user.username}`.toLowerCase();
 
+  // Verificar permissões do bot ANTES de criar canal
+  const botMember = interaction.guild.members.me;
+  if (!botMember) {
+    await storage.deleteGeneric(lockKey).catch(() => {});
+    return safeReply(interaction, { content: '❌ Erro: bot member não encontrado.', flags: MessageFlags.Ephemeral });
+  }
+  
+  const requiredPerms = [
+    PermissionFlagsBits.ManageChannels,
+    PermissionFlagsBits.ViewChannel,
+    PermissionFlagsBits.SendMessages,
+    PermissionFlagsBits.ManageRoles
+  ];
+  
+  const missingPerms = requiredPerms.filter(perm => !botMember.permissions.has(perm));
+  if (missingPerms.length > 0) {
+    await storage.deleteGeneric(lockKey).catch(() => {});
+    const permNames = missingPerms.map(p => {
+      if (p === PermissionFlagsBits.ManageChannels) return 'Gerir Canais';
+      if (p === PermissionFlagsBits.ManageRoles) return 'Gerir Cargos';
+      if (p === PermissionFlagsBits.SendMessages) return 'Enviar Mensagens';
+      return 'Ver Canal';
+    }).join(', ');
+    logger.warn(`[Tickets] Bot falta permissões em ${interaction.guild.name}: ${permNames}`);
+    return safeReply(interaction, { content: `❌ Bot não tem permissões necessárias: **${permNames}**`, flags: MessageFlags.Ephemeral });
+  }
+
   const overwrites = [
     { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
     { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
@@ -507,9 +534,14 @@ async function handleButton(interaction) {
     if (!staff) return safeReply(interaction, { content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
     const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
     const modal = new ModalBuilder().setCustomId('ticket:move:other:modal').setTitle('Mover Ticket - Categoria Manual');
-    const input = new TextInputBuilder().setCustomId('ticket:move:other:category_id').setLabel('ID da Categoria').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(30);
+    const input = new TextInputBuilder().setCustomId('ticket:move:other:category_id').setLabel('ID da Categoria').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(30).setPlaceholder('Ex: 1234567890123456789');
     modal.addComponents(new ActionRowBuilder().addComponents(input));
-    try { await interaction.showModal(modal); } catch {}
+    try { 
+      await interaction.showModal(modal); 
+    } catch (e) {
+      logger.warn('[Tickets] Erro ao mostrar modal de mover categoria:', e.message);
+      return safeReply(interaction, { content: '❌ Falha ao abrir modal.', flags: MessageFlags.Ephemeral });
+    }
     return;
   }
   if (id === 'ticket:add_member') {
@@ -517,9 +549,14 @@ async function handleButton(interaction) {
     if (!staff) return safeReply(interaction, { content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
     const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
     const modal = new ModalBuilder().setCustomId('ticket:add_member:modal').setTitle('Adicionar Membros (IDs)');
-    const input = new TextInputBuilder().setCustomId('ticket:add_member:ids').setLabel('IDs ou menções (separados por espaço)').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(400);
+    const input = new TextInputBuilder().setCustomId('ticket:add_member:ids').setLabel('IDs ou menções (separados por espaço)').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(400).setPlaceholder('Ex: @user1 @user2 ou 123... 456...');
     modal.addComponents(new ActionRowBuilder().addComponents(input));
-    try { await interaction.showModal(modal); } catch {}
+    try { 
+      await interaction.showModal(modal); 
+    } catch (e) {
+      logger.warn('[Tickets] Erro ao mostrar modal de adicionar membros:', e.message);
+      return safeReply(interaction, { content: '❌ Falha ao abrir modal.', flags: MessageFlags.Ephemeral });
+    }
     return;
   }
   if (id === 'ticket:remove_member') {
@@ -527,9 +564,14 @@ async function handleButton(interaction) {
     if (!staff) return safeReply(interaction, { content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
     const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
     const modal = new ModalBuilder().setCustomId('ticket:remove_member:modal').setTitle('Remover Membros (IDs)');
-    const input = new TextInputBuilder().setCustomId('ticket:remove_member:ids').setLabel('IDs ou menções (separados por espaço)').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(400);
+    const input = new TextInputBuilder().setCustomId('ticket:remove_member:ids').setLabel('IDs ou menções (separados por espaço)').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(400).setPlaceholder('Ex: @user1 @user2');
     modal.addComponents(new ActionRowBuilder().addComponents(input));
-    try { await interaction.showModal(modal); } catch {}
+    try { 
+      await interaction.showModal(modal); 
+    } catch (e) {
+      logger.warn('[Tickets] Erro ao mostrar modal de remover membros:', e.message);
+      return safeReply(interaction, { content: '❌ Falha ao abrir modal.', flags: MessageFlags.Ephemeral });
+    }
     return;
   }
   if (id === 'ticket:call_member') {
@@ -957,13 +999,34 @@ async function handleModal(interaction) {
     const t = await storage.getTicketByChannel(interaction.channel.id);
     if (!t) return safeReply(interaction, { content: '⚠️ Ticket não encontrado.', flags: MessageFlags.Ephemeral });
     const raw = interaction.fields.getTextInputValue('ticket:add_member:ids');
-    const ids = Array.from(new Set(raw.split(/[\s,]+/).map(s=>s.replace(/[^0-9]/g,'')).filter(Boolean))).slice(0,10);
+    
+    // Validar e sanitizar IDs
+    const ids = Array.from(new Set(raw.split(/[\s,]+/).map(s=>s.replace(/[^0-9]/g,'')).filter(x => /^\d{17,20}$/.test(x)))).slice(0,10);
+    if (!ids.length) return safeReply(interaction, { content: '❌ Nenhum ID válido. Use IDs numéricos (17-20 dígitos) ou menções.', flags: MessageFlags.Ephemeral });
+    
     const added = [];
+    const failed = [];
     for (const uid of ids) {
-      try { await interaction.channel.permissionOverwrites.edit(uid, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true }); added.push(uid); } catch {}
+      try { 
+        // Verificar se membro existe no servidor
+        const member = await interaction.guild.members.fetch(uid).catch(() => null);
+        if (!member) {
+          failed.push(`<@${uid}> (não encontrado)`);
+          continue;
+        }
+        
+        await interaction.channel.permissionOverwrites.edit(uid, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true }); 
+        added.push(uid); 
+      } catch (e) {
+        logger.warn(`[Tickets] Erro ao adicionar ${uid}:`, e.message);
+        failed.push(`<@${uid}>`);
+      }
     }
     try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'member:add:bulk', message: `IDs: ${added.join(',')}` }); } catch {}
-    return safeReply(interaction, { content: added.length ? `✅ Adicionados: ${added.map(i=>`<@${i}>`).join(', ')}` : '❌ Nenhum ID válido.', flags: MessageFlags.Ephemeral });
+    
+    let msg = added.length ? `✅ Adicionados ${added.length}/${ids.length}: ${added.map(i=>`<@${i}>`).join(', ')}` : '❌ Nenhum membro adicionado.';
+    if (failed.length > 0) msg += `\n⚠️ Falhados: ${failed.join(', ')}`;
+    return safeReply(interaction, { content: msg, flags: MessageFlags.Ephemeral });
   }
   if (id === 'ticket:remove_member:modal') {
     const staff = await isStaff(interaction);
@@ -986,10 +1049,26 @@ async function handleModal(interaction) {
     if (!t) return safeReply(interaction, { content: '⚠️ Ticket não encontrado.', flags: MessageFlags.Ephemeral });
     const raw = interaction.fields.getTextInputValue('ticket:move:other:category_id').trim();
     const catId = raw.replace(/[^0-9]/g,'');
-    if (!catId) return safeReply(interaction, { content: 'ID inválido.', flags: MessageFlags.Ephemeral });
-    try { await interaction.channel.setParent(catId, { lockPermissions: false }); } catch { return safeReply(interaction, { content: '❌ Falha ao mover (verifica o ID).', flags: MessageFlags.Ephemeral }); }
-    try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'move', message: `move->${catId}`, data: { manual: true } }); } catch {}
-    return safeReply(interaction, { content: '🔁 Ticket movido (manual).', flags: MessageFlags.Ephemeral });
+    
+    // Validar formato de ID
+    if (!catId || !/^\d{17,20}$/.test(catId)) {
+      return safeReply(interaction, { content: '❌ ID inválido. Use um ID de categoria válido (17-20 dígitos).', flags: MessageFlags.Ephemeral });
+    }
+    
+    try { 
+      // Verificar se categoria existe
+      const targetCat = await interaction.guild.channels.fetch(catId).catch(() => null);
+      if (!targetCat || targetCat.type !== ChannelType.GuildCategory) {
+        return safeReply(interaction, { content: '❌ Categoria não encontrada. Verifica se o ID está correto.', flags: MessageFlags.Ephemeral });
+      }
+      
+      await interaction.channel.setParent(catId, { lockPermissions: false }); 
+      await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'move', message: `move->${catId}`, data: { manual: true, categoryName: targetCat.name } });
+      return safeReply(interaction, { content: `✅ Ticket movido para **${targetCat.name}**.`, flags: MessageFlags.Ephemeral });
+    } catch (e) { 
+      logger.warn(`[Tickets] Erro ao mover ticket ${t.id}:`, e.message);
+      return safeReply(interaction, { content: `❌ Falha ao mover: ${e.message}`, flags: MessageFlags.Ephemeral }); 
+    }
   }
 
   if (id.startsWith('ticket:member:submit')) {

@@ -44,6 +44,20 @@ class SimpleStorage {
         this.tagsFile = path.join(this.storageDir, 'tags.json');
         this.logsFile = path.join(this.storageDir, 'logs.json');
         
+        // Cache de configs de guilds (TTL: 5 minutos)
+        this.configCache = new Map();
+        this.CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+        
+        // Cleanup automático do cache a cada 10 minutos
+        setInterval(() => {
+            const now = Date.now();
+            for (const [key, value] of this.configCache.entries()) {
+                if (now - value.timestamp > this.CACHE_TTL) {
+                    this.configCache.delete(key);
+                }
+            }
+        }, 10 * 60 * 1000);
+        
         this.init();
     }
     
@@ -182,17 +196,34 @@ class SimpleStorage {
     
     // Config methods
     async getGuildConfig(guildId, key) {
+        // Verificar cache primeiro
+        const cacheKey = `${guildId}:${key || 'all'}`;
+        const cached = this.configCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+            return cached.data;
+        }
+        
+        let result;
         if (useMongo && GuildConfigModel) {
             const doc = await GuildConfigModel.findOne({ guild_id: guildId }).lean();
             const data = doc?.data || {};
-            return key ? data[key] : data;
+            result = key ? data[key] : data;
+        } else {
+            const config = await this.readFile(this.configFile) || {};
+            const guildConfig = config[guildId] || {};
+            result = key ? guildConfig[key] : guildConfig;
         }
-        const config = await this.readFile(this.configFile) || {};
-        const guildConfig = config[guildId] || {};
-        return key ? guildConfig[key] : guildConfig;
+        
+        // Guardar em cache
+        this.configCache.set(cacheKey, { data: result, timestamp: Date.now() });
+        return result;
     }
     
     async setGuildConfig(guildId, key, value) {
+        // Invalidar cache
+        this.configCache.delete(`${guildId}:${key}`);
+        this.configCache.delete(`${guildId}:all`);
+        
         if (useMongo && GuildConfigModel) {
             const doc = await GuildConfigModel.findOneAndUpdate(
                 { guild_id: guildId },
@@ -209,6 +240,12 @@ class SimpleStorage {
     }
 
     async updateGuildConfig(guildId, updates) {
+        // Invalidar cache
+        this.configCache.delete(`${guildId}:all`);
+        for (const key of Object.keys(updates)) {
+            this.configCache.delete(`${guildId}:${key}`);
+        }
+        
         if (useMongo && GuildConfigModel) {
             const doc = await GuildConfigModel.findOne({ guild_id: guildId });
             const current = doc?.data || {};
