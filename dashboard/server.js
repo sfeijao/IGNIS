@@ -1472,7 +1472,7 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
 
         // Inputs (validate with Joi)
         const ticketsSchema = Joi.object({
-            status: Joi.string().valid('', 'open','claimed','closed','pending').default(''),
+            status: Joi.string().valid('', 'open','claimed','closed','pending','archived').default(''),
             priority: Joi.string().valid('', 'low','normal','high','urgent').default(''),
             q: Joi.string().trim().max(200).allow('').default(''),
             from: Joi.date().iso().optional(),
@@ -1553,7 +1553,8 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
             open: filtered.filter(t => t.status === 'open').length,
             claimed: filtered.filter(t => t.status === 'claimed').length,
             closed: filtered.filter(t => t.status === 'closed').length,
-            pending: filtered.filter(t => t.status === 'pending').length
+            pending: filtered.filter(t => t.status === 'pending').length,
+            archived: filtered.filter(t => t.status === 'archived').length
         };
 
         // Pagination calculations
@@ -6372,6 +6373,35 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
                 break;
             }
 
+            case 'archive':
+                if (['closed', 'open', 'claimed'].includes(ticket.status)) {
+                    await storage.updateTicket(ticketId, {
+                        status: 'archived',
+                        archived_by: req.user.id,
+                        archived_at: new Date().toISOString()
+                    });
+                    success = true;
+                    message = 'Ticket archived successfully';
+                } else {
+                    message = 'Ticket cannot be archived';
+                }
+                break;
+
+            case 'restore':
+                if (ticket.status === 'archived') {
+                    const previousStatus = ticket.closed_at ? 'closed' : 'open';
+                    await storage.updateTicket(ticketId, {
+                        status: previousStatus,
+                        restored_by: req.user.id,
+                        restored_at: new Date().toISOString()
+                    });
+                    success = true;
+                    message = 'Ticket restored successfully';
+                } else {
+                    message = 'Only archived tickets can be restored';
+                }
+                break;
+
             default:
                 message = 'Invalid action';
         }
@@ -6434,6 +6464,78 @@ app.post('/api/guild/:guildId/tickets/:ticketId/feedback', async (req, res) => {
     } catch (e) {
         logger.error('Error ingesting ticket feedback:', e);
         return res.status(500).json({ success: false, error: 'Failed to submit feedback' });
+    }
+});
+
+// DELETE endpoint - Permanently delete a ticket (only archived tickets)
+app.delete('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+
+    try {
+        const { guildId, ticketId } = req.params;
+        const client = global.discordClient;
+
+        if (!client) {
+            return res.status(500).json({ success: false, error: 'Bot not available' });
+        }
+
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) {
+            return res.status(404).json({ success: false, error: 'Guild not found' });
+        }
+
+        // Verificar se o usuário é admin do servidor
+        const member = await guild.members.fetch(req.user.id).catch(() => null);
+        if (!member) {
+            return res.status(403).json({ success: false, error: 'You are not a member of this server' });
+        }
+
+        // Check if user has admin permissions
+        if (!member.permissions.has('Administrator')) {
+            return res.status(403).json({ success: false, error: 'Only administrators can permanently delete tickets' });
+        }
+
+        const storage = require('../utils/storage');
+        const tickets = await storage.getTickets(guildId);
+        const ticket = tickets.find(t => `${t.id}` === `${ticketId}`);
+        
+        if (!ticket) {
+            return res.status(404).json({ success: false, error: 'Ticket not found' });
+        }
+
+        // Only allow deletion of archived tickets
+        if (ticket.status !== 'archived') {
+            return res.status(400).json({ success: false, error: 'Only archived tickets can be permanently deleted. Archive the ticket first.' });
+        }
+
+        // Log deletion before removing
+        try {
+            await storage.addTicketLog({
+                ticket_id: ticketId,
+                guild_id: guildId,
+                actor_id: req.user.id,
+                action: 'delete_permanent',
+                message: 'Ticket permanently deleted from database',
+                data: { deletedAt: new Date().toISOString() }
+            });
+        } catch (logErr) {
+            logger.error('Failed to log ticket deletion:', logErr);
+        }
+
+        // Delete the ticket from database
+        await storage.deleteTicket(ticketId, guildId);
+
+        res.json({ 
+            success: true, 
+            message: 'Ticket permanently deleted',
+            ticketId 
+        });
+
+    } catch (error) {
+        logger.error('Error deleting ticket permanently:', error);
+        res.status(500).json({ success: false, error: 'Failed to delete ticket' });
     }
 });
 
