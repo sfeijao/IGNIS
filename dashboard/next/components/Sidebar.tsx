@@ -40,7 +40,10 @@ const nav = [
 const guildNav = [
   { href: '/guild/{gid}/welcome', key: 'nav.welcome', icon: '👋', flag: 'beta' },
   { href: '/guild/{gid}/stats', key: 'nav.stats', icon: '📊', flag: 'beta' },
+  { href: '/guild/{gid}/server-stats', key: 'nav.serverStats', icon: '📈', flag: 'beta' },
   { href: '/guild/{gid}/time-tracking', key: 'nav.timeTracking', icon: '⏱️', flag: 'beta' },
+  { href: '/guild/{gid}/ticket-categories', key: 'nav.ticketCategories', icon: '📋', flag: 'stable' },
+  { href: '/guild/{gid}/assets', key: 'nav.assets', icon: '🖼️', flag: 'beta' },
   { href: '/guild/{gid}/webhooks-config', key: 'nav.webhooksConfig', icon: '🔗', flag: 'beta' },
 ]
 

@@ -72,7 +72,10 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'nav.guildFeatures': 'Funcionalidades do Servidor',
   'nav.welcome': 'Boas-Vindas & Despedidas',
   'nav.stats': 'Estatísticas do Servidor',
+  'nav.serverStats': 'Canais de Estatísticas',
   'nav.timeTracking': 'Time Tracking',
+  'nav.ticketCategories': 'Categorias de Tickets',
+  'nav.assets': 'Avatar & Banner',
   'nav.webhooksConfig': 'Webhooks',
   // Members
   'members.selectGuild': 'Selecione um servidor para listar membros.',
@@ -735,7 +738,10 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     'nav.guildFeatures': 'Server Features',
     'nav.welcome': 'Welcome & Goodbye',
     'nav.stats': 'Server Stats',
+    'nav.serverStats': 'Stats Channels',
     'nav.timeTracking': 'Time Tracking',
+    'nav.ticketCategories': 'Ticket Categories',
+    'nav.assets': 'Avatar & Banner',
     'nav.webhooksConfig': 'Webhooks',
     // Members
     'members.selectGuild': 'Select a server to list members.',
