@@ -3057,6 +3057,227 @@ app.post('/api/guild/:guildId/channels/verify', async (req, res) => {
     }
 });
 
+// ==============================================
+// SERVER STATS - Canais dinâmicos de estatísticas
+// ==============================================
+
+// GET configuração de estatísticas
+app.get('/api/guild/:guildId/stats/config', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const { ServerStatsConfigModel } = require('./utils/db/models');
+        let config = await ServerStatsConfigModel.findByGuild(req.params.guildId);
+        
+        // Se não existir, retornar configuração padrão
+        if (!config) {
+            return res.json({
+                success: true,
+                config: null,
+                defaults: {
+                    enabled: false,
+                    update_interval_minutes: 10,
+                    metrics: {
+                        total_members: true,
+                        human_members: true,
+                        bot_members: false,
+                        online_members: true,
+                        boosters: false,
+                        total_channels: false,
+                        total_roles: false,
+                        active_tickets: false
+                    }
+                }
+            });
+        }
+        
+        res.json({ success: true, config });
+    } catch (e) {
+        logger.error('Error fetching stats config:', e);
+        res.status(500).json({ success: false, error: 'Failed to fetch configuration' });
+    }
+});
+
+// POST setup de estatísticas (criar canais)
+app.post('/api/guild/:guildId/stats/setup', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const { metrics, categoryId, updateInterval } = req.body;
+        
+        if (!metrics || !Array.isArray(metrics) || metrics.length === 0) {
+            return res.status(400).json({ success: false, error: 'No metrics selected' });
+        }
+        
+        // Validar métricas
+        const validMetrics = [
+            'total_members', 'human_members', 'bot_members', 
+            'online_members', 'boosters', 'total_channels', 
+            'total_roles', 'active_tickets'
+        ];
+        
+        const selectedMetrics = metrics.filter(m => validMetrics.includes(m));
+        
+        if (selectedMetrics.length === 0) {
+            return res.status(400).json({ success: false, error: 'No valid metrics selected' });
+        }
+        
+        // Usar o processor de stats
+        const statsProcessor = client.serverStatsProcessor;
+        if (!statsProcessor) {
+            return res.status(500).json({ success: false, error: 'Stats processor not available' });
+        }
+        
+        const result = await statsProcessor.setupChannels(
+            req.params.guildId,
+            req.user.id,
+            selectedMetrics,
+            categoryId || null
+        );
+        
+        // Atualizar intervalo se fornecido
+        if (updateInterval && result.config) {
+            const interval = parseInt(updateInterval);
+            if (interval >= 5 && interval <= 60) {
+                result.config.update_interval_minutes = interval;
+                await result.config.save();
+            }
+        }
+        
+        res.json({ 
+            success: true, 
+            ...result,
+            message: `Created ${result.channels.length} stat channel(s)`
+        });
+    } catch (e) {
+        logger.error('Error setting up stats:', e);
+        res.status(500).json({ success: false, error: e.message || 'Failed to setup stats' });
+    }
+});
+
+// POST atualizar configuração
+app.post('/api/guild/:guildId/stats/config', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const { ServerStatsConfigModel } = require('./utils/db/models');
+        let config = await ServerStatsConfigModel.findByGuild(req.params.guildId);
+        
+        if (!config) {
+            return res.status(404).json({ success: false, error: 'Stats not configured' });
+        }
+        
+        // Atualizar campos permitidos
+        if (typeof req.body.enabled === 'boolean') {
+            config.enabled = req.body.enabled;
+        }
+        
+        if (req.body.updateInterval) {
+            const interval = parseInt(req.body.updateInterval);
+            if (interval >= 5 && interval <= 60) {
+                config.update_interval_minutes = interval;
+            }
+        }
+        
+        if (req.body.metrics && typeof req.body.metrics === 'object') {
+            Object.assign(config.metrics, req.body.metrics);
+        }
+        
+        if (req.body.customNames && typeof req.body.customNames === 'object') {
+            Object.assign(config.custom_names, req.body.customNames);
+        }
+        
+        await config.save();
+        
+        res.json({ success: true, config });
+    } catch (e) {
+        logger.error('Error updating stats config:', e);
+        res.status(500).json({ success: false, error: 'Failed to update configuration' });
+    }
+});
+
+// DELETE desativar estatísticas
+app.delete('/api/guild/:guildId/stats', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const deleteChannels = req.query.deleteChannels === 'true';
+        
+        const statsProcessor = client.serverStatsProcessor;
+        if (!statsProcessor) {
+            return res.status(500).json({ success: false, error: 'Stats processor not available' });
+        }
+        
+        const result = await statsProcessor.disableStats(req.params.guildId, deleteChannels);
+        
+        res.json({ 
+            success: true, 
+            ...result,
+            message: deleteChannels ? 'Stats disabled and channels deleted' : 'Stats disabled'
+        });
+    } catch (e) {
+        logger.error('Error disabling stats:', e);
+        res.status(500).json({ success: false, error: e.message || 'Failed to disable stats' });
+    }
+});
+
+// GET métricas atuais (preview)
+app.get('/api/guild/:guildId/stats/metrics', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const statsProcessor = client.serverStatsProcessor;
+        if (!statsProcessor) {
+            return res.status(500).json({ success: false, error: 'Stats processor not available' });
+        }
+        
+        const { ServerStatsConfigModel } = require('./utils/db/models');
+        let config = await ServerStatsConfigModel.findByGuild(req.params.guildId);
+        
+        if (!config) {
+            // Criar config temporária para calcular métricas
+            config = new ServerStatsConfigModel({ guild_id: req.params.guildId });
+        }
+        
+        const metrics = await statsProcessor.calculateMetrics(check.guild, config);
+        
+        res.json({ success: true, metrics });
+    } catch (e) {
+        logger.error('Error fetching metrics:', e);
+        res.status(500).json({ success: false, error: 'Failed to fetch metrics' });
+    }
+});
+
 // Categories list (for UIs)
 app.get('/api/guild/:guildId/categories', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });

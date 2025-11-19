@@ -204,6 +204,7 @@ const AutomodEventModel = mongoose.models.AutomodEvent || mongoose.model('Automo
 const WebhookConfigModel = require('./models/WebhookConfig');
 const TicketWebhookLogModel = require('./models/TicketWebhookLog');
 const { GiveawayClaimModel } = require('./models/GiveawayClaim');
+const { ServerStatsConfigModel } = require('./models/ServerStatsConfig');
 
 module.exports = { 
   TicketModel, 
@@ -220,5 +221,6 @@ module.exports = {
   WelcomeConfigModel, // ✨ NOVO - Welcome/Goodbye system
   WebhookConfigModel, // ✨ NOVO - Sistema de webhooks
   TicketWebhookLogModel, // ✨ NOVO - Logs de webhooks de tickets
-  GiveawayClaimModel // ✨ NOVO - Sistema de reclamação de giveaways (48h)
+  GiveawayClaimModel, // ✨ NOVO - Sistema de reclamação de giveaways (48h)
+  ServerStatsConfigModel // ✨ NOVO - Canais de estatísticas dinâmicas
 };
