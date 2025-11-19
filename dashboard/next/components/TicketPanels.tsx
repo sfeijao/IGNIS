@@ -5,6 +5,7 @@ import { useGuildId } from '../lib/guild'
 import { api } from '../lib/apiClient'
 import { useToast } from './Toaster'
 import { useI18n } from '@/lib/i18n'
+import PanelCreator from './PanelCreator'
 
 type Panel = {
   _id: string
@@ -47,6 +48,10 @@ export default function TicketPanels() {
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
   const { t } = useI18n()
+
+  // Estado para o novo criador de painéis
+  const [showPanelCreator, setShowPanelCreator] = useState(false)
+  const [editingPanel, setEditingPanel] = useState<Panel | null>(null)
 
   const [newPanel, setNewPanel] = useState<{ name: string; channelId: string; categoryId?: string }>({ name: '', channelId: '' })
   const [newCategory, setNewCategory] = useState<{ name: string }>({ name: '' })
@@ -199,6 +204,20 @@ export default function TicketPanels() {
             <p className="text-gray-400 mt-1">Gerir painéis e categorias de tickets</p>
           </div>
           <div className="flex gap-3">
+            {/* Botão para abrir o novo criador de painéis */}
+            <button 
+              type="button" 
+              onClick={() => {
+                setEditingPanel(null)
+                setShowPanelCreator(true)
+              }} 
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-lg transition-all duration-200 flex items-center gap-2 transform hover:scale-[1.02]"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
+              </svg>
+              Criar Painel Avançado
+            </button>
             <button 
               type="button" 
               onClick={() => guildId && loadAll(guildId)} 
@@ -400,6 +419,18 @@ export default function TicketPanels() {
           </div>
         </section>
       </div>
+
+      {/* Modal do Criador de Painéis Avançado */}
+      {showPanelCreator && (
+        <PanelCreator 
+          onClose={() => {
+            setShowPanelCreator(false)
+            setEditingPanel(null)
+            if (guildId) loadAll(guildId) // Recarregar lista após criar/editar
+          }}
+          existingPanel={editingPanel}
+        />
+      )}
     </div>
   )
 }

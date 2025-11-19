@@ -214,7 +214,7 @@ async function createTicketWithCategorySelection(interaction, defaultType) {
   }
 }
 
-async function createTicket(interaction, type, customCategory = null) {
+async function createTicket(interaction, type, customCategory = null, panelConfig = null) {
   // Rate limiting: 2 tickets por minuto por usuário
   const rateLimitKey = `${interaction.guild.id}:${interaction.user.id}`;
   const rateCheck = ticketRateLimiter.check(rateLimitKey);
@@ -264,7 +264,9 @@ async function createTicket(interaction, type, customCategory = null) {
   // Ler configuração de tickets
   let cfg;
   try { cfg = await storage.getGuildConfig(interaction.guild.id); } catch {}
-  let parentCategoryId = cfg?.tickets?.ticketsCategoryId || null;
+  
+  // 🆕 Usar target_category_id do painel se disponível
+  let parentCategoryId = panelConfig?.target_category_id || cfg?.tickets?.ticketsCategoryId || null;
   let accessRoleIds = Array.isArray(cfg?.tickets?.accessRoleIds) ? cfg.tickets.accessRoleIds.filter(Boolean) : [];
 
   // Resolva categoria alvo: usar configurada; senão, garantir uma por defeito
@@ -401,27 +403,39 @@ async function createTicket(interaction, type, customCategory = null) {
     '{category}': departmentInfo(type)?.name || String(type || ''),
     '{priority}': priorityLabel(ticket.priority)
   };
-  const welcome = (cfgTickets.welcomeMsg || `Olá {user}, obrigado por abrir um ticket!`).replace(/\{user\}|\{user_tag\}|\{server\}|\{ticket_id\}/g, (m)=> placeholders[m] || m);
+  
+  // 🆕 Usar welcomeMessage da categoria customizada se disponível
+  let welcome = cfgTickets.welcomeMsg || `Olá {user}, obrigado por abrir um ticket!`;
+  if (customCategory && customCategory.welcomeMessage) {
+    welcome = customCategory.welcomeMessage;
+  }
+  welcome = welcome.replace(/\{user\}|\{user_tag\}|\{server\}|\{ticket_id\}/g, (m)=> placeholders[m] || m);
 
   // Usar os builders V2 do serviço TS para padronizar a aparência
   let embeds;
   try {
     const svc = require('../dist/services/ticketService.js');
     if (svc && typeof svc.buildPanelEmbedsV2 === 'function') {
-      embeds = svc.buildPanelEmbedsV2(interaction.member, departmentInfo(type)?.name || info.name, interaction.guild.iconURL?.() || visualAssets?.realImages?.supportIcon);
+      // 🆕 Usar nome da categoria customizada se disponível
+      const categoryName = customCategory ? customCategory.name : (departmentInfo(type)?.name || info.name);
+      embeds = svc.buildPanelEmbedsV2(interaction.member, categoryName, interaction.guild.iconURL?.() || visualAssets?.realImages?.supportIcon);
     }
   } catch {}
   if (!embeds) {
     // Fallback simples caso o dist ainda não exista
+    // 🆕 Usar cor e nome da categoria customizada se disponível
+    const categoryName = customCategory ? customCategory.name : info.name;
+    const categoryColor = customCategory ? customCategory.color : info.color;
+    
     const introMain = new EmbedBuilder()
-      .setColor(info.color)
+      .setColor(categoryColor)
       .setTitle('Ticket Criado com Sucesso! 📌')
       .setDescription('Todos os responsáveis pelo ticket já estão cientes da abertura.\nEvite chamar alguém via DM, basta aguardar alguém já irá lhe atender..')
       .addFields(
-        { name: 'Categoria Escolhida:', value: `🧾 \`Ticket ${info.name}\``, inline: false },
+        { name: 'Categoria Escolhida:', value: `🧾 \`Ticket ${categoryName}\``, inline: false },
         { name: 'Lembrando', value: 'que os botões são exclusivos para staff!\n\n`DESCREVA O MOTIVO DO CONTACTO COM O MÁXIMO DE DETALHES POSSÍVEIS QUE ALGUM RESPONSÁVEL JÁ IRÁ LHE ATENDER!`', inline: false }
       )
-  .setThumbnail(interaction.guild.iconURL?.() || interaction.user.displayAvatarURL?.() || visualAssets?.realImages?.supportIcon)
+      .setThumbnail(interaction.guild.iconURL?.() || interaction.user.displayAvatarURL?.() || visualAssets?.realImages?.supportIcon)
       .setColor(0x2F3136);
     const introNotice = new EmbedBuilder()
       .setDescription('OBS: Procure manter sua DM aberta para receber uma cópia deste ticket e a opção de avaliar seu atendimento.')
@@ -613,6 +627,47 @@ async function isStaff(interaction) {
 
 async function handleButton(interaction) {
   const id = interaction.customId;
+  
+  // 🆕 Handler para botões de categoria de painéis avançados
+  if (id.startsWith('ticket:category:')) {
+    const categoryId = id.split(':')[2];
+    
+    try {
+      // Buscar categoria escolhida
+      const category = await TicketCategoryModel.findOne({ 
+        _id: categoryId, 
+        guild_id: interaction.guild.id,
+        enabled: true
+      }).lean();
+
+      if (!category) {
+        return safeReply(interaction, { 
+          content: '❌ Categoria não encontrada ou desativada.', 
+          flags: MessageFlags.Ephemeral 
+        });
+      }
+
+      // Buscar painel que contém este botão para obter target_category_id
+      const { PanelModel } = require('./db/models');
+      const panel = await PanelModel.findOne({
+        guild_id: interaction.guild.id,
+        channel_id: interaction.channel.id,
+        message_id: interaction.message.id,
+        selected_categories: categoryId
+      }).lean();
+
+      // Criar ticket com categoria e configuração do painel
+      return createTicket(interaction, 'support', category, panel);
+
+    } catch (error) {
+      logger.error('[Tickets] Error handling category button:', error);
+      return safeReply(interaction, { 
+        content: '❌ Erro ao processar categoria. Tenta novamente.', 
+        flags: MessageFlags.Ephemeral 
+      });
+    }
+  }
+  
   if (id.startsWith('ticket:create:')) {
     const type = id.split(':')[2];
     // Verificar se existem categorias customizáveis para este servidor

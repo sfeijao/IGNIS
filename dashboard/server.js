@@ -1857,6 +1857,201 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
     }
 });
 
+// ========================================
+// POST /api/guild/:guildId/panels
+// Criar novo painel avançado com seleção de categorias
+// ========================================
+app.post('/api/guild/:guildId/panels', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+
+    try {
+        const guildId = req.params.guildId;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+
+        const check = await ensureGuildAdmin(client, guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        const {
+            title,
+            description,
+            icon_url,
+            banner_url,
+            channel_id,
+            target_category_id,
+            selected_categories,
+            template = 'classic',
+            theme = 'dark'
+        } = req.body;
+
+        // Validações
+        if (!channel_id) {
+            return res.status(400).json({ success: false, error: 'channel_id is required' });
+        }
+        if (!target_category_id) {
+            return res.status(400).json({ success: false, error: 'target_category_id is required' });
+        }
+        if (!selected_categories || !Array.isArray(selected_categories) || selected_categories.length === 0) {
+            return res.status(400).json({ success: false, error: 'At least one category must be selected' });
+        }
+
+        // Verificar se canal existe
+        const guild = check.guild;
+        const channel = guild.channels.cache.get(channel_id);
+        if (!channel || channel.type !== 0) {
+            return res.status(400).json({ success: false, error: 'Invalid text channel' });
+        }
+
+        // Criar painel no banco
+        const { PanelModel } = require('../utils/db/models');
+        const panel = await PanelModel.create({
+            guild_id: guildId,
+            channel_id,
+            type: 'tickets',
+            template,
+            theme,
+            title: title || 'Centro de Suporte',
+            description: description || 'Clique em um botão abaixo para abrir um ticket.',
+            icon_url: icon_url || undefined,
+            banner_url: banner_url || undefined,
+            target_category_id,
+            selected_categories
+        });
+
+        // Enviar painel para o Discord
+        try {
+            const { TicketCategoryModel } = require('../utils/db/models');
+            const ticketCategories = await TicketCategoryModel.find({ 
+                guild_id: guildId, 
+                enabled: true 
+            }).sort({ order: 1 }).lean();
+
+            const { sendOrUpdatePanel } = require('../utils/panelBuilder');
+            const message = await sendOrUpdatePanel({
+                client,
+                guildId,
+                channelId: channel_id,
+                panel: panel.toObject(),
+                ticketCategories
+            });
+
+            // Atualizar painel com message_id
+            panel.message_id = message.id;
+            await panel.save();
+        } catch (error) {
+            logger.error('Error sending panel to Discord:', error);
+            // Não falhar a criação se não conseguir enviar
+        }
+
+        return res.status(201).json({
+            success: true,
+            panel
+        });
+
+    } catch (error) {
+        logger.error('Error creating panel:', error);
+        return res.status(500).json({ success: false, error: 'Failed to create panel' });
+    }
+});
+
+// ========================================
+// PATCH /api/guild/:guildId/panels/:panelId
+// Atualizar painel existente
+// ========================================
+app.patch('/api/guild/:guildId/panels/:panelId', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+
+    try {
+        const { guildId, panelId } = req.params;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+
+        const check = await ensureGuildAdmin(client, guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        const {
+            title,
+            description,
+            icon_url,
+            banner_url,
+            channel_id,
+            target_category_id,
+            selected_categories,
+            template,
+            theme
+        } = req.body;
+
+        // Validações opcionais
+        if (selected_categories && (!Array.isArray(selected_categories) || selected_categories.length === 0)) {
+            return res.status(400).json({ success: false, error: 'selected_categories must be a non-empty array' });
+        }
+
+        // Atualizar painel
+        const { PanelModel } = require('../utils/db/models');
+        const updateData = {};
+        if (title !== undefined) updateData.title = title;
+        if (description !== undefined) updateData.description = description;
+        if (icon_url !== undefined) updateData.icon_url = icon_url;
+        if (banner_url !== undefined) updateData.banner_url = banner_url;
+        if (channel_id !== undefined) updateData.channel_id = channel_id;
+        if (target_category_id !== undefined) updateData.target_category_id = target_category_id;
+        if (selected_categories !== undefined) updateData.selected_categories = selected_categories;
+        if (template !== undefined) updateData.template = template;
+        if (theme !== undefined) updateData.theme = theme;
+
+        const panel = await PanelModel.findOneAndUpdate(
+            { _id: panelId, guild_id: guildId },
+            { $set: updateData },
+            { new: true }
+        );
+
+        if (!panel) {
+            return res.status(404).json({ success: false, error: 'Panel not found' });
+        }
+
+        // Atualizar painel no Discord
+        try {
+            const { TicketCategoryModel } = require('../utils/db/models');
+            const ticketCategories = await TicketCategoryModel.find({ 
+                guild_id: guildId, 
+                enabled: true 
+            }).sort({ order: 1 }).lean();
+
+            const { sendOrUpdatePanel } = require('../utils/panelBuilder');
+            const message = await sendOrUpdatePanel({
+                client,
+                guildId,
+                channelId: panel.channel_id,
+                panel: panel.toObject(),
+                ticketCategories,
+                messageId: panel.message_id
+            });
+
+            // Atualizar message_id se mudou
+            if (message.id !== panel.message_id) {
+                panel.message_id = message.id;
+                await panel.save();
+            }
+        } catch (error) {
+            logger.error('Error updating panel in Discord:', error);
+            // Não falhar a atualização se não conseguir enviar
+        }
+
+        return res.json({
+            success: true,
+            panel
+        });
+
+    } catch (error) {
+        logger.error('Error updating panel:', error);
+        return res.status(500).json({ success: false, error: 'Failed to update panel' });
+    }
+});
+
 // Painéis - "Scan now": varredura mais profunda com paginação e limites configuráveis
 app.post('/api/guild/:guildId/panels/scan', async (req, res) => {
     if (!req.isAuthenticated()) {

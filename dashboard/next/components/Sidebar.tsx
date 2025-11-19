@@ -19,8 +19,10 @@ const nav = [
     icon: '🎫', 
     flag: 'stable',
     children: [
+      { href: '/tickets', key: 'nav.tickets.list', icon: '📋' },
+      { href: '/tickets/categories', key: 'nav.tickets.categories', icon: '🏷️' },
+      { href: '/tickets/panels', key: 'nav.tickets.panels', icon: '🎨' },
       { href: '/tickets/config', key: 'nav.tickets.config', icon: '⚙️' },
-      { href: '/tickets/panels', key: 'nav.tickets.panels', icon: '📋' },
     ]
   },
   { href: '/tags', key: 'nav.tags', icon: '🏷️', flag: 'beta' },
@@ -42,7 +44,6 @@ const guildNav = [
   { href: '/guild/{gid}/stats', key: 'nav.stats', icon: '📊', flag: 'beta' },
   { href: '/guild/{gid}/server-stats', key: 'nav.serverStats', icon: '📈', flag: 'beta' },
   { href: '/guild/{gid}/time-tracking', key: 'nav.timeTracking', icon: '⏱️', flag: 'beta' },
-  { href: '/guild/{gid}/ticket-categories', key: 'nav.ticketCategories', icon: '📋', flag: 'stable' },
   { href: '/guild/{gid}/assets', key: 'nav.assets', icon: '🖼️', flag: 'beta' },
   { href: '/guild/{gid}/webhooks-config', key: 'nav.webhooksConfig', icon: '🔗', flag: 'beta' },
 ]

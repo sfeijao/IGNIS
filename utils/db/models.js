@@ -39,7 +39,14 @@ const PanelSchema = new mongoose.Schema({
   type: { type: String, default: 'tickets' },
   theme: { type: String, default: 'dark' },
   template: { type: String, default: 'classic' },
-  payload: { type: Object, default: null }
+  payload: { type: Object, default: null },
+  // ✨ NOVO: Configuração avançada de painéis
+  title: { type: String }, // Título customizado do painel
+  description: { type: String }, // Descrição/mensagem customizada
+  icon_url: { type: String }, // URL do ícone (canto superior direito)
+  banner_url: { type: String }, // URL do banner (parte inferior)
+  target_category_id: { type: String }, // Categoria do servidor onde tickets serão criados
+  selected_categories: [{ type: String }] // IDs das categorias de tickets que aparecem no painel
 }, { timestamps: true });
 
 const TicketModel = mongoose.models.Ticket || mongoose.model('Ticket', TicketSchema);
