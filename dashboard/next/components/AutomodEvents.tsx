@@ -15,14 +15,12 @@ export default function AutomodEvents() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
+  const [enabled, setEnabled] = useState(true)
   const pageSize = 20
-
-  // guildId resolved after mount
 
   const load = async (gid: string) => {
     setLoading(true); setError(null)
     try {
-      // Server supports filter by resolved boolean; pending == resolved=false
       const res = await api.getAutomodEvents(gid, { resolved: false })
       setEvents(res?.events || res || [])
     } catch (e: any) { setError(e?.message || t('automod.loadFailed')) }
@@ -35,7 +33,6 @@ export default function AutomodEvents() {
     if (!guildId) return
     setLoading(true)
     try {
-      // Map UI decisions to server actions
       const action = decision === 'approve' ? 'confirm' : 'release'
       await api.reviewAutomodEvent(guildId, id, action)
       await load(guildId)
@@ -48,54 +45,191 @@ export default function AutomodEvents() {
     if (!q) return base
     return base.filter(ev => [ev.type, ev.userId, ev.content].map(x => (x||'').toLowerCase()).join(' ').includes(q))
   }, [events, search])
+  
   const paged = useMemo(() => filtered.slice(page*pageSize, (page*pageSize)+pageSize), [filtered, page])
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
-  const skeletonCards = Array.from({ length: 4 }).map((_,i) => (
-    <div key={i} className="p-3 rounded-lg bg-neutral-800/30 border border-neutral-800 animate-pulse">
-      <div className="h-3 w-40 bg-neutral-700 rounded mb-2" />
-      <div className="h-3 w-60 bg-neutral-700 rounded mb-2" />
-      <div className="h-8 w-full bg-neutral-700/60 rounded" />
-    </div>
-  ))
+
+  const totalEvents = events.length
+  const pendingEvents = filtered.length
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold">{t('automod.title')}</h2>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => guildId && load(guildId)} title={t('common.reload')}>{t('common.reload')}</button>
+    <div className="space-y-6">
+      {/* Header with Toggle */}
+      <div className="bg-gradient-to-r from-red-600/20 to-orange-600/20 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-4xl">🤖</span>
+            <div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
+                {t('automod.title')}
+              </h2>
+              <p className="text-gray-400 text-sm mt-1">Review and manage automod events</p>
+            </div>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              className="sr-only peer"
+              checked={enabled}
+              onChange={(e) => setEnabled(e.target.checked)}
+            />
+            <div className="w-14 h-7 bg-gray-700 peer-focus:ring-4 peer-focus:ring-red-800 rounded-full peer peer-checked:after:translate-x-7 after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-red-600 peer-checked:to-orange-600"></div>
+          </label>
         </div>
-        <div className="flex items-center gap-2">
-          <input className="input w-48" placeholder={t('common.search')} aria-label={t('common.search')} value={search} onChange={e=>{ setSearch(e.target.value); setPage(0) }} />
-          <div className="flex items-center gap-1 text-xs">
-            <button type="button" className="btn btn-secondary btn-xs" disabled={page===0} onClick={() => setPage(p=>Math.max(0,p-1))}>&lt;</button>
-            <span className="opacity-70">{page+1}/{totalPages}</span>
-            <button type="button" className="btn btn-secondary btn-xs" disabled={page>=totalPages-1} onClick={() => setPage(p=>Math.min(totalPages-1,p+1))}>&gt;</button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-red-600/20 to-orange-600/20 rounded-lg flex items-center justify-center text-2xl">
+              📊
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-white">{totalEvents}</div>
+              <div className="text-sm text-gray-400">Total Events</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-yellow-600/20 to-amber-600/20 rounded-lg flex items-center justify-center text-2xl">
+              ⏳
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-yellow-400">{pendingEvents}</div>
+              <div className="text-sm text-gray-400">Pending Review</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-600/20 to-cyan-600/20 rounded-lg flex items-center justify-center text-2xl">
+              📄
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-cyan-400">{page + 1}/{totalPages}</div>
+              <div className="text-sm text-gray-400">Current Page</div>
+            </div>
           </div>
         </div>
       </div>
-      {error && <div className="text-red-400">{error}</div>}
-      <section className="card">
-        <div className="card-header">{t('automod.queue')}</div>
-        <div className="card-body grid gap-3" role="status" aria-live="polite" aria-busy={loading}>
-          {loading && <div className="grid md:grid-cols-2 gap-3">{skeletonCards}</div>}
-          {!loading && paged.length === 0 && <div className="opacity-70">{t('automod.empty')}</div>}
+
+      {/* Search & Pagination */}
+      <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-2xl">🔍</span>
+          <h3 className="text-lg font-semibold text-white">Search & Filter</h3>
+        </div>
+        <div className="flex flex-col md:flex-row gap-4">
+          <input
+            className="flex-1 bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+            placeholder={t('common.search')}
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(0) }}
+          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl transition-all disabled:opacity-50"
+              disabled={page === 0 || !enabled}
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+            >
+              ◀
+            </button>
+            <span className="text-gray-400 min-w-[80px] text-center">{page + 1} / {totalPages}</span>
+            <button
+              type="button"
+              className="px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl transition-all disabled:opacity-50"
+              disabled={page >= totalPages - 1 || !enabled}
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+            >
+              ▶
+            </button>
+            <button
+              type="button"
+              className="px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all ml-2"
+              onClick={() => guildId && load(guildId)}
+            >
+              🔄 {t('common.reload')}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-600/20 backdrop-blur-xl border border-red-600/50 rounded-xl p-4">
+          <div className="flex items-center gap-2 text-red-400">
+            <span>❌</span>
+            <span>{error}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Events Queue */}
+      <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-2xl">📋</span>
+          <h3 className="text-lg font-semibold text-white">{t('automod.queue')}</h3>
+        </div>
+        
+        <div className="space-y-3">
+          {loading && (
+            <div className="text-center py-12">
+              <div className="inline-block w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+              <div className="text-gray-400">Loading events...</div>
+            </div>
+          )}
+          
+          {!loading && paged.length === 0 && (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">✅</div>
+              <div className="text-gray-400">{t('automod.empty')}</div>
+            </div>
+          )}
+          
           {!loading && paged.map(ev => (
-            <div key={ev.id} className="p-3 rounded-lg bg-neutral-800/50 border border-neutral-800">
-              <div className="text-sm opacity-70">
-                {ev.type} • {ev.userId} • {ev.createdAt ? (
-                  <time suppressHydrationWarning dateTime={new Date(ev.createdAt).toISOString()}>{new Date(ev.createdAt).toLocaleString()}</time>
-                ) : '—'}
-              </div>
-              <div className="mt-1">{ev.content || t('automod.content.empty')}</div>
-              <div className="mt-2 flex gap-2">
-                <button type="button" className="btn btn-primary btn-xs" onClick={() => decide(ev.id, 'approve')}>{t('automod.approve')}</button>
-                <button type="button" className="btn btn-danger btn-xs" onClick={() => decide(ev.id, 'reject')}>{t('automod.reject')}</button>
+            <div key={ev.id} className="bg-gray-900/50 border border-gray-700 hover:border-red-600/50 rounded-xl p-4 transition-all duration-200">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
+                    <span className="px-2 py-1 bg-red-600/20 text-red-400 rounded-lg font-medium">{ev.type}</span>
+                    <span>•</span>
+                    <span className="font-mono">{ev.userId}</span>
+                    <span>•</span>
+                    {ev.createdAt ? (
+                      <time suppressHydrationWarning dateTime={new Date(ev.createdAt).toISOString()}>
+                        {new Date(ev.createdAt).toLocaleString()}
+                      </time>
+                    ) : '—'}
+                  </div>
+                  <div className="text-white break-words">{ev.content || t('automod.content.empty')}</div>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    type="button"
+                    className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => decide(ev.id, 'approve')}
+                    disabled={!enabled}
+                  >
+                    ✓ {t('automod.approve')}
+                  </button>
+                  <button
+                    type="button"
+                    className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => decide(ev.id, 'reject')}
+                    disabled={!enabled}
+                  >
+                    ✗ {t('automod.reject')}
+                  </button>
+                </div>
               </div>
             </div>
           ))}
         </div>
-      </section>
+      </div>
     </div>
   )
 }
