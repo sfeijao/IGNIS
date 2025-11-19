@@ -47,20 +47,34 @@ class WebhookManager {
             // Primeira mensagem - criar nova
             const response = await this.sendWebhook(webhook.url, payload);
             
-            if (response.ok) {
-              const messageData = await response.json();
-              log = await TicketWebhookLogModel.create({
-                ticketId: ticket.id,
-                guildId: ticket.guild_id,
-                webhookUrl: webhook.url,
-                webhookName: webhook.name,
-                messageId: messageData.id,
-                threadId: messageData.thread_id,
-                status: 'sent'
-              });
-              
-              await log.addEvent(event, data);
-              results.push({ success: true, webhook: webhook.name, action: 'created' });
+            if (response && response.ok) {
+              try {
+                const text = await response.text();
+                if (!text) {
+                  console.error(`Webhook ${webhook.name} retornou resposta vazia - provavelmente foi deletado`);
+                  results.push({ success: false, webhook: webhook.name, error: 'Webhook inválido ou deletado' });
+                  continue;
+                }
+                
+                const messageData = JSON.parse(text);
+                log = await TicketWebhookLogModel.create({
+                  ticketId: ticket.id,
+                  guildId: ticket.guild_id,
+                  webhookUrl: webhook.url,
+                  webhookName: webhook.name,
+                  messageId: messageData.id,
+                  threadId: messageData.thread_id,
+                  status: 'sent'
+                });
+                
+                await log.addEvent(event, data);
+                results.push({ success: true, webhook: webhook.name, action: 'created' });
+              } catch (parseError) {
+                console.error(`Erro ao processar resposta do webhook ${webhook.name}:`, parseError);
+                results.push({ success: false, webhook: webhook.name, error: 'Resposta inválida do Discord' });
+              }
+            } else {
+              results.push({ success: false, webhook: webhook.name, error: `HTTP ${response?.status || 'erro'}` });
             }
           } else {
             // Atualizar mensagem existente
@@ -246,6 +260,12 @@ class WebhookManager {
         body: JSON.stringify(payload)
       });
 
+      // Se webhook foi deletado (404) ou não autorizado (401), não retry
+      if (response.status === 404 || response.status === 401) {
+        console.error(`Webhook inválido (${response.status}): Provavelmente foi deletado ou URL está incorreta`);
+        return response;
+      }
+
       if (!response.ok && retries < this.MAX_RETRIES) {
         await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
         return this.sendWebhook(url, payload, retries + 1);
@@ -253,6 +273,7 @@ class WebhookManager {
 
       return response;
     } catch (error) {
+      console.error('Erro ao enviar webhook:', error);
       if (retries < this.MAX_RETRIES) {
         await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
         return this.sendWebhook(url, payload, retries + 1);
@@ -278,6 +299,12 @@ class WebhookManager {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+
+      // Se webhook foi deletado, retornar false sem erro
+      if (response.status === 404 || response.status === 401) {
+        console.error(`Webhook ou mensagem não encontrada (${response.status}): Pode ter sido deletado`);
+        return false;
+      }
 
       return response.ok;
     } catch (error) {
