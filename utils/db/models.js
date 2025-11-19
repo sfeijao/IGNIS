@@ -74,7 +74,7 @@ const TicketCategoryModel = mongoose.models.TicketCategory || mongoose.model('Ti
 
 // ✨ NOVO: Schema para sistema de boas-vindas e saídas
 const WelcomeConfigSchema = new mongoose.Schema({
-  guild_id: { type: String, required: true, unique: true, index: true },
+  guild_id: { type: String, required: true, unique: true },
   welcome: {
     enabled: { type: Boolean, default: false },
     channel_id: { type: String },

@@ -142,7 +142,6 @@ const ServerStatsConfigSchema = new mongoose.Schema({
 });
 
 // Indexes para queries eficientes
-ServerStatsConfigSchema.index({ guild_id: 1 });
 ServerStatsConfigSchema.index({ enabled: 1 });
 ServerStatsConfigSchema.index({ last_update_at: 1 });
 

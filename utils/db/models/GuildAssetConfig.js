@@ -80,9 +80,6 @@ const GuildAssetConfigSchema = new mongoose.Schema({
   } 
 });
 
-// Indexes
-GuildAssetConfigSchema.index({ guild_id: 1 });
-
 // Métodos estáticos
 GuildAssetConfigSchema.statics.findByGuild = function(guildId) {
   return this.findOne({ guild_id: guildId });
