@@ -4,8 +4,7 @@ const webhookConfigSchema = new mongoose.Schema({
   guildId: {
     type: String,
     required: true,
-    unique: true,
-    index: true
+    unique: true
   },
   logsEnabled: {
     tickets: { type: Boolean, default: false },

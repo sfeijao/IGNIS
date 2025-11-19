@@ -10,8 +10,7 @@ const ServerStatsConfigSchema = new mongoose.Schema({
   guild_id: { 
     type: String, 
     required: true, 
-    unique: true, 
-    index: true 
+    unique: true 
   },
   
   // Status geral do sistema

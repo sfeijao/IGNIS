@@ -19,7 +19,6 @@ const GiveawayClaimSchema = new mongoose.Schema({
   },
   guild_id: { 
     type: String, 
-    index: true, 
     required: true 
   },
   winner_id: { 
@@ -36,8 +35,7 @@ const GiveawayClaimSchema = new mongoose.Schema({
   
   // Ticket de reclamação
   ticket_channel_id: { 
-    type: String, 
-    index: true 
+    type: String 
   },
   ticket_id: { 
     type: mongoose.Schema.Types.ObjectId, 
