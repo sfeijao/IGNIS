@@ -13,6 +13,7 @@ export default function OutgoingWebhooksManager(){
 	const { toast } = useToast()
 	const [items, setItems] = useState<Item[]>([])
 	const [loading, setLoading] = useState(false)
+	const [enabled, setEnabled] = useState(true)
 	const [form, setForm] = useState({ type: 'transcript', url: '', channelId: '' })
 	const [editing, setEditing] = useState<{ id: string; url: string } | null>(null)
 	const [activateTesting, setActivateTesting] = useState<string | null>(null)
@@ -61,7 +62,6 @@ export default function OutgoingWebhooksManager(){
 		try {
 			const item = items.find(i=> i.id === id)
 			if(!item) throw new Error('Não encontrado')
-			// Prefer dedicated endpoint; fallback to PATCH if not available
 			try {
 				await api.testActivateOutgoingWebhook(guildId, id)
 			} catch(err:any){
@@ -133,89 +133,187 @@ export default function OutgoingWebhooksManager(){
 		} catch(e:any){ toast({ type:'error', title:'Falhou bulk teste', description: e.message }) } finally { setLoading(false) }
 	}
 
+	const totalWebhooks = items.length
+	const activeWebhooks = items.filter(i => i.enabled).length
+	const successfulTests = items.filter(i => i.lastOk === true).length
+
 	return (
-		<div className='space-y-4'>
-			<div className='card p-4 space-y-3'>
-				<div className='flex flex-wrap gap-4'>
-					<div>
-						<label htmlFor='out-type' className='text-xs text-neutral-400'>Tipo</label>
-						<select id='out-type' name='type' className='mt-1 bg-neutral-900 border border-neutral-700 rounded px-2 py-1' value={form.type} onChange={e=> setForm(f=>({...f, type:e.target.value}))}>
+		<div className='space-y-6'>
+			{/* Header with Toggle */}
+			<div className="bg-gradient-to-r from-teal-600/20 to-green-600/20 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-3">
+						<span className="text-4xl">🔗</span>
+						<div>
+							<h2 className="text-2xl font-bold bg-gradient-to-r from-teal-400 to-green-400 bg-clip-text text-transparent">
+								Outgoing Webhooks
+							</h2>
+							<p className="text-gray-400 text-sm mt-1">Manage external webhook integrations</p>
+						</div>
+					</div>
+					<label className="relative inline-flex items-center cursor-pointer">
+						<input
+							type="checkbox"
+							className="sr-only peer"
+							checked={enabled}
+							onChange={(e) => setEnabled(e.target.checked)}
+						/>
+						<div className="w-14 h-7 bg-gray-700 peer-focus:ring-4 peer-focus:ring-teal-800 rounded-full peer peer-checked:after:translate-x-7 after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-teal-600 peer-checked:to-green-600"></div>
+					</label>
+				</div>
+			</div>
+
+			{/* Stats Cards */}
+			<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+				<div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+					<div className="flex items-center gap-3">
+						<div className="w-12 h-12 bg-gradient-to-br from-teal-600/20 to-green-600/20 rounded-lg flex items-center justify-center text-2xl">
+							📊
+						</div>
+						<div>
+							<div className="text-2xl font-bold text-white">{totalWebhooks}</div>
+							<div className="text-sm text-gray-400">Total Webhooks</div>
+						</div>
+					</div>
+				</div>
+
+				<div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+					<div className="flex items-center gap-3">
+						<div className="w-12 h-12 bg-gradient-to-br from-green-600/20 to-emerald-600/20 rounded-lg flex items-center justify-center text-2xl">
+							✅
+						</div>
+						<div>
+							<div className="text-2xl font-bold text-green-400">{activeWebhooks}</div>
+							<div className="text-sm text-gray-400">Active</div>
+						</div>
+					</div>
+				</div>
+
+				<div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+					<div className="flex items-center gap-3">
+						<div className="w-12 h-12 bg-gradient-to-br from-blue-600/20 to-cyan-600/20 rounded-lg flex items-center justify-center text-2xl">
+							✓
+						</div>
+						<div>
+							<div className="text-2xl font-bold text-cyan-400">{successfulTests}</div>
+							<div className="text-sm text-gray-400">Last Test OK</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			{/* Create Webhook */}
+			<div className='bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6'>
+				<div className="flex items-center gap-3 mb-6">
+					<span className="text-2xl">➕</span>
+					<h3 className="text-lg font-semibold text-white">Create New Webhook</h3>
+				</div>
+				<div className='grid grid-cols-1 md:grid-cols-5 gap-4'>
+					<div className="space-y-2">
+						<label className="text-sm font-medium text-gray-300">Tipo</label>
+						<select className='w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all' value={form.type} onChange={e=> setForm(f=>({...f, type:e.target.value}))}>
 							{TYPES.map(t=> <option key={t} value={t}>{t}</option>)}
 						</select>
 					</div>
-					<div className='flex-1 min-w-[240px]'>
-						<label htmlFor='out-url' className='text-xs text-neutral-400'>URL (https)</label>
-						<input id='out-url' name='url' className='mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1' value={form.url} onChange={e=> setForm(f=>({...f, url:e.target.value}))} placeholder='https://example.com/webhook' />
+					<div className='md:col-span-2 space-y-2'>
+						<label className="text-sm font-medium text-gray-300">URL (https)</label>
+						<input className='w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all' value={form.url} onChange={e=> setForm(f=>({...f, url:e.target.value}))} placeholder='https://example.com/webhook' />
 					</div>
-					<div>
-						<label htmlFor='out-channelId' className='text-xs text-neutral-400'>ChannelId (opcional)</label>
-						<input id='out-channelId' name='channelId' className='mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1' value={form.channelId} onChange={e=> setForm(f=>({...f, channelId:e.target.value}))} placeholder='1234567890' />
+					<div className="space-y-2">
+						<label className="text-sm font-medium text-gray-300">ChannelId (opcional)</label>
+						<input className='w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all' value={form.channelId} onChange={e=> setForm(f=>({...f, channelId:e.target.value}))} placeholder='1234567890' />
 					</div>
-					<button type='button' disabled={loading} onClick={create} className='self-end mt-5 px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 disabled:opacity-50'>Criar</button>
+					<div className="flex items-end">
+						<button type='button' disabled={loading || !enabled} onClick={create} className='w-full py-3 px-6 bg-gradient-to-r from-teal-600 to-green-600 hover:from-teal-500 hover:to-green-500 text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed'>Criar</button>
+					</div>
 				</div>
 			</div>
-			<div className='card p-4 space-y-3'>
-				<div className='flex items-center gap-3'>
-					<button type='button' onClick={()=> setBulkTestOpen(o=> !o)} className='px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-xs'>Teste Todos (bulk)</button>
-					{bulkTestOpen && <button type='button' onClick={doBulkTest} className='px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 text-xs'>Enviar Bulk</button>}
-					{bulkTestOpen && <button type='button' onClick={()=> setBulkTestOpen(false)} className='px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-xs'>Cancelar</button>}
+
+			{/* Bulk Test */}
+			<div className='bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6'>
+				<div className='flex items-center justify-between mb-4'>
+					<div className="flex items-center gap-3">
+						<span className="text-2xl">🧪</span>
+						<h3 className="text-lg font-semibold text-white">Bulk Testing</h3>
+					</div>
+					<button type='button' onClick={()=> setBulkTestOpen(o=> !o)} className='px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all'>
+						{bulkTestOpen ? 'Fechar' : 'Abrir Bulk Test'}
+					</button>
 				</div>
 				{bulkTestOpen && (
-					<div>
-						<label htmlFor='out-bulk-payload' className='text-xs text-neutral-400'>Payload JSON para todos</label>
-						<textarea id='out-bulk-payload' name='bulkPayload' className='mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs h-24' value={bulkPayload} onChange={e=> setBulkPayload(e.target.value)} />
-						<p className='text-[10px] text-neutral-500 mt-1'>Este payload será enviado a todos os webhooks ativos.</p>
+					<div className="space-y-4">
+						<div className="space-y-2">
+							<label className="text-sm font-medium text-gray-300">Payload JSON para todos</label>
+							<textarea className='w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all text-sm h-24 font-mono' value={bulkPayload} onChange={e=> setBulkPayload(e.target.value)} />
+							<p className='text-xs text-gray-500'>Este payload será enviado a todos os webhooks ativos.</p>
+						</div>
+						<div className="flex gap-3">
+							<button type='button' onClick={doBulkTest} disabled={!enabled} className='px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg transition-all disabled:opacity-50'>Enviar Bulk Test</button>
+							<button type='button' onClick={()=> setBulkTestOpen(false)} className='px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all'>Cancelar</button>
+						</div>
 					</div>
 				)}
 			</div>
-			<div className='card p-0'>
-				<div className='divide-y divide-neutral-800'>
-					{loading && <div className='p-4 text-neutral-400'>A carregar…</div>}
-					{!loading && items.length === 0 && <div className='p-4 text-neutral-500 text-sm'>Nenhum webhook configurado.</div>}
+
+			{/* Webhooks List */}
+			<div className='bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6'>
+				<div className="flex items-center gap-3 mb-6">
+					<span className="text-2xl">📋</span>
+					<h3 className="text-lg font-semibold text-white">Configured Webhooks</h3>
+				</div>
+				<div className='space-y-3'>
+					{loading && <div className='text-center py-12'><div className="inline-block w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mb-4"></div><div className="text-gray-400">A carregar...</div></div>}
+					{!loading && items.length === 0 && <div className='text-center py-12'><div className="text-6xl mb-4">📭</div><div className='text-gray-400'>Nenhum webhook configurado.</div></div>}
 					{items.map(i => (
-						<div key={i.id} className='p-4 space-y-2'>
-							<div className='flex items-center gap-3'>
+						<div key={i.id} className='bg-gray-900/50 border border-gray-700 hover:border-teal-600/50 rounded-xl p-5 space-y-3 transition-all duration-200'>
+							<div className='flex items-start gap-3 flex-wrap'>
 								<div className='flex-1 min-w-0'>
-									<div className='text-neutral-200 truncate'>
-										{i.type} {i.enabled ? <span className='ml-1 text-[10px] px-2 py-0.5 rounded-full border border-emerald-700/60 text-emerald-300'>ativo</span> : <span className='ml-1 text-[10px] px-2 py-0.5 rounded-full border border-neutral-700 text-neutral-400'>inativo</span>}
+									<div className='flex items-center gap-2 mb-2'>
+										<span className='px-3 py-1 bg-teal-600/20 text-teal-400 rounded-lg text-sm font-medium uppercase'>{i.type}</span>
+										{i.enabled ? 
+											<span className='px-3 py-1 rounded-lg border border-green-700/60 text-green-300 text-xs'>ativo</span> : 
+											<span className='px-3 py-1 rounded-lg border border-gray-700 text-gray-400 text-xs'>inativo</span>
+										}
 										{i.lastOk != null && (
 											<span
 												title={`${i.lastOk ? 'Último teste OK' : 'Último teste falhou'}${i.lastStatus != null ? ` (status ${i.lastStatus})` : ''}${i.lastAt ? ` em ${new Date(i.lastAt).toLocaleString()}` : ''}${i.lastError ? `\nErro: ${i.lastError}` : ''}`}
-												className={`ml-2 text-[10px] px-2 py-0.5 rounded-full border ${i.lastOk ? 'border-emerald-700/60 text-emerald-300' : 'border-rose-700/60 text-rose-300'}`}
+												className={`px-3 py-1 rounded-lg border text-xs ${i.lastOk ? 'border-green-700/60 text-green-300' : 'border-rose-700/60 text-rose-300'}`}
 											>
-												{i.lastOk ? 'ok' : 'falha'}{i.lastStatus != null ? ` ${i.lastStatus}` : ''}
+												{i.lastOk ? '✓ ok' : '✗ falha'}{i.lastStatus != null ? ` ${i.lastStatus}` : ''}
 											</span>
 										)}
 									</div>
-										<div className='text-xs text-neutral-500 truncate'>
-											{i.id} • {i.channelId || '—'} • {i.urlMasked} {i.lastAt ? `• ${new Date(i.lastAt).toLocaleTimeString()}` : ''}
-											{i.lastError && <span className='ml-2 text-[10px] text-rose-400' title={i.lastError}>({i.lastError.slice(0,60)})</span>}
-										</div>
+									<div className='text-xs text-gray-500 truncate font-mono'>
+										{i.id} • {i.channelId || '—'} • {i.urlMasked} {i.lastAt ? `• ${new Date(i.lastAt).toLocaleTimeString()}` : ''}
+									</div>
+									{i.lastError && <div className='text-xs text-rose-400 mt-1' title={i.lastError}>Error: {i.lastError.slice(0,80)}</div>}
 								</div>
-									<button type='button' onClick={()=> startTestPayload(i)} className='px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700'>Testar</button>
-									{!i.enabled && <button type='button' disabled={activateTesting===i.id} onClick={()=> testAndActivate(i.id)} className='px-2 py-1 text-xs rounded bg-brand-700/80 border border-brand-600 hover:bg-brand-700 disabled:opacity-50'>{activateTesting===i.id ? 'A testar...' : 'Testar & Ativar'}</button>}
-								<button type='button' onClick={()=> toggle(i.id)} className='px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700'>{i.enabled ? 'Desativar' : 'Ativar'}</button>
-								{editing?.id === i.id ? (
-									<button type='button' onClick={saveEdit} className='px-2 py-1 text-xs rounded bg-brand-600 hover:bg-brand-700'>Guardar</button>
-								) : (
-									<button type='button' onClick={()=> startEdit(i)} className='px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700'>Editar URL</button>
-								)}
-								<button type='button' onClick={()=> remove(i.id)} className='px-2 py-1 text-xs rounded bg-rose-600 hover:bg-rose-500'>Remover</button>
+								<div className='flex gap-2 flex-wrap'>
+									<button type='button' onClick={()=> startTestPayload(i)} disabled={!enabled} className='px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all disabled:opacity-50'>🧪 Testar</button>
+									{!i.enabled && <button type='button' disabled={activateTesting===i.id || !enabled} onClick={()=> testAndActivate(i.id)} className='px-3 py-1.5 text-xs bg-teal-700/80 border border-teal-600 hover:bg-teal-700 text-white rounded-lg transition-all disabled:opacity-50'>{activateTesting===i.id ? 'A testar...' : '⚡ Testar & Ativar'}</button>}
+									<button type='button' onClick={()=> toggle(i.id)} disabled={!enabled} className='px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all disabled:opacity-50'>{i.enabled ? 'Desativar' : 'Ativar'}</button>
+									{editing?.id === i.id ? (
+										<button type='button' onClick={saveEdit} className='px-3 py-1.5 text-xs bg-teal-600 hover:bg-teal-500 text-white rounded-lg transition-all'>💾 Guardar</button>
+									) : (
+										<button type='button' onClick={()=> startEdit(i)} disabled={!enabled} className='px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all disabled:opacity-50'>✏️ Editar URL</button>
+									)}
+									<button type='button' onClick={()=> remove(i.id)} disabled={!enabled} className='px-3 py-1.5 text-xs bg-red-600 hover:bg-red-500 text-white rounded-lg transition-all disabled:opacity-50'>🗑️ Remover</button>
+								</div>
 							</div>
 							{editing?.id === i.id && (
 								<div className='flex gap-2 items-center'>
-									<input aria-label='Editar URL do webhook' className='flex-1 bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs' placeholder='https://example.com/webhook' value={editing.url} onChange={e=> setEditing(ed=> ed ? { ...ed, url: e.target.value } : ed)} />
-									<button type='button' onClick={()=> setEditing(null)} className='px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700'>Cancelar</button>
+									<input aria-label='Editar URL do webhook' className='flex-1 bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-2 text-white text-sm focus:ring-2 focus:ring-teal-500' placeholder='https://example.com/webhook' value={editing.url} onChange={e=> setEditing(ed=> ed ? { ...ed, url: e.target.value } : ed)} />
+									<button type='button' onClick={()=> setEditing(null)} className='px-3 py-2 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all'>Cancelar</button>
 								</div>
 							)}
 							{testing?.id === i.id && (
-								<div className='space-y-2'>
-									<textarea aria-label='Payload de teste' className='w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs h-20' value={testing.payload} onChange={e=> setTesting(t=> t ? { ...t, payload: e.target.value } : t)} />
+								<div className='space-y-3 bg-gray-800/50 rounded-xl p-4'>
+									<textarea aria-label='Payload de teste' className='w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white text-sm h-24 font-mono focus:ring-2 focus:ring-teal-500' value={testing.payload} onChange={e=> setTesting(t=> t ? { ...t, payload: e.target.value } : t)} />
 									<div className='flex gap-2'>
-										<button type='button' onClick={sendTestPayload} className='px-3 py-1 text-xs rounded bg-brand-600 hover:bg-brand-700'>Enviar Teste</button>
-										<button type='button' onClick={()=> setTesting(null)} className='px-3 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700'>Cancelar</button>
+										<button type='button' onClick={sendTestPayload} className='px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg transition-all text-sm'>Enviar Teste</button>
+										<button type='button' onClick={()=> setTesting(null)} className='px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all text-sm'>Cancelar</button>
 									</div>
-									<p className='text-[10px] text-neutral-500'>Envie JSON personalizado. Ex: {`{"ticketId":"123","test":true}`}</p>
+									<p className='text-xs text-gray-500'>Envie JSON personalizado. Ex: {`{"ticketId":"123","test":true}`}</p>
 								</div>
 							)}
 						</div>

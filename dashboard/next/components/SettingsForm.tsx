@@ -56,6 +56,7 @@ export default function SettingsForm() {
   const [uploadingIcon, setUploadingIcon] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [enabled, setEnabled] = useState(true)
   const guildId = useGuildId()
   const { t } = useI18n()
   const { toast } = useToast()
@@ -84,7 +85,6 @@ export default function SettingsForm() {
     }
   }
 
-  // Computed: which roles are missing (unverified is optional)
   const missingRoles = useMemo(() => {
     const missing: string[] = []
     if (!botSettings.staffRoleId) missing.push(t('settings.bot.systemRoles.staff'))
@@ -95,7 +95,6 @@ export default function SettingsForm() {
 
   useEffect(() => {
     if (!guildId) return
-    // attempt load; if endpoint not ready, keep defaults silently
     ;(async () => {
       try {
         const data = await api.getSettings?.(guildId)
@@ -159,7 +158,6 @@ export default function SettingsForm() {
     }
   }
 
-  // Load persisted banner crop preference (per guild)
   useEffect(() => {
     if (!guildId || typeof window === 'undefined') return
     try {
@@ -169,7 +167,6 @@ export default function SettingsForm() {
     } catch {}
   }, [guildId])
 
-  // Persist banner crop preference when toggled
   useEffect(() => {
     if (!guildId || typeof window === 'undefined') return
     try {
@@ -183,17 +180,14 @@ export default function SettingsForm() {
     setSaving(true)
     try {
       await api.postSettings?.(guildId, settings)
-      // Map UI to API payload
       const payload: Record<string, any> = {
         nickname: botSettings.nickname || '',
         presenceStatus: botSettings.presenceStatus || 'online',
         statusType: botSettings.statusType || 'CUSTOM',
         statusText: botSettings.statusText || '',
       }
-      // Always send banner/icon so clearing the field persists removal server-side
       payload.bannerUrl = botSettings.bannerUrl || ''
       payload.iconUrl = botSettings.iconUrl || ''
-      // Role mappings (only send if present to avoid wiping existing settings inadvertently)
       if (botSettings.staffRoleId) payload.staffRoleId = botSettings.staffRoleId
       if (botSettings.adminRoleId) payload.adminRoleId = botSettings.adminRoleId
       if (botSettings.verifiedRoleId) payload.verifiedRoleId = botSettings.verifiedRoleId
@@ -210,12 +204,10 @@ export default function SettingsForm() {
 
   const onSelectBannerFile = async (file: File) => {
     if (!guildId || !file) return
-    // Aceitar PNG, JPG, JPEG, WEBP, GIF, AVIF, SVG
     if (!/^image\/(png|jpe?g|webp|gif|avif|svg\+xml)$/i.test(file.type)) {
       toast({ type: 'error', title: t('settings.bot.banner.typeError') })
       return
     }
-    // Limite aumentado para 50MB
     if (file.size > 50 * 1024 * 1024) {
       toast({ type: 'error', title: t('settings.bot.banner.sizeError') })
       return
@@ -231,9 +223,7 @@ export default function SettingsForm() {
       const originalDataUrl = await toDataUrl(file)
 
       const maybeResize = async (src: string, f: File) => {
-        // Skip animated GIFs to keep animation intact
         if (/image\/gif/i.test(f.type)) return src
-        // Draw into canvas: either crop-to-fill 1600×400, or fit-inside preserving aspect ratio
         const img = await new Promise<HTMLImageElement>((resolve, reject) => {
           const im = new Image()
           im.onload = () => resolve(im)
@@ -249,18 +239,14 @@ export default function SettingsForm() {
         if (!ctx) return src
 
         if (bannerCropToFill) {
-          // Avoid aggressive upscaling for tiny images
           if (w < targetW && h < targetH) return src
-          // Center crop to target aspect ratio (4:1)
           const targetRatio = targetW / targetH
           const srcRatio = w / h
           let sx = 0, sy = 0, sw = w, sh = h
           if (srcRatio > targetRatio) {
-            // source wider -> crop width
             sw = Math.floor(h * targetRatio)
             sx = Math.floor((w - sw) / 2)
           } else if (srcRatio < targetRatio) {
-            // source taller -> crop height
             sh = Math.floor(w / targetRatio)
             sy = Math.floor((h - sh) / 2)
           }
@@ -268,16 +254,14 @@ export default function SettingsForm() {
           canvas.height = targetH
           ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH)
         } else {
-          // Fit-inside without upscaling
           const scale = Math.min(1, Math.min(targetW / w, targetH / h))
-          if (scale >= 1) return src // already within bounds
+          if (scale >= 1) return src
           const nw = Math.max(1, Math.floor(w * scale))
           const nh = Math.max(1, Math.floor(h * scale))
           canvas.width = nw
           canvas.height = nh
           ctx.drawImage(img, 0, 0, nw, nh)
         }
-        // Prefer WEBP for size; fallback to JPEG if not supported
         const targetType = 'image/webp'
         const quality = 0.85
         try {
@@ -304,9 +288,7 @@ export default function SettingsForm() {
 
   const onSelectIconFile = async (file: File) => {
     if (!guildId || !file) return
-  // Aceitar PNG, JPG, JPEG, WEBP, GIF, AVIF, SVG
   if (!/^image\/(png|jpe?g|webp|gif|avif|svg\+xml)$/i.test(file.type)) { toast({ type: 'error', title: t('settings.bot.icon.typeError') }); return }
-  // Limite aumentado para 50MB
   if (file.size > 50 * 1024 * 1024) { toast({ type: 'error', title: t('settings.bot.icon.sizeError') }); return }
     setUploadingIcon(true)
     try {
@@ -339,77 +321,115 @@ export default function SettingsForm() {
   }
 
   return (
-    <form className="card p-5 max-w-xl space-y-4" onSubmit={(e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); save() }}>
-      <div>
-        <label htmlFor="prefix" className="block text-sm mb-1">{t('settings.prefix')}</label>
-        <input
-          id="prefix"
-          title={t('settings.prefix')}
-          placeholder={t('settings.prefix.placeholder')}
-          className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
-          value={settings.prefix}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings((s: Settings) => ({ ...s, prefix: e.target.value }))}
-        />
-      </div>
-      <div>
-        <label htmlFor="locale" className="block text-sm mb-1">{t('settings.locale')}</label>
-        <select
-          id="locale"
-          title={t('settings.locale')}
-          className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
-          value={settings.locale}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings((s: Settings) => ({ ...s, locale: e.target.value }))}
-        >
-          <option value="pt">{t('settings.locale.pt')}</option>
-          <option value="en">{t('settings.locale.en')}</option>
-        </select>
-      </div>
-      <div className="flex items-center gap-2">
-        <input
-          id="logsEnabled"
-          type="checkbox"
-          className="h-4 w-4"
-          checked={settings.logsEnabled}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings((s: Settings) => ({ ...s, logsEnabled: e.target.checked }))}
-        />
-        <label htmlFor="logsEnabled" className="text-sm">{t('settings.logsEnabled')}</label>
-      </div>
-      <div>
-        <label htmlFor="modlog" className="block text-sm mb-1">{t('settings.modlogChannelId')}</label>
-        <select
-          id="modlog"
-          title={t('settings.modlogChannelId')}
-          className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
-          value={settings.modlogChannelId}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings((s: Settings) => ({ ...s, modlogChannelId: e.target.value }))}
-        >
-          <option value="">—</option>
-          {channels.filter(isTextChannel).map(ch => (
-            <option key={ch.id} value={ch.id}>{`#${ch.name} (${channelTypeLabel(ch)})`}</option>
-          ))}
-        </select>
+    <form className="space-y-6" onSubmit={(e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); save() }}>
+      {/* Header with Toggle */}
+      <div className="bg-gradient-to-r from-gray-600/20 to-slate-600/20 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-4xl">⚙️</span>
+            <div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-400 to-slate-400 bg-clip-text text-transparent">
+                Server Settings
+              </h2>
+              <p className="text-gray-400 text-sm mt-1">Configure your bot and server preferences</p>
+            </div>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              className="sr-only peer"
+              checked={enabled}
+              onChange={(e) => setEnabled(e.target.checked)}
+            />
+            <div className="w-14 h-7 bg-gray-700 peer-focus:ring-4 peer-focus:ring-gray-800 rounded-full peer peer-checked:after:translate-x-7 after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-gray-600 peer-checked:to-slate-600"></div>
+          </label>
+        </div>
       </div>
 
-      {/* Personalization */}
-      <div className="mt-6 pt-4 border-t border-neutral-800">
-        <h2 className="text-lg font-semibold mb-3">{t('settings.bot.title')}</h2>
+      {/* Basic Settings */}
+      <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-2xl">🔧</span>
+          <h3 className="text-lg font-semibold text-white">Basic Configuration</h3>
+        </div>
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="nickname" className="block text-sm mb-1">{t('settings.bot.nickname')}</label>
+            <label htmlFor="prefix" className="block text-sm mb-2 text-gray-300 font-medium">{t('settings.prefix')}</label>
+            <input
+              id="prefix"
+              title={t('settings.prefix')}
+              placeholder={t('settings.prefix.placeholder')}
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+              value={settings.prefix}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings((s: Settings) => ({ ...s, prefix: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label htmlFor="locale" className="block text-sm mb-2 text-gray-300 font-medium">{t('settings.locale')}</label>
+            <select
+              id="locale"
+              title={t('settings.locale')}
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+              value={settings.locale}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings((s: Settings) => ({ ...s, locale: e.target.value }))}
+            >
+              <option value="pt">{t('settings.locale.pt')}</option>
+              <option value="en">{t('settings.locale.en')}</option>
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <label htmlFor="modlog" className="block text-sm mb-2 text-gray-300 font-medium">{t('settings.modlogChannelId')}</label>
+            <select
+              id="modlog"
+              title={t('settings.modlogChannelId')}
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
+              value={settings.modlogChannelId}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings((s: Settings) => ({ ...s, modlogChannelId: e.target.value }))}
+            >
+              <option value="">—</option>
+              {channels.filter(isTextChannel).map(ch => (
+                <option key={ch.id} value={ch.id}>{`#${ch.name} (${channelTypeLabel(ch)})`}</option>
+              ))}
+            </select>
+          </div>
+          <div className="md:col-span-2 flex items-center gap-3">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={settings.logsEnabled}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings((s: Settings) => ({ ...s, logsEnabled: e.target.checked }))}
+              />
+              <div className="w-11 h-6 bg-gray-700 peer-focus:ring-4 peer-focus:ring-gray-800 rounded-full peer peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-green-600 peer-checked:to-emerald-600"></div>
+            </label>
+            <span className="text-sm text-gray-300">{t('settings.logsEnabled')}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Bot Personalization */}
+      <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-2xl">🤖</span>
+          <h3 className="text-lg font-semibold text-white">{t('settings.bot.title')}</h3>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="nickname" className="block text-sm mb-2 text-gray-300 font-medium">{t('settings.bot.nickname')}</label>
             <input
               id="nickname"
               placeholder={t('settings.bot.nickname.placeholder')}
-              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
               value={botSettings.nickname || ''}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBotSettings((s) => ({ ...s, nickname: e.target.value }))}
             />
-            <p className="text-xs text-neutral-400 mt-1">{t('settings.bot.nickname.hint')}</p>
+            <p className="text-xs text-gray-400 mt-1">{t('settings.bot.nickname.hint')}</p>
           </div>
           <div>
-            <label htmlFor="presenceStatus" className="block text-sm mb-1">{t('settings.bot.presence')}</label>
+            <label htmlFor="presenceStatus" className="block text-sm mb-2 text-gray-300 font-medium">{t('settings.bot.presence')}</label>
             <select
               id="presenceStatus"
-              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
               value={botSettings.presenceStatus || 'online'}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings((s) => ({ ...s, presenceStatus: e.target.value as any }))}
             >
@@ -420,10 +440,10 @@ export default function SettingsForm() {
             </select>
           </div>
           <div>
-            <label htmlFor="statusType" className="block text-sm mb-1">{t('settings.bot.activityType')}</label>
+            <label htmlFor="statusType" className="block text-sm mb-2 text-gray-300 font-medium">{t('settings.bot.activityType')}</label>
             <select
               id="statusType"
-              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
               value={botSettings.statusType || 'CUSTOM'}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings((s) => ({ ...s, statusType: e.target.value as any }))}
             >
@@ -435,247 +455,250 @@ export default function SettingsForm() {
             </select>
           </div>
           <div>
-            <label htmlFor="statusText" className="block text-sm mb-1">{t('settings.bot.activityText')}</label>
+            <label htmlFor="statusText" className="block text-sm mb-2 text-gray-300 font-medium">{t('settings.bot.activityText')}</label>
             <input
               id="statusText"
               placeholder={t('settings.bot.activityText.placeholder')}
-              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all"
               value={botSettings.statusText || ''}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBotSettings((s) => ({ ...s, statusText: e.target.value }))}
             />
           </div>
-          {/* System Roles Section (moved up for visibility) */}
-          <div className="md:col-span-2 mb-6 pb-4 border-b border-neutral-800">
-            {missingRoles.length > 0 && (
-              <div className="mb-3 rounded-md border border-amber-500/50 bg-amber-500/10 text-amber-200 text-sm p-2">
-                {t('settings.bot.systemRoles.warn.missing')} {missingRoles.join(', ')}
-              </div>
-            )}
-            {/* Fallback / diagnostic when roles failed to load */}
-            {rolesError && (
-              <div className="mb-3 rounded-md border border-rose-600 bg-rose-900/40 text-rose-200 text-xs p-2 flex items-center gap-3">
-                <span>{t('settings.bot.systemRoles.loadingFailed')}</span>
-                <button type="button" onClick={retryLoadRoles} className="px-2 py-1 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-rose-100 text-xs">
-                  {t('settings.bot.systemRoles.retry')}
-                </button>
-              </div>
-            )}
-            {!rolesError && roles.length === 0 && loaded && (
-              <div className="mb-3 rounded-md border border-neutral-700 bg-neutral-800/60 text-neutral-300 text-xs p-2">
-                {!guildId && t('settings.bot.systemRoles.noGuild')}
-                {guildId && rolesLoading && t('settings.bot.systemRoles.loading')}
-                {guildId && !rolesLoading && t('settings.bot.systemRoles.rolesEmpty')}
-              </div>
-            )}
-            <h3 className="text-md font-semibold mb-3">{t('settings.bot.systemRoles.title')}</h3>
-            <p className="text-xs text-neutral-400 mb-4">{t('settings.bot.systemRoles.help')}</p>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="staffRoleId" className="block text-sm mb-1">{t('settings.bot.systemRoles.staff')}</label>
-                <select
-                  id="staffRoleId"
-                  className={`w-full rounded-lg bg-neutral-900 border px-3 py-2 ${!botSettings.staffRoleId ? 'border-rose-600' : 'border-neutral-800'}`}
-                  value={botSettings.staffRoleId || ''}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, staffRoleId: e.target.value }))}
-                >
-                  <option value="">—</option>
-                  {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
-                  {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
-                  {!rolesLoading && roles.length === 0 && !rolesError && <option disabled value="">{guildId ? t('settings.bot.systemRoles.selectGuildFirst') : t('settings.bot.systemRoles.selectGuildFirst')}</option>}
-                </select>
-                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.staff.hint')}</p>
-              </div>
-              <div>
-                <label htmlFor="adminRoleId" className="block text-sm mb-1">{t('settings.bot.systemRoles.admin')}</label>
-                <select
-                  id="adminRoleId"
-                  className={`w-full rounded-lg bg-neutral-900 border px-3 py-2 ${!botSettings.adminRoleId ? 'border-rose-600' : 'border-neutral-800'}`}
-                  value={botSettings.adminRoleId || ''}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, adminRoleId: e.target.value }))}
-                >
-                  <option value="">—</option>
-                  {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
-                  {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
-                  {!rolesLoading && roles.length === 0 && !rolesError && <option disabled value="">{guildId ? t('settings.bot.systemRoles.selectGuildFirst') : t('settings.bot.systemRoles.selectGuildFirst')}</option>}
-                </select>
-                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.admin.hint')}</p>
-              </div>
-              <div>
-                <label htmlFor="giveawayManagerRoleId" className="block text-sm mb-1">{t('settings.bot.systemRoles.giveawayManager')}</label>
-                <select
-                  id="giveawayManagerRoleId"
-                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
-                  value={botSettings.giveawayManagerRoleId || ''}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, giveawayManagerRoleId: e.target.value }))}
-                >
-                  <option value="">—</option>
-                  {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
-                  {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
-                  {!rolesLoading && roles.length === 0 && !rolesError && <option disabled value="">{guildId ? t('settings.bot.systemRoles.selectGuildFirst') : t('settings.bot.systemRoles.selectGuildFirst')}</option>}
-                </select>
-                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.giveawayManager.hint')}</p>
-              </div>
-              <div>
-                <label htmlFor="verifiedRoleId" className="block text-sm mb-1">{t('verification.verifiedRole')}</label>
-                <select
-                  id="verifiedRoleId"
-                  className={`w-full rounded-lg bg-neutral-900 border px-3 py-2 ${!botSettings.verifiedRoleId ? 'border-rose-600' : 'border-neutral-800'}`}
-                  value={botSettings.verifiedRoleId || ''}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, verifiedRoleId: e.target.value }))}
-                >
-                  <option value="">—</option>
-                  {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
-                  {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
-                  {!rolesLoading && roles.length === 0 && !rolesError && <option disabled value="">{guildId ? t('settings.bot.systemRoles.selectGuildFirst') : t('settings.bot.systemRoles.selectGuildFirst')}</option>}
-                </select>
-                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.verified.hint')}</p>
-              </div>
-              <div>
-                <label htmlFor="unverifiedRoleId" className="block text-sm mb-1">{t('verification.unverifiedRole')}</label>
-                <select
-                  id="unverifiedRoleId"
-                  className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
-                  value={botSettings.unverifiedRoleId || ''}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, unverifiedRoleId: e.target.value }))}
-                >
-                  <option value="">—</option>
-                  {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
-                  {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
-                  {!rolesLoading && roles.length === 0 && !rolesError && <option disabled value="">{guildId ? t('settings.bot.systemRoles.selectGuildFirst') : t('settings.bot.systemRoles.selectGuildFirst')}</option>}
-                </select>
-                <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.systemRoles.unverified.hint')}</p>
-              </div>
-            </div>
-            <p className="text-xs text-neutral-500 mt-2">{t('settings.bot.systemRoles.note')}</p>
-          </div>
-          <div className="md:col-span-2">
-            <label htmlFor="bannerUrl" className="block text-sm mb-1">{t('settings.bot.banner')}</label>
-            <input
-              id="bannerUrl"
-              placeholder={t('settings.bot.banner.placeholder')}
-              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
-              value={botSettings.bannerUrl || ''}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const v = (e.target.value || '').trim()
-                // Block local file paths (file:// or Windows drive letters) to avoid browser errors
-                if (/^file:\/\//i.test(v) || /^[a-zA-Z]:\\/.test(v)) {
-                  toast({ type: 'error', title: t('settings.bot.banner.localPathError') })
-                  setBotSettings((s) => ({ ...s, bannerUrl: '' }))
-                } else {
-                  setBotSettings((s) => ({ ...s, bannerUrl: v }))
-                }
-              }}
-            />
-            <div className="flex items-center gap-2 mt-2">
-              <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 cursor-pointer">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    const f = e.target.files && e.target.files[0]
-                    if (f) onSelectBannerFile(f)
-                    // reset value so selecting same file again re-triggers
-                    ;(e.target as HTMLInputElement).value = ''
-                  }}
-                />
-                <span>{uploading ? t('settings.bot.banner.uploading') : t('settings.bot.banner.upload')}</span>
-              </label>
-              {/* Clear banner button */}
-              <button
-                type="button"
-                className="px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 border border-neutral-700"
-                onClick={() => { setBotSettings((s) => ({ ...s, bannerUrl: '' })); toast({ type: 'success', title: t('settings.bot.banner.removed') }) }}
-              >
-                {t('settings.bot.banner.remove')}
-              </button>
-              <span className="text-xs text-neutral-400">{t('settings.bot.banner.hint')}</span>
-            </div>
-            {/* Crop toggle */}
-            <div className="mt-2 flex items-center gap-2">
-              <input id="bannerCropToFill" type="checkbox" className="h-4 w-4" checked={bannerCropToFill} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBannerCropToFill(e.target.checked)} />
-              <label htmlFor="bannerCropToFill" className="text-sm">{t('settings.bot.banner.cropToFill')}</label>
-            </div>
-            <p className="text-xs text-neutral-500 mt-1">{t('settings.bot.banner.cropHint')}</p>
-            {/* Drop zone */}
-            <div
-              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-              onDrop={(e) => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer?.files?.[0]; if (f) onSelectBannerFile(f) }}
-              className="mt-3 rounded-lg border-2 border-dashed border-neutral-700 hover:border-neutral-500 transition-colors p-4 text-center text-sm text-neutral-300 cursor-pointer"
-              onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (ev: any) => { const f = ev.target?.files?.[0]; if (f) onSelectBannerFile(f); }; input.click(); }}
-              aria-label={t('settings.bot.banner.dropHint')}
-              title={t('settings.bot.banner.dropHint')}
-            >
-              <div className="opacity-90">{t('settings.bot.banner.dropHint')}</div>
-              <div className="text-xs text-neutral-500 mt-1">{t('settings.bot.banner.limit')}</div>
-            </div>
-            {botSettings.bannerUrl ? (
-              <div className="mt-3 border border-neutral-800 rounded-lg overflow-hidden">
-                {/* Basic preview */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={botSettings.bannerUrl} alt={t('settings.bot.banner.previewAlt')} className="w-full h-40 object-cover" />
-              </div>
-            ) : null}
-          </div>
-
-          {/* Icon */}
-          <div>
-            <label htmlFor="iconUrl" className="block text-sm mb-1">{t('settings.bot.icon')}</label>
-            <input
-              id="iconUrl"
-              placeholder={t('settings.bot.icon.placeholder')}
-              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2"
-              value={botSettings.iconUrl || ''}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const v = (e.target.value || '').trim()
-                if (/^file:\/\//i.test(v) || /^[a-zA-Z]:\\/.test(v)) {
-                  toast({ type: 'error', title: t('settings.bot.icon.localPathError') })
-                  setBotSettings((s) => ({ ...s, iconUrl: '' }))
-                } else {
-                  setBotSettings((s) => ({ ...s, iconUrl: v }))
-                }
-              }}
-            />
-            <div className="flex items-center gap-2 mt-2">
-              <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 cursor-pointer">
-                <input type="file" accept="image/*" className="hidden" onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) onSelectIconFile(f); (e.target as HTMLInputElement).value = '' }} />
-                <span>{uploadingIcon ? t('settings.bot.icon.uploading') : t('settings.bot.icon.upload')}</span>
-              </label>
-              {/* Clear icon button */}
-              <button
-                type="button"
-                className="px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 border border-neutral-700"
-                onClick={() => { setBotSettings((s) => ({ ...s, iconUrl: '' })); toast({ type: 'success', title: t('settings.bot.icon.removed') }) }}
-              >
-                {t('settings.bot.icon.remove')}
-              </button>
-              <span className="text-xs text-neutral-400">{t('settings.bot.icon.hint')}</span>
-            </div>
-            {/* Drop zone */}
-            <div
-              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-              onDrop={(e) => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer?.files?.[0]; if (f) onSelectIconFile(f) }}
-              className="mt-3 rounded-lg border-2 border-dashed border-neutral-700 hover:border-neutral-500 transition-colors p-4 text-center text-sm text-neutral-300 cursor-pointer"
-              onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (ev: any) => { const f = ev.target?.files?.[0]; if (f) onSelectIconFile(f); }; input.click(); }}
-              aria-label={t('settings.bot.icon.dropHint')}
-              title={t('settings.bot.icon.dropHint')}
-            >
-              <div className="opacity-90">{t('settings.bot.icon.dropHint')}</div>
-              <div className="text-xs text-neutral-500 mt-1">{t('settings.bot.icon.limit')}</div>
-            </div>
-            {botSettings.iconUrl ? (
-              <div className="mt-3 inline-flex items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={botSettings.iconUrl} alt={t('settings.bot.icon.previewAlt')} className="w-16 h-16 rounded object-cover border border-neutral-800" />
-              </div>
-            ) : null}
-          </div>
-
         </div>
       </div>
 
-      <div className="flex gap-2 pt-2">
-        <button type="submit" disabled={saving} className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 font-medium disabled:opacity-60">
+      {/* System Roles */}
+      <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-2xl">🎭</span>
+          <h3 className="text-lg font-semibold text-white">{t('settings.bot.systemRoles.title')}</h3>
+        </div>
+
+        {missingRoles.length > 0 && (
+          <div className="mb-4 rounded-xl border border-amber-500/50 bg-amber-500/10 text-amber-200 text-sm p-4">
+            ⚠️ {t('settings.bot.systemRoles.warn.missing')} {missingRoles.join(', ')}
+          </div>
+        )}
+
+        {rolesError && (
+          <div className="mb-4 rounded-xl border border-rose-600 bg-rose-900/40 text-rose-200 text-sm p-4 flex items-center gap-3">
+            <span>{t('settings.bot.systemRoles.loadingFailed')}</span>
+            <button type="button" onClick={retryLoadRoles} className="px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 hover:bg-gray-700 text-rose-100 text-sm transition-all">
+              {t('settings.bot.systemRoles.retry')}
+            </button>
+          </div>
+        )}
+
+        <p className="text-sm text-gray-400 mb-4">{t('settings.bot.systemRoles.help')}</p>
+
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="staffRoleId" className="block text-sm mb-2 text-gray-300 font-medium">{t('settings.bot.systemRoles.staff')}</label>
+            <select
+              id="staffRoleId"
+              className={`w-full bg-gray-900/50 border rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-gray-500 transition-all ${!botSettings.staffRoleId ? 'border-rose-600' : 'border-gray-700'}`}
+              value={botSettings.staffRoleId || ''}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, staffRoleId: e.target.value }))}
+            >
+              <option value="">—</option>
+              {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
+              {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">{t('settings.bot.systemRoles.staff.hint')}</p>
+          </div>
+          <div>
+            <label htmlFor="adminRoleId" className="block text-sm mb-2 text-gray-300 font-medium">{t('settings.bot.systemRoles.admin')}</label>
+            <select
+              id="adminRoleId"
+              className={`w-full bg-gray-900/50 border rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-gray-500 transition-all ${!botSettings.adminRoleId ? 'border-rose-600' : 'border-gray-700'}`}
+              value={botSettings.adminRoleId || ''}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, adminRoleId: e.target.value }))}
+            >
+              <option value="">—</option>
+              {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
+              {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">{t('settings.bot.systemRoles.admin.hint')}</p>
+          </div>
+          <div>
+            <label htmlFor="verifiedRoleId" className="block text-sm mb-2 text-gray-300 font-medium">{t('verification.verifiedRole')}</label>
+            <select
+              id="verifiedRoleId"
+              className={`w-full bg-gray-900/50 border rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-gray-500 transition-all ${!botSettings.verifiedRoleId ? 'border-rose-600' : 'border-gray-700'}`}
+              value={botSettings.verifiedRoleId || ''}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, verifiedRoleId: e.target.value }))}
+            >
+              <option value="">—</option>
+              {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
+              {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">{t('settings.bot.systemRoles.verified.hint')}</p>
+          </div>
+          <div>
+            <label htmlFor="unverifiedRoleId" className="block text-sm mb-2 text-gray-300 font-medium">{t('verification.unverifiedRole')}</label>
+            <select
+              id="unverifiedRoleId"
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-gray-500 transition-all"
+              value={botSettings.unverifiedRoleId || ''}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, unverifiedRoleId: e.target.value }))}
+            >
+              <option value="">—</option>
+              {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
+              {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">{t('settings.bot.systemRoles.unverified.hint')}</p>
+          </div>
+          <div>
+            <label htmlFor="giveawayManagerRoleId" className="block text-sm mb-2 text-gray-300 font-medium">{t('settings.bot.systemRoles.giveawayManager')}</label>
+            <select
+              id="giveawayManagerRoleId"
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-gray-500 transition-all"
+              value={botSettings.giveawayManagerRoleId || ''}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBotSettings(s => ({ ...s, giveawayManagerRoleId: e.target.value }))}
+            >
+              <option value="">—</option>
+              {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
+              {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">{t('settings.bot.systemRoles.giveawayManager.hint')}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Banner */}
+      <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-2xl">🖼️</span>
+          <h3 className="text-lg font-semibold text-white">{t('settings.bot.banner')}</h3>
+        </div>
+        <div className="space-y-4">
+          <input
+            id="bannerUrl"
+            placeholder={t('settings.bot.banner.placeholder')}
+            className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-gray-500 transition-all"
+            value={botSettings.bannerUrl || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              const v = (e.target.value || '').trim()
+              if (/^file:\/\//i.test(v) || /^[a-zA-Z]:\\/.test(v)) {
+                toast({ type: 'error', title: t('settings.bot.banner.localPathError') })
+                setBotSettings((s) => ({ ...s, bannerUrl: '' }))
+              } else {
+                setBotSettings((s) => ({ ...s, bannerUrl: v }))
+              }
+            }}
+          />
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 cursor-pointer transition-all text-white text-sm font-medium">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const f = e.target.files && e.target.files[0]
+                  if (f) onSelectBannerFile(f)
+                  ;(e.target as HTMLInputElement).value = ''
+                }}
+              />
+              {uploading ? t('settings.bot.banner.uploading') : t('settings.bot.banner.upload')}
+            </label>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 border border-gray-600 transition-all text-white text-sm"
+              onClick={() => { setBotSettings((s) => ({ ...s, bannerUrl: '' })); toast({ type: 'success', title: t('settings.bot.banner.removed') }) }}
+            >
+              {t('settings.bot.banner.remove')}
+            </button>
+            <span className="text-xs text-gray-400">{t('settings.bot.banner.hint')}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input id="bannerCropToFill" type="checkbox" className="sr-only peer" checked={bannerCropToFill} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBannerCropToFill(e.target.checked)} />
+              <div className="w-11 h-6 bg-gray-700 peer-focus:ring-4 peer-focus:ring-gray-800 rounded-full peer peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-blue-600 peer-checked:to-cyan-600"></div>
+            </label>
+            <span className="text-sm text-gray-300">{t('settings.bot.banner.cropToFill')}</span>
+          </div>
+          <p className="text-xs text-gray-500">{t('settings.bot.banner.cropHint')}</p>
+          <div
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onDrop={(e) => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer?.files?.[0]; if (f) onSelectBannerFile(f) }}
+            className="rounded-xl border-2 border-dashed border-gray-700 hover:border-gray-500 transition-colors p-8 text-center text-sm text-gray-300 cursor-pointer bg-gray-900/30"
+            onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (ev: any) => { const f = ev.target?.files?.[0]; if (f) onSelectBannerFile(f); }; input.click(); }}
+            aria-label={t('settings.bot.banner.dropHint')}
+            title={t('settings.bot.banner.dropHint')}
+          >
+            <div className="text-4xl mb-2">📤</div>
+            <div className="opacity-90">{t('settings.bot.banner.dropHint')}</div>
+            <div className="text-xs text-gray-500 mt-2">{t('settings.bot.banner.limit')}</div>
+          </div>
+          {botSettings.bannerUrl && (
+            <div className="rounded-xl overflow-hidden border border-gray-700">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={botSettings.bannerUrl} alt={t('settings.bot.banner.previewAlt')} className="w-full h-48 object-cover" />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Icon */}
+      <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-2xl">🎨</span>
+          <h3 className="text-lg font-semibold text-white">{t('settings.bot.icon')}</h3>
+        </div>
+        <div className="space-y-4">
+          <input
+            id="iconUrl"
+            placeholder={t('settings.bot.icon.placeholder')}
+            className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-gray-500 transition-all"
+            value={botSettings.iconUrl || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              const v = (e.target.value || '').trim()
+              if (/^file:\/\//i.test(v) || /^[a-zA-Z]:\\/.test(v)) {
+                toast({ type: 'error', title: t('settings.bot.icon.localPathError') })
+                setBotSettings((s) => ({ ...s, iconUrl: '' }))
+              } else {
+                setBotSettings((s) => ({ ...s, iconUrl: v }))
+              }
+            }}
+          />
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 cursor-pointer transition-all text-white text-sm font-medium">
+              <input type="file" accept="image/*" className="hidden" onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) onSelectIconFile(f); (e.target as HTMLInputElement).value = '' }} />
+              {uploadingIcon ? t('settings.bot.icon.uploading') : t('settings.bot.icon.upload')}
+            </label>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 border border-gray-600 transition-all text-white text-sm"
+              onClick={() => { setBotSettings((s) => ({ ...s, iconUrl: '' })); toast({ type: 'success', title: t('settings.bot.icon.removed') }) }}
+            >
+              {t('settings.bot.icon.remove')}
+            </button>
+            <span className="text-xs text-gray-400">{t('settings.bot.icon.hint')}</span>
+          </div>
+          <div
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onDrop={(e) => { e.preventDefault(); e.stopPropagation(); const f = e.dataTransfer?.files?.[0]; if (f) onSelectIconFile(f) }}
+            className="rounded-xl border-2 border-dashed border-gray-700 hover:border-gray-500 transition-colors p-8 text-center text-sm text-gray-300 cursor-pointer bg-gray-900/30"
+            onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = (ev: any) => { const f = ev.target?.files?.[0]; if (f) onSelectIconFile(f); }; input.click(); }}
+            aria-label={t('settings.bot.icon.dropHint')}
+            title={t('settings.bot.icon.dropHint')}
+          >
+            <div className="text-4xl mb-2">📤</div>
+            <div className="opacity-90">{t('settings.bot.icon.dropHint')}</div>
+            <div className="text-xs text-gray-500 mt-2">{t('settings.bot.icon.limit')}</div>
+          </div>
+          {botSettings.iconUrl && (
+            <div className="flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={botSettings.iconUrl} alt={t('settings.bot.icon.previewAlt')} className="w-20 h-20 rounded-lg object-cover border border-gray-700" />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Save Button */}
+      <div className="flex gap-3">
+        <button type="submit" disabled={saving || !enabled} className="px-6 py-3 rounded-xl bg-gradient-to-r from-gray-600 to-slate-600 hover:from-gray-500 hover:to-slate-500 text-white font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
           {saving ? t('settings.saving') : (loaded ? t('settings.save') : t('settings.loading'))}
         </button>
       </div>
