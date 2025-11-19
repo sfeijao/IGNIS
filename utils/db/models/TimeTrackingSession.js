@@ -9,14 +9,12 @@ const { mongoose } = require('../mongoose');
 const TimeTrackingSessionSchema = new mongoose.Schema({
   guild_id: { 
     type: String, 
-    required: true, 
-    index: true 
+    required: true 
   },
   
   user_id: { 
     type: String, 
-    required: true, 
-    index: true 
+    required: true 
   },
   
   // Timestamps principais
@@ -34,8 +32,7 @@ const TimeTrackingSessionSchema = new mongoose.Schema({
   status: { 
     type: String, 
     enum: ['active', 'paused', 'ended'],
-    default: 'active',
-    index: true
+    default: 'active'
   },
   
   // Pausas durante a sessão

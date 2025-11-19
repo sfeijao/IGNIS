@@ -2,7 +2,7 @@ const { mongoose } = require('./mongoose');
 
 const TicketSchema = new mongoose.Schema({
   id: { type: Number, index: true },
-  guild_id: { type: String, index: true },
+  guild_id: { type: String },
   channel_id: { type: String, index: true },
   user_id: String,
   category: String,
@@ -55,7 +55,7 @@ const PanelModel = mongoose.models.Panel || mongoose.model('Panel', PanelSchema)
 
 // ✨ NOVO: Schema para categorias customizáveis de tickets
 const TicketCategorySchema = new mongoose.Schema({
-  guild_id: { type: String, required: true, index: true },
+  guild_id: { type: String, required: true },
   name: { type: String, required: true }, // Nome da categoria (ex: "Suporte Técnico")
   emoji: { type: String, default: '📩' }, // Emoji opcional
   description: { type: String }, // Descrição opcional

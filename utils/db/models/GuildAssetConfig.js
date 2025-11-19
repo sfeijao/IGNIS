@@ -10,8 +10,7 @@ const GuildAssetConfigSchema = new mongoose.Schema({
   guild_id: { 
     type: String, 
     required: true, 
-    unique: true, 
-    index: true 
+    unique: true 
   },
   
   // Avatar customizado (URL ou base64)

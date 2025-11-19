@@ -3,7 +3,7 @@ const { mongoose } = require('./mongoose');
 // Giveaway core schema
 // Represents a single giveaway lifecycle: draft -> scheduled(optional) -> active -> ended/cancelled
 const GiveawaySchema = new mongoose.Schema({
-  guild_id: { type: String, index: true, required: true },
+  guild_id: { type: String, required: true },
   channel_id: { type: String, index: true },
   message_id: { type: String, index: true }, // Discord message once published
   title: { type: String, required: true, maxlength: 150 },
@@ -14,9 +14,9 @@ const GiveawaySchema = new mongoose.Schema({
   status: { type: String, enum: ['draft','scheduled','active','ended','cancelled'], default: 'draft', index: true },
   winners_count: { type: Number, default: 1, min: 1 },
   // Scheduling & duration
-  scheduled_at: { type: Date, index: true }, // when to publish (optional)
+  scheduled_at: { type: Date }, // when to publish (optional)
   starts_at: { type: Date, index: true }, // actual start time
-  ends_at: { type: Date, index: true }, // planned end time
+  ends_at: { type: Date }, // planned end time
   ended_at: { type: Date }, // actual end time (after selection)
   cancelled_at: { type: Date },
   created_by: { type: String, index: true }, // staff user id
@@ -58,8 +58,8 @@ GiveawaySchema.index({ guild_id: 1, scheduled_at: 1 });
 // Entries: one row per distinct user participation (weight can derive from roles or tasks)
 const GiveawayEntrySchema = new mongoose.Schema({
   giveaway_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Giveaway', index: true, required: true },
-  guild_id: { type: String, index: true, required: true },
-  user_id: { type: String, index: true, required: true },
+  guild_id: { type: String, required: true },
+  user_id: { type: String, required: true },
   username: { type: String, default: '' }, // snapshot for export convenience
   joined_at: { type: Date, default: Date.now },
   method: { type: String, enum: ['reaction','button','command'], default: 'reaction' },

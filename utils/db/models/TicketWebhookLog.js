@@ -3,13 +3,11 @@ const mongoose = require('mongoose');
 const ticketWebhookLogSchema = new mongoose.Schema({
   ticketId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   guildId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   webhookUrl: {
     type: String,

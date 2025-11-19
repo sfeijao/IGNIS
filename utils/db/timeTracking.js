@@ -2,8 +2,8 @@ const { mongoose } = require('./mongoose');
 
 // Time Tracking Schema
 const TimeTrackingSchema = new mongoose.Schema({
-  guild_id: { type: String, required: true, index: true },
-  user_id: { type: String, required: true, index: true },
+  guild_id: { type: String, required: true },
+  user_id: { type: String, required: true },
   message_id: { type: String, index: true },
   channel_id: { type: String },
   started_at: { type: Date, required: true },
