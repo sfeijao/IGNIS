@@ -1,4 +1,4 @@
-const { logger } = require('../logger');
+const logger = require('../logger');
 const { ServerStatsConfigModel } = require('../db/models');
 const { ChannelType, PermissionFlagsBits } = require('discord.js');
 

@@ -259,7 +259,8 @@ client.once('ready', () => {
         client.serverStatsProcessor = serverStatsProcessor; // Store reference
         logger.info('✅ Server Stats Processor initialized');
     } catch (statsProcessorErr) {
-        logger.warn('⚠️ Server Stats Processor not started:', statsProcessorErr.message);
+        logger.warn('⚠️ Server Stats Processor not started:', statsProcessorErr.message || statsProcessorErr);
+        console.error('Stats Processor Error Details:', statsProcessorErr);
     }
 
     // Atualizar avatar/banner do bot no arranque se variáveis estiverem definidas
