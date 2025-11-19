@@ -28,6 +28,7 @@ export default function ServerStatsConfig() {
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [creating, setCreating] = useState(false)
   const [channels, setChannels] = useState<Array<{ id: string; name: string }>>([])
   
   const [config, setConfig] = useState<StatsConfig>({
@@ -76,6 +77,35 @@ export default function ServerStatsConfig() {
   const updateCounter = (key: keyof Omit<StatsConfig, 'enabled' | 'updateInterval'>, field: string, value: any) => {
     setConfig(c => ({ ...c, [key]: { ...c[key], [field]: value } }))
   }
+
+  const autoCreate = useCallback(async () => {
+    if (!guildId || !confirm('Criar automaticamente canais de voz para estatísticas?')) return
+    setCreating(true)
+    try {
+      const res = await fetch(`/api/guild/${guildId}/stats/auto-create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast({ type: 'success', title: '✅ Canais criados!', description: `${data.created} canal(is) criado(s)` })
+        // Recarregar canais e configuração
+        const [configRes, channelsRes] = await Promise.all([
+          api.getStatsConfig(guildId),
+          api.getChannels(guildId)
+        ])
+        if (configRes.config) setConfig(configRes.config)
+        setChannels((channelsRes.channels || []).filter((c: any) => c.type === 2 || c.type === '2'))
+      } else {
+        throw new Error(data.error || 'Falha ao criar canais')
+      }
+    } catch (e: any) {
+      toast({ type: 'error', title: 'Erro', description: e?.message })
+    } finally {
+      setCreating(false)
+    }
+  }, [guildId, toast])
 
   if (loading) {
     return (
@@ -131,6 +161,40 @@ export default function ServerStatsConfig() {
           </div>
         </div>
       </section>
+
+      {/* Auto-Create Button */}
+      {channels.length === 0 && (
+        <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-xl p-6">
+          <div className="flex items-start gap-4">
+            <span className="text-4xl">⚠️</span>
+            <div className="flex-1">
+              <h4 className="text-lg font-semibold text-yellow-300 mb-2">Nenhum canal de voz encontrado</h4>
+              <p className="text-sm text-gray-400 mb-4">
+                Parece que não existem canais de voz no servidor, ou o bot não tem permissões para vê-los.
+              </p>
+              <button
+                onClick={autoCreate}
+                disabled={creating}
+                className="px-6 py-3 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {creating ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Criando...
+                  </>
+                ) : (
+                  <>
+                    ✨ Criar Canais Automaticamente
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Counters */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

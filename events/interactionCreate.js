@@ -202,6 +202,120 @@ module.exports = {
                     return;
                 }
 
+                // ⏱️ Sistema de Bate-Ponto - Painel Principal
+                if (customId === 'timetracking_punch') {
+                    try {
+                        const storage = require('../utils/storage');
+                        const guildId = interaction.guildId;
+                        const userId = interaction.user.id;
+                        const userName = interaction.user.tag;
+
+                        // Verificar se o painel está ativo
+                        const panelsConfig = await storage.getGuildConfig(guildId, 'timeTrackingPanels') || { panels: [] };
+                        const activePanel = panelsConfig.panels?.find(p => p.enabled && p.channelId === interaction.channelId);
+
+                        if (!activePanel) {
+                            return await interaction.reply({
+                                content: '❌ Este painel de bate-ponto não está ativo.',
+                                flags: MessageFlags.Ephemeral
+                            });
+                        }
+
+                        // Obter dados de tracking do utilizador
+                        const trackingData = await storage.getGuildConfig(guildId, 'timeTrackingSessions') || { sessions: {} };
+                        const userSession = trackingData.sessions?.[userId];
+
+                        // Criar botões baseados no estado atual
+                        const { startTracking, pauseTracking, continueTracking, endTracking } = require('../utils/timeTracking');
+
+                        if (!userSession || userSession.status === 'stopped') {
+                            // Utilizador não tem sessão ativa - mostrar botão INICIAR
+                            const row = new ActionRowBuilder()
+                                .addComponents(
+                                    new ButtonBuilder()
+                                        .setCustomId('timetrack:start')
+                                        .setLabel('🟢 Iniciar Trabalho')
+                                        .setStyle(ButtonStyle.Success)
+                                );
+
+                            await interaction.reply({
+                                content: '⏱️ **Sistema de Bate-Ponto**\n\nClique para **iniciar** o seu turno de trabalho.',
+                                components: [row],
+                                flags: MessageFlags.Ephemeral
+                            });
+
+                        } else if (userSession.status === 'active') {
+                            // Sessão ativa - mostrar PAUSAR e FINALIZAR
+                            const elapsed = Date.now() - new Date(userSession.startTime).getTime();
+                            const hours = Math.floor(elapsed / 3600000);
+                            const minutes = Math.floor((elapsed % 3600000) / 60000);
+
+                            const row = new ActionRowBuilder()
+                                .addComponents(
+                                    new ButtonBuilder()
+                                        .setCustomId('timetrack:pause')
+                                        .setLabel('⏸️ Pausar')
+                                        .setStyle(ButtonStyle.Secondary),
+                                    new ButtonBuilder()
+                                        .setCustomId('timetrack:end')
+                                        .setLabel('🔴 Finalizar')
+                                        .setStyle(ButtonStyle.Danger)
+                                );
+
+                            await interaction.reply({
+                                content: `⏱️ **Sessão Ativa**\n\n⏰ Tempo decorrido: **${hours}h ${minutes}m**\n\nEscolha uma ação:`,
+                                components: [row],
+                                flags: MessageFlags.Ephemeral
+                            });
+
+                        } else if (userSession.status === 'paused') {
+                            // Sessão pausada - mostrar CONTINUAR e FINALIZAR
+                            const row = new ActionRowBuilder()
+                                .addComponents(
+                                    new ButtonBuilder()
+                                        .setCustomId('timetrack:continue')
+                                        .setLabel('▶️ Continuar')
+                                        .setStyle(ButtonStyle.Success),
+                                    new ButtonBuilder()
+                                        .setCustomId('timetrack:end')
+                                        .setLabel('🔴 Finalizar')
+                                        .setStyle(ButtonStyle.Danger)
+                                );
+
+                            await interaction.reply({
+                                content: '⏱️ **Sessão Pausada**\n\nEscolha uma ação:',
+                                components: [row],
+                                flags: MessageFlags.Ephemeral
+                            });
+                        }
+
+                        logger.interaction('button', 'timetracking_punch', interaction, true);
+                    } catch (error) {
+                        logger.error('[TimeTracking] Panel button error:', error);
+                        await interaction.reply({
+                            content: '❌ Erro ao processar bate-ponto. Tente novamente.',
+                            flags: MessageFlags.Ephemeral
+                        });
+                    }
+                    return;
+                }
+
+                // ⏱️ Ações de Time Tracking
+                if (customId === 'timetrack:start') {
+                    try {
+                        const { startTracking } = require('../utils/timeTracking');
+                        await startTracking(interaction);
+                        logger.interaction('button', 'timetrack:start', interaction, true);
+                    } catch (error) {
+                        logger.error('[TimeTracking] Start error:', error);
+                        await interaction.reply({
+                            content: '❌ Erro ao iniciar. Tente novamente.',
+                            flags: MessageFlags.Ephemeral
+                        });
+                    }
+                    return;
+                }
+
                 // Sistema de Verificação
                 if (customId === BUTTON_IDS.VERIFY_USER) {
                     try {

@@ -998,6 +998,73 @@ app.get('/api/guild/:guildId/stats', async (req, res) => {
     }
 });
 
+// POST: Auto-create voice channels for stats
+app.post('/api/guild/:guildId/stats/auto-create', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    try {
+        const { guildId } = req.params;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+
+        const check = await ensureGuildAdmin(client, guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+
+        // Get current config or use defaults
+        const storage = require('./utils/storage');
+        let config = storage.get(guildId, 'serverStats') || {
+            enabled: false,
+            updateInterval: 5,
+            totalMembers: { enabled: true, channelId: '', format: '👥 Membros: {count}' },
+            onlineMembers: { enabled: false, channelId: '', format: '🟢 Online: {count}' },
+            botCount: { enabled: false, channelId: '', format: '🤖 Bots: {count}' },
+            channelCount: { enabled: false, channelId: '', format: '📝 Canais: {count}' },
+            roleCount: { enabled: false, channelId: '', format: '🎭 Cargos: {count}' }
+        };
+
+        const counters = ['totalMembers', 'onlineMembers', 'botCount', 'channelCount', 'roleCount'];
+        let created = 0;
+
+        for (const key of counters) {
+            const counter = config[key];
+            if (!counter.channelId) {
+                try {
+                    // Create voice channel
+                    const channel = await guild.channels.create({
+                        name: counter.format.replace('{count}', '0'),
+                        type: 2, // Voice channel
+                        permissionOverwrites: [
+                            {
+                                id: guild.roles.everyone.id,
+                                deny: ['Connect'] // Everyone can see but not join
+                            }
+                        ]
+                    });
+                    counter.channelId = channel.id;
+                    counter.enabled = true;
+                    created++;
+                } catch (e) {
+                    logger.error(`Failed to create channel for ${key}:`, e);
+                }
+            }
+        }
+
+        if (created > 0) {
+            config.enabled = true;
+            storage.set(guildId, 'serverStats', config);
+        }
+
+        res.json({ success: true, created, config });
+    } catch (e) {
+        logger.error('Error auto-creating stats channels:', e);
+        res.status(500).json({ success: false, error: e.message || 'Failed to create channels' });
+    }
+});
+
 // Roles and Members management
 app.get('/api/guild/:guildId/roles', async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -4122,6 +4189,174 @@ app.get('/api/guild/:guildId/time-tracking', async (req, res) => {
     }
 });
 
+// ===================== Time Tracking Panels (Bate-Ponto Panels) =====================
+
+// GET: Listar painéis de bate-ponto
+app.get('/api/guild/:guildId/time-tracking/panels', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const storage = require('../utils/storage');
+        const config = await storage.getGuildConfig(req.params.guildId, 'timeTrackingPanels') || { panels: [] };
+        
+        res.json({
+            success: true,
+            panels: config.panels || []
+        });
+    } catch (e) {
+        logger.error('Error fetching time tracking panels:', e);
+        res.status(500).json({ success: false, error: 'Failed to fetch panels' });
+    }
+});
+
+// POST: Criar novo painel de bate-ponto
+app.post('/api/guild/:guildId/time-tracking/panels', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const { name, message, channelId } = req.body;
+        
+        if (!name || !channelId) {
+            return res.status(400).json({ success: false, error: 'Nome e canal são obrigatórios' });
+        }
+        
+        const storage = require('../utils/storage');
+        const config = await storage.getGuildConfig(req.params.guildId, 'timeTrackingPanels') || { panels: [] };
+        
+        const guild = check.guild;
+        const channel = await guild.channels.fetch(channelId).catch(() => null);
+        
+        if (!channel || (channel.type !== 0 && channel.type !== 5)) {
+            return res.status(400).json({ success: false, error: 'Canal inválido ou não é de texto' });
+        }
+        
+        // Criar embed do painel
+        const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+        
+        const embed = new EmbedBuilder()
+            .setColor('#FF6B35')
+            .setTitle('⏱️ Sistema de Bate-Ponto')
+            .setDescription(message || '**Sistema de Controlo de Ponto**\n\nClique no botão abaixo para registar a sua entrada, pausa ou saída.')
+            .setFooter({ text: `Painel: ${name}` })
+            .setTimestamp();
+        
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('timetracking_punch')
+                    .setLabel('⚡ Bater Ponto')
+                    .setStyle(ButtonStyle.Primary)
+            );
+        
+        const sentMessage = await channel.send({
+            embeds: [embed],
+            components: [row]
+        });
+        
+        const panel = {
+            id: `panel_${Date.now()}`,
+            name,
+            message,
+            channelId,
+            messageId: sentMessage.id,
+            enabled: true,
+            createdAt: new Date().toISOString()
+        };
+        
+        config.panels = config.panels || [];
+        config.panels.push(panel);
+        
+        await storage.setGuildConfig(req.params.guildId, 'timeTrackingPanels', config);
+        
+        res.json({
+            success: true,
+            panel
+        });
+    } catch (e) {
+        logger.error('Error creating time tracking panel:', e);
+        res.status(500).json({ success: false, error: 'Falha ao criar painel: ' + e.message });
+    }
+});
+
+// PATCH: Atualizar painel (toggle enabled)
+app.patch('/api/guild/:guildId/time-tracking/panels/:panelId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const storage = require('../utils/storage');
+        const config = await storage.getGuildConfig(req.params.guildId, 'timeTrackingPanels') || { panels: [] };
+        
+        const panel = config.panels.find(p => p.id === req.params.panelId);
+        if (!panel) {
+            return res.status(404).json({ success: false, error: 'Painel não encontrado' });
+        }
+        
+        if (req.body.enabled !== undefined) {
+            panel.enabled = req.body.enabled;
+        }
+        
+        await storage.setGuildConfig(req.params.guildId, 'timeTrackingPanels', config);
+        
+        res.json({ success: true, panel });
+    } catch (e) {
+        logger.error('Error updating time tracking panel:', e);
+        res.status(500).json({ success: false, error: 'Failed to update panel' });
+    }
+});
+
+// DELETE: Eliminar painel
+app.delete('/api/guild/:guildId/time-tracking/panels/:panelId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const storage = require('../utils/storage');
+        const config = await storage.getGuildConfig(req.params.guildId, 'timeTrackingPanels') || { panels: [] };
+        
+        const panelIndex = config.panels.findIndex(p => p.id === req.params.panelId);
+        if (panelIndex === -1) {
+            return res.status(404).json({ success: false, error: 'Painel não encontrado' });
+        }
+        
+        const panel = config.panels[panelIndex];
+        
+        // Tentar apagar mensagem do Discord
+        try {
+            const guild = check.guild;
+            const channel = await guild.channels.fetch(panel.channelId).catch(() => null);
+            if (channel && panel.messageId) {
+                const message = await channel.messages.fetch(panel.messageId).catch(() => null);
+                if (message) await message.delete();
+            }
+        } catch (err) {
+            logger.warn('Could not delete panel message:', err);
+        }
+        
+        config.panels.splice(panelIndex, 1);
+        await storage.setGuildConfig(req.params.guildId, 'timeTrackingPanels', config);
+        
+        res.json({ success: true });
+    } catch (e) {
+        logger.error('Error deleting time tracking panel:', e);
+        res.status(500).json({ success: false, error: 'Failed to delete panel' });
+    }
+});
+
 // ===================== Webhook System APIs =====================
 const { WebhookConfigModel, TicketWebhookLogModel } = require('../utils/db/models');
 const webhookSystem = require('../utils/webhookSystem');
@@ -4273,6 +4508,132 @@ app.patch('/api/guild/:guildId/webhooks-config/logs-enabled', async (req, res) =
         res.status(500).json({ success: false, error: 'Failed to update logs configuration' });
     }
 });
+
+// ========================================
+// UNIFIED WEBHOOK ROUTES (NEW SIMPLIFIED SYSTEM)
+// ========================================
+
+// GET: Obter configuração de webhook unificado
+app.get('/api/guild/:guildId/webhook-unified', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const { guildId } = req.params;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+
+        const check = await ensureGuildAdmin(client, guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        const storage = require('./utils/storage');
+        const config = storage.get(guildId, 'webhookUnified') || {
+            enabled: false,
+            url: '',
+            events: {
+                ticketCreated: true,
+                ticketAssumed: true,
+                ticketClosed: true,
+                ticketTranscript: true,
+                scheduleReminder: false
+            }
+        };
+
+        res.json({ success: true, config });
+    } catch (e) {
+        logger.error('Error getting unified webhook:', e);
+        res.status(500).json({ success: false, error: e.message || 'Failed to get config' });
+    }
+});
+
+// POST: Salvar configuração de webhook unificado
+app.post('/api/guild/:guildId/webhook-unified', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const { guildId } = req.params;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+
+        const check = await ensureGuildAdmin(client, guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        const { enabled, url, events } = req.body;
+
+        // Validar URL se enabled
+        if (enabled && url && !/^https:\/\/discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(url)) {
+            return res.status(400).json({ success: false, error: 'Invalid webhook URL' });
+        }
+
+        const config = {
+            enabled: !!enabled,
+            url: url || '',
+            events: events || {
+                ticketCreated: true,
+                ticketAssumed: true,
+                ticketClosed: true,
+                ticketTranscript: true,
+                scheduleReminder: false
+            }
+        };
+
+        const storage = require('./utils/storage');
+        storage.set(guildId, 'webhookUnified', config);
+
+        res.json({ success: true, config });
+    } catch (e) {
+        logger.error('Error saving unified webhook:', e);
+        res.status(500).json({ success: false, error: e.message || 'Failed to save config' });
+    }
+});
+
+// POST: Testar webhook unificado
+app.post('/api/guild/:guildId/webhook-unified/test', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const { guildId } = req.params;
+        const { url } = req.body;
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+
+        const check = await ensureGuildAdmin(client, guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        if (!url || !/^https:\/\/discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(url)) {
+            return res.status(400).json({ success: false, error: 'Invalid webhook URL' });
+        }
+
+        // Enviar mensagem de teste
+        const { EmbedBuilder } = require('discord.js');
+        const embed = new EmbedBuilder()
+            .setTitle('✅ Teste de Webhook')
+            .setDescription('Se estás a ver esta mensagem, o webhook está configurado corretamente!')
+            .setColor(0x00FF00)
+            .addFields([
+                { name: '🎫 Eventos de Tickets', value: 'Receberás notificações quando tickets forem criados, assumidos ou fechados' },
+                { name: '📄 Transcripts', value: 'Históricos de tickets serão enviados automaticamente' },
+                { name: '📅 Lembretes', value: 'Notificações de eventos agendados (se ativado)' }
+            ])
+            .setFooter({ text: `Guild: ${guildId}` })
+            .setTimestamp();
+
+        await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                embeds: [embed.toJSON()],
+                username: 'IGNIS Bot',
+                avatar_url: client.user?.displayAvatarURL()
+            })
+        });
+
+        res.json({ success: true });
+    } catch (e) {
+        logger.error('Error testing webhook:', e);
+        res.status(500).json({ success: false, error: e.message || 'Failed to test webhook' });
+    }
+});
+
+// ========================================
+// END UNIFIED WEBHOOK ROUTES
+// ========================================
 
 // PATCH: Atualizar webhook (toggle enabled, editar tipos, etc)
 app.patch('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) => {
