@@ -3332,7 +3332,7 @@ app.post('/api/guild/:guildId/stats/setup', async (req, res) => {
         // Usar o processor de stats
         const statsProcessor = client.serverStatsProcessor;
         if (!statsProcessor) {
-            return res.status(500).json({ success: false, error: 'Stats processor not available' });
+            return res.status(503).json({ success: false, error: 'Stats system is initializing, please try again in a moment' });
         }
         
         const result = await statsProcessor.setupChannels(
@@ -3424,7 +3424,7 @@ app.delete('/api/guild/:guildId/stats', async (req, res) => {
         
         const statsProcessor = client.serverStatsProcessor;
         if (!statsProcessor) {
-            return res.status(500).json({ success: false, error: 'Stats processor not available' });
+            return res.status(503).json({ success: false, error: 'Stats system is initializing, please try again in a moment' });
         }
         
         const result = await statsProcessor.disableStats(req.params.guildId, deleteChannels);
@@ -3453,7 +3453,7 @@ app.get('/api/guild/:guildId/stats/metrics', async (req, res) => {
         
         const statsProcessor = client.serverStatsProcessor;
         if (!statsProcessor) {
-            return res.status(500).json({ success: false, error: 'Stats processor not available' });
+            return res.status(503).json({ success: false, error: 'Stats system is initializing, please try again in a moment' });
         }
         
         const { ServerStatsConfigModel } = require('../utils/db/models');
