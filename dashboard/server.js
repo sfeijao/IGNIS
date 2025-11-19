@@ -3170,7 +3170,7 @@ app.get('/api/guild/:guildId/time-tracking', async (req, res) => {
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         
         const storage = require('../utils/storage');
-        const data = await storage.getGuildData(req.params.guildId, 'timeTracking') || { entries: [] };
+        const data = await storage.getGuildConfig(req.params.guildId, 'timeTracking') || { entries: [] };
         
         // Calculate summaries
         const summaries = new Map();
