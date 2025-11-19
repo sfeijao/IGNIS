@@ -18,6 +18,7 @@ export default function RolesManager() {
   const [color, setColor] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [enabled, setEnabled] = useState(true)
   const [dragId, setDragId] = useState<string|null>(null)
   const [dragOverId, setDragOverId] = useState<string|null>(null)
   const [dragOverPos, setDragOverPos] = useState<'above'|'below'|null>(null)
@@ -47,7 +48,6 @@ export default function RolesManager() {
         if (cancelled) return
         const r = d.role as RoleDetails
         setDetails(r)
-        // decode permissions bitfield if present into keys
         if (r.permissions) {
           try {
             const bf = BigInt(r.permissions)
@@ -118,6 +118,7 @@ export default function RolesManager() {
     setDragOverId(targetId)
     setDragOverPos(pos)
   }
+
   const onDropOn = async (targetId:string) => {
     if (!guildId || !dragId || dragId === targetId) return
     const from = roles.findIndex(r=> r.id === dragId)
@@ -133,6 +134,7 @@ export default function RolesManager() {
   const togglePerm = (key:string) => {
     setPermSet(prev => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n })
   }
+
   const saveProps = async () => {
     if (!guildId || !selectedId || !details) return
     setLoading(true)
@@ -146,122 +148,359 @@ export default function RolesManager() {
     finally { setLoading(false) }
   }
 
+  const totalRoles = roles.length
+  const managedRoles = roles.filter(r => r.managed).length
+  const hoistedRoles = roles.filter(r => details?.id === r.id ? details.hoist : false).length
+
   return (
-    <div className="space-y-3">
-      {!guildId && <div className="card p-4 text-sm text-neutral-400">{t('roles.selectGuild')}</div>}
-      <div className="card p-4 flex flex-wrap items-end gap-3">
-        <div>
-          <label htmlFor="role-name" className="text-xs text-neutral-400">{t('roles.name')}</label>
-          <input id="role-name" className="mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={name} onChange={e=> setName(e.target.value)} placeholder={t('roles.name')} title={t('roles.name')} />
-        </div>
-        <div>
-          <label htmlFor="role-color" className="text-xs text-neutral-400">{t('roles.color')}</label>
-          <input id="role-color" className="mt-1 w-40 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={color} onChange={e=> setColor(e.target.value)} placeholder="#ffffff" title={t('roles.color')} />
-        </div>
-  <button type="button" onClick={create} className="mt-5 px-3 py-2 rounded bg-brand-600 hover:bg-brand-700 disabled:opacity-50" disabled={!guildId || loading}>{t('roles.create')}</button>
-  <button type="button" onClick={load} className="mt-5 px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50" disabled={!guildId || loading}>{t('roles.refresh')}</button>
-        <div className="ml-auto flex items-end gap-2">
-          <label className="text-xs text-neutral-400">Lang</label>
-          <select className="mt-5 bg-neutral-900 border border-neutral-700 rounded px-2 py-2 text-sm" value={lang} onChange={e=> setLang(e.target.value as any)} aria-label="Language">
-            <option value="pt">PT</option>
-            <option value="en">EN</option>
-          </select>
+    <div className="space-y-6">
+      {/* Header with Toggle */}
+      <div className="bg-gradient-to-r from-pink-600/20 to-rose-600/20 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-4xl">🎭</span>
+            <div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-400 to-rose-400 bg-clip-text text-transparent">
+                {t('nav.roles')}
+              </h2>
+              <p className="text-gray-400 text-sm mt-1">Manage server roles and permissions</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <select 
+              className="bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-pink-500"
+              value={lang} 
+              onChange={e=> setLang(e.target.value as any)}
+              aria-label="Language"
+            >
+              <option value="pt">🇵🇹 PT</option>
+              <option value="en">🇬🇧 EN</option>
+            </select>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={enabled}
+                onChange={(e) => setEnabled(e.target.checked)}
+              />
+              <div className="w-14 h-7 bg-gray-700 peer-focus:ring-4 peer-focus:ring-pink-800 rounded-full peer peer-checked:after:translate-x-7 after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-pink-600 peer-checked:to-rose-600"></div>
+            </label>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <div className="card p-0 overflow-hidden">
-          <div className="divide-y divide-neutral-800">
-          {loading && <div className="p-6 text-neutral-400">{t('roles.loading')}</div>}
-          {error && <div className="p-6 text-red-400">{error}</div>}
-          {roles.map(r => (
-            <div
-              key={r.id}
-              onDragOver={(e)=> onDragOverRow(e, r.id)}
-              onDrop={()=> onDropOn(r.id)}
-              className={`relative p-4 flex items-center gap-3 ${selectedId===r.id? 'bg-neutral-800/40' : ''}`}
-              onClick={()=> setSelectedId(r.id)}
-            >
-              {/* Drop indicators */}
-              {dragOverId===r.id && dragOverPos==='above' && <div className="absolute left-0 right-0 top-0 h-0.5 bg-brand-600" />}
-              {dragOverId===r.id && dragOverPos==='below' && <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-brand-600" />}
-              {/* Drag handle */}
-              <button type="button"
-                className="cursor-grab p-1 rounded hover:bg-neutral-800 border border-transparent hover:border-neutral-700"
-                draggable
-                onDragStart={()=> onDragStart(r.id)}
-                onDragEnd={onDragEnd}
-                onClick={(e)=> e.stopPropagation()}
-                aria-label="Drag to reorder"
-                title="Drag to reorder"
-              >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M4 3h2v2H4V3zm6 0h2v2h-2V3zM4 7h2v2H4V7zm6 0h2v2h-2V7zM4 11h2v2H4v-2zm6 0h2v2h-2v-2z" fill="#aaa"/>
-                </svg>
-              </button>
-              {/* Color dot using SVG to avoid inline styles */}
-              <svg width="16" height="16" aria-hidden="true" className="shrink-0">
-                <circle cx="8" cy="8" r="7" fill={r.color || '#888'} stroke="#444" />
-              </svg>
-              <div className="flex-1 min-w-0">
-                <div className="text-neutral-200 truncate">{r.name}</div>
-                <div className="text-xs text-neutral-500">{r.id}</div>
-              </div>
-              <button type="button" onClick={(e)=> { e.stopPropagation(); move(r.id, 'up') }} aria-label={`${t('roles.up')} ${r.name}`} title={t('roles.up')} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('roles.up')}</button>
-              <button type="button" onClick={(e)=> { e.stopPropagation(); move(r.id, 'down') }} aria-label={`${t('roles.down')} ${r.name}`} title={t('roles.down')} className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700">{t('roles.down')}</button>
-              {!r.managed && <button type="button" onClick={(e)=> { e.stopPropagation(); remove(r.id) }} aria-label={`${t('roles.remove')} ${r.name}`} title={t('roles.remove')} className="px-2 py-1 text-xs rounded bg-rose-600 hover:bg-rose-500">{t('roles.remove')}</button>}
-            </div>
-          ))}
+      {!guildId && (
+        <div className="bg-yellow-600/20 backdrop-blur-xl border border-yellow-600/50 rounded-xl p-4">
+          <div className="flex items-center gap-2 text-yellow-400">
+            <span>⚠️</span>
+            <span>{t('roles.selectGuild')}</span>
           </div>
         </div>
-        <div className="card p-4">
-          {!selectedId && <div className="text-sm text-neutral-400">{t('roles.selectToEdit')}</div>}
-          {selectedId && details && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-neutral-400">{t('roles.name')}</label>
-                  <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={details.name||''} onChange={e=> setDetails({ ...details, name: e.target.value })} placeholder={t('roles.name')} title={t('roles.name')} />
-                </div>
-                <div>
-                  <label className="text-xs text-neutral-400">{t('roles.color')}</label>
-                  <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={details.color||''} onChange={e=> setDetails({ ...details, color: e.target.value })} placeholder="#ffffff" title={t('roles.color')} />
-                </div>
-                <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={!!details.hoist} onChange={e=> setDetails({ ...details, hoist: e.target.checked })} /> {t('roles.showSeparately')}</label>
-                <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={!!details.mentionable} onChange={e=> setDetails({ ...details, mentionable: e.target.checked })} /> {t('roles.mentionable')}</label>
+      )}
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-pink-600/20 to-rose-600/20 rounded-lg flex items-center justify-center text-2xl">
+              🎭
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-white">{totalRoles}</div>
+              <div className="text-sm text-gray-400">Total Roles</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-600/20 to-indigo-600/20 rounded-lg flex items-center justify-center text-2xl">
+              🤖
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-purple-400">{managedRoles}</div>
+              <div className="text-sm text-gray-400">Managed Roles</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-600/20 to-cyan-600/20 rounded-lg flex items-center justify-center text-2xl">
+              {selectedId ? '✏️' : '📋'}
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-cyan-400">{selectedId ? 'Editing' : 'None'}</div>
+              <div className="text-sm text-gray-400">Selected Role</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Create Role */}
+      <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-2xl">➕</span>
+          <h3 className="text-lg font-semibold text-white">Create New Role</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="md:col-span-2 space-y-2">
+            <label className="text-sm font-medium text-gray-300">{t('roles.name')}</label>
+            <input
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+              value={name}
+              onChange={e=> setName(e.target.value)}
+              placeholder={t('roles.name')}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-300">{t('roles.color')}</label>
+            <input
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+              value={color}
+              onChange={e=> setColor(e.target.value)}
+              placeholder="#ffffff"
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <button
+              type="button"
+              onClick={create}
+              className="flex-1 py-3 px-6 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!guildId || loading || !enabled}
+            >
+              {t('roles.create')}
+            </button>
+            <button
+              type="button"
+              onClick={load}
+              className="py-3 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-xl transition-all duration-200"
+              disabled={!guildId || loading}
+            >
+              🔄
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-600/20 backdrop-blur-xl border border-red-600/50 rounded-xl p-4">
+          <div className="flex items-center gap-2 text-red-400">
+            <span>❌</span>
+            <span>{error}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Roles List & Editor */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Roles List */}
+        <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-2xl">📋</span>
+            <h3 className="text-lg font-semibold text-white">Role Hierarchy</h3>
+          </div>
+          <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
+            {loading && (
+              <div className="text-center py-12">
+                <div className="inline-block w-12 h-12 border-4 border-pink-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <div className="text-gray-400">{t('roles.loading')}</div>
               </div>
-              <div className="mt-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="text-sm font-medium">{t('roles.permissions')}</div>
-                  <div className="ml-auto flex items-center gap-2">
-                    <button type="button" className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setPermSet(new Set(PERMISSION_KEYS.map(p=>p.key)))}>{t('roles.permissions.selectAll')}</button>
-                    <button type="button" className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setPermSet(new Set())}>{t('roles.permissions.clearAll')}</button>
+            )}
+            {!loading && roles.map(r => (
+              <div
+                key={r.id}
+                onDragOver={(e)=> onDragOverRow(e, r.id)}
+                onDrop={()=> onDropOn(r.id)}
+                className={`relative bg-gray-900/50 border ${selectedId===r.id ? 'border-pink-600' : 'border-gray-700'} hover:border-pink-600/50 rounded-xl p-4 transition-all duration-200 cursor-pointer`}
+                onClick={()=> setSelectedId(r.id)}
+              >
+                {dragOverId===r.id && dragOverPos==='above' && <div className="absolute left-0 right-0 top-0 h-1 bg-pink-600 rounded-t-xl" />}
+                {dragOverId===r.id && dragOverPos==='below' && <div className="absolute left-0 right-0 bottom-0 h-1 bg-pink-600 rounded-b-xl" />}
+                
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    className="cursor-grab p-2 rounded-lg hover:bg-gray-800 transition-colors"
+                    draggable
+                    onDragStart={()=> onDragStart(r.id)}
+                    onDragEnd={onDragEnd}
+                    onClick={(e)=> e.stopPropagation()}
+                    aria-label="Drag to reorder"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M4 3h2v2H4V3zm6 0h2v2h-2V3zM4 7h2v2H4V7zm6 0h2v2h-2V7zM4 11h2v2H4v-2zm6 0h2v2h-2v-2z" fill="#aaa"/>
+                    </svg>
+                  </button>
+                  
+                  <svg width="20" height="20" className="shrink-0">
+                    <circle cx="10" cy="10" r="9" fill={r.color || '#888'} stroke="#444" strokeWidth="1" />
+                  </svg>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white font-medium truncate">{r.name}</div>
+                    <div className="text-xs text-gray-500 font-mono">{r.id}</div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={(e)=> { e.stopPropagation(); move(r.id, 'up') }}
+                      className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                      disabled={!enabled}
+                    >
+                      ⬆️
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e)=> { e.stopPropagation(); move(r.id, 'down') }}
+                      className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                      disabled={!enabled}
+                    >
+                      ⬇️
+                    </button>
+                    {!r.managed && (
+                      <button
+                        type="button"
+                        onClick={(e)=> { e.stopPropagation(); remove(r.id) }}
+                        className="px-2 py-1 text-xs bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors"
+                        disabled={!enabled}
+                      >
+                        🗑️
+                      </button>
+                    )}
                   </div>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Role Editor */}
+        <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-2xl">✏️</span>
+            <h3 className="text-lg font-semibold text-white">Role Editor</h3>
+          </div>
+          
+          {!selectedId && (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">👈</div>
+              <div className="text-gray-400">{t('roles.selectToEdit')}</div>
+            </div>
+          )}
+          
+          {selectedId && details && (
+            <div className="space-y-6">
+              {/* Basic Properties */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-300">{t('roles.name')}</label>
+                    <input
+                      className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+                      value={details.name||''}
+                      onChange={e=> setDetails({ ...details, name: e.target.value })}
+                      placeholder={t('roles.name')}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-300">{t('roles.color')}</label>
+                    <input
+                      className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+                      value={details.color||''}
+                      onChange={e=> setDetails({ ...details, color: e.target.value })}
+                      placeholder="#ffffff"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <label className="flex items-center gap-3 p-3 bg-gray-900/50 border border-gray-700 rounded-xl cursor-pointer hover:border-pink-600/50 transition-all">
+                    <input
+                      type="checkbox"
+                      className="w-5 h-5 rounded bg-gray-900/50 border-gray-700 text-pink-600 focus:ring-2 focus:ring-pink-500"
+                      checked={!!details.hoist}
+                      onChange={e=> setDetails({ ...details, hoist: e.target.checked })}
+                    />
+                    <span className="text-sm text-gray-300">{t('roles.showSeparately')}</span>
+                  </label>
+                  <label className="flex items-center gap-3 p-3 bg-gray-900/50 border border-gray-700 rounded-xl cursor-pointer hover:border-pink-600/50 transition-all">
+                    <input
+                      type="checkbox"
+                      className="w-5 h-5 rounded bg-gray-900/50 border-gray-700 text-pink-600 focus:ring-2 focus:ring-pink-500"
+                      checked={!!details.mentionable}
+                      onChange={e=> setDetails({ ...details, mentionable: e.target.checked })}
+                    />
+                    <span className="text-sm text-gray-300">{t('roles.mentionable')}</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Permissions */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium text-white">{t('roles.permissions')}</div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                      onClick={()=> setPermSet(new Set(PERMISSION_KEYS.map(p=>p.key)))}
+                    >
+                      {t('roles.permissions.selectAll')}
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                      onClick={()=> setPermSet(new Set())}
+                    >
+                      {t('roles.permissions.clearAll')}
+                    </button>
+                  </div>
+                </div>
+                
                 <input
-                  className="mb-2 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1"
+                  className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
                   placeholder={t('roles.permissions.search')}
                   value={permQuery}
                   onChange={e=> setPermQuery(e.target.value)}
-                  aria-label={t('roles.permissions.search')}
                 />
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-auto pr-1">
+                
+                <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2">
                   {PERMISSION_KEYS.filter(p => {
                     if (!permQuery) return true
                     const q = permQuery.toLowerCase()
                     const label = (t(`perm.${p.key}`) || p.key).toLowerCase()
                     return label.includes(q) || p.key.toLowerCase().includes(q)
                   }).map(p => (
-                    <label key={p.key} className={`inline-flex items-center gap-2 text-sm ${p.danger? 'text-amber-300' : ''}`} title={p.key}>
-                      <input type="checkbox" checked={permSet.has(p.key)} onChange={()=> togglePerm(p.key)} /> {t(`perm.${p.key}`)}
+                    <label
+                      key={p.key}
+                      className={`flex items-center gap-2 p-2 bg-gray-900/50 border border-gray-700 rounded-lg cursor-pointer hover:border-pink-600/50 transition-all ${p.danger ? 'text-amber-300' : 'text-gray-300'}`}
+                      title={p.key}
+                    >
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded bg-gray-900/50 border-gray-700 text-pink-600 focus:ring-2 focus:ring-pink-500"
+                        checked={permSet.has(p.key)}
+                        onChange={()=> togglePerm(p.key)}
+                      />
+                      <span className="text-xs">{t(`perm.${p.key}`)}</span>
                     </label>
                   ))}
                 </div>
-                <div className="text-xs text-neutral-500 mt-2">{t('roles.permissions.note')}</div>
+                
+                <div className="text-xs text-gray-500 italic">{t('roles.permissions.note')}</div>
               </div>
-              <div className="flex gap-2">
-                <button type="button" onClick={saveProps} className="px-3 py-2 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" disabled={loading}>{t('roles.save')}</button>
-              </div>
+
+              {/* Save Button */}
+              <button
+                type="button"
+                onClick={saveProps}
+                className="w-full py-3 px-6 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading || !enabled}
+              >
+                {t('roles.save')}
+              </button>
             </div>
           )}
         </div>

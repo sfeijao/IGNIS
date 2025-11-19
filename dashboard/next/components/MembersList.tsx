@@ -18,6 +18,7 @@ export default function MembersList() {
   const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([])
   const [members, setMembers] = useState<Array<any>>([])
   const [selected, setSelected] = useState<any | null>(null)
+  const [enabled, setEnabled] = useState(true)
   const { toast } = useToast()
 
   const params = useMemo(() => ({ q, role, limit, refresh }), [q, role, limit, refresh])
@@ -42,55 +43,203 @@ export default function MembersList() {
     return () => { aborted = true }
   }, [guildId, params])
 
+  const totalMembers = members.length
+  const manageable = members.filter(m => m.manageable).length
+  const hasRoleFilter = !!role
+
   return (
-    <div className="space-y-3">
-      {!guildId && <div className="card p-4 text-sm text-neutral-400">{t('members.selectGuild')}</div>}
-      <div className="card p-4 grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
-        <div className="md:col-span-2">
-          <label className="text-xs text-neutral-400">{t('members.search')}</label>
-          <input className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" placeholder="Nome ou apelido" value={q} onChange={e=> setQ(e.target.value)} />
-        </div>
-        <div>
-          <label className="text-xs text-neutral-400">{t('members.role')}</label>
-          <select className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={role} onChange={e=> setRole(e.target.value)} title={t('members.role')}>
-            <option value="">Todos</option>
-            {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-neutral-400">{t('members.limit')}</label>
-          <select className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" value={limit} onChange={e=> setLimit(parseInt(e.target.value, 10))} title={t('members.limit')}>
-            {[25,50,100,150,200].map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 text-xs text-neutral-300 mt-5">
-            <input type="checkbox" checked={refresh} onChange={e=> setRefresh(e.target.checked)} />
-            {t('members.refresh')}
+    <div className="space-y-6">
+      {/* Header with Toggle */}
+      <div className="bg-gradient-to-r from-cyan-600/20 to-blue-600/20 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-4xl">👥</span>
+            <div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+                {t('nav.members')}
+              </h2>
+              <p className="text-gray-400 text-sm mt-1">View and manage server members</p>
+            </div>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              className="sr-only peer"
+              checked={enabled}
+              onChange={(e) => setEnabled(e.target.checked)}
+            />
+            <div className="w-14 h-7 bg-gray-700 peer-focus:ring-4 peer-focus:ring-cyan-800 rounded-full peer peer-checked:after:translate-x-7 after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-cyan-600 peer-checked:to-blue-600"></div>
           </label>
         </div>
       </div>
-      <div className="card p-0 overflow-hidden">
-        <div className="divide-y divide-neutral-800">
-          {loading && <div className="p-6 text-neutral-400">{t('logs.loading')}</div>}
+
+      {!guildId && (
+        <div className="bg-yellow-600/20 backdrop-blur-xl border border-yellow-600/50 rounded-xl p-4">
+          <div className="flex items-center gap-2 text-yellow-400">
+            <span>⚠️</span>
+            <span>{t('members.selectGuild')}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-cyan-600/20 to-blue-600/20 rounded-lg flex items-center justify-center text-2xl">
+              👥
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-white">{totalMembers}</div>
+              <div className="text-sm text-gray-400">Total Members</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-green-600/20 to-emerald-600/20 rounded-lg flex items-center justify-center text-2xl">
+              ✅
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-green-400">{manageable}</div>
+              <div className="text-sm text-gray-400">Manageable</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-600/20 to-pink-600/20 rounded-lg flex items-center justify-center text-2xl">
+              🔍
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-white">{hasRoleFilter ? '🎯' : '—'}</div>
+              <div className="text-sm text-gray-400">Filter Active</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search & Filters */}
+      <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-2xl">🔍</span>
+          <h3 className="text-lg font-semibold text-white">{t('members.search')}</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          <div className="md:col-span-2 space-y-2">
+            <label className="text-sm font-medium text-gray-300">Search by Name</label>
+            <input
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
+              placeholder="Nome ou apelido"
+              value={q}
+              onChange={e => setQ(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-300">{t('members.role')}</label>
+            <select
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
+              value={role}
+              onChange={e => setRole(e.target.value)}
+            >
+              <option value="">Todos</option>
+              {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-300">{t('members.limit')}</label>
+            <select
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
+              value={limit}
+              onChange={e => setLimit(parseInt(e.target.value, 10))}
+            >
+              {[25, 50, 100, 150, 200].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+          <div className="flex items-end">
+            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                className="w-5 h-5 rounded bg-gray-900/50 border-gray-700 text-cyan-600 focus:ring-2 focus:ring-cyan-500"
+                checked={refresh}
+                onChange={e => setRefresh(e.target.checked)}
+              />
+              <span>{t('members.refresh')}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Members List */}
+      <div className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-2xl">📋</span>
+          <h3 className="text-lg font-semibold text-white">Member List</h3>
+        </div>
+        <div className="space-y-3">
+          {loading && (
+            <div className="text-center py-12">
+              <div className="inline-block w-12 h-12 border-4 border-cyan-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+              <div className="text-gray-400">{t('logs.loading')}</div>
+            </div>
+          )}
+          {!loading && members.length === 0 && (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">👻</div>
+              <div className="text-gray-400">No members found</div>
+            </div>
+          )}
           {!loading && members.map((m: any) => (
-            <div key={m.id} className="p-4 flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs">{String(m.username || 'U')[0]}</div>
-              <div className="flex-1 min-w-0">
-                <div className="text-neutral-200 truncate">{m.nick ? `${m.nick} (${m.username}#${m.discriminator})` : `${m.username}#${m.discriminator}`}</div>
-                <div className="text-xs text-neutral-500">{m.id}</div>
+            <div key={m.id} className="bg-gray-900/50 border border-gray-700 hover:border-cyan-600/50 rounded-xl p-4 transition-all duration-200">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-600/20 to-blue-600/20 border border-gray-700 flex items-center justify-center text-xl font-semibold text-cyan-400">
+                  {String(m.username || 'U')[0].toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-white font-medium truncate">
+                    {m.nick ? (
+                      <>
+                        {m.nick} <span className="text-gray-400 text-sm">({m.username}#{m.discriminator})</span>
+                      </>
+                    ) : (
+                      `${m.username}#${m.discriminator}`
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-500 font-mono">{m.id}</div>
+                </div>
+                {!m.manageable ? (
+                  <div className="flex items-center gap-2 text-gray-500 text-sm">
+                    <span>🔒</span>
+                    <span>{t('members.notManageable')}</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => setSelected(m)}
+                    disabled={!enabled}
+                  >
+                    {t('members.manage')}
+                  </button>
+                )}
               </div>
-              {!m.manageable ? (
-                <span className="text-xs text-neutral-500">{t('members.notManageable')}</span>
-              ) : (
-                <button type="button" className="px-2 py-1 text-xs rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700" onClick={()=> setSelected(m)} title={t('members.manage')}>{t('members.manage')}</button>
-              )}
             </div>
           ))}
         </div>
       </div>
+
       {selected && guildId && (
-        <MemberModal guildId={guildId} member={selected} onClose={()=> setSelected(null)} onChanged={()=> { toast({ type:'success', title:'Alterações guardadas' }); setSelected(null); }} />
+        <MemberModal
+          guildId={guildId}
+          member={selected}
+          onClose={() => setSelected(null)}
+          onChanged={() => {
+            toast({ type: 'success', title: 'Alterações guardadas' })
+            setSelected(null)
+          }}
+        />
       )}
     </div>
   )
