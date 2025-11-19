@@ -200,6 +200,10 @@ const AutomodEventSchema = new mongoose.Schema({
 }, { timestamps: true });
 const AutomodEventModel = mongoose.models.AutomodEvent || mongoose.model('AutomodEvent', AutomodEventSchema);
 
+// Importar novos modelos de webhook
+const WebhookConfigModel = require('./models/WebhookConfig');
+const TicketWebhookLogModel = require('./models/TicketWebhookLog');
+
 module.exports = { 
   TicketModel, 
   GuildConfigModel, 
@@ -212,5 +216,7 @@ module.exports = {
   NotificationModel, 
   AutomodEventModel,
   TicketCategoryModel, // ✨ NOVO
-  WelcomeConfigModel // ✨ NOVO - Welcome/Goodbye system
+  WelcomeConfigModel, // ✨ NOVO - Welcome/Goodbye system
+  WebhookConfigModel, // ✨ NOVO - Sistema de webhooks
+  TicketWebhookLogModel // ✨ NOVO - Logs de webhooks de tickets
 };

@@ -41,6 +41,7 @@ const guildNav = [
   { href: '/guild/{gid}/welcome', key: 'nav.welcome', icon: '👋', flag: 'beta' },
   { href: '/guild/{gid}/stats', key: 'nav.stats', icon: '📊', flag: 'beta' },
   { href: '/guild/{gid}/time-tracking', key: 'nav.timeTracking', icon: '⏱️', flag: 'beta' },
+  { href: '/guild/{gid}/webhooks-config', key: 'nav.webhooksConfig', icon: '🔗', flag: 'beta' },
 ]
 
 export default function Sidebar() {

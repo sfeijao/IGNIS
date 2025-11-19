@@ -4,6 +4,7 @@ const storage = require('./storage');
 const logger = require('./logger');
 const { KeyedRateLimiter } = require('./retryHelper');
 const { TicketCategoryModel } = require('./db/models');
+const webhookSystem = require('./webhookSystem');
 
 // Rate limiter: 2 tickets por minuto por usuário
 const ticketRateLimiter = new KeyedRateLimiter(2, 2 / 60); // 2 tokens, refill 2 por 60s
@@ -368,6 +369,16 @@ async function createTicket(interaction, type, customCategory = null) {
     }
     
     ticket = await storage.createTicket(ticketData);
+    
+    // Send webhook notification
+    try {
+      await webhookSystem.sendOrUpdateTicketWebhook(ticket, 'created', {
+        createdBy: interaction.user,
+        categoryName: departmentInfo(type)?.name || String(type || '')
+      });
+    } catch (err) {
+      logger.error('[Tickets] Failed to send webhook for ticket creation:', err);
+    }
   } catch (dbError) {
     // Rollback: apagar canal se falhar DB insert
     try {
@@ -522,6 +533,31 @@ async function confirmClose(interaction) {
       action: 'fechado',
       maxMessages: 2000
     });
+    
+    // Update webhook with closed status
+    try {
+      if (ticketData) {
+        const messageCount = interaction.channel.messages?.cache?.size || 0;
+        await webhookSystem.sendOrUpdateTicketWebhook(ticketData, 'closed', {
+          closedBy: interaction.user,
+          reason: 'Fechado pelo staff',
+          messageCount
+        });
+        
+        // Attach transcript if available
+        if (attachment && text) {
+          await webhookSystem.attachTranscript(
+            ticketData.id.toString(),
+            ticketData.guild_id,
+            attachment.name,
+            text
+          );
+        }
+      }
+    } catch (err) {
+      logger.error('[Tickets] Failed to update webhook for ticket close:', err);
+    }
+    
     let sent = false;
     if (attachment) {
       // Preferir webhook configurado
@@ -784,6 +820,16 @@ async function handleButton(interaction) {
   await interaction.channel.send({ embeds: [embed] });
   try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'claim', message: 'Ticket reclamado', data: { channel_id: interaction.channel.id } }); } catch {}
   try { const wm = interaction.client?.webhooks; if (wm?.sendTicketLog) await wm.sendTicketLog(interaction.guild.id, 'claim', { claimedBy: interaction.user, ticketId: String(t.id), guild: interaction.guild, channelId: interaction.channel.id, previousStatus: t.status, newStatus: 'claimed' }); } catch {}
+  
+  // Update webhook message
+  try {
+    await webhookSystem.sendOrUpdateTicketWebhook(updated || { ...t, assigned_to: interaction.user.id, status: 'claimed' }, 'claimed', {
+      claimedBy: interaction.user
+    });
+  } catch (err) {
+    logger.error('[Tickets] Failed to update webhook for ticket claim:', err);
+  }
+  
       await updatePanelHeader(interaction.channel, updated || { ...t, assigned_to: interaction.user.id, status: 'claimed' });
   return safeReply(interaction, { content: '✅ Reclamado.', flags: MessageFlags.Ephemeral });
     }
@@ -829,6 +875,17 @@ async function handleButton(interaction) {
       await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`✅ Marcado como resolvido por ${interaction.user}.`)] });
       try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'finalize', message: 'Ticket finalizado (resolve)', data: { reason: 'Resolvido' } }); } catch {}
       try { const wm = interaction.client?.webhooks; if (wm?.sendTicketLog) await wm.sendTicketLog(interaction.guild.id, 'close', { closedBy: interaction.user, ticketId: String(t.id), guild: interaction.guild, reason: 'Resolvido' }); } catch {}
+      
+      // Update webhook message
+      try {
+        await webhookSystem.sendOrUpdateTicketWebhook(updated || { ...t, status: 'closed' }, 'closed', {
+          closedBy: interaction.user,
+          reason: 'Resolvido'
+        });
+      } catch (err) {
+        logger.error('[Tickets] Failed to update webhook for ticket resolve:', err);
+      }
+      
       await updatePanelHeader(interaction.channel, updated || { ...t, status: 'closed' });
       // Remover imediatamente acesso de não-staff (autor e membros adicionados)
       try {
@@ -887,6 +944,16 @@ async function handleButton(interaction) {
       const updated = await storage.updateTicket(t.id, { status: 'open', reopened_at: new Date().toISOString() });
   await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x3B82F6).setDescription(`♻️ Ticket reaberto por ${interaction.user}.`)] });
   try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'reopen', message: 'Ticket reaberto' }); } catch {}
+  
+  // Update webhook message
+  try {
+    await webhookSystem.sendOrUpdateTicketWebhook(updated || { ...t, status: 'open' }, 'reopened', {
+      reopenedBy: interaction.user
+    });
+  } catch (err) {
+    logger.error('[Tickets] Failed to update webhook for ticket reopen:', err);
+  }
+  
       await updatePanelHeader(interaction.channel, updated || { ...t, status: 'open' });
   return safeReply(interaction, { content: '✅ Reaberto.', flags: MessageFlags.Ephemeral });
     }
@@ -1286,6 +1353,17 @@ async function handleModal(interaction) {
   await interaction.channel.setName(newName, `Renomeado por ${interaction.user.tag}`);
       await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x60A5FA).setDescription(`✏️ Canal renomeado para #${newName} por ${interaction.user}.`)] });
   try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'rename', message: `Renomeado para ${newName}` }); } catch {}
+  
+  // Update webhook message
+  try {
+    await webhookSystem.sendOrUpdateTicketWebhook(t, 'renamed', {
+      renamedBy: interaction.user,
+      newName: newName
+    });
+  } catch (err) {
+    logger.error('[Tickets] Failed to update webhook for ticket rename:', err);
+  }
+  
       return interaction.reply({ content: '✅ Canal renomeado.', flags: MessageFlags.Ephemeral });
     } catch {
       return interaction.reply({ content: '❌ Falha ao renomear canal.', flags: MessageFlags.Ephemeral });

@@ -3203,6 +3203,251 @@ app.get('/api/guild/:guildId/time-tracking', async (req, res) => {
     }
 });
 
+// ===================== Webhook System APIs =====================
+const { WebhookConfigModel, TicketWebhookLogModel } = require('../utils/db/models');
+const webhookSystem = require('../utils/webhookSystem');
+
+// GET: Obter configuração de webhooks do servidor
+app.get('/api/guild/:guildId/webhooks-config', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        let config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
+        
+        if (!config) {
+            // Criar configuração padrão
+            config = await WebhookConfigModel.create({
+                guildId: req.params.guildId,
+                logsEnabled: {
+                    tickets: false,
+                    moderation: false,
+                    giveaways: false,
+                    automod: false,
+                    verification: false
+                },
+                webhooks: []
+            });
+        }
+
+        res.json({ success: true, config });
+    } catch (e) {
+        logger.error('Error fetching webhook config:', e);
+        res.status(500).json({ success: false, error: 'Failed to fetch webhook configuration' });
+    }
+});
+
+// POST: Adicionar novo webhook
+app.post('/api/guild/:guildId/webhooks-config/add', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        const { name, url, types, enabled } = req.body;
+
+        // Validar URL do webhook
+        if (!url || !/^https:\/\/discord\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(url)) {
+            return res.status(400).json({ success: false, error: 'URL de webhook inválida' });
+        }
+
+        // Validar nome
+        if (!name || name.trim().length === 0) {
+            return res.status(400).json({ success: false, error: 'Nome do webhook é obrigatório' });
+        }
+
+        // Validar tipos
+        const validTypes = ['tickets', 'moderation', 'giveaways', 'automod', 'verification'];
+        if (!types || !Array.isArray(types) || types.length === 0) {
+            return res.status(400).json({ success: false, error: 'Selecione pelo menos um tipo de log' });
+        }
+        if (!types.every(t => validTypes.includes(t))) {
+            return res.status(400).json({ success: false, error: 'Tipo de log inválido' });
+        }
+
+        let config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
+        
+        if (!config) {
+            config = new WebhookConfigModel({ guildId: req.params.guildId });
+        }
+
+        // Verificar se já existe webhook com a mesma URL
+        if (config.webhooks.some(w => w.url === url)) {
+            return res.status(400).json({ success: false, error: 'Este webhook já está configurado' });
+        }
+
+        config.webhooks.push({
+            name: name.trim(),
+            url: url.trim(),
+            types,
+            enabled: enabled !== false
+        });
+
+        await config.save();
+
+        res.json({ success: true, config });
+    } catch (e) {
+        logger.error('Error adding webhook:', e);
+        res.status(500).json({ success: false, error: 'Failed to add webhook' });
+    }
+});
+
+// DELETE: Remover webhook
+app.delete('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        const config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
+        if (!config) {
+            return res.status(404).json({ success: false, error: 'Configuração não encontrada' });
+        }
+
+        const webhook = config.webhooks.id(req.params.webhookId);
+        if (!webhook) {
+            return res.status(404).json({ success: false, error: 'Webhook não encontrado' });
+        }
+
+        webhook.remove();
+        await config.save();
+
+        res.json({ success: true, config });
+    } catch (e) {
+        logger.error('Error removing webhook:', e);
+        res.status(500).json({ success: false, error: 'Failed to remove webhook' });
+    }
+});
+
+// PATCH: Atualizar webhook (toggle enabled, editar tipos, etc)
+app.patch('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        const { name, types, enabled } = req.body;
+
+        const config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
+        if (!config) {
+            return res.status(404).json({ success: false, error: 'Configuração não encontrada' });
+        }
+
+        const webhook = config.webhooks.id(req.params.webhookId);
+        if (!webhook) {
+            return res.status(404).json({ success: false, error: 'Webhook não encontrado' });
+        }
+
+        if (name !== undefined) webhook.name = name.trim();
+        if (types !== undefined) webhook.types = types;
+        if (enabled !== undefined) webhook.enabled = enabled;
+
+        await config.save();
+
+        res.json({ success: true, config });
+    } catch (e) {
+        logger.error('Error updating webhook:', e);
+        res.status(500).json({ success: false, error: 'Failed to update webhook' });
+    }
+});
+
+// POST: Testar webhook
+app.post('/api/guild/:guildId/webhooks-config/:webhookId/test', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        const config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
+        if (!config) {
+            return res.status(404).json({ success: false, error: 'Configuração não encontrada' });
+        }
+
+        const webhook = config.webhooks.id(req.params.webhookId);
+        if (!webhook) {
+            return res.status(404).json({ success: false, error: 'Webhook não encontrado' });
+        }
+
+        const success = await webhookSystem.testWebhook(webhook.url);
+
+        webhook.lastTestedAt = new Date();
+        webhook.lastTestSuccess = success;
+        await config.save();
+
+        res.json({ success, tested: true });
+    } catch (e) {
+        logger.error('Error testing webhook:', e);
+        res.status(500).json({ success: false, error: 'Failed to test webhook' });
+    }
+});
+
+// PATCH: Atualizar configuração de logs habilitados
+app.patch('/api/guild/:guildId/webhooks-config/logs-enabled', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        const { logsEnabled } = req.body;
+
+        let config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
+        if (!config) {
+            config = new WebhookConfigModel({ guildId: req.params.guildId });
+        }
+
+        if (logsEnabled) {
+            config.logsEnabled = { ...config.logsEnabled, ...logsEnabled };
+        }
+
+        await config.save();
+
+        res.json({ success: true, config });
+    } catch (e) {
+        logger.error('Error updating logs enabled:', e);
+        res.status(500).json({ success: false, error: 'Failed to update logs configuration' });
+    }
+});
+
+// GET: Histórico de webhooks enviados
+app.get('/api/guild/:guildId/webhooks-logs', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        const limit = parseInt(req.query.limit) || 50;
+        const skip = parseInt(req.query.skip) || 0;
+
+        const logs = await TicketWebhookLogModel.find({ guildId: req.params.guildId })
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .skip(skip)
+            .lean();
+
+        const total = await TicketWebhookLogModel.countDocuments({ guildId: req.params.guildId });
+
+        res.json({ success: true, logs, total, limit, skip });
+    } catch (e) {
+        logger.error('Error fetching webhook logs:', e);
+        res.status(500).json({ success: false, error: 'Failed to fetch webhook logs' });
+    }
+});
+
 // ===================== Moderation APIs (Mongo only for persistence) =====================
 // Guard: only when bot available and user is guild admin
 function ensureMongoAvailable() {

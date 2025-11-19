@@ -73,6 +73,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'nav.welcome': 'Boas-Vindas & Despedidas',
   'nav.stats': 'Estatísticas do Servidor',
   'nav.timeTracking': 'Time Tracking',
+  'nav.webhooksConfig': 'Webhooks',
   // Members
   'members.selectGuild': 'Selecione um servidor para listar membros.',
   'members.search': 'Pesquisar',
@@ -735,6 +736,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
     'nav.welcome': 'Welcome & Goodbye',
     'nav.stats': 'Server Stats',
     'nav.timeTracking': 'Time Tracking',
+    'nav.webhooksConfig': 'Webhooks',
     // Members
     'members.selectGuild': 'Select a server to list members.',
     'members.search': 'Search',
