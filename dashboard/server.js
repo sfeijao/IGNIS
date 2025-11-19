@@ -1015,7 +1015,7 @@ app.post('/api/guild/:guildId/stats/auto-create', async (req, res) => {
         if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
 
         // Get current config or use defaults
-        const storage = require('./utils/storage');
+        const storage = require('../utils/storage');
         let config = storage.get(guildId, 'serverStats') || {
             enabled: false,
             updateInterval: 5,
@@ -4524,7 +4524,7 @@ app.get('/api/guild/:guildId/webhook-unified', async (req, res) => {
         const check = await ensureGuildAdmin(client, guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
-        const storage = require('./utils/storage');
+        const storage = require('../utils/storage');
         const config = storage.get(guildId, 'webhookUnified') || {
             enabled: false,
             url: '',
@@ -4574,7 +4574,7 @@ app.post('/api/guild/:guildId/webhook-unified', async (req, res) => {
             }
         };
 
-        const storage = require('./utils/storage');
+        const storage = require('../utils/storage');
         storage.set(guildId, 'webhookUnified', config);
 
         res.json({ success: true, config });
