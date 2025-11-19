@@ -209,17 +209,3 @@ export default function Sidebar() {
     </aside>
   )
 }
-                >
-                  <span className="text-2xl">{n.icon}</span>
-                  <span className="flex-1 font-medium text-sm">{t(n.key)}</span>
-                  <FeatureBadge flag={n.flag as any} />
-                </Link>
-              )
-            })}
-          </>
-        )}
-      </nav>
-    </aside>
-  )
-}
-
