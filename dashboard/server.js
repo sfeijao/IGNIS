@@ -2871,14 +2871,189 @@ app.get('/api/guild/:guildId/channels', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        const channels = check.guild.channels.cache
-            .filter(c => c.type === 0 || c.type === 5) // text (0) and announcement (5) channels
-            .map(c => ({ id: c.id, name: c.name, type: c.type }))
-            .sort((a,b) => a.name.localeCompare(b.name));
-        res.json({ success: true, channels });
+        
+        const guild = check.guild;
+        let channels = [];
+        
+        // Try to fetch channels from cache first
+        const cachedChannels = guild.channels.cache;
+        
+        // If cache is empty or very small, try fetching from API
+        if (cachedChannels.size === 0) {
+            try {
+                logger.info(`[Channels API] Cache empty for guild ${guild.id}, fetching from Discord API...`);
+                await guild.channels.fetch();
+                logger.info(`[Channels API] Fetched ${guild.channels.cache.size} channels from API`);
+            } catch (fetchError) {
+                logger.error('[Channels API] Failed to fetch channels from Discord API:', fetchError);
+                
+                // Check bot permissions
+                const botMember = guild.members.cache.get(client.user.id);
+                if (!botMember) {
+                    return res.status(403).json({ 
+                        success: false, 
+                        error: 'Bot is not a member of this server',
+                        canManualInput: true,
+                        instructions: 'Please re-invite the bot to this server with proper permissions.'
+                    });
+                }
+                
+                const hasViewChannel = botMember.permissions.has('ViewChannel');
+                const hasManageChannels = botMember.permissions.has('ManageChannels');
+                
+                if (!hasViewChannel) {
+                    return res.status(403).json({ 
+                        success: false, 
+                        error: 'Bot does not have VIEW_CHANNEL permission',
+                        canManualInput: true,
+                        instructions: 'Grant the bot "View Channel" permission and try again, or use manual channel ID input.'
+                    });
+                }
+                
+                // If fetch failed but we have some cached channels, use them
+                if (cachedChannels.size > 0) {
+                    logger.warn('[Channels API] Using partial cache despite fetch failure');
+                } else {
+                    // Complete failure - allow manual input
+                    return res.status(500).json({ 
+                        success: false, 
+                        error: 'Failed to load channels',
+                        canManualInput: true,
+                        instructions: 'You can manually enter a channel ID below.',
+                        botPermissions: { hasViewChannel, hasManageChannels }
+                    });
+                }
+            }
+        }
+        
+        // Filter and map channels
+        // Types: 0=text, 2=voice, 4=category, 5=announcement, 13=stage, 15=forum
+        const typeFilter = req.query.type ? String(req.query.type).split(',').map(t => parseInt(t, 10)) : [0, 2, 5, 13, 15];
+        const includeCategories = req.query.includeCategories === 'true';
+        
+        channels = guild.channels.cache
+            .filter(c => {
+                if (includeCategories && c.type === 4) return true; // categories
+                return typeFilter.includes(c.type);
+            })
+            .map(c => ({
+                id: c.id,
+                name: c.name,
+                type: c.type,
+                typeName: getChannelTypeName(c.type),
+                position: c.position || 0,
+                parentId: c.parentId || null,
+                parentName: c.parent?.name || null
+            }))
+            .sort((a, b) => {
+                // Sort by position first, then by name
+                if (a.position !== b.position) return a.position - b.position;
+                return a.name.localeCompare(b.name);
+            });
+        
+        res.json({ 
+            success: true, 
+            channels,
+            total: channels.length,
+            cached: cachedChannels.size,
+            canManualInput: true // Always allow manual input as fallback
+        });
     } catch (e) {
         logger.error('Error listing channels:', e);
-        res.status(500).json({ success: false, error: 'Failed to list channels' });
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to list channels',
+            canManualInput: true,
+            instructions: 'An error occurred. You can manually enter a channel ID as a fallback.'
+        });
+    }
+});
+
+// Helper function to get channel type name
+function getChannelTypeName(type) {
+    const typeNames = {
+        0: 'Text',
+        1: 'DM',
+        2: 'Voice',
+        3: 'Group DM',
+        4: 'Category',
+        5: 'Announcement',
+        10: 'Announcement Thread',
+        11: 'Public Thread',
+        12: 'Private Thread',
+        13: 'Stage',
+        15: 'Forum',
+        16: 'Media'
+    };
+    return typeNames[type] || `Unknown (${type})`;
+}
+
+// Verify a channel by ID (manual input fallback)
+app.post('/api/guild/:guildId/channels/verify', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const channelId = req.body.channelId;
+        if (!channelId || typeof channelId !== 'string') {
+            return res.status(400).json({ success: false, error: 'Channel ID is required' });
+        }
+        
+        // Validate channel ID format (Discord snowflake: 17-19 digits)
+        if (!/^\d{17,19}$/.test(channelId)) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Invalid channel ID format',
+                hint: 'Channel IDs should be 17-19 digits long'
+            });
+        }
+        
+        // Try to fetch the channel
+        try {
+            const channel = await client.channels.fetch(channelId);
+            
+            // Verify it belongs to this guild
+            if (channel.guildId !== req.params.guildId) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: 'Channel does not belong to this server',
+                    channelGuild: channel.guild?.name || 'Unknown'
+                });
+            }
+            
+            // Channel is valid!
+            return res.json({
+                success: true,
+                channel: {
+                    id: channel.id,
+                    name: channel.name,
+                    type: channel.type,
+                    typeName: getChannelTypeName(channel.type),
+                    parentId: channel.parentId || null,
+                    parentName: channel.parent?.name || null,
+                    exists: true,
+                    accessible: true
+                }
+            });
+            
+        } catch (fetchError) {
+            // Channel not found or not accessible
+            logger.warn(`[Channel Verify] Failed to fetch channel ${channelId}:`, fetchError.message);
+            
+            return res.status(404).json({ 
+                success: false, 
+                error: 'Channel not found or not accessible',
+                channelId,
+                hint: 'Make sure the channel exists and the bot has permission to view it'
+            });
+        }
+        
+    } catch (e) {
+        logger.error('Error verifying channel:', e);
+        res.status(500).json({ success: false, error: 'Failed to verify channel' });
     }
 });
 
