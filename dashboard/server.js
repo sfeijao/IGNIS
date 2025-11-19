@@ -4245,6 +4245,35 @@ app.delete('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) =>
     }
 });
 
+// PATCH: Atualizar configuração de logs habilitados (MUST be before :webhookId route)
+app.patch('/api/guild/:guildId/webhooks-config/logs-enabled', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        const { logsEnabled } = req.body;
+
+        let config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
+        if (!config) {
+            config = new WebhookConfigModel({ guildId: req.params.guildId });
+        }
+
+        if (logsEnabled) {
+            config.logsEnabled = { ...config.logsEnabled, ...logsEnabled };
+        }
+
+        await config.save();
+
+        res.json({ success: true, config });
+    } catch (e) {
+        logger.error('Error updating logs enabled:', e);
+        res.status(500).json({ success: false, error: 'Failed to update logs configuration' });
+    }
+});
+
 // PATCH: Atualizar webhook (toggle enabled, editar tipos, etc)
 app.patch('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -4308,35 +4337,6 @@ app.post('/api/guild/:guildId/webhooks-config/:webhookId/test', async (req, res)
     } catch (e) {
         logger.error('Error testing webhook:', e);
         res.status(500).json({ success: false, error: 'Failed to test webhook' });
-    }
-});
-
-// PATCH: Atualizar configuração de logs habilitados
-app.patch('/api/guild/:guildId/webhooks-config/logs-enabled', async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-        const { logsEnabled } = req.body;
-
-        let config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
-        if (!config) {
-            config = new WebhookConfigModel({ guildId: req.params.guildId });
-        }
-
-        if (logsEnabled) {
-            config.logsEnabled = { ...config.logsEnabled, ...logsEnabled };
-        }
-
-        await config.save();
-
-        res.json({ success: true, config });
-    } catch (e) {
-        logger.error('Error updating logs enabled:', e);
-        res.status(500).json({ success: false, error: 'Failed to update logs configuration' });
     }
 });
 
