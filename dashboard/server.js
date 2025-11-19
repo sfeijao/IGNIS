@@ -3278,6 +3278,162 @@ app.get('/api/guild/:guildId/stats/metrics', async (req, res) => {
     }
 });
 
+// ==============================================
+// TIME TRACKING - Sistema de bate-ponto
+// ==============================================
+
+// GET sessões de um utilizador
+app.get('/api/guild/:guildId/timetracking/user/:userId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const { TimeTrackingSessionModel } = require('./utils/db/models');
+        
+        const limit = parseInt(req.query.limit) || 20;
+        const sessions = await TimeTrackingSessionModel.findUserSessions(
+            req.params.guildId,
+            req.params.userId,
+            limit
+        );
+        
+        res.json({ success: true, sessions, total: sessions.length });
+    } catch (e) {
+        logger.error('Error fetching user sessions:', e);
+        res.status(500).json({ success: false, error: 'Failed to fetch sessions' });
+    }
+});
+
+// GET relatório geral do servidor
+app.get('/api/guild/:guildId/timetracking/report', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const { TimeTrackingSessionModel } = require('./utils/db/models');
+        
+        // Parse date range
+        let startDate = null;
+        let endDate = null;
+        
+        if (req.query.startDate) {
+            startDate = new Date(req.query.startDate);
+        }
+        
+        if (req.query.endDate) {
+            endDate = new Date(req.query.endDate);
+        } else {
+            endDate = new Date(); // Now
+        }
+        
+        // Default: last 30 days
+        if (!startDate) {
+            startDate = new Date();
+            startDate.setDate(startDate.getDate() - 30);
+        }
+        
+        const stats = await TimeTrackingSessionModel.getGuildStats(
+            req.params.guildId,
+            startDate,
+            endDate
+        );
+        
+        res.json({ 
+            success: true, 
+            stats,
+            period: {
+                start: startDate,
+                end: endDate
+            }
+        });
+    } catch (e) {
+        logger.error('Error generating report:', e);
+        res.status(500).json({ success: false, error: 'Failed to generate report' });
+    }
+});
+
+// GET sessão ativa de um utilizador
+app.get('/api/guild/:guildId/timetracking/active/:userId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const { TimeTrackingSessionModel } = require('./utils/db/models');
+        
+        const session = await TimeTrackingSessionModel.findActiveSession(
+            req.params.guildId,
+            req.params.userId
+        );
+        
+        if (!session) {
+            return res.json({ success: true, session: null });
+        }
+        
+        const duration = session.getCurrentDuration();
+        
+        res.json({ 
+            success: true, 
+            session,
+            duration
+        });
+    } catch (e) {
+        logger.error('Error fetching active session:', e);
+        res.status(500).json({ success: false, error: 'Failed to fetch active session' });
+    }
+});
+
+// GET todas as sessões do servidor (com filtros)
+app.get('/api/guild/:guildId/timetracking/sessions', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const { TimeTrackingSessionModel } = require('./utils/db/models');
+        
+        let startDate = null;
+        let endDate = null;
+        
+        if (req.query.startDate) {
+            startDate = new Date(req.query.startDate);
+        }
+        
+        if (req.query.endDate) {
+            endDate = new Date(req.query.endDate);
+        }
+        
+        const sessions = await TimeTrackingSessionModel.findGuildSessions(
+            req.params.guildId,
+            startDate,
+            endDate
+        );
+        
+        res.json({ success: true, sessions, total: sessions.length });
+    } catch (e) {
+        logger.error('Error fetching sessions:', e);
+        res.status(500).json({ success: false, error: 'Failed to fetch sessions' });
+    }
+});
+
 // Categories list (for UIs)
 app.get('/api/guild/:guildId/categories', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
