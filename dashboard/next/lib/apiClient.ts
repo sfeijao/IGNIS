@@ -573,14 +573,4 @@ export const api = {
     if (!res.ok) throw new Error('Failed to save verification config')
     return res.json()
   },
-
-  // Webhooks Management
-  async deleteWebhook(guildId: string, webhookId: string) {
-    const res = await fetch(`/api/guild/${guildId}/webhooks/${webhookId}`, {
-      method: 'DELETE',
-      credentials: 'include'
-    })
-    if (!res.ok) throw new Error('Failed to delete webhook')
-    return res.json()
-  },
 }
