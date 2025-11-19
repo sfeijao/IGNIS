@@ -18,7 +18,13 @@ const TicketSchema = new mongoose.Schema({
   locked: { type: Boolean, default: false },
   // ✨ Webhook tracking: armazenar ID da mensagem webhook para updates
   webhook_message_id: { type: String, default: null },
-  webhook_last_update: { type: Date, default: null }
+  webhook_last_update: { type: Date, default: null },
+  // ✨ Giveaway winner ticket fields
+  type: { type: String, default: 'normal' }, // 'normal' or 'giveaway_winner'
+  deadline: { type: Date, default: null }, // When ticket expires (48h for giveaway winners)
+  responded: { type: Boolean, default: false }, // Whether winner has responded
+  giveaway_id: { type: String, default: null }, // Associated giveaway ID
+  closed_reason: { type: String, default: null } // Reason for closing (e.g., 'expired_no_response')
 }, { timestamps: true });
 
 // Performance: Composite indexes para queries comuns
@@ -26,6 +32,7 @@ TicketSchema.index({ guild_id: 1, status: 1, created_at: -1 }); // Listar ticket
 TicketSchema.index({ guild_id: 1, user_id: 1, status: 1 }); // Tickets de um user específico
 TicketSchema.index({ guild_id: 1, assigned_to: 1, status: 1 }); // Tickets assignados a alguém
 TicketSchema.index({ guild_id: 1, category: 1, status: 1 }); // Por categoria
+TicketSchema.index({ type: 1, status: 1, deadline: 1, responded: 1 }); // Giveaway winner tickets expiration check
 
 const GuildConfigSchema = new mongoose.Schema({
   guild_id: { type: String, unique: true },
