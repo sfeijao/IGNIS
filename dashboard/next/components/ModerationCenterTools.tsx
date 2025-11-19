@@ -43,10 +43,14 @@ export default function ModerationCenterTools() {
     if (!guildId) return
     ;(async () => {
       try {
-        const ch = await api.getChannels(guildId)
-        const list = ch.channels || ch || []
-        setChannels(list)
-      } catch {}
+        const response = await api.getChannels(guildId)
+        console.log('[Moderation] Channels response:', response)
+        const list = response.channels || response || []
+        setChannels(Array.isArray(list) ? list : [])
+      } catch (err) {
+        console.error('[Moderation] Failed to load channels:', err)
+        setChannels([])
+      }
     })()
   }, [guildId])
 

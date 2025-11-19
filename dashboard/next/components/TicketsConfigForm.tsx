@@ -26,7 +26,6 @@ const channelTypeLabel = (ch: AnyChannel) => {
 export default function TicketsConfigForm() {
   const guildId = useGuildId()
   const [config, setConfig] = useState<any>({})
-  const [json, setJson] = useState('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -56,7 +55,6 @@ export default function TicketsConfigForm() {
         const c = await api.getTicketsConfig(guildId)
         const obj = c?.config || c || {}
         setConfig(obj)
-        setJson(JSON.stringify(obj, null, 2))
         
         const [rolesRes, channelsRes, categoriesRes] = await Promise.allSettled([
           api.getRoles(guildId),
@@ -81,29 +79,11 @@ export default function TicketsConfigForm() {
     setError(null)
     setSaved(false)
     try {
-      let updates: any = {}
-      try {
-        const parsed = JSON.parse(json)
-        if (parsed && typeof parsed === 'object') {
-          if (parsed.tickets && typeof parsed.tickets === 'object') {
-            updates = { tickets: parsed.tickets }
-          } else if (
-            'panelChannelId' in parsed || 'staffRoleId' in parsed || 'archiveCategoryId' in parsed || 'logChannelId' in parsed || 'enabled' in parsed
-          ) {
-            updates = { tickets: parsed }
-          } else {
-            updates = { tickets: { ...(config.tickets || {}) } }
-          }
-        }
-      } catch {
-        updates = { tickets: { ...(config.tickets || {}) } }
-      }
-      if (!updates.tickets) updates.tickets = { ...(config.tickets || {}) }
+      const updates = { tickets: { ...(config.tickets || {}) } }
 
       const res = await api.saveTicketsConfig(guildId, updates)
       const obj = res?.config ? { ...(res.config || {}) } : { ...config, ...(updates || {}) }
       setConfig(obj)
-      setJson(JSON.stringify(obj, null, 2))
       setSaved(true)
       toast({ type: 'success', title: t('tickets.saved') })
       setTimeout(() => setSaved(false), 3000)
@@ -114,7 +94,7 @@ export default function TicketsConfigForm() {
     } finally {
       setSaving(false)
     }
-  }, [guildId, json, config, t, toast])
+  }, [guildId, config, t, toast])
 
   const tickets = useMemo(() => (config?.tickets || {}), [config])
 
@@ -347,43 +327,6 @@ export default function TicketsConfigForm() {
                   <span className="font-medium">✓ {t('tickets.saved')}</span>
                 </div>
               )}
-            </div>
-          </section>
-
-          {/* JSON Editor */}
-          <section className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 rounded-2xl overflow-hidden shadow-2xl">
-            <div className="bg-gradient-to-r from-green-600/20 to-emerald-600/20 border-b border-gray-700/50 px-6 py-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" />
-                </svg>
-                {t('tickets.json.editor')}
-              </h3>
-            </div>
-            <div className="p-6 space-y-4">
-              <textarea 
-                className="w-full min-h-[480px] bg-gray-900/50 border border-gray-700/50 rounded-xl p-4 font-mono text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-y"
-                value={json} 
-                onChange={e => setJson(e.target.value)} 
-                placeholder='{\n  "tickets": {\n    "enabled": true\n  }\n}'
-              />
-              <div className="flex gap-3">
-                <button 
-                  type="button" 
-                  className="flex-1 px-4 py-2 bg-gray-700/50 hover:bg-gray-600/50 rounded-lg font-medium transition-all duration-200 border border-gray-600/50"
-                  onClick={() => setJson(JSON.stringify(config, null, 2))}
-                >
-                  ↺ {t('tickets.json.revert')}
-                </button>
-                <button 
-                  type="button" 
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg font-medium transition-all duration-200"
-                  onClick={save} 
-                  disabled={loading || saving}
-                >
-                  {t('tickets.json.save')}
-                </button>
-              </div>
             </div>
           </section>
         </div>
