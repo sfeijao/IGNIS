@@ -240,6 +240,17 @@ client.once('ready', () => {
         logger.warn('⚠️ Server Stats Worker not started:', statsErr.message);
     }
 
+    // 🆕 Iniciar Giveaway Claim Job Processor
+    try {
+        const { GiveawayClaimJobProcessor } = require('./utils/jobs/giveawayClaimProcessor');
+        const giveawayClaimJob = new GiveawayClaimJobProcessor(client);
+        giveawayClaimJob.start();
+        client.giveawayClaimJob = giveawayClaimJob; // Store reference for graceful shutdown
+        logger.info('✅ Giveaway Claim Job Processor initialized');
+    } catch (jobErr) {
+        logger.warn('⚠️ Giveaway Claim Job Processor not started:', jobErr.message);
+    }
+
     // Atualizar avatar/banner do bot no arranque se variáveis estiverem definidas
     (async () => {
         try {
@@ -466,12 +477,18 @@ client.once('ready', () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
     logger.info('🛑 SIGTERM received, shutting down bot gracefully');
+    if (client.giveawayClaimJob) {
+        client.giveawayClaimJob.stop();
+    }
     client.destroy();
     process.exit(0);
 });
 
 process.on('SIGINT', () => {
     logger.info('🛑 SIGINT received, shutting down bot gracefully');
+    if (client.giveawayClaimJob) {
+        client.giveawayClaimJob.stop();
+    }
     client.destroy();
     process.exit(0);
 });
