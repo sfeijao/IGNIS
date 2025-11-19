@@ -57,9 +57,6 @@ const webhookConfigSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexar por guildId para queries rápidas
-webhookConfigSchema.index({ guildId: 1 });
-
 // Método helper para obter webhooks por tipo
 webhookConfigSchema.methods.getWebhooksByType = function(type) {
   return this.webhooks.filter(w => 
