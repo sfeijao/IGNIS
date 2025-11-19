@@ -13,7 +13,6 @@ export default function MembersList() {
   const [q, setQ] = useState('')
   const [role, setRole] = useState('')
   const [limit, setLimit] = useState(50)
-  const [refresh, setRefresh] = useState(false)
   const [loading, setLoading] = useState(false)
   const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([])
   const [members, setMembers] = useState<Array<any>>([])
@@ -21,7 +20,7 @@ export default function MembersList() {
   const [enabled, setEnabled] = useState(true)
   const { toast } = useToast()
 
-  const params = useMemo(() => ({ q, role, limit, refresh }), [q, role, limit, refresh])
+  const params = useMemo(() => ({ q, role, limit }), [q, role, limit])
 
   useEffect(() => {
     if (!guildId) return
@@ -127,7 +126,7 @@ export default function MembersList() {
           <span className="text-2xl">🔍</span>
           <h3 className="text-lg font-semibold text-white">{t('members.search')}</h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="md:col-span-2 space-y-2">
             <label className="text-sm font-medium text-gray-300">Search by Name</label>
             <input
@@ -137,7 +136,7 @@ export default function MembersList() {
               onChange={e => setQ(e.target.value)}
             />
           </div>
-          <div className="space-y-2">
+          <div className="md:col-span-2 space-y-2">
             <label className="text-sm font-medium text-gray-300">{t('members.role')}</label>
             <select
               className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
@@ -157,17 +156,6 @@ export default function MembersList() {
             >
               {[25, 50, 100, 150, 200].map(n => <option key={n} value={n}>{n}</option>)}
             </select>
-          </div>
-          <div className="flex items-end">
-            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-              <input
-                type="checkbox"
-                className="w-5 h-5 rounded bg-gray-900/50 border-gray-700 text-cyan-600 focus:ring-2 focus:ring-cyan-500"
-                checked={refresh}
-                onChange={e => setRefresh(e.target.checked)}
-              />
-              <span>{t('members.refresh')}</span>
-            </label>
           </div>
         </div>
       </div>
