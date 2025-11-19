@@ -79,7 +79,7 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'nav.welcome': 'Boas-Vindas',
   'nav.stats': 'Estatísticas',
   'nav.serverStats': 'Canais Stats',
-  'nav.timeTracking': 'BP,
+  'nav.timeTracking': 'BAT',
   'nav.ticketCategories': 'Categorias de Tickets',
   'nav.assets': 'Assets',
   'nav.webhooksConfig': 'Config Webhooks',
