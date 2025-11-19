@@ -207,6 +207,7 @@ const { GiveawayClaimModel } = require('./models/GiveawayClaim');
 const { ServerStatsConfigModel } = require('./models/ServerStatsConfig');
 const { TimeTrackingSessionModel } = require('./models/TimeTrackingSession');
 const { GuildAssetConfigModel } = require('./models/GuildAssetConfig');
+const { GenericKVModel } = require('./models/GenericKV');
 
 module.exports = { 
   TicketModel, 
@@ -226,5 +227,6 @@ module.exports = {
   GiveawayClaimModel, // ✨ NOVO - Sistema de reclamação de giveaways (48h)
   ServerStatsConfigModel, // ✨ NOVO - Canais de estatísticas dinâmicas
   TimeTrackingSessionModel, // ✨ NOVO - Sistema de bate-ponto
-  GuildAssetConfigModel // ✨ NOVO - Avatar/Banner customizados via webhooks
+  GuildAssetConfigModel, // ✨ NOVO - Avatar/Banner customizados via webhooks
+  GenericKVModel // ✨ NOVO - Key-value storage para locks e dados temporários
 };

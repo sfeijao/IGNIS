@@ -424,6 +424,57 @@ class SimpleStorage {
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         return filtered.slice(safeOffset, safeOffset + safeLimit);
     }
+
+    // Generic key-value storage for locks and temporary data
+    async getGeneric(key) {
+        if (useMongo) {
+            const { GenericKVModel } = require('./db/models');
+            if (GenericKVModel) {
+                const doc = await GenericKVModel.findOne({ key }).lean();
+                return doc ? doc.value : null;
+            }
+        }
+        // JSON fallback: use a generic.json file
+        const genericFile = path.join(this.storageDir, 'generic.json');
+        const data = await this.readFile(genericFile) || {};
+        return data[key] || null;
+    }
+
+    async setGeneric(key, value) {
+        if (useMongo) {
+            const { GenericKVModel } = require('./db/models');
+            if (GenericKVModel) {
+                await GenericKVModel.findOneAndUpdate(
+                    { key },
+                    { $set: { key, value, updated_at: new Date() } },
+                    { upsert: true }
+                );
+                return true;
+            }
+        }
+        // JSON fallback
+        const genericFile = path.join(this.storageDir, 'generic.json');
+        const data = await this.readFile(genericFile) || {};
+        data[key] = value;
+        await this.writeFile(genericFile, data);
+        return true;
+    }
+
+    async deleteGeneric(key) {
+        if (useMongo) {
+            const { GenericKVModel } = require('./db/models');
+            if (GenericKVModel) {
+                await GenericKVModel.deleteOne({ key });
+                return true;
+            }
+        }
+        // JSON fallback
+        const genericFile = path.join(this.storageDir, 'generic.json');
+        const data = await this.readFile(genericFile) || {};
+        delete data[key];
+        await this.writeFile(genericFile, data);
+        return true;
+    }
 }
 
 module.exports = new SimpleStorage();
