@@ -3267,7 +3267,7 @@ app.get('/api/guild/:guildId/stats/config', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         
-        const { ServerStatsConfigModel } = require('./utils/db/models');
+        const { ServerStatsConfigModel } = require('../utils/db/models');
         let config = await ServerStatsConfigModel.findByGuild(req.params.guildId);
         
         // Se não existir, retornar configuração padrão
@@ -3373,7 +3373,7 @@ app.post('/api/guild/:guildId/stats/config', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         
-        const { ServerStatsConfigModel } = require('./utils/db/models');
+        const { ServerStatsConfigModel } = require('../utils/db/models');
         let config = await ServerStatsConfigModel.findByGuild(req.params.guildId);
         
         if (!config) {
@@ -3456,7 +3456,7 @@ app.get('/api/guild/:guildId/stats/metrics', async (req, res) => {
             return res.status(500).json({ success: false, error: 'Stats processor not available' });
         }
         
-        const { ServerStatsConfigModel } = require('./utils/db/models');
+        const { ServerStatsConfigModel } = require('../utils/db/models');
         let config = await ServerStatsConfigModel.findByGuild(req.params.guildId);
         
         if (!config) {
@@ -3488,7 +3488,7 @@ app.get('/api/guild/:guildId/timetracking/user/:userId', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         
-        const { TimeTrackingSessionModel } = require('./utils/db/models');
+        const { TimeTrackingSessionModel } = require('../utils/db/models');
         
         const limit = parseInt(req.query.limit) || 20;
         const sessions = await TimeTrackingSessionModel.findUserSessions(
@@ -3515,7 +3515,7 @@ app.get('/api/guild/:guildId/timetracking/report', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         
-        const { TimeTrackingSessionModel } = require('./utils/db/models');
+        const { TimeTrackingSessionModel } = require('../utils/db/models');
         
         // Parse date range
         let startDate = null;
@@ -3568,7 +3568,7 @@ app.get('/api/guild/:guildId/timetracking/active/:userId', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         
-        const { TimeTrackingSessionModel } = require('./utils/db/models');
+        const { TimeTrackingSessionModel } = require('../utils/db/models');
         
         const session = await TimeTrackingSessionModel.findActiveSession(
             req.params.guildId,
@@ -3603,7 +3603,7 @@ app.get('/api/guild/:guildId/timetracking/sessions', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         
-        const { TimeTrackingSessionModel } = require('./utils/db/models');
+        const { TimeTrackingSessionModel } = require('../utils/db/models');
         
         let startDate = null;
         let endDate = null;
@@ -3644,7 +3644,7 @@ app.get('/api/guild/:guildId/assets', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         
-        const { GuildAssetConfigModel } = require('./utils/db/models');
+        const { GuildAssetConfigModel } = require('../utils/db/models');
         const config = await GuildAssetConfigModel.findOrCreate(req.params.guildId, req.user.id);
         
         res.json({ success: true, config });
@@ -3681,7 +3681,7 @@ app.post('/api/guild/:guildId/assets/avatar', async (req, res) => {
             }
         }
         
-        const { GuildAssetConfigModel } = require('./utils/db/models');
+        const { GuildAssetConfigModel } = require('../utils/db/models');
         const config = await GuildAssetConfigModel.findOrCreate(req.params.guildId, req.user.id);
         
         if (url) {
@@ -3724,7 +3724,7 @@ app.post('/api/guild/:guildId/assets/banner', async (req, res) => {
             }
         }
         
-        const { GuildAssetConfigModel } = require('./utils/db/models');
+        const { GuildAssetConfigModel } = require('../utils/db/models');
         const config = await GuildAssetConfigModel.findOrCreate(req.params.guildId, req.user.id);
         
         if (url) {
@@ -3751,7 +3751,7 @@ app.delete('/api/guild/:guildId/assets/avatar', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         
-        const { GuildAssetConfigModel } = require('./utils/db/models');
+        const { GuildAssetConfigModel } = require('../utils/db/models');
         const config = await GuildAssetConfigModel.findByGuild(req.params.guildId);
         
         if (!config) {
@@ -3781,7 +3781,7 @@ app.delete('/api/guild/:guildId/assets/banner', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         
-        const { GuildAssetConfigModel } = require('./utils/db/models');
+        const { GuildAssetConfigModel } = require('../utils/db/models');
         const config = await GuildAssetConfigModel.findByGuild(req.params.guildId);
         
         if (!config) {
