@@ -2,9 +2,9 @@ const express = require('express');
 const http = require('http');
 const { spawn } = require('child_process');
 const session = require('express-session');
-let MongoStore = null; 
-try { 
-    MongoStore = require('connect-mongo'); 
+let MongoStore = null;
+try {
+    MongoStore = require('connect-mongo');
 } catch (e) {
     console.warn('[Dashboard] connect-mongo não disponível:', e.message);
 }
@@ -453,12 +453,12 @@ passport.use(new DiscordStrategy({
     scope: ['identify', 'guilds']
 }, (accessToken, refreshToken, profile, done) => {
     profile.accessToken = accessToken;
-    
+
     // Process guilds to extract those where user has MANAGE_GUILD permission
     // Discord permission bit for MANAGE_GUILD is 0x20 (32)
     const MANAGE_GUILD = 0x20;
     profile.manageGuilds = [];
-    
+
     if (Array.isArray(profile.guilds)) {
         profile.manageGuilds = profile.guilds
             .filter(g => {
@@ -468,11 +468,11 @@ passport.use(new DiscordStrategy({
             })
             .map(g => g.id);
     }
-    
+
     // Check if user is bot owner/admin
     const botOwners = config.DISCORD?.BOT_OWNERS || [];
     profile.admin = botOwners.includes(profile.id);
-    
+
     return done(null, profile);
 }));
 
@@ -1990,9 +1990,9 @@ app.post('/api/guild/:guildId/panels', async (req, res) => {
         // Enviar painel para o Discord
         try {
             const { TicketCategoryModel } = require('../utils/db/models');
-            const ticketCategories = await TicketCategoryModel.find({ 
-                guild_id: guildId, 
-                enabled: true 
+            const ticketCategories = await TicketCategoryModel.find({
+                guild_id: guildId,
+                enabled: true
             }).sort({ order: 1 }).lean();
 
             const { sendOrUpdatePanel } = require('../utils/panelBuilder');
@@ -2083,9 +2083,9 @@ app.patch('/api/guild/:guildId/panels/:panelId', async (req, res) => {
         // Atualizar painel no Discord
         try {
             const { TicketCategoryModel } = require('../utils/db/models');
-            const ticketCategories = await TicketCategoryModel.find({ 
-                guild_id: guildId, 
-                enabled: true 
+            const ticketCategories = await TicketCategoryModel.find({
+                guild_id: guildId,
+                enabled: true
             }).sort({ order: 1 }).lean();
 
             const { sendOrUpdatePanel } = require('../utils/panelBuilder');
@@ -3133,13 +3133,13 @@ app.get('/api/guild/:guildId/channels', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const guild = check.guild;
         let channels = [];
-        
+
         // Try to fetch channels from cache first
         const cachedChannels = guild.channels.cache;
-        
+
         // If cache is empty or very small, try fetching from API
         if (cachedChannels.size === 0) {
             try {
@@ -3148,37 +3148,37 @@ app.get('/api/guild/:guildId/channels', async (req, res) => {
                 logger.info(`[Channels API] Fetched ${guild.channels.cache.size} channels from API`);
             } catch (fetchError) {
                 logger.error('[Channels API] Failed to fetch channels from Discord API:', fetchError);
-                
+
                 // Check bot permissions
                 const botMember = guild.members.cache.get(client.user.id);
                 if (!botMember) {
-                    return res.status(403).json({ 
-                        success: false, 
+                    return res.status(403).json({
+                        success: false,
                         error: 'Bot is not a member of this server',
                         canManualInput: true,
                         instructions: 'Please re-invite the bot to this server with proper permissions.'
                     });
                 }
-                
+
                 const hasViewChannel = botMember.permissions.has('ViewChannel');
                 const hasManageChannels = botMember.permissions.has('ManageChannels');
-                
+
                 if (!hasViewChannel) {
-                    return res.status(403).json({ 
-                        success: false, 
+                    return res.status(403).json({
+                        success: false,
                         error: 'Bot does not have VIEW_CHANNEL permission',
                         canManualInput: true,
                         instructions: 'Grant the bot "View Channel" permission and try again, or use manual channel ID input.'
                     });
                 }
-                
+
                 // If fetch failed but we have some cached channels, use them
                 if (cachedChannels.size > 0) {
                     logger.warn('[Channels API] Using partial cache despite fetch failure');
                 } else {
                     // Complete failure - allow manual input
-                    return res.status(500).json({ 
-                        success: false, 
+                    return res.status(500).json({
+                        success: false,
                         error: 'Failed to load channels',
                         canManualInput: true,
                         instructions: 'You can manually enter a channel ID below.',
@@ -3187,12 +3187,12 @@ app.get('/api/guild/:guildId/channels', async (req, res) => {
                 }
             }
         }
-        
+
         // Filter and map channels
         // Types: 0=text, 2=voice, 4=category, 5=announcement, 13=stage, 15=forum
         const typeFilter = req.query.type ? String(req.query.type).split(',').map(t => parseInt(t, 10)) : [0, 2, 5, 13, 15];
         const includeCategories = req.query.includeCategories === 'true';
-        
+
         channels = guild.channels.cache
             .filter(c => {
                 if (includeCategories && c.type === 4) return true; // categories
@@ -3212,9 +3212,9 @@ app.get('/api/guild/:guildId/channels', async (req, res) => {
                 if (a.position !== b.position) return a.position - b.position;
                 return a.name.localeCompare(b.name);
             });
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             channels,
             total: channels.length,
             cached: cachedChannels.size,
@@ -3222,8 +3222,8 @@ app.get('/api/guild/:guildId/channels', async (req, res) => {
         });
     } catch (e) {
         logger.error('Error listing channels:', e);
-        res.status(500).json({ 
-            success: false, 
+        res.status(500).json({
+            success: false,
             error: 'Failed to list channels',
             canManualInput: true,
             instructions: 'An error occurred. You can manually enter a channel ID as a fallback.'
@@ -3258,34 +3258,34 @@ app.post('/api/guild/:guildId/channels/verify', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const channelId = req.body.channelId;
         if (!channelId || typeof channelId !== 'string') {
             return res.status(400).json({ success: false, error: 'Channel ID is required' });
         }
-        
+
         // Validate channel ID format (Discord snowflake: 17-19 digits)
         if (!/^\d{17,19}$/.test(channelId)) {
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 error: 'Invalid channel ID format',
                 hint: 'Channel IDs should be 17-19 digits long'
             });
         }
-        
+
         // Try to fetch the channel
         try {
             const channel = await client.channels.fetch(channelId);
-            
+
             // Verify it belongs to this guild
             if (channel.guildId !== req.params.guildId) {
-                return res.status(400).json({ 
-                    success: false, 
+                return res.status(400).json({
+                    success: false,
                     error: 'Channel does not belong to this server',
                     channelGuild: channel.guild?.name || 'Unknown'
                 });
             }
-            
+
             // Channel is valid!
             return res.json({
                 success: true,
@@ -3300,19 +3300,19 @@ app.post('/api/guild/:guildId/channels/verify', async (req, res) => {
                     accessible: true
                 }
             });
-            
+
         } catch (fetchError) {
             // Channel not found or not accessible
             logger.warn(`[Channel Verify] Failed to fetch channel ${channelId}:`, fetchError.message);
-            
-            return res.status(404).json({ 
-                success: false, 
+
+            return res.status(404).json({
+                success: false,
                 error: 'Channel not found or not accessible',
                 channelId,
                 hint: 'Make sure the channel exists and the bot has permission to view it'
             });
         }
-        
+
     } catch (e) {
         logger.error('Error verifying channel:', e);
         res.status(500).json({ success: false, error: 'Failed to verify channel' });
@@ -3326,17 +3326,17 @@ app.post('/api/guild/:guildId/channels/verify', async (req, res) => {
 // GET configuração de estatísticas
 app.get('/api/guild/:guildId/stats/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    
+
     try {
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { ServerStatsConfigModel } = require('../utils/db/models');
         let config = await ServerStatsConfigModel.findByGuild(req.params.guildId);
-        
+
         // Se não existir, retornar configuração padrão
         if (!config) {
             return res.json({
@@ -3358,7 +3358,7 @@ app.get('/api/guild/:guildId/stats/config', async (req, res) => {
                 }
             });
         }
-        
+
         res.json({ success: true, config });
     } catch (e) {
         logger.error('Error fetching stats config:', e);
@@ -3369,46 +3369,46 @@ app.get('/api/guild/:guildId/stats/config', async (req, res) => {
 // POST setup de estatísticas (criar canais)
 app.post('/api/guild/:guildId/stats/setup', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    
+
     try {
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { metrics, categoryId, updateInterval } = req.body;
-        
+
         if (!metrics || !Array.isArray(metrics) || metrics.length === 0) {
             return res.status(400).json({ success: false, error: 'No metrics selected' });
         }
-        
+
         // Validar métricas
         const validMetrics = [
-            'total_members', 'human_members', 'bot_members', 
-            'online_members', 'boosters', 'total_channels', 
+            'total_members', 'human_members', 'bot_members',
+            'online_members', 'boosters', 'total_channels',
             'total_roles', 'active_tickets'
         ];
-        
+
         const selectedMetrics = metrics.filter(m => validMetrics.includes(m));
-        
+
         if (selectedMetrics.length === 0) {
             return res.status(400).json({ success: false, error: 'No valid metrics selected' });
         }
-        
+
         // Usar o processor de stats
         const statsProcessor = client.serverStatsProcessor;
         if (!statsProcessor) {
             return res.status(503).json({ success: false, error: 'Stats system is initializing, please try again in a moment' });
         }
-        
+
         const result = await statsProcessor.setupChannels(
             req.params.guildId,
             req.user.id,
             selectedMetrics,
             categoryId || null
         );
-        
+
         // Atualizar intervalo se fornecido
         if (updateInterval && result.config) {
             const interval = parseInt(updateInterval);
@@ -3417,9 +3417,9 @@ app.post('/api/guild/:guildId/stats/setup', async (req, res) => {
                 await result.config.save();
             }
         }
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             ...result,
             message: `Created ${result.channels.length} stat channel(s)`
         });
@@ -3432,43 +3432,43 @@ app.post('/api/guild/:guildId/stats/setup', async (req, res) => {
 // POST atualizar configuração
 app.post('/api/guild/:guildId/stats/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    
+
     try {
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { ServerStatsConfigModel } = require('../utils/db/models');
         let config = await ServerStatsConfigModel.findByGuild(req.params.guildId);
-        
+
         if (!config) {
             return res.status(404).json({ success: false, error: 'Stats not configured' });
         }
-        
+
         // Atualizar campos permitidos
         if (typeof req.body.enabled === 'boolean') {
             config.enabled = req.body.enabled;
         }
-        
+
         if (req.body.updateInterval) {
             const interval = parseInt(req.body.updateInterval);
             if (interval >= 5 && interval <= 60) {
                 config.update_interval_minutes = interval;
             }
         }
-        
+
         if (req.body.metrics && typeof req.body.metrics === 'object') {
             Object.assign(config.metrics, req.body.metrics);
         }
-        
+
         if (req.body.customNames && typeof req.body.customNames === 'object') {
             Object.assign(config.custom_names, req.body.customNames);
         }
-        
+
         await config.save();
-        
+
         res.json({ success: true, config });
     } catch (e) {
         logger.error('Error updating stats config:', e);
@@ -3479,25 +3479,25 @@ app.post('/api/guild/:guildId/stats/config', async (req, res) => {
 // DELETE desativar estatísticas
 app.delete('/api/guild/:guildId/stats', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    
+
     try {
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const deleteChannels = req.query.deleteChannels === 'true';
-        
+
         const statsProcessor = client.serverStatsProcessor;
         if (!statsProcessor) {
             return res.status(503).json({ success: false, error: 'Stats system is initializing, please try again in a moment' });
         }
-        
+
         const result = await statsProcessor.disableStats(req.params.guildId, deleteChannels);
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             ...result,
             message: deleteChannels ? 'Stats disabled and channels deleted' : 'Stats disabled'
         });
@@ -3510,29 +3510,29 @@ app.delete('/api/guild/:guildId/stats', async (req, res) => {
 // GET métricas atuais (preview)
 app.get('/api/guild/:guildId/stats/metrics', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    
+
     try {
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const statsProcessor = client.serverStatsProcessor;
         if (!statsProcessor) {
             return res.status(503).json({ success: false, error: 'Stats system is initializing, please try again in a moment' });
         }
-        
+
         const { ServerStatsConfigModel } = require('../utils/db/models');
         let config = await ServerStatsConfigModel.findByGuild(req.params.guildId);
-        
+
         if (!config) {
             // Criar config temporária para calcular métricas
             config = new ServerStatsConfigModel({ guild_id: req.params.guildId });
         }
-        
+
         const metrics = await statsProcessor.calculateMetrics(check.guild, config);
-        
+
         res.json({ success: true, metrics });
     } catch (e) {
         logger.error('Error fetching metrics:', e);
@@ -3547,23 +3547,23 @@ app.get('/api/guild/:guildId/stats/metrics', async (req, res) => {
 // GET sessões de um utilizador
 app.get('/api/guild/:guildId/timetracking/user/:userId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    
+
     try {
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { TimeTrackingSessionModel } = require('../utils/db/models');
-        
+
         const limit = parseInt(req.query.limit) || 20;
         const sessions = await TimeTrackingSessionModel.findUserSessions(
             req.params.guildId,
             req.params.userId,
             limit
         );
-        
+
         res.json({ success: true, sessions, total: sessions.length });
     } catch (e) {
         logger.error('Error fetching user sessions:', e);
@@ -3574,44 +3574,44 @@ app.get('/api/guild/:guildId/timetracking/user/:userId', async (req, res) => {
 // GET relatório geral do servidor
 app.get('/api/guild/:guildId/timetracking/report', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    
+
     try {
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { TimeTrackingSessionModel } = require('../utils/db/models');
-        
+
         // Parse date range
         let startDate = null;
         let endDate = null;
-        
+
         if (req.query.startDate) {
             startDate = new Date(req.query.startDate);
         }
-        
+
         if (req.query.endDate) {
             endDate = new Date(req.query.endDate);
         } else {
             endDate = new Date(); // Now
         }
-        
+
         // Default: last 30 days
         if (!startDate) {
             startDate = new Date();
             startDate.setDate(startDate.getDate() - 30);
         }
-        
+
         const stats = await TimeTrackingSessionModel.getGuildStats(
             req.params.guildId,
             startDate,
             endDate
         );
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             stats,
             period: {
                 start: startDate,
@@ -3627,29 +3627,29 @@ app.get('/api/guild/:guildId/timetracking/report', async (req, res) => {
 // GET sessão ativa de um utilizador
 app.get('/api/guild/:guildId/timetracking/active/:userId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    
+
     try {
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { TimeTrackingSessionModel } = require('../utils/db/models');
-        
+
         const session = await TimeTrackingSessionModel.findActiveSession(
             req.params.guildId,
             req.params.userId
         );
-        
+
         if (!session) {
             return res.json({ success: true, session: null });
         }
-        
+
         const duration = session.getCurrentDuration();
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             session,
             duration
         });
@@ -3662,33 +3662,33 @@ app.get('/api/guild/:guildId/timetracking/active/:userId', async (req, res) => {
 // GET todas as sessões do servidor (com filtros)
 app.get('/api/guild/:guildId/timetracking/sessions', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    
+
     try {
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { TimeTrackingSessionModel } = require('../utils/db/models');
-        
+
         let startDate = null;
         let endDate = null;
-        
+
         if (req.query.startDate) {
             startDate = new Date(req.query.startDate);
         }
-        
+
         if (req.query.endDate) {
             endDate = new Date(req.query.endDate);
         }
-        
+
         const sessions = await TimeTrackingSessionModel.findGuildSessions(
             req.params.guildId,
             startDate,
             endDate
         );
-        
+
         res.json({ success: true, sessions, total: sessions.length });
     } catch (e) {
         logger.error('Error fetching sessions:', e);
@@ -3703,17 +3703,17 @@ app.get('/api/guild/:guildId/timetracking/sessions', async (req, res) => {
 // GET configuração de assets
 app.get('/api/guild/:guildId/assets', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    
+
     try {
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { GuildAssetConfigModel } = require('../utils/db/models');
         const config = await GuildAssetConfigModel.findOrCreate(req.params.guildId, req.user.id);
-        
+
         res.json({ success: true, config });
     } catch (e) {
         logger.error('Error fetching assets config:', e);
@@ -3724,39 +3724,39 @@ app.get('/api/guild/:guildId/assets', async (req, res) => {
 // POST upload avatar (base64)
 app.post('/api/guild/:guildId/assets/avatar', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    
+
     try {
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { base64, url } = req.body;
-        
+
         if (!base64 && !url) {
             return res.status(400).json({ success: false, error: 'base64 or url required' });
         }
-        
+
         // Validate base64 size (max 10MB)
         if (base64) {
             const sizeInBytes = (base64.length * 3) / 4;
             const sizeInMB = sizeInBytes / (1024 * 1024);
-            
+
             if (sizeInMB > 10) {
                 return res.status(400).json({ success: false, error: 'Avatar exceeds 10MB limit' });
             }
         }
-        
+
         const { GuildAssetConfigModel } = require('../utils/db/models');
         const config = await GuildAssetConfigModel.findOrCreate(req.params.guildId, req.user.id);
-        
+
         if (url) {
             await config.setCustomAvatar(url, req.user.id);
         } else {
             await config.setCustomAvatarBase64(base64, req.user.id);
         }
-        
+
         res.json({ success: true, config });
     } catch (e) {
         logger.error('Error uploading avatar:', e);
@@ -3767,39 +3767,39 @@ app.post('/api/guild/:guildId/assets/avatar', async (req, res) => {
 // POST upload banner (base64)
 app.post('/api/guild/:guildId/assets/banner', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    
+
     try {
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { base64, url } = req.body;
-        
+
         if (!base64 && !url) {
             return res.status(400).json({ success: false, error: 'base64 or url required' });
         }
-        
+
         // Validate base64 size (max 10MB)
         if (base64) {
             const sizeInBytes = (base64.length * 3) / 4;
             const sizeInMB = sizeInBytes / (1024 * 1024);
-            
+
             if (sizeInMB > 10) {
                 return res.status(400).json({ success: false, error: 'Banner exceeds 10MB limit' });
             }
         }
-        
+
         const { GuildAssetConfigModel } = require('../utils/db/models');
         const config = await GuildAssetConfigModel.findOrCreate(req.params.guildId, req.user.id);
-        
+
         if (url) {
             await config.setCustomBanner(url, req.user.id);
         } else {
             await config.setCustomBannerBase64(base64, req.user.id);
         }
-        
+
         res.json({ success: true, config });
     } catch (e) {
         logger.error('Error uploading banner:', e);
@@ -3810,26 +3810,26 @@ app.post('/api/guild/:guildId/assets/banner', async (req, res) => {
 // DELETE remover avatar customizado
 app.delete('/api/guild/:guildId/assets/avatar', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    
+
     try {
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { GuildAssetConfigModel } = require('../utils/db/models');
         const config = await GuildAssetConfigModel.findByGuild(req.params.guildId);
-        
+
         if (!config) {
             return res.status(404).json({ success: false, error: 'No configuration found' });
         }
-        
+
         config.custom_avatar_url = null;
         config.custom_avatar_base64 = null;
         config.updated_by = req.user.id;
         await config.save();
-        
+
         res.json({ success: true, config });
     } catch (e) {
         logger.error('Error removing avatar:', e);
@@ -3840,26 +3840,26 @@ app.delete('/api/guild/:guildId/assets/avatar', async (req, res) => {
 // DELETE remover banner customizado
 app.delete('/api/guild/:guildId/assets/banner', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    
+
     try {
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { GuildAssetConfigModel } = require('../utils/db/models');
         const config = await GuildAssetConfigModel.findByGuild(req.params.guildId);
-        
+
         if (!config) {
             return res.status(404).json({ success: false, error: 'No configuration found' });
         }
-        
+
         config.custom_banner_url = null;
         config.custom_banner_base64 = null;
         config.updated_by = req.user.id;
         await config.save();
-        
+
         res.json({ success: true, config });
     } catch (e) {
         logger.error('Error removing banner:', e);
@@ -4045,10 +4045,10 @@ app.get('/api/guild/:guildId/welcome', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const storage = require('../utils/storage');
         const config = await storage.getGuildConfig(req.params.guildId);
-        
+
         res.json({
             success: true,
             welcome: config.welcome || {
@@ -4085,11 +4085,11 @@ app.post('/api/guild/:guildId/welcome', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { welcome, goodbye } = req.body || {};
         const storage = require('../utils/storage');
         await storage.updateGuildConfig(req.params.guildId, { welcome, goodbye });
-        
+
         res.json({ success: true, message: 'Welcome/Goodbye config updated' });
     } catch (e) {
         logger.error('Error updating welcome config:', e);
@@ -4105,10 +4105,10 @@ app.get('/api/guild/:guildId/stats/config', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const storage = require('../utils/storage');
         const config = await storage.getGuildConfig(req.params.guildId);
-        
+
         res.json({
             success: true,
             config: config.statsCounters || {
@@ -4134,11 +4134,11 @@ app.post('/api/guild/:guildId/stats/config', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { config } = req.body || {};
         const storage = require('../utils/storage');
         await storage.updateGuildConfig(req.params.guildId, { statsCounters: config });
-        
+
         res.json({ success: true, message: 'Stats config updated' });
     } catch (e) {
         logger.error('Error updating stats config:', e);
@@ -4154,10 +4154,10 @@ app.get('/api/guild/:guildId/time-tracking', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const storage = require('../utils/storage');
         const data = await storage.getGuildConfig(req.params.guildId, 'timeTracking') || { entries: [] };
-        
+
         // Calculate summaries
         const summaries = new Map();
         (data.entries || []).forEach(entry => {
@@ -4177,7 +4177,7 @@ app.get('/api/guild/:guildId/time-tracking', async (req, res) => {
                 summary.lastAction = entry.action;
             }
         });
-        
+
         res.json({
             success: true,
             entries: data.entries || [],
@@ -4199,10 +4199,10 @@ app.get('/api/guild/:guildId/time-tracking/panels', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const storage = require('../utils/storage');
         const config = await storage.getGuildConfig(req.params.guildId, 'timeTrackingPanels') || { panels: [] };
-        
+
         res.json({
             success: true,
             panels: config.panels || []
@@ -4221,33 +4221,33 @@ app.post('/api/guild/:guildId/time-tracking/panels', async (req, res) => {
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { name, message, channelId } = req.body;
-        
+
         if (!name || !channelId) {
             return res.status(400).json({ success: false, error: 'Nome e canal são obrigatórios' });
         }
-        
+
         const storage = require('../utils/storage');
         const config = await storage.getGuildConfig(req.params.guildId, 'timeTrackingPanels') || { panels: [] };
-        
+
         const guild = check.guild;
         const channel = await guild.channels.fetch(channelId).catch(() => null);
-        
+
         if (!channel || (channel.type !== 0 && channel.type !== 5)) {
             return res.status(400).json({ success: false, error: 'Canal inválido ou não é de texto' });
         }
-        
+
         // Criar embed do painel
         const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-        
+
         const embed = new EmbedBuilder()
             .setColor('#FF6B35')
             .setTitle('⏱️ Sistema de Bate-Ponto')
             .setDescription(message || '**Sistema de Controlo de Ponto**\n\nClique no botão abaixo para registar a sua entrada, pausa ou saída.')
             .setFooter({ text: `Painel: ${name}` })
             .setTimestamp();
-        
+
         const row = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
@@ -4255,12 +4255,12 @@ app.post('/api/guild/:guildId/time-tracking/panels', async (req, res) => {
                     .setLabel('⚡ Bater Ponto')
                     .setStyle(ButtonStyle.Primary)
             );
-        
+
         const sentMessage = await channel.send({
             embeds: [embed],
             components: [row]
         });
-        
+
         const panel = {
             id: `panel_${Date.now()}`,
             name,
@@ -4270,12 +4270,12 @@ app.post('/api/guild/:guildId/time-tracking/panels', async (req, res) => {
             enabled: true,
             createdAt: new Date().toISOString()
         };
-        
+
         config.panels = config.panels || [];
         config.panels.push(panel);
-        
+
         await storage.setGuildConfig(req.params.guildId, 'timeTrackingPanels', config);
-        
+
         res.json({
             success: true,
             panel
@@ -4294,21 +4294,21 @@ app.patch('/api/guild/:guildId/time-tracking/panels/:panelId', async (req, res) 
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const storage = require('../utils/storage');
         const config = await storage.getGuildConfig(req.params.guildId, 'timeTrackingPanels') || { panels: [] };
-        
+
         const panel = config.panels.find(p => p.id === req.params.panelId);
         if (!panel) {
             return res.status(404).json({ success: false, error: 'Painel não encontrado' });
         }
-        
+
         if (req.body.enabled !== undefined) {
             panel.enabled = req.body.enabled;
         }
-        
+
         await storage.setGuildConfig(req.params.guildId, 'timeTrackingPanels', config);
-        
+
         res.json({ success: true, panel });
     } catch (e) {
         logger.error('Error updating time tracking panel:', e);
@@ -4324,17 +4324,17 @@ app.delete('/api/guild/:guildId/time-tracking/panels/:panelId', async (req, res)
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const storage = require('../utils/storage');
         const config = await storage.getGuildConfig(req.params.guildId, 'timeTrackingPanels') || { panels: [] };
-        
+
         const panelIndex = config.panels.findIndex(p => p.id === req.params.panelId);
         if (panelIndex === -1) {
             return res.status(404).json({ success: false, error: 'Painel não encontrado' });
         }
-        
+
         const panel = config.panels[panelIndex];
-        
+
         // Tentar apagar mensagem do Discord
         try {
             const guild = check.guild;
@@ -4346,10 +4346,10 @@ app.delete('/api/guild/:guildId/time-tracking/panels/:panelId', async (req, res)
         } catch (err) {
             logger.warn('Could not delete panel message:', err);
         }
-        
+
         config.panels.splice(panelIndex, 1);
         await storage.setGuildConfig(req.params.guildId, 'timeTrackingPanels', config);
-        
+
         res.json({ success: true });
     } catch (e) {
         logger.error('Error deleting time tracking panel:', e);
@@ -4371,7 +4371,7 @@ app.get('/api/guild/:guildId/webhooks-config', async (req, res) => {
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
         let config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
-        
+
         if (!config) {
             // Criar configuração padrão
             config = await WebhookConfigModel.create({
@@ -4425,7 +4425,7 @@ app.post('/api/guild/:guildId/webhooks-config/add', async (req, res) => {
         }
 
         let config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
-        
+
         if (!config) {
             config = new WebhookConfigModel({ guildId: req.params.guildId });
         }
@@ -7779,7 +7779,7 @@ app.delete('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
         const storage = require('../utils/storage');
         const tickets = await storage.getTickets(guildId);
         const ticket = tickets.find(t => `${t.id}` === `${ticketId}`);
-        
+
         if (!ticket) {
             return res.status(404).json({ success: false, error: 'Ticket not found' });
         }
@@ -7806,10 +7806,10 @@ app.delete('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
         // Delete the ticket from database
         await storage.deleteTicket(ticketId, guildId);
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             message: 'Ticket permanently deleted',
-            ticketId 
+            ticketId
         });
 
     } catch (error) {
