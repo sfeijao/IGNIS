@@ -92,7 +92,7 @@ export default function ServerStats({ guildId }: ServerStatsProps) {
 
       if (configData.success) {
         setConfig(configData.config);
-        
+
         if (configData.config) {
           // Set selected metrics from existing config
           const selected = new Set<keyof Metrics>();
@@ -120,7 +120,7 @@ export default function ServerStats({ guildId }: ServerStatsProps) {
       // Load current metrics (preview)
       const metricsRes = await fetch(`/api/guild/${guildId}/stats/metrics`);
       const metricsData = await metricsRes.json();
-      
+
       if (metricsData.success) {
         setMetrics(metricsData.metrics);
       }
@@ -128,7 +128,7 @@ export default function ServerStats({ guildId }: ServerStatsProps) {
       // Load categories
       const categoriesRes = await fetch(`/api/guild/${guildId}/categories`);
       const categoriesData = await categoriesRes.json();
-      
+
       if (categoriesData.success) {
         setCategories(categoriesData.categories);
       }
@@ -221,8 +221,8 @@ export default function ServerStats({ guildId }: ServerStatsProps) {
   };
 
   const handleDisable = async (deleteChannels: boolean) => {
-    if (!confirm(deleteChannels 
-      ? 'Are you sure you want to disable stats and DELETE all stat channels?' 
+    if (!confirm(deleteChannels
+      ? 'Are you sure you want to disable stats and DELETE all stat channels?'
       : 'Are you sure you want to disable stats? (channels will remain but stop updating)'
     )) {
       return;

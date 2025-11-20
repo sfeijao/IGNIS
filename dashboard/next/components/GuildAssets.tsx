@@ -51,14 +51,14 @@ export default function GuildAssets({ guildId }: GuildAssetsProps) {
 
       if (data.success) {
         setConfig(data.config);
-        
+
         // Set previews
         if (data.config.custom_avatar_url) {
           setAvatarPreview(data.config.custom_avatar_url);
         } else if (data.config.custom_avatar_base64) {
           setAvatarPreview(data.config.custom_avatar_base64);
         }
-        
+
         if (data.config.custom_banner_url) {
           setBannerPreview(data.config.custom_banner_url);
         } else if (data.config.custom_banner_base64) {
@@ -92,7 +92,7 @@ export default function GuildAssets({ guildId }: GuildAssetsProps) {
     }
 
     setAvatarFile(file);
-    
+
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -116,7 +116,7 @@ export default function GuildAssets({ guildId }: GuildAssetsProps) {
     }
 
     setBannerFile(file);
-    
+
     const reader = new FileReader();
     reader.onloadend = () => {
       setBannerPreview(reader.result as string);
@@ -304,7 +304,7 @@ export default function GuildAssets({ guildId }: GuildAssetsProps) {
           {/* Avatar Upload */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Custom Avatar</h3>
-            
+
             {avatarPreview && (
               <div className="flex justify-center">
                 <img
@@ -352,7 +352,7 @@ export default function GuildAssets({ guildId }: GuildAssetsProps) {
           {/* Banner Upload */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Custom Banner</h3>
-            
+
             {bannerPreview && (
               <div className="flex justify-center">
                 <img

@@ -19,11 +19,11 @@ export default function TimeTrackingPanelConfig() {
   const guildId = useGuildId()
   const { toast } = useToast()
   const { t } = useI18n()
-  
+
   const [panels, setPanels] = useState<Panel[]>([])
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
-  
+
   // Form state
   const [name, setName] = useState('')
   const [message, setMessage] = useState('**⏱️ Sistema de Bate-Ponto**\n\nClique no botão abaixo para registar a sua entrada, pausa ou saída.')
@@ -63,9 +63,9 @@ export default function TimeTrackingPanelConfig() {
         credentials: 'include',
         body: JSON.stringify({ name, message, channelId })
       })
-      
+
       const data = await res.json()
-      
+
       if (data.success) {
         toast({ type: 'success', title: 'Painel criado com sucesso!' })
         setName('')
@@ -91,7 +91,7 @@ export default function TimeTrackingPanelConfig() {
         credentials: 'include',
         body: JSON.stringify({ enabled })
       })
-      
+
       if (res.ok) {
         toast({ type: 'success', title: enabled ? 'Painel ativado' : 'Painel desativado' })
         loadPanels()
@@ -103,13 +103,13 @@ export default function TimeTrackingPanelConfig() {
 
   const deletePanel = async (panelId: string) => {
     if (!guildId || !confirm('Tem certeza que deseja eliminar este painel?')) return
-    
+
     try {
       const res = await fetch(`/api/guild/${guildId}/time-tracking/panels/${panelId}`, {
         method: 'DELETE',
         credentials: 'include'
       })
-      
+
       if (res.ok) {
         toast({ type: 'success', title: 'Painel eliminado' })
         loadPanels()
@@ -129,7 +129,7 @@ export default function TimeTrackingPanelConfig() {
             <h3 className="text-xl font-semibold text-white">Criar Painel de Bate-Ponto</h3>
           </div>
         </div>
-        
+
         <div className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Panel Name */}
@@ -219,7 +219,7 @@ export default function TimeTrackingPanelConfig() {
             {panels.length} painel{panels.length !== 1 ? 'éis' : ''}
           </span>
         </div>
-        
+
         <div className="p-6">
           {loading ? (
             <div className="text-center py-12">
@@ -244,8 +244,8 @@ export default function TimeTrackingPanelConfig() {
                       <div className="flex items-center gap-3 mb-2">
                         <h4 className="text-lg font-semibold text-white truncate">{panel.name}</h4>
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          panel.enabled 
-                            ? 'bg-green-600/30 border border-green-500/50 text-green-300' 
+                          panel.enabled
+                            ? 'bg-green-600/30 border border-green-500/50 text-green-300'
                             : 'bg-gray-600/30 border border-gray-500/50 text-gray-300'
                         }`}>
                           {panel.enabled ? '✅ Ativo' : '⏸️ Pausado'}

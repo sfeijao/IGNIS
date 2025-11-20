@@ -117,7 +117,7 @@
     if (!guildId) { notify('guildId em falta', 'error'); return; }
     if (loading) return;
     loading = true;
-    
+
     // ✅ Loading skeleton (3 placeholders)
     els.list.innerHTML = `
       <div class="loading-skeleton">
@@ -126,7 +126,7 @@
         <div class="skeleton-item"></div>
       </div>
     `;
-    
+
     try {
       // Use cached GET when helper is available (reduces burst when filters change rapidly)
       let data;
@@ -201,7 +201,7 @@
 
   function renderList(items){
     // ✅ Empty state ilustrado
-    if (!items.length) { 
+    if (!items.length) {
       els.list.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon"><i class="fas fa-inbox"></i></div>
@@ -215,9 +215,9 @@
           </button>
         </div>
       `;
-      return; 
+      return;
     }
-    
+
     const html = items.map(t => {
       const statusColor = t.status==='closed' ? '#10B981' : t.status==='claimed' ? '#F59E0B' : t.status==='pending' ? '#A78BFA' : '#60A5FA';
       return `

@@ -2,7 +2,7 @@ const { mongoose } = require('../mongoose');
 
 /**
  * GiveawayClaim Model
- * 
+ *
  * Gerencia o processo de reclamação de prêmios de giveaways:
  * - Quando um giveaway termina, um ticket é aberto para o vencedor
  * - O vencedor tem 48h para responder no ticket
@@ -11,72 +11,72 @@ const { mongoose } = require('../mongoose');
  */
 const GiveawayClaimSchema = new mongoose.Schema({
   // Referências
-  giveaway_id: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Giveaway', 
-    index: true, 
-    required: true 
+  giveaway_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Giveaway',
+    index: true,
+    required: true
   },
-  guild_id: { 
-    type: String, 
-    required: true 
+  guild_id: {
+    type: String,
+    required: true
   },
-  winner_id: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'GiveawayWinner', 
-    index: true, 
-    required: true 
+  winner_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'GiveawayWinner',
+    index: true,
+    required: true
   },
-  user_id: { 
-    type: String, 
-    index: true, 
-    required: true 
+  user_id: {
+    type: String,
+    index: true,
+    required: true
   },
-  
+
   // Ticket de reclamação
-  ticket_channel_id: { 
-    type: String 
+  ticket_channel_id: {
+    type: String
   },
-  ticket_id: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Ticket' 
+  ticket_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Ticket'
   },
-  ticket_created_at: { 
-    type: Date 
+  ticket_created_at: {
+    type: Date
   },
-  
+
   // Timelines
-  claim_deadline_at: { 
-    type: Date, 
-    index: true, 
-    required: true 
+  claim_deadline_at: {
+    type: Date,
+    index: true,
+    required: true
   }, // ticket_created_at + 48h
-  claimed_at: { 
-    type: Date, 
-    index: true 
+  claimed_at: {
+    type: Date,
+    index: true
   }, // null até ser reclamado
-  first_response_at: { 
-    type: Date 
+  first_response_at: {
+    type: Date
   }, // primeira mensagem do vencedor no ticket
-  
+
   // Status do processo
-  status: { 
-    type: String, 
-    enum: ['pending', 'claimed', 'unclaimed', 're-rolled', 'cancelled'], 
+  status: {
+    type: String,
+    enum: ['pending', 'claimed', 'unclaimed', 're-rolled', 'cancelled'],
     default: 'pending',
-    index: true 
+    index: true
   },
-  
+
   // Re-roll tracking
-  previous_claim_id: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'GiveawayClaim' 
+  previous_claim_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'GiveawayClaim'
   }, // se for re-roll, referência ao claim anterior
-  reroll_count: { 
-    type: Number, 
-    default: 0 
+  reroll_count: {
+    type: Number,
+    default: 0
   }, // quantos re-rolls já aconteceram nesta chain
-  
+
   // Notificações
   notifications_sent: {
     ticket_opened: { type: Boolean, default: false },
@@ -85,38 +85,38 @@ const GiveawayClaimSchema = new mongoose.Schema({
     deadline_passed: { type: Boolean, default: false },
     prize_claimed: { type: Boolean, default: false }
   },
-  
+
   // Metadata
-  prize_description: { 
-    type: String, 
-    default: '' 
+  prize_description: {
+    type: String,
+    default: ''
   },
-  claim_message: { 
-    type: String 
+  claim_message: {
+    type: String
   }, // mensagem do vencedor que confirmou
-  notes: { 
-    type: String, 
-    default: '' 
+  notes: {
+    type: String,
+    default: ''
   }, // notas do staff
-  
+
   // Audit
-  created_at: { 
-    type: Date, 
-    default: Date.now 
+  created_at: {
+    type: Date,
+    default: Date.now
   },
-  updated_at: { 
-    type: Date, 
-    default: Date.now 
+  updated_at: {
+    type: Date,
+    default: Date.now
   },
-  processed_by_job: { 
-    type: Boolean, 
-    default: false 
+  processed_by_job: {
+    type: Boolean,
+    default: false
   }, // flag para job processor
-  job_last_check_at: { 
-    type: Date 
+  job_last_check_at: {
+    type: Date
   }
-}, { 
-  timestamps: true 
+}, {
+  timestamps: true
 });
 
 // Indexes compostos para queries eficientes
@@ -167,14 +167,14 @@ GiveawayClaimSchema.methods.shouldSendReminder6h = function() {
 
 // Métodos estáticos
 GiveawayClaimSchema.statics.findPendingClaims = function() {
-  return this.find({ 
+  return this.find({
     status: 'pending',
     claim_deadline_at: { $gte: new Date() }
   }).sort({ claim_deadline_at: 1 });
 };
 
 GiveawayClaimSchema.statics.findExpiredClaims = function() {
-  return this.find({ 
+  return this.find({
     status: 'pending',
     claim_deadline_at: { $lt: new Date() },
     processed_by_job: false
@@ -185,16 +185,16 @@ GiveawayClaimSchema.statics.findClaimsNeedingReminders = function() {
   const now = new Date();
   const twentyFourHoursFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const sixHoursFromNow = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-  
+
   return this.find({
     status: 'pending',
     claim_deadline_at: { $gte: now },
     $or: [
-      { 
+      {
         'notifications_sent.reminder_24h': false,
         claim_deadline_at: { $lte: twentyFourHoursFromNow }
       },
-      { 
+      {
         'notifications_sent.reminder_6h': false,
         claim_deadline_at: { $lte: sixHoursFromNow }
       }
@@ -208,7 +208,7 @@ GiveawayClaimSchema.pre('save', function(next) {
   next();
 });
 
-const GiveawayClaimModel = mongoose.models.GiveawayClaim || 
+const GiveawayClaimModel = mongoose.models.GiveawayClaim ||
   mongoose.model('GiveawayClaim', GiveawayClaimSchema);
 
 module.exports = { GiveawayClaimModel };

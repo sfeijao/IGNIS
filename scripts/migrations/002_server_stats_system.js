@@ -1,6 +1,6 @@
 /**
  * Migration: Server Stats System
- * 
+ *
  * Creates serverstatsconfigs collection and indexes
  * No data migration needed - new feature
  */
@@ -25,7 +25,7 @@ async function migrate() {
 
     // Check if collection exists
     const collections = await db.listCollections({ name: 'serverstatsconfigs' }).toArray();
-    
+
     if (collections.length === 0) {
       logger.info('📦 Creating serverstatsconfigs collection...');
       await db.createCollection('serverstatsconfigs');
@@ -36,9 +36,9 @@ async function migrate() {
 
     // Create indexes
     logger.info('🔧 Creating indexes...');
-    
+
     const collection = db.collection('serverstatsconfigs');
-    
+
     await collection.createIndex({ guild_id: 1 }, { unique: true });
     logger.info('  ✅ guild_id (unique)');
 

@@ -124,7 +124,7 @@ db.serialize(() => {
     updated_at TEXT,
     expires_at TEXT
   )`);
-  
+
   // Index for TTL cleanup
   db.run(`CREATE INDEX IF NOT EXISTS idx_generic_kv_expires ON generic_kv(expires_at)`);
 });
@@ -620,7 +620,7 @@ class SqliteStorage {
   async getGeneric(key) {
     const row = await get(`SELECT * FROM generic_kv WHERE key = ?`, [key]);
     if (!row) return null;
-    
+
     // Check if expired
     if (row.expires_at) {
       const expiresAt = new Date(row.expires_at);
@@ -629,14 +629,14 @@ class SqliteStorage {
         return null;
       }
     }
-    
+
     return parseJSON(row.value, null);
   }
 
   async setGeneric(key, value) {
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour TTL
-    
+
     await run(
       `INSERT INTO generic_kv (key, value, created_at, updated_at, expires_at)
        VALUES (?, ?, ?, ?, ?)

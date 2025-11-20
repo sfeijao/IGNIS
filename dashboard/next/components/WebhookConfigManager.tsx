@@ -44,7 +44,7 @@ export default function WebhookConfigManager() {
   const [enabled, setEnabled] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [testing, setTesting] = useState<string | null>(null)
-  
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -76,7 +76,7 @@ export default function WebhookConfigManager() {
 
   const addWebhook = async () => {
     if (!guildId) return
-    
+
     // Validações
     if (!formData.name.trim()) {
       toast({ type: 'error', title: 'Nome obrigatório' })
@@ -104,7 +104,7 @@ export default function WebhookConfigManager() {
         body: JSON.stringify(formData)
       })
       const data = await res.json()
-      
+
       if (data.success) {
         setConfig(data.config)
         setFormData({ name: '', url: '', types: [] })
@@ -122,7 +122,7 @@ export default function WebhookConfigManager() {
 
   const removeWebhook = async (webhookId: string) => {
     if (!guildId || !confirm('Tem certeza que deseja remover este webhook?')) return
-    
+
     setLoading(true)
     try {
       const res = await fetch(`/api/guild/${guildId}/webhooks-config/${webhookId}`, {
@@ -130,7 +130,7 @@ export default function WebhookConfigManager() {
         credentials: 'include'
       })
       const data = await res.json()
-      
+
       if (data.success) {
         setConfig(data.config)
         toast({ type: 'success', title: 'Webhook removido' })
@@ -146,7 +146,7 @@ export default function WebhookConfigManager() {
 
   const toggleWebhook = async (webhookId: string, currentEnabled: boolean) => {
     if (!guildId) return
-    
+
     setLoading(true)
     try {
       const res = await fetch(`/api/guild/${guildId}/webhooks-config/${webhookId}`, {
@@ -156,7 +156,7 @@ export default function WebhookConfigManager() {
         body: JSON.stringify({ enabled: !currentEnabled })
       })
       const data = await res.json()
-      
+
       if (data.success) {
         setConfig(data.config)
         toast({ type: 'success', title: currentEnabled ? 'Webhook desativado' : 'Webhook ativado' })
@@ -172,7 +172,7 @@ export default function WebhookConfigManager() {
 
   const testWebhook = async (webhookId: string) => {
     if (!guildId) return
-    
+
     setTesting(webhookId)
     try {
       const res = await fetch(`/api/guild/${guildId}/webhooks-config/${webhookId}/test`, {
@@ -180,7 +180,7 @@ export default function WebhookConfigManager() {
         credentials: 'include'
       })
       const data = await res.json()
-      
+
       if (data.success) {
         toast({ type: 'success', title: '✅ Webhook testado com sucesso!', description: 'Verifique o canal de destino' })
         await loadConfig() // Recarregar para atualizar lastTestedAt
@@ -196,7 +196,7 @@ export default function WebhookConfigManager() {
 
   const toggleLogType = async (logType: string, currentValue: boolean) => {
     if (!guildId) return
-    
+
     setLoading(true)
     try {
       const res = await fetch(`/api/guild/${guildId}/webhooks-config/logs-enabled`, {
@@ -208,7 +208,7 @@ export default function WebhookConfigManager() {
         })
       })
       const data = await res.json()
-      
+
       if (data.success) {
         setConfig(data.config)
       } else {

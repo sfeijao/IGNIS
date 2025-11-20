@@ -23,7 +23,7 @@ async function migrate() {
   // Create collection
   console.log('\n📦 Creating guildassetconfigs collection...');
   const collections = await db.listCollections({ name: 'guildassetconfigs' }).toArray();
-  
+
   if (collections.length === 0) {
     await db.createCollection('guildassetconfigs');
     console.log('✅ Collection created');
@@ -33,7 +33,7 @@ async function migrate() {
 
   // Create indexes
   console.log('\n🔧 Creating indexes...');
-  
+
   const indexSpecs = [
     { keys: { guild_id: 1 }, options: { unique: true, name: 'guild_id_unique' } },
     { keys: { created_at: 1 }, options: { name: 'created_at_index' } },
@@ -60,7 +60,7 @@ async function migrate() {
   console.log(`  - Total documents: ${stats.count}`);
   console.log(`  - Storage size: ${(stats.storageSize / 1024).toFixed(2)} KB`);
   console.log(`  - Indexes: ${stats.nindexes}`);
-  
+
   const indexes = await db.collection('guildassetconfigs').indexes();
   console.log('\n📑 Indexes:');
   indexes.forEach(index => {

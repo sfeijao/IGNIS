@@ -18,7 +18,7 @@ class WebhookManager {
   async sendOrUpdateTicketWebhook(ticket, event, data = {}) {
     try {
       const webhookConfig = await WebhookConfigModel.findOne({ guildId: ticket.guild_id });
-      
+
       // Verificar se webhooks de tickets estão habilitados
       if (!webhookConfig || !webhookConfig.logsEnabled.tickets) {
         return null;
@@ -31,7 +31,7 @@ class WebhookManager {
       }
 
       const results = [];
-      
+
       for (const webhook of ticketWebhooks) {
         try {
           // Verificar se já existe log para este ticket e webhook
@@ -46,7 +46,7 @@ class WebhookManager {
           if (!log) {
             // Primeira mensagem - criar nova
             const response = await this.sendWebhook(webhook.url, payload);
-            
+
             if (response && response.ok) {
               try {
                 const text = await response.text();
@@ -55,7 +55,7 @@ class WebhookManager {
                   results.push({ success: false, webhook: webhook.name, error: 'Webhook inválido ou deletado' });
                   continue;
                 }
-                
+
                 const messageData = JSON.parse(text);
                 log = await TicketWebhookLogModel.create({
                   ticketId: ticket.id,
@@ -66,7 +66,7 @@ class WebhookManager {
                   threadId: messageData.thread_id,
                   status: 'sent'
                 });
-                
+
                 await log.addEvent(event, data);
                 results.push({ success: true, webhook: webhook.name, action: 'created' });
               } catch (parseError) {
@@ -83,7 +83,7 @@ class WebhookManager {
               log.messageId,
               payload
             );
-            
+
             if (updated) {
               await log.addEvent(event, data);
               log.status = 'updated';
@@ -93,10 +93,10 @@ class WebhookManager {
           }
         } catch (webhookError) {
           console.error(`Erro no webhook ${webhook.name}:`, webhookError);
-          results.push({ 
-            success: false, 
-            webhook: webhook.name, 
-            error: webhookError.message 
+          results.push({
+            success: false,
+            webhook: webhook.name,
+            error: webhookError.message
           });
         }
       }
@@ -114,20 +114,20 @@ class WebhookManager {
   async attachTranscript(ticketId, guildId, transcriptUrl, transcriptContent) {
     try {
       const logs = await TicketWebhookLogModel.find({ ticketId, guildId });
-      
+
       for (const log of logs) {
         try {
           // Opção 1: Editar a mensagem com link para transcrição
           const webhookConfig = await WebhookConfigModel.findOne({ guildId });
           const webhook = webhookConfig?.webhooks.find(w => w.url === log.webhookUrl);
-          
+
           if (!webhook) continue;
 
           const payload = {
             content: `📄 **Transcrição anexada**\n${transcriptUrl || 'Transcrição disponível'}`,
             embeds: [{
               title: '📋 Transcrição do Ticket',
-              description: transcriptContent ? 
+              description: transcriptContent ?
                 transcriptContent.substring(0, 2000) + (transcriptContent.length > 2000 ? '...' : '') :
                 'Transcrição completa disponível',
               color: 0x5865F2,
@@ -145,7 +145,7 @@ class WebhookManager {
           log.transcriptAttached = true;
           log.transcriptUrl = transcriptUrl;
           await log.addEvent('transcript', { url: transcriptUrl });
-          
+
         } catch (err) {
           console.error('Erro ao anexar transcrição:', err);
         }

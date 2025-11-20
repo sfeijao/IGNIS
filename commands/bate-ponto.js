@@ -72,9 +72,9 @@ module.exports = {
       }
     } catch (error) {
       logger.error('[BatePonto] Command error:', error);
-      
+
       const errorMsg = '❌ Erro ao executar comando. Tenta novamente.';
-      
+
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ content: errorMsg, ephemeral: true });
       } else {
@@ -87,7 +87,7 @@ module.exports = {
 async function handleStart(interaction, guildId, userId) {
   // Verificar se já tem sessão ativa
   const activeSession = await TimeTrackingSessionModel.findActiveSession(guildId, userId);
-  
+
   if (activeSession) {
     const duration = activeSession.getCurrentDuration();
     return interaction.reply({
@@ -126,7 +126,7 @@ async function handleStart(interaction, guildId, userId) {
 
 async function handlePause(interaction, guildId, userId) {
   const session = await TimeTrackingSessionModel.findActiveSession(guildId, userId);
-  
+
   if (!session) {
     return interaction.reply({
       content: '❌ Não tens nenhuma sessão ativa.',
@@ -159,7 +159,7 @@ async function handlePause(interaction, guildId, userId) {
 
 async function handleResume(interaction, guildId, userId) {
   const session = await TimeTrackingSessionModel.findActiveSession(guildId, userId);
-  
+
   if (!session) {
     return interaction.reply({
       content: '❌ Não tens nenhuma sessão ativa.',
@@ -191,7 +191,7 @@ async function handleResume(interaction, guildId, userId) {
 
 async function handleEnd(interaction, guildId, userId) {
   const session = await TimeTrackingSessionModel.findActiveSession(guildId, userId);
-  
+
   if (!session) {
     return interaction.reply({
       content: '❌ Não tens nenhuma sessão ativa.',
@@ -214,7 +214,7 @@ async function handleEnd(interaction, guildId, userId) {
 
 async function handleStatus(interaction, guildId, userId) {
   const session = await TimeTrackingSessionModel.findActiveSession(guildId, userId);
-  
+
   if (!session) {
     return interaction.reply({
       content: '❌ Não tens nenhuma sessão ativa.\n\nUsa `/bate-ponto iniciar` para começar!',
@@ -234,9 +234,9 @@ async function handleStatus(interaction, guildId, userId) {
 
 async function handleHistory(interaction, guildId, userId) {
   const limit = interaction.options.getInteger('limite') || 5;
-  
+
   const sessions = await TimeTrackingSessionModel.findUserSessions(guildId, userId, limit);
-  
+
   if (sessions.length === 0) {
     return interaction.reply({
       content: '📋 Ainda não tens sessões registadas.\n\nUsa `/bate-ponto iniciar` para começar!',
@@ -253,16 +253,16 @@ async function handleHistory(interaction, guildId, userId) {
   sessions.forEach((session, index) => {
     const duration = session.getCurrentDuration();
     const statusEmoji = session.status === 'active' ? '🟢' : session.status === 'paused' ? '⏸️' : '⏹️';
-    
+
     let fieldValue = `**Status:** ${statusEmoji} ${session.status}\n`;
     fieldValue += `**Início:** <t:${Math.floor(session.started_at.getTime() / 1000)}:R>\n`;
-    
+
     if (session.ended_at) {
       fieldValue += `**Fim:** <t:${Math.floor(session.ended_at.getTime() / 1000)}:R>\n`;
     }
-    
+
     fieldValue += `**Tempo ativo:** ${duration.active_formatted}\n`;
-    
+
     if (session.pauses.length > 0) {
       fieldValue += `**Pausas:** ${session.pauses.length}x`;
     }
@@ -282,27 +282,27 @@ async function handleHistory(interaction, guildId, userId) {
 
 function createSessionEmbed(session) {
   const duration = session.getCurrentDuration();
-  
+
   const embed = new EmbedBuilder()
     .setTitle('⏱️ Sessão de Time Tracking')
     .setColor(session.status === 'active' ? 0x2ecc71 : 0xf39c12)
     .setTimestamp();
 
   embed.addFields(
-    { 
-      name: '📊 Status', 
-      value: session.status === 'active' ? '🟢 Ativa' : '⏸️ Pausada', 
-      inline: true 
+    {
+      name: '📊 Status',
+      value: session.status === 'active' ? '🟢 Ativa' : '⏸️ Pausada',
+      inline: true
     },
-    { 
-      name: '🕐 Início', 
-      value: `<t:${Math.floor(session.started_at.getTime() / 1000)}:R>`, 
-      inline: true 
+    {
+      name: '🕐 Início',
+      value: `<t:${Math.floor(session.started_at.getTime() / 1000)}:R>`,
+      inline: true
     },
-    { 
-      name: '⏱️ Tempo Ativo', 
-      value: `**${duration.active_formatted}**`, 
-      inline: true 
+    {
+      name: '⏱️ Tempo Ativo',
+      value: `**${duration.active_formatted}**`,
+      inline: true
     }
   );
 
@@ -329,32 +329,32 @@ function createSessionEmbed(session) {
 
 function createSessionSummaryEmbed(session) {
   session.calculateTotalTime();
-  
+
   const embed = new EmbedBuilder()
     .setTitle('✅ Sessão Terminada')
     .setColor(0x3498db)
     .setTimestamp();
 
   embed.addFields(
-    { 
-      name: '🕐 Início', 
-      value: `<t:${Math.floor(session.started_at.getTime() / 1000)}:F>`, 
-      inline: false 
+    {
+      name: '🕐 Início',
+      value: `<t:${Math.floor(session.started_at.getTime() / 1000)}:F>`,
+      inline: false
     },
-    { 
-      name: '🕐 Fim', 
-      value: `<t:${Math.floor(session.ended_at.getTime() / 1000)}:F>`, 
-      inline: false 
+    {
+      name: '🕐 Fim',
+      value: `<t:${Math.floor(session.ended_at.getTime() / 1000)}:F>`,
+      inline: false
     },
-    { 
-      name: '⏱️ Tempo Total', 
-      value: session.formatDuration(session.total_time_ms), 
-      inline: true 
+    {
+      name: '⏱️ Tempo Total',
+      value: session.formatDuration(session.total_time_ms),
+      inline: true
     },
-    { 
-      name: '✅ Tempo Ativo', 
-      value: `**${session.formatDuration(session.active_time_ms)}**`, 
-      inline: true 
+    {
+      name: '✅ Tempo Ativo',
+      value: `**${session.formatDuration(session.active_time_ms)}**`,
+      inline: true
     }
   );
 

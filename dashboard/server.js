@@ -142,6 +142,20 @@ app.use((req, res, next) => {
     next();
 });
 
+// Serve favicon from Next.js public directory or dashboard public directory
+app.get('/favicon.ico', (req, res) => {
+    const nextFavicon = path.join(__dirname, 'next', 'public', 'favicon.ico');
+    const publicFavicon = path.join(__dirname, 'public', 'favicon.ico');
+    
+    if (fs.existsSync(nextFavicon)) {
+        res.sendFile(nextFavicon);
+    } else if (fs.existsSync(publicFavicon)) {
+        res.sendFile(publicFavicon);
+    } else {
+        res.status(204).end(); // No Content - browser will use default
+    }
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 // Canonicalize repeated "/next" path segments to prevent double basePath issues from clients
 app.use((req, res, next) => {

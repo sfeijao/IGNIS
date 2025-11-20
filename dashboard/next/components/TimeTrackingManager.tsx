@@ -26,7 +26,7 @@ export default function TimeTrackingManager() {
   const params = useParams()
   const guildId = params?.gid as string
   const { toast } = useToast()
-  
+
   const [loading, setLoading] = useState(true)
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [summaries, setSummaries] = useState<UserSummary[]>([])
@@ -66,11 +66,11 @@ export default function TimeTrackingManager() {
     })
   }
 
-  const filteredEntries = entries.filter(e => 
+  const filteredEntries = entries.filter(e =>
     e.userName.toLowerCase().includes(filter.toLowerCase())
   )
 
-  const filteredSummaries = summaries.filter(s => 
+  const filteredSummaries = summaries.filter(s =>
     s.userName.toLowerCase().includes(filter.toLowerCase())
   )
 
@@ -125,8 +125,8 @@ export default function TimeTrackingManager() {
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
           <div className="flex-1 w-full md:w-auto">
             <div className="relative">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="🔍 Filtrar por utilizador..."
                 value={filter}
                 onChange={e => setFilter(e.target.value)}
@@ -136,21 +136,21 @@ export default function TimeTrackingManager() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={() => setView('summary')}
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                view === 'summary' 
-                  ? 'bg-gradient-to-r from-orange-600 to-red-600' 
+                view === 'summary'
+                  ? 'bg-gradient-to-r from-orange-600 to-red-600'
                   : 'bg-gray-700/50 hover:bg-gray-700'
               }`}
             >
               📊 Resumo
             </button>
-            <button 
+            <button
               onClick={() => setView('entries')}
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                view === 'entries' 
-                  ? 'bg-gradient-to-r from-orange-600 to-red-600' 
+                view === 'entries'
+                  ? 'bg-gradient-to-r from-orange-600 to-red-600'
                   : 'bg-gray-700/50 hover:bg-gray-700'
               }`}
             >
@@ -200,7 +200,7 @@ export default function TimeTrackingManager() {
                       <td className="px-6 py-4">
                         {summary.lastAction && (
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            summary.lastAction === 'start' || summary.lastAction === 'continue' 
+                            summary.lastAction === 'start' || summary.lastAction === 'continue'
                               ? 'bg-green-600/20 border border-green-500/30 text-green-400'
                               : 'bg-red-600/20 border border-red-500/30 text-red-400'
                           }`}>
@@ -287,9 +287,9 @@ export default function TimeTrackingManager() {
           <div className="flex-1">
             <h4 className="text-sm font-semibold text-orange-300 mb-1">Sobre o Time Tracking</h4>
             <p className="text-xs text-gray-400">
-              Os utilizadores podem usar comandos do Discord para registar entrada (<code className="px-1 py-0.5 bg-gray-800 rounded">/bater-ponto start</code>), 
-              pausa (<code className="px-1 py-0.5 bg-gray-800 rounded">/bater-ponto stop</code>) e 
-              continuação (<code className="px-1 py-0.5 bg-gray-800 rounded">/bater-ponto continue</code>). 
+              Os utilizadores podem usar comandos do Discord para registar entrada (<code className="px-1 py-0.5 bg-gray-800 rounded">/bater-ponto start</code>),
+              pausa (<code className="px-1 py-0.5 bg-gray-800 rounded">/bater-ponto stop</code>) e
+              continuação (<code className="px-1 py-0.5 bg-gray-800 rounded">/bater-ponto continue</code>).
               Os dados são guardados automaticamente.
             </p>
           </div>

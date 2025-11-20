@@ -42,7 +42,7 @@ async function sendTicketWebhook(ticketData) {
 
         // ✨ Usar Advanced Manager se disponível
         const configured = advancedWebhookManager.setWebhook(ticketData.guildId, webhookUrl);
-        
+
         if (configured) {
             const messageId = await advancedWebhookManager.sendInitialMessage(ticketData.guildId, {
                 id: ticketData.ticketId || 'new',
@@ -185,7 +185,7 @@ module.exports = {
                 if (customId?.startsWith('timetrack:')) {
                     try {
                         const { pauseTracking, continueTracking, endTracking } = require('../utils/timeTracking');
-                        
+
                         if (customId === 'timetrack:pause') {
                             await pauseTracking(interaction);
                         } else if (customId === 'timetrack:continue') {
@@ -679,7 +679,7 @@ module.exports = {
                             const ticketRecord = await storage.getTicketByChannel(interaction.channel.id);
                             if (ticketRecord) {
                                 await storage.updateTicket(ticketRecord.id, { status: 'closed', closed_by: interaction.user.id, closed_at: new Date().toISOString(), archived: 1 });
-                                
+
                                 // ✨ ATUALIZAR WEBHOOK MESSAGE (se existir)
                                 if (ticketRecord.webhook_message_id) {
                                     try {
@@ -710,7 +710,7 @@ module.exports = {
                                         logger.warn('Failed to update webhook message:', webhookErr);
                                     }
                                 }
-                                
+
                                 // Opcional: enviar transcript para canal de logs se configurado
                                 try {
                                     const transcriptHelper = require('../utils/transcriptHelper');

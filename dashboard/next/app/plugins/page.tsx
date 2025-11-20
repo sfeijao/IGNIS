@@ -13,7 +13,7 @@ export default function PluginsPage() {
   const isGuildSelected = !!useGuildId()
 
   const guildId = useGuildId()
-  
+
   const categories: Category[] = [
     {
       title: 'Funcionalidades do Servidor',

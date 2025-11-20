@@ -4,7 +4,7 @@ const { TicketCategoryModel } = require('../../utils/db/models');
 
 /**
  * 🎫 TICKET CATEGORY ROUTES
- * 
+ *
  * Gerenciamento de categorias customizáveis de tickets por servidor.
  * Permite criar, editar, reordenar e deletar categorias.
  */
@@ -15,11 +15,11 @@ const { TicketCategoryModel } = require('../../utils/db/models');
 router.get('/guild/:gid/ticket-categories', async (req, res) => {
   try {
     const { gid } = req.params;
-    
+
     // Validação básica
     if (!gid || !/^\d+$/.test(gid)) {
-      return res.status(400).json({ 
-        error: 'Invalid guild ID format' 
+      return res.status(400).json({
+        error: 'Invalid guild ID format'
       });
     }
 
@@ -37,9 +37,9 @@ router.get('/guild/:gid/ticket-categories', async (req, res) => {
 
   } catch (error) {
     console.error('[TicketCategories] Error fetching categories:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Failed to fetch ticket categories',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -58,39 +58,39 @@ router.post('/guild/:gid/ticket-categories', async (req, res) => {
     }
 
     if (!name || typeof name !== 'string' || name.trim().length < 2) {
-      return res.status(400).json({ 
-        error: 'Category name must have at least 2 characters' 
+      return res.status(400).json({
+        error: 'Category name must have at least 2 characters'
       });
     }
 
     if (name.length > 50) {
-      return res.status(400).json({ 
-        error: 'Category name must be 50 characters or less' 
+      return res.status(400).json({
+        error: 'Category name must be 50 characters or less'
       });
     }
 
     // Validar emoji (formato Discord)
     if (emoji && !/^(<a?:\w+:\d+>|[\p{Emoji}])$/u.test(emoji)) {
-      return res.status(400).json({ 
-        error: 'Invalid emoji format' 
+      return res.status(400).json({
+        error: 'Invalid emoji format'
       });
     }
 
     // Validar cor (hex válido)
     if (color && (typeof color !== 'number' || color < 0 || color > 0xFFFFFF)) {
-      return res.status(400).json({ 
-        error: 'Invalid color value (must be 0x000000 to 0xFFFFFF)' 
+      return res.status(400).json({
+        error: 'Invalid color value (must be 0x000000 to 0xFFFFFF)'
       });
     }
 
     // Verificar limite de categorias (máx 25 por servidor)
-    const existingCount = await TicketCategoryModel.countDocuments({ 
-      guild_id: gid 
+    const existingCount = await TicketCategoryModel.countDocuments({
+      guild_id: gid
     });
 
     if (existingCount >= 25) {
-      return res.status(400).json({ 
-        error: 'Maximum 25 categories per server reached' 
+      return res.status(400).json({
+        error: 'Maximum 25 categories per server reached'
       });
     }
 
@@ -123,9 +123,9 @@ router.post('/guild/:gid/ticket-categories', async (req, res) => {
 
   } catch (error) {
     console.error('[TicketCategories] Error creating category:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Failed to create ticket category',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -152,13 +152,13 @@ router.patch('/guild/:gid/ticket-categories/:id', async (req, res) => {
 
     if (name !== undefined) {
       if (typeof name !== 'string' || name.trim().length < 2) {
-        return res.status(400).json({ 
-          error: 'Category name must have at least 2 characters' 
+        return res.status(400).json({
+          error: 'Category name must have at least 2 characters'
         });
       }
       if (name.length > 50) {
-        return res.status(400).json({ 
-          error: 'Category name must be 50 characters or less' 
+        return res.status(400).json({
+          error: 'Category name must be 50 characters or less'
         });
       }
       updateData.name = name.trim();
@@ -177,8 +177,8 @@ router.patch('/guild/:gid/ticket-categories/:id', async (req, res) => {
 
     if (color !== undefined) {
       if (typeof color !== 'number' || color < 0 || color > 0xFFFFFF) {
-        return res.status(400).json({ 
-          error: 'Invalid color value' 
+        return res.status(400).json({
+          error: 'Invalid color value'
         });
       }
       updateData.color = color;
@@ -196,8 +196,8 @@ router.patch('/guild/:gid/ticket-categories/:id', async (req, res) => {
     );
 
     if (!category) {
-      return res.status(404).json({ 
-        error: 'Category not found' 
+      return res.status(404).json({
+        error: 'Category not found'
       });
     }
 
@@ -210,9 +210,9 @@ router.patch('/guild/:gid/ticket-categories/:id', async (req, res) => {
 
   } catch (error) {
     console.error('[TicketCategories] Error updating category:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Failed to update ticket category',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -231,16 +231,16 @@ router.post('/guild/:gid/ticket-categories/reorder', async (req, res) => {
     }
 
     if (!Array.isArray(order)) {
-      return res.status(400).json({ 
-        error: 'Order must be an array of category IDs' 
+      return res.status(400).json({
+        error: 'Order must be an array of category IDs'
       });
     }
 
     // Validar que todos IDs são válidos
     const invalidIds = order.filter(id => !/^[a-f\d]{24}$/i.test(id));
     if (invalidIds.length > 0) {
-      return res.status(400).json({ 
-        error: 'Invalid category ID(s) in order array' 
+      return res.status(400).json({
+        error: 'Invalid category ID(s) in order array'
       });
     }
 
@@ -251,8 +251,8 @@ router.post('/guild/:gid/ticket-categories/reorder', async (req, res) => {
     }).lean();
 
     if (categories.length !== order.length) {
-      return res.status(400).json({ 
-        error: 'Some categories do not exist or do not belong to this guild' 
+      return res.status(400).json({
+        error: 'Some categories do not exist or do not belong to this guild'
       });
     }
 
@@ -281,9 +281,9 @@ router.post('/guild/:gid/ticket-categories/reorder', async (req, res) => {
 
   } catch (error) {
     console.error('[TicketCategories] Error reordering categories:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Failed to reorder ticket categories',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -311,8 +311,8 @@ router.delete('/guild/:gid/ticket-categories/:id', async (req, res) => {
     });
 
     if (!result) {
-      return res.status(404).json({ 
-        error: 'Category not found' 
+      return res.status(404).json({
+        error: 'Category not found'
       });
     }
 
@@ -344,9 +344,9 @@ router.delete('/guild/:gid/ticket-categories/:id', async (req, res) => {
 
   } catch (error) {
     console.error('[TicketCategories] Error deleting category:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Failed to delete ticket category',
-      details: error.message 
+      details: error.message
     });
   }
 });

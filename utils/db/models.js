@@ -223,16 +223,16 @@ const { TimeTrackingSessionModel } = require('./models/TimeTrackingSession');
 const { GuildAssetConfigModel } = require('./models/GuildAssetConfig');
 const { GenericKVModel } = require('./models/GenericKV');
 
-module.exports = { 
-  TicketModel, 
-  GuildConfigModel, 
-  PanelModel, 
-  TagModel, 
-  WebhookModel, 
-  TicketLogModel, 
-  ModerationCaseModel, 
-  AppealModel, 
-  NotificationModel, 
+module.exports = {
+  TicketModel,
+  GuildConfigModel,
+  PanelModel,
+  TagModel,
+  WebhookModel,
+  TicketLogModel,
+  ModerationCaseModel,
+  AppealModel,
+  NotificationModel,
   AutomodEventModel,
   TicketCategoryModel, // ✨ NOVO
   WelcomeConfigModel, // ✨ NOVO - Welcome/Goodbye system

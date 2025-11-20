@@ -3,7 +3,7 @@ const logger = require('./logger');
 
 /**
  * ✨ ADVANCED WEBHOOK MANAGER - Single Message Updates
- * 
+ *
  * Envia 1 mensagem por ticket e atualiza via PATCH (não spam).
  * - POST: Cria mensagem inicial
  * - PATCH: Atualiza mensagem existente
@@ -133,7 +133,7 @@ class AdvancedWebhookManager {
 
     try {
       const embed = this.createTicketEmbed(ticketData, 'created');
-      
+
       const message = await webhook.send({
         embeds: [embed],
         username: 'IGNIS Tickets',
@@ -161,7 +161,7 @@ class AdvancedWebhookManager {
 
     // Adicionar à fila ao invés de executar imediatamente
     this.updateQueue.push({ guildId, messageId, ticketData, eventType, retries: 0 });
-    
+
     if (!this.processing) {
       this.processQueue();
     }
@@ -203,7 +203,7 @@ class AdvancedWebhookManager {
         if (retries < this.maxRetries) {
           const delay = this.retryDelay * Math.pow(2, retries);
           logger.warn(`[AdvancedWebhook] Retrying in ${delay}ms (attempt ${retries + 1}/${this.maxRetries})`);
-          
+
           await this.sleep(delay);
           this.updateQueue.push({ guildId, messageId, ticketData, eventType, retries: retries + 1 });
         } else {

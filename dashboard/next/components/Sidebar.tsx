@@ -10,11 +10,11 @@ import { useState } from 'react'
 
 const nav = [
   { href: '/', key: 'nav.dashboard', icon: '🏠', flag: 'stable' },
-  
+
   // Gestão de Comunidade
-  { 
-    key: 'nav.community', 
-    icon: '👥', 
+  {
+    key: 'nav.community',
+    icon: '👥',
     flag: 'stable',
     children: [
       { href: '/members', key: 'nav.members', icon: '👤' },
@@ -22,11 +22,11 @@ const nav = [
       { href: '/guild/{gid}/welcome', key: 'nav.welcome', icon: '👋', requiresGuild: true },
     ]
   },
-  
+
   // Moderação
-  { 
-    key: 'nav.moderation', 
-    icon: '🛡️', 
+  {
+    key: 'nav.moderation',
+    icon: '🛡️',
     flag: 'stable',
     children: [
       { href: '/moderation', key: 'nav.moderationCenter', icon: '⚔️' },
@@ -35,11 +35,11 @@ const nav = [
       { href: '/appeals', key: 'nav.appeals', icon: '📝' },
     ]
   },
-  
+
   // Tickets
-  { 
-    key: 'nav.tickets', 
-    icon: '🎫', 
+  {
+    key: 'nav.tickets',
+    icon: '🎫',
     flag: 'stable',
     children: [
       { href: '/tickets', key: 'nav.tickets.list', icon: '📋' },
@@ -48,11 +48,11 @@ const nav = [
       { href: '/tickets/config', key: 'nav.tickets.config', icon: '⚙️' },
     ]
   },
-  
+
   // Conteúdo & Engagement
-  { 
-    key: 'nav.content', 
-    icon: '🎉', 
+  {
+    key: 'nav.content',
+    icon: '🎉',
     flag: 'stable',
     children: [
       { href: '/giveaways', key: 'nav.giveaways', icon: '🎁' },
@@ -60,11 +60,11 @@ const nav = [
       { href: '/commands', key: 'nav.commands', icon: '⌨️' },
     ]
   },
-  
+
   // Estatísticas & Logs
-  { 
-    key: 'nav.analytics', 
-    icon: '📊', 
+  {
+    key: 'nav.analytics',
+    icon: '📊',
     flag: 'stable',
     children: [
       { href: '/guild/{gid}/stats', key: 'nav.stats', icon: '📈', requiresGuild: true },
@@ -73,11 +73,11 @@ const nav = [
       { href: '/performance', key: 'nav.performance', icon: '⚡' },
     ]
   },
-  
+
   // Configurações
-  { 
-    key: 'nav.configuration', 
-    icon: '⚙️', 
+  {
+    key: 'nav.configuration',
+    icon: '⚙️',
     flag: 'stable',
     children: [
       { href: '/settings', key: 'nav.settings', icon: '🔧' },
@@ -117,15 +117,15 @@ export default function Sidebar() {
         {nav.map((n) => {
           const hasChildren = n.children && n.children.length > 0
           const isOpen = openDropdown === n.key
-          
+
           // Check if any child is active
           const isChildActive = n.children?.some(child => {
             const childHref = child.requiresGuild && guildId ? child.href.replace('{gid}', guildId) : child.href
             return pathname === childHref
           }) || false
-          
+
           const active = n.href ? pathname === n.href : false
-          
+
           return (
             <div key={n.key || n.href}>
               {hasChildren ? (
@@ -134,34 +134,34 @@ export default function Sidebar() {
                     onClick={() => setOpenDropdown(isOpen ? null : n.key)}
                     className={`w-full group rounded-lg px-3 py-2 flex items-center gap-2 transition-all text-sm ${
                       isChildActive
-                        ? 'bg-purple-600/10 text-purple-300 border border-purple-600/30' 
+                        ? 'bg-purple-600/10 text-purple-300 border border-purple-600/30'
                         : 'hover:bg-gray-800/50 text-gray-300 hover:text-white'
                     }`}
                   >
                     <span className="text-lg">{n.icon}</span>
                     <span className="flex-1 font-medium text-left">{t(n.key)}</span>
-                    <svg 
-                      className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
+                    <svg
+                      className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
-                  
+
                   {/* Dropdown children */}
                   {isOpen && (
                     <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-700/50 pl-2">
                       {n.children?.map((child) => {
                         // Skip guild-specific items if no guild selected
                         if (child.requiresGuild && !guildId) return null
-                        
-                        const childHref = child.requiresGuild && guildId 
-                          ? child.href.replace('{gid}', guildId) 
+
+                        const childHref = child.requiresGuild && guildId
+                          ? child.href.replace('{gid}', guildId)
                           : child.href
                         const childActive = pathname === childHref
-                        
+
                         return (
                           <Link
                             key={child.href}
@@ -184,8 +184,8 @@ export default function Sidebar() {
                 <Link
                   href={n.href!}
                   className={`group rounded-lg px-3 py-2 flex items-center gap-2 transition-all text-sm ${
-                    active 
-                      ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/50 text-white shadow-lg shadow-purple-500/10' 
+                    active
+                      ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/50 text-white shadow-lg shadow-purple-500/10'
                       : 'hover:bg-gray-800/50 text-gray-300 hover:text-white'
                   }`}
                 >

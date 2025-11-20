@@ -205,12 +205,12 @@ export default function TicketPanels() {
           </div>
           <div className="flex gap-3">
             {/* Botão para abrir o novo criador de painéis */}
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => {
                 setEditingPanel(null)
                 setShowPanelCreator(true)
-              }} 
+              }}
               className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-lg transition-all duration-200 flex items-center gap-2 transform hover:scale-[1.02]"
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -218,9 +218,9 @@ export default function TicketPanels() {
               </svg>
               Criar Painel Avançado
             </button>
-            <button 
-              type="button" 
-              onClick={() => guildId && loadAll(guildId)} 
+            <button
+              type="button"
+              onClick={() => guildId && loadAll(guildId)}
               className="px-4 py-2 bg-gray-800/50 hover:bg-gray-700/50 rounded-lg border border-gray-700/50 transition-all duration-200 flex items-center gap-2"
               disabled={loading}
             >
@@ -229,9 +229,9 @@ export default function TicketPanels() {
               </svg>
               {loading ? 'A carregar...' : 'Atualizar'}
             </button>
-            <button 
-              type="button" 
-              onClick={onScan} 
+            <button
+              type="button"
+              onClick={onScan}
               className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg transition-all duration-200 flex items-center gap-2 transform hover:scale-[1.02]"
               disabled={scanning || loading}
             >
@@ -260,14 +260,14 @@ export default function TicketPanels() {
           <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <input 
+          <input
             className="w-full pl-12 pr-12 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-            placeholder="🔍 Pesquisar painéis..." 
-            value={filter} 
-            onChange={e => setFilter(e.target.value)} 
+            placeholder="🔍 Pesquisar painéis..."
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
           />
           {filter && (
-            <button 
+            <button
               onClick={() => setFilter('')}
               className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
             >
@@ -294,19 +294,19 @@ export default function TicketPanels() {
               <form onSubmit={onCreatePanel} className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-gray-300 mb-2 block">Nome do Painel</label>
-                  <input 
-                    value={newPanel.name} 
-                    onChange={e => setNewPanel(v => ({ ...v, name: e.target.value }))} 
-                    placeholder="Ex: Suporte Geral" 
+                  <input
+                    value={newPanel.name}
+                    onChange={e => setNewPanel(v => ({ ...v, name: e.target.value }))}
+                    placeholder="Ex: Suporte Geral"
                     className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700/50 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                    required 
+                    required
                   />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-300 mb-2 block">Canal</label>
-                  <select 
-                    value={newPanel.channelId} 
-                    onChange={e => setNewPanel(v => ({ ...v, channelId: e.target.value }))} 
+                  <select
+                    value={newPanel.channelId}
+                    onChange={e => setNewPanel(v => ({ ...v, channelId: e.target.value }))}
                     className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700/50 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all cursor-pointer"
                     required
                   >
@@ -318,9 +318,9 @@ export default function TicketPanels() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-300 mb-2 block">Categoria (Opcional)</label>
-                  <select 
-                    value={newPanel.categoryId || ''} 
-                    onChange={e => setNewPanel(v => ({ ...v, categoryId: e.target.value || undefined }))} 
+                  <select
+                    value={newPanel.categoryId || ''}
+                    onChange={e => setNewPanel(v => ({ ...v, categoryId: e.target.value || undefined }))}
                     className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700/50 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all cursor-pointer"
                   >
                     <option value="">Sem categoria</option>
@@ -329,8 +329,8 @@ export default function TicketPanels() {
                     ))}
                   </select>
                 </div>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
                   disabled={loading}
                 >
@@ -354,16 +354,16 @@ export default function TicketPanels() {
               <form onSubmit={onCreateCategory} className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-gray-300 mb-2 block">Nome da Categoria</label>
-                  <input 
-                    value={newCategory.name} 
-                    onChange={e => setNewCategory({ name: e.target.value })} 
-                    placeholder="Ex: Tickets Técnicos" 
+                  <input
+                    value={newCategory.name}
+                    onChange={e => setNewCategory({ name: e.target.value })}
+                    placeholder="Ex: Tickets Técnicos"
                     className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700/50 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                    required 
+                    required
                   />
                 </div>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 rounded-lg font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
                   disabled={loading}
                 >
@@ -404,7 +404,7 @@ export default function TicketPanels() {
             ) : (
               <div className="grid grid-cols-1 gap-4">
                 {panelRows.map(p => (
-                  <PanelCard 
+                  <PanelCard
                     key={p._id}
                     panel={p}
                     guildId={guildId || ''}
@@ -422,7 +422,7 @@ export default function TicketPanels() {
 
       {/* Modal do Criador de Painéis Avançado */}
       {showPanelCreator && (
-        <PanelCreator 
+        <PanelCreator
           onClose={() => {
             setShowPanelCreator(false)
             setEditingPanel(null)
@@ -446,7 +446,7 @@ type PanelCardProps = {
 
 function PanelCard({ panel, guildId, isLoading, onToggleTheme, onSetTemplate, onAction }: PanelCardProps) {
   const [showActions, setShowActions] = useState(false)
-  
+
   return (
     <div className="bg-gray-900/50 border border-gray-700/50 rounded-xl p-5 hover:border-purple-500/30 transition-all duration-200">
       <div className="flex items-start justify-between gap-4 mb-4">
@@ -484,10 +484,10 @@ function PanelCard({ panel, guildId, isLoading, onToggleTheme, onSetTemplate, on
             )}
           </div>
           {panel.message_id && (
-            <a 
+            <a
               className="inline-flex items-center gap-1.5 mt-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
-              href={`https://discord.com/channels/${guildId}/${panel.channel_id}/${panel.message_id}`} 
-              target="_blank" 
+              href={`https://discord.com/channels/${guildId}/${panel.channel_id}/${panel.message_id}`}
+              target="_blank"
               rel="noreferrer"
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -512,7 +512,7 @@ function PanelCard({ panel, guildId, isLoading, onToggleTheme, onSetTemplate, on
         <div className="border-t border-gray-700/50 pt-4 mt-4 space-y-3">
           <div className="flex flex-wrap gap-2">
             {panel.detected ? (
-              <button 
+              <button
                 onClick={() => onAction('save')}
                 disabled={isLoading}
                 className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-600/30 rounded-lg text-sm font-medium text-blue-300 transition-all disabled:opacity-50"
@@ -521,14 +521,14 @@ function PanelCard({ panel, guildId, isLoading, onToggleTheme, onSetTemplate, on
               </button>
             ) : (
               <>
-                <button 
+                <button
                   onClick={() => onAction('resend')}
                   disabled={isLoading}
                   className="px-3 py-1.5 bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600/50 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
                 >
                   📤 Reenviar
                 </button>
-                <button 
+                <button
                   onClick={() => onAction('recreate')}
                   disabled={isLoading}
                   className="px-3 py-1.5 bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600/50 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
@@ -537,14 +537,14 @@ function PanelCard({ panel, guildId, isLoading, onToggleTheme, onSetTemplate, on
                 </button>
               </>
             )}
-            <button 
+            <button
               onClick={onToggleTheme}
               disabled={isLoading}
               className="px-3 py-1.5 bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600/50 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
             >
               {panel.theme === 'light' ? '🌙' : '☀️'} Tema
             </button>
-            <button 
+            <button
               onClick={() => {
                 if (confirm('Tem a certeza que deseja remover este painel?')) {
                   onAction('delete')
@@ -558,8 +558,8 @@ function PanelCard({ panel, guildId, isLoading, onToggleTheme, onSetTemplate, on
           </div>
           <div>
             <label className="text-sm font-medium text-gray-300 mb-2 block">Template</label>
-            <select 
-              value={panel.template || 'classic'} 
+            <select
+              value={panel.template || 'classic'}
               onChange={e => onSetTemplate(e.target.value)}
               disabled={isLoading}
               className="w-full px-3 py-2 bg-gray-900/50 border border-gray-700/50 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all cursor-pointer disabled:opacity-50"

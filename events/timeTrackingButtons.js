@@ -8,7 +8,7 @@ module.exports = {
     if (!interaction.isButton()) return;
 
     const customId = interaction.customId;
-    
+
     // Time tracking buttons
     if (customId.startsWith('timetrack_')) {
       await handleTimeTrackingButton(interaction);
@@ -52,7 +52,7 @@ async function handleTimeTrackingButton(interaction) {
     }
   } catch (error) {
     logger.error('[TimeTracking Button] Error:', error);
-    
+
     if (interaction.deferred || interaction.replied) {
       await interaction.editReply({
         content: '❌ Erro ao processar ação.',
@@ -137,27 +137,27 @@ async function handleRefresh(interaction, session) {
 
 function createSessionEmbed(session) {
   const duration = session.getCurrentDuration();
-  
+
   const embed = new EmbedBuilder()
     .setTitle('⏱️ Sessão de Time Tracking')
     .setColor(session.status === 'active' ? 0x2ecc71 : 0xf39c12)
     .setTimestamp();
 
   embed.addFields(
-    { 
-      name: '📊 Status', 
-      value: session.status === 'active' ? '🟢 Ativa' : '⏸️ Pausada', 
-      inline: true 
+    {
+      name: '📊 Status',
+      value: session.status === 'active' ? '🟢 Ativa' : '⏸️ Pausada',
+      inline: true
     },
-    { 
-      name: '🕐 Início', 
-      value: `<t:${Math.floor(session.started_at.getTime() / 1000)}:R>`, 
-      inline: true 
+    {
+      name: '🕐 Início',
+      value: `<t:${Math.floor(session.started_at.getTime() / 1000)}:R>`,
+      inline: true
     },
-    { 
-      name: '⏱️ Tempo Ativo', 
-      value: `**${duration.active_formatted}**`, 
-      inline: true 
+    {
+      name: '⏱️ Tempo Ativo',
+      value: `**${duration.active_formatted}**`,
+      inline: true
     }
   );
 
@@ -184,32 +184,32 @@ function createSessionEmbed(session) {
 
 function createSessionSummaryEmbed(session) {
   session.calculateTotalTime();
-  
+
   const embed = new EmbedBuilder()
     .setTitle('✅ Sessão Terminada')
     .setColor(0x3498db)
     .setTimestamp();
 
   embed.addFields(
-    { 
-      name: '🕐 Início', 
-      value: `<t:${Math.floor(session.started_at.getTime() / 1000)}:F>`, 
-      inline: false 
+    {
+      name: '🕐 Início',
+      value: `<t:${Math.floor(session.started_at.getTime() / 1000)}:F>`,
+      inline: false
     },
-    { 
-      name: '🕐 Fim', 
-      value: `<t:${Math.floor(session.ended_at.getTime() / 1000)}:F>`, 
-      inline: false 
+    {
+      name: '🕐 Fim',
+      value: `<t:${Math.floor(session.ended_at.getTime() / 1000)}:F>`,
+      inline: false
     },
-    { 
-      name: '⏱️ Tempo Total', 
-      value: session.formatDuration(session.total_time_ms), 
-      inline: true 
+    {
+      name: '⏱️ Tempo Total',
+      value: session.formatDuration(session.total_time_ms),
+      inline: true
     },
-    { 
-      name: '✅ Tempo Ativo', 
-      value: `**${session.formatDuration(session.active_time_ms)}**`, 
-      inline: true 
+    {
+      name: '✅ Tempo Ativo',
+      value: `**${session.formatDuration(session.active_time_ms)}**`,
+      inline: true
     }
   );
 

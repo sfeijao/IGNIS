@@ -5,7 +5,7 @@ const storage = require('../storage');
 
 /**
  * 🎁 GIVEAWAY AUTO-WINNER TICKET SYSTEM
- * 
+ *
  * Cria automaticamente um ticket para o vencedor de um giveaway.
  * Mensagem personalizada com prazo de 48h para resposta.
  * Se não responder, permite re-sortear novo vencedor.
@@ -38,10 +38,10 @@ async function createGiveawayWinnerTicket({ guildId, userId, giveaway, client })
     const existingTickets = await storage.getUserActiveTickets(userId, guildId);
     if (existingTickets && existingTickets.length > 0) {
       logger.info(`[GiveawayTicket] User ${userId} já tem ticket ativo em ${guildId}`);
-      return { 
-        ok: false, 
+      return {
+        ok: false,
         error: 'User already has active ticket',
-        existingTicket: existingTickets[0] 
+        existingTicket: existingTickets[0]
       };
     }
 
@@ -53,17 +53,17 @@ async function createGiveawayWinnerTicket({ guildId, userId, giveaway, client })
     // Encontrar ou criar categoria de tickets
     let category = null;
     if (parentCategoryId) {
-      category = guild.channels.cache.get(parentCategoryId) || 
+      category = guild.channels.cache.get(parentCategoryId) ||
                  await client.channels.fetch(parentCategoryId).catch(() => null);
     }
-    
+
     if (!category || category.type !== ChannelType.GuildCategory) {
       // Criar categoria padrão
       category = guild.channels.cache.find(
-        c => c.type === ChannelType.GuildCategory && 
+        c => c.type === ChannelType.GuildCategory &&
         (c.name === '📁 TICKETS' || c.name.toUpperCase() === 'TICKETS')
       );
-      
+
       if (!category) {
         category = await guild.channels.create({
           name: '📁 TICKETS',
@@ -80,30 +80,30 @@ async function createGiveawayWinnerTicket({ guildId, userId, giveaway, client })
     // Permissões do canal
     const overwrites = [
       { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-      { 
-        id: userId, 
+      {
+        id: userId,
         allow: [
-          PermissionFlagsBits.ViewChannel, 
-          PermissionFlagsBits.SendMessages, 
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.SendMessages,
           PermissionFlagsBits.ReadMessageHistory
-        ] 
+        ]
       }
     ];
 
     // Adicionar staff roles se configurados
-    const accessRoleIds = Array.isArray(cfg?.tickets?.accessRoleIds) 
-      ? cfg.tickets.accessRoleIds.filter(Boolean) 
+    const accessRoleIds = Array.isArray(cfg?.tickets?.accessRoleIds)
+      ? cfg.tickets.accessRoleIds.filter(Boolean)
       : [];
 
     for (const roleId of accessRoleIds) {
       if (guild.roles.cache.has(roleId)) {
-        overwrites.push({ 
-          id: roleId, 
+        overwrites.push({
+          id: roleId,
           allow: [
-            PermissionFlagsBits.ViewChannel, 
-            PermissionFlagsBits.SendMessages, 
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.SendMessages,
             PermissionFlagsBits.ReadMessageHistory
-          ] 
+          ]
         });
       }
     }
@@ -147,9 +147,9 @@ async function createGiveawayWinnerTicket({ guildId, userId, giveaway, client })
         `Boa sorte! 🍀`
       )
       .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-      .setFooter({ 
-        text: 'IGNIS Bot • Sistema de Giveaways', 
-        iconURL: client.user?.displayAvatarURL() 
+      .setFooter({
+        text: 'IGNIS Bot • Sistema de Giveaways',
+        iconURL: client.user?.displayAvatarURL()
       })
       .setTimestamp();
 
@@ -202,18 +202,18 @@ async function createGiveawayWinnerTicket({ guildId, userId, giveaway, client })
       // Não é crítico se falhar DM
     }
 
-    return { 
-      ok: true, 
-      ticket, 
+    return {
+      ok: true,
+      ticket,
       channel,
-      message: 'Ticket created successfully' 
+      message: 'Ticket created successfully'
     };
 
   } catch (error) {
     logger.error('[GiveawayTicket] Error creating winner ticket:', error);
-    return { 
-      ok: false, 
-      error: error.message 
+    return {
+      ok: false,
+      error: error.message
     };
   }
 }
@@ -225,7 +225,7 @@ async function createGiveawayWinnerTicket({ guildId, userId, giveaway, client })
 async function checkExpiredGiveawayTickets(client) {
   try {
     const now = new Date();
-    
+
     // Buscar tickets de giveaway com deadline ultrapassado
     const expiredTickets = await TicketModel.find({
       type: 'giveaway_winner',
@@ -270,7 +270,7 @@ async function checkExpiredGiveawayTickets(client) {
         }
 
         // Atualizar ticket no DB
-        await storage.updateTicket(ticket.id, { 
+        await storage.updateTicket(ticket.id, {
           status: 'closed',
           closed_reason: 'expired_no_response',
           closed_at: now

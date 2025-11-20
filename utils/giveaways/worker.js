@@ -56,7 +56,7 @@ function initGiveawayWorker(){
                 const announceResult = await announceWinners(fresh, result.winners || []);
                 if (announceResult.ok) {
                   await GiveawayModel.updateOne({ _id: fresh._id }, { $set: { winners_announced: true } });
-                  
+
                   // 🆕 CRIAR TICKETS AUTOMÁTICOS PARA VENCEDORES
                   if (result.winners && result.winners.length > 0) {
                     const { getClient } = require('../discordClient');
@@ -77,7 +77,7 @@ function initGiveawayWorker(){
                       }
                     }
                   }
-                  
+
                 } else {
                   console.warn(`[GiveawayWorker] Failed to announce winners for ${g._id}: ${announceResult.error || 'unknown'}`);
                   // Retry announcement on next tick (don't mark as announced)
@@ -157,19 +157,19 @@ function initGiveawayWorker(){
   const i2 = setInterval(() => guarded(tickEndDue), 8_000);
   const i3 = setInterval(() => guarded(tickLiveUpdates), 30_000);
   const i4 = setInterval(() => guarded(tickCheckExpiredTickets), 60_000); // A cada 1 minuto
-  
+
   // run soon after start
-  setTimeout(()=>{ 
-    guarded(tickPromoteScheduled); 
-    guarded(tickEndDue); 
+  setTimeout(()=>{
+    guarded(tickPromoteScheduled);
+    guarded(tickEndDue);
     guarded(tickLiveUpdates);
     guarded(tickCheckExpiredTickets);
   }, 2000);
-  
-  return () => { 
-    clearInterval(i1); 
-    clearInterval(i2); 
-    clearInterval(i3); 
+
+  return () => {
+    clearInterval(i1);
+    clearInterval(i2);
+    clearInterval(i3);
     clearInterval(i4);
   };
 }

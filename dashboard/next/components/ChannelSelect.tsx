@@ -51,7 +51,7 @@ export default function ChannelSelect({
     try {
       setLoading(true);
       setError(null);
-      
+
       const params = new URLSearchParams();
       if (types && types.length > 0) {
         params.set('type', types.join(','));
@@ -59,25 +59,25 @@ export default function ChannelSelect({
       if (includeCategories) {
         params.set('includeCategories', 'true');
       }
-      
+
       const res = await fetch(`/api/guild/${guildId}/channels?${params}`);
       const data = await res.json();
-      
+
       if (data.success) {
         setChannels(data.channels || []);
         setCanManualInput(data.canManualInput || false);
-        
+
         if (data.channels.length === 0 && data.canManualInput) {
           setShowManualInput(true);
         }
       } else {
         setError(data.error || 'Failed to load channels');
         setCanManualInput(data.canManualInput || false);
-        
+
         if (data.instructions) {
           setError(`${data.error}. ${data.instructions}`);
         }
-        
+
         if (data.canManualInput) {
           setShowManualInput(true);
         }
@@ -94,19 +94,19 @@ export default function ChannelSelect({
 
   const verifyChannel = async () => {
     if (!manualId.trim()) return;
-    
+
     try {
       setVerifying(true);
       setError(null);
-      
+
       const res = await fetch(`/api/guild/${guildId}/channels/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ channelId: manualId.trim() })
       });
-      
+
       const data = await res.json();
-      
+
       if (data.success && data.channel) {
         setVerifiedChannel(data.channel);
         onChange(data.channel.id, data.channel);
@@ -131,7 +131,7 @@ export default function ChannelSelect({
           {label} {required && <span className="text-red-400">*</span>}
         </label>
       )}
-      
+
       {loading ? (
         <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-900/50 border border-gray-700 rounded-xl">
           <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-500 border-t-transparent"></div>
@@ -172,13 +172,13 @@ export default function ChannelSelect({
               {verifying ? '⏳' : '✓'} Verificar
             </button>
           </div>
-          
+
           {error && (
             <div className="px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl">
               <p className="text-sm text-red-400">{error}</p>
             </div>
           )}
-          
+
           {verifiedChannel && (
             <div className="px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-xl">
               <div className="flex items-center gap-2">
@@ -192,7 +192,7 @@ export default function ChannelSelect({
               </div>
             </div>
           )}
-          
+
           {channels.length > 0 && (
             <button
               type="button"
@@ -207,7 +207,7 @@ export default function ChannelSelect({
               ← Voltar à lista de canais
             </button>
           )}
-          
+
           <div className="px-4 py-3 bg-blue-500/10 border border-blue-500/30 rounded-xl">
             <p className="text-xs text-blue-300 mb-2">💡 Como obter o ID de um canal:</p>
             <ol className="text-xs text-gray-400 space-y-1 list-decimal list-inside">
@@ -236,7 +236,7 @@ export default function ChannelSelect({
               </option>
             ))}
           </select>
-          
+
           {canManualInput && (
             <button
               type="button"

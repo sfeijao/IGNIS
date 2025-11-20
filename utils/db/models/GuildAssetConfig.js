@@ -2,82 +2,82 @@ const { mongoose } = require('../mongoose');
 
 /**
  * GuildAssetConfig Model
- * 
+ *
  * Configuração de assets customizados por servidor (avatar, banner)
  * Usa webhooks do Discord para override de avatar em mensagens
  */
 const GuildAssetConfigSchema = new mongoose.Schema({
-  guild_id: { 
-    type: String, 
-    required: true, 
-    unique: true 
+  guild_id: {
+    type: String,
+    required: true,
+    unique: true
   },
-  
+
   // Avatar customizado (URL ou base64)
-  custom_avatar_url: { 
-    type: String 
+  custom_avatar_url: {
+    type: String
   },
-  
-  custom_avatar_base64: { 
-    type: String 
+
+  custom_avatar_base64: {
+    type: String
   }, // Stored locally if uploaded
-  
+
   // Banner customizado
-  custom_banner_url: { 
-    type: String 
+  custom_banner_url: {
+    type: String
   },
-  
-  custom_banner_base64: { 
-    type: String 
+
+  custom_banner_base64: {
+    type: String
   },
-  
+
   // Webhook configurations para override de avatar
   webhook_configs: [{
-    channel_id: { 
-      type: String, 
-      required: true 
+    channel_id: {
+      type: String,
+      required: true
     },
-    webhook_id: { 
-      type: String, 
-      required: true 
+    webhook_id: {
+      type: String,
+      required: true
     },
-    webhook_token: { 
-      type: String, 
-      required: true 
+    webhook_token: {
+      type: String,
+      required: true
     },
-    use_custom_avatar: { 
-      type: Boolean, 
-      default: true 
+    use_custom_avatar: {
+      type: Boolean,
+      default: true
     },
-    custom_name: { 
-      type: String 
+    custom_name: {
+      type: String
     }, // Override webhook name
-    enabled: { 
-      type: Boolean, 
-      default: true 
+    enabled: {
+      type: Boolean,
+      default: true
     }
   }],
-  
+
   // Metadata
-  created_by: { 
-    type: String 
+  created_by: {
+    type: String
   },
-  updated_by: { 
-    type: String 
+  updated_by: {
+    type: String
   },
-  created_at: { 
-    type: Date, 
-    default: Date.now 
+  created_at: {
+    type: Date,
+    default: Date.now
   },
-  updated_at: { 
-    type: Date, 
-    default: Date.now 
+  updated_at: {
+    type: Date,
+    default: Date.now
   }
-}, { 
-  timestamps: { 
-    createdAt: 'created_at', 
-    updatedAt: 'updated_at' 
-  } 
+}, {
+  timestamps: {
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+  }
 });
 
 // Métodos estáticos
@@ -87,7 +87,7 @@ GuildAssetConfigSchema.statics.findByGuild = function(guildId) {
 
 GuildAssetConfigSchema.statics.findOrCreate = async function(guildId, createdBy = null) {
   let config = await this.findByGuild(guildId);
-  
+
   if (!config) {
     config = new this({
       guild_id: guildId,
@@ -95,7 +95,7 @@ GuildAssetConfigSchema.statics.findOrCreate = async function(guildId, createdBy 
     });
     await config.save();
   }
-  
+
   return config;
 };
 
@@ -157,7 +157,7 @@ GuildAssetConfigSchema.methods.getEnabledWebhooks = function() {
   return this.webhook_configs.filter(w => w.enabled);
 };
 
-const GuildAssetConfigModel = mongoose.models.GuildAssetConfig || 
+const GuildAssetConfigModel = mongoose.models.GuildAssetConfig ||
   mongoose.model('GuildAssetConfig', GuildAssetConfigSchema);
 
 module.exports = { GuildAssetConfigModel };

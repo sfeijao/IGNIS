@@ -5,7 +5,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 /**
  * 🎫 TICKET CATEGORY MANAGER
- * 
+ *
  * Gestão completa de categorias customizáveis de tickets por servidor.
  * Features: criar, editar, reordenar (drag-and-drop), eliminar, toggle enabled.
  */

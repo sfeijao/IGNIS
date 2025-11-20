@@ -4,7 +4,7 @@ const logger = require('./logger');
 
 /**
  * 📊 SERVER STATUS COUNTERS
- * 
+ *
  * Cria e atualiza canais de voz dinâmicos com estatísticas do servidor:
  * - Total de membros
  * - Humanos (sem bots)
@@ -63,13 +63,13 @@ async function saveStatsConfig(guildId, statsConfig) {
 async function setupStatsChannels(guild) {
   try {
     const config = await getStatsConfig(guild.id);
-    
+
     // Criar categoria se não existir
     let category = null;
     if (config.category_id) {
       category = guild.channels.cache.get(config.category_id);
     }
-    
+
     if (!category) {
       category = await guild.channels.create({
         name: '📊 SERVER STATUS',
@@ -87,7 +87,7 @@ async function setupStatsChannels(guild) {
 
     // Criar canais
     const channels = {};
-    
+
     channels.total_members = await guild.channels.create({
       name: '👥 Carregando...',
       type: ChannelType.GuildVoice,
@@ -144,13 +144,13 @@ async function setupStatsChannels(guild) {
     config.enabled = true;
 
     await saveStatsConfig(guild.id, config);
-    
+
     // Atualizar imediatamente
     await updateStatsChannels(guild);
 
     logger.info(`[ServerStats] Setup complete for guild ${guild.name}`);
     return { ok: true, config };
-    
+
   } catch (error) {
     logger.error('[ServerStats] Error setting up channels:', error);
     return { ok: false, error: error.message };
@@ -173,9 +173,9 @@ async function updateStatsChannels(guild) {
     const humans = members.filter(m => !m.user.bot).size;
     const bots = members.filter(m => m.user.bot).size;
     const boosters = guild.premiumSubscriptionCount || 0;
-    const online = members.filter(m => 
-      m.presence?.status === 'online' || 
-      m.presence?.status === 'idle' || 
+    const online = members.filter(m =>
+      m.presence?.status === 'online' ||
+      m.presence?.status === 'idle' ||
       m.presence?.status === 'dnd'
     ).size;
 
@@ -190,10 +190,10 @@ async function updateStatsChannels(guild) {
 
     for (const update of updates) {
       if (!update.id) continue;
-      
-      const channel = guild.channels.cache.get(update.id) || 
+
+      const channel = guild.channels.cache.get(update.id) ||
                      await guild.channels.fetch(update.id).catch(() => null);
-      
+
       if (channel && channel.name !== update.name) {
         await channel.setName(update.name).catch(err => {
           logger.warn(`[ServerStats] Failed to update ${update.id}:`, err.message);
@@ -216,7 +216,7 @@ async function updateStatsChannels(guild) {
 async function removeStatsChannels(guild) {
   try {
     const config = await getStatsConfig(guild.id);
-    
+
     // Deletar canais
     for (const channelId of Object.values(config.channels || {})) {
       if (!channelId) continue;
@@ -251,8 +251,8 @@ async function removeStatsChannels(guild) {
  */
 async function updateAllGuilds(client) {
   try {
-    const configs = await WelcomeConfigModel.find({ 
-      'server_stats.enabled': true 
+    const configs = await WelcomeConfigModel.find({
+      'server_stats.enabled': true
     }).lean();
 
     logger.info(`[ServerStats] Updating ${configs.length} guilds`);

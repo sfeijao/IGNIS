@@ -18,10 +18,10 @@ export default function PluginCard({ name, desc, badge, icon = 'plugins', tip, h
   // With Next.js basePath configured, pass clean hrefs (without manual "/next" prefix)
   const finalConfig = configHref || href
   const finalView = viewHref || href
-  
+
   // Determine gradient based on category or use default
   const gradientClass = gradient || 'from-purple-600/20 to-pink-600/20'
-  
+
   return (
     <article className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-purple-500/20">
       <div className={`bg-gradient-to-r ${gradientClass} border-b border-gray-700/50 px-5 py-4 flex items-center justify-between`}>
@@ -44,15 +44,15 @@ export default function PluginCard({ name, desc, badge, icon = 'plugins', tip, h
         <div className="flex gap-2 pt-2">
           {finalConfig || finalView ? (
             <>
-              <Link 
-                href={finalConfig || '#'} 
+              <Link
+                href={finalConfig || '#'}
                 className="flex-1 px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] text-center text-sm"
                 aria-label={`Configurar ${name}`}
               >
                 ⚙️ Configurar
               </Link>
-              <Link 
-                href={finalView || finalConfig || '#'} 
+              <Link
+                href={finalView || finalConfig || '#'}
                 className="flex-1 px-4 py-2.5 rounded-lg bg-gray-700/50 hover:bg-gray-700 border border-gray-600/50 transition-all duration-200 text-center text-sm"
                 aria-label={`Ver ${name}`}
               >

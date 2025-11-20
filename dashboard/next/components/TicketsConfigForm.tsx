@@ -55,7 +55,7 @@ export default function TicketsConfigForm() {
         const c = await api.getTicketsConfig(guildId)
         const obj = c?.config || c || {}
         setConfig(obj)
-        
+
         const [rolesRes, channelsRes, categoriesRes] = await Promise.allSettled([
           api.getRoles(guildId),
           api.getChannels(guildId),
@@ -117,7 +117,7 @@ export default function TicketsConfigForm() {
     const log = pickByName(txt, [/log/, /ticket/], (arr) => arr[1] || arr[0])
     const cat = pickByName(categories, [/arquiv|archive/, /fechad|closed/], (arr) => arr[0])
     const role = pickByName(roles, [/staff|equipa/, /mod/], (arr) => arr.find(r => /admin|gestor|manager/.test(r.name.toLowerCase())) || arr[0])
-    
+
     setConfig((c: any) => ({
       ...c,
       tickets: {
@@ -142,9 +142,9 @@ export default function TicketsConfigForm() {
             </h1>
             <p className="text-gray-400 mt-1">Configure o sistema de tickets do seu servidor</p>
           </div>
-          <button 
-            type="button" 
-            onClick={() => setReloadTick(x => x + 1)} 
+          <button
+            type="button"
+            onClick={() => setReloadTick(x => x + 1)}
             className="px-4 py-2 bg-gray-800/50 hover:bg-gray-700/50 rounded-lg border border-gray-700/50 transition-all duration-200 flex items-center gap-2"
             disabled={loading}
           >
@@ -285,10 +285,10 @@ export default function TicketsConfigForm() {
                   </div>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={!!tickets.enabled} 
-                    onChange={e => setConfig((c:any) => ({ ...c, tickets: { ...(c.tickets || {}), enabled: e.target.checked } }))} 
+                  <input
+                    type="checkbox"
+                    checked={!!tickets.enabled}
+                    onChange={e => setConfig((c:any) => ({ ...c, tickets: { ...(c.tickets || {}), enabled: e.target.checked } }))}
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
@@ -296,18 +296,18 @@ export default function TicketsConfigForm() {
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-lg font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={autoFill} 
+                  onClick={autoFill}
                   disabled={loading || saving}
                 >
                   ✨ Auto-preencher
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  onClick={save} 
+                  onClick={save}
                   disabled={loading || saving}
                 >
                   {saving && (
@@ -360,15 +360,15 @@ function LabeledSelectWithSearch({
         {icon && <span>{icon}</span>}
         {label}
       </label>
-      <input 
+      <input
         className="w-full px-4 py-2 bg-gray-900/50 border border-gray-700/50 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-sm"
-        value={query} 
-        onChange={(e)=> setQuery(e.target.value)} 
-        placeholder="🔍 Pesquisar..." 
+        value={query}
+        onChange={(e)=> setQuery(e.target.value)}
+        placeholder="🔍 Pesquisar..."
       />
-      <select 
+      <select
         className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700/50 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all cursor-pointer"
-        value={value} 
+        value={value}
         onChange={(e)=> onChange(e.target.value)}
       >
         <option value="">{placeholder || '—'}</option>

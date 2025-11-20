@@ -143,12 +143,12 @@ async function fetchAllMessages(channel, cap = 2000) {
 
 /**
  * 🎫 CRIAR TICKET COM SELEÇÃO DE CATEGORIA
- * 
+ *
  * Se o servidor tiver categorias customizáveis habilitadas:
  * 1. Mostra StringSelectMenu com categorias disponíveis
  * 2. User escolhe categoria
  * 3. Cria ticket com categoria escolhida
- * 
+ *
  * Se não tiver categorias custom → usa fluxo tradicional (departmentInfo)
  */
 async function createTicketWithCategorySelection(interaction, defaultType) {
@@ -202,9 +202,9 @@ async function createTicketWithCategorySelection(interaction, defaultType) {
     // Guardar contexto temporário (tipo original) para usar depois
     // Quando user selecionar, handleSelect irá criar o ticket
     const tempKey = `ticket_category_context:${interaction.guild.id}:${interaction.user.id}`;
-    await storage.setGeneric(tempKey, { 
-      defaultType, 
-      timestamp: Date.now() 
+    await storage.setGeneric(tempKey, {
+      defaultType,
+      timestamp: Date.now()
     }, 60); // 60s TTL
 
   } catch (error) {
@@ -218,35 +218,35 @@ async function createTicket(interaction, type, customCategory = null, panelConfi
   // Rate limiting: 2 tickets por minuto por usuário
   const rateLimitKey = `${interaction.guild.id}:${interaction.user.id}`;
   const rateCheck = ticketRateLimiter.check(rateLimitKey);
-  
+
   if (!rateCheck.allowed) {
     const waitSeconds = Math.ceil(rateCheck.waitTime / 1000);
-    return safeReply(interaction, { 
-      content: `⏱️ Aguarda ${waitSeconds}s antes de criar outro ticket.`, 
-      flags: MessageFlags.Ephemeral 
+    return safeReply(interaction, {
+      content: `⏱️ Aguarda ${waitSeconds}s antes de criar outro ticket.`,
+      flags: MessageFlags.Ephemeral
     });
   }
-  
+
   // CRITICAL: Atomic lock para prevenir race condition em double-click
   // Usa findOneAndUpdate com upsert para garantir apenas 1 ticket criado
   const storage = require('./storage');
   const lockKey = `ticket_creation_lock:${interaction.guild.id}:${interaction.user.id}`;
   const lockDoc = await storage.getGeneric(lockKey);
-  
+
   // Se já existe lock recente (< 5 segundos), rejeitar
   if (lockDoc && Date.now() - new Date(lockDoc.created_at).getTime() < 5000) {
-    return safeReply(interaction, { 
-      content: `⏳ Aguarda um momento... Ticket a ser criado.`, 
-      flags: MessageFlags.Ephemeral 
+    return safeReply(interaction, {
+      content: `⏳ Aguarda um momento... Ticket a ser criado.`,
+      flags: MessageFlags.Ephemeral
     });
   }
-  
+
   // Consumir token (apenas depois do lock check)
   await ticketRateLimiter.acquire(rateLimitKey, 1);
-  
+
   // Criar lock
   await storage.setGeneric(lockKey, { created_at: new Date() });
-  
+
   try {
     // Impedir múltiplos tickets abertos por utilizador
     const existing = (await storage.getUserActiveTickets(interaction.user.id, interaction.guild.id)) || [];
@@ -264,7 +264,7 @@ async function createTicket(interaction, type, customCategory = null, panelConfi
   // Ler configuração de tickets
   let cfg;
   try { cfg = await storage.getGuildConfig(interaction.guild.id); } catch {}
-  
+
   // 🆕 Usar target_category_id do painel se disponível
   let parentCategoryId = panelConfig?.target_category_id || cfg?.tickets?.ticketsCategoryId || null;
   let accessRoleIds = Array.isArray(cfg?.tickets?.accessRoleIds) ? cfg.tickets.accessRoleIds.filter(Boolean) : [];
@@ -281,7 +281,7 @@ async function createTicket(interaction, type, customCategory = null, panelConfi
     cat = await ensureCategory(interaction.guild);
     parentCategoryId = cat.id;
   }
-  
+
   // Determinar info da categoria (custom ou padrão)
   let info;
   if (customCategory) {
@@ -293,7 +293,7 @@ async function createTicket(interaction, type, customCategory = null, panelConfi
   } else {
     info = departmentInfo(type);
   }
-  
+
   const channelName = `${info.emoji}-${interaction.user.username}`.toLowerCase();
 
   // Verificar permissões do bot ANTES de criar canal
@@ -302,14 +302,14 @@ async function createTicket(interaction, type, customCategory = null, panelConfi
     await storage.deleteGeneric(lockKey).catch(() => {});
     return safeReply(interaction, { content: '❌ Erro: bot member não encontrado.', flags: MessageFlags.Ephemeral });
   }
-  
+
   const requiredPerms = [
     PermissionFlagsBits.ManageChannels,
     PermissionFlagsBits.ViewChannel,
     PermissionFlagsBits.SendMessages,
     PermissionFlagsBits.ManageRoles
   ];
-  
+
   const missingPerms = requiredPerms.filter(perm => !botMember.permissions.has(perm));
   if (missingPerms.length > 0) {
     await storage.deleteGeneric(lockKey).catch(() => {});
@@ -363,15 +363,15 @@ async function createTicket(interaction, type, customCategory = null, panelConfi
       description: null,
       priority: 'normal'
     };
-    
+
     // Se foi usada categoria customizada, guardar referência
     if (customCategory) {
       ticketData.category_id = customCategory._id.toString();
       ticketData.category_name = customCategory.name;
     }
-    
+
     ticket = await storage.createTicket(ticketData);
-    
+
     // Send webhook notification
     try {
       await webhookSystem.sendOrUpdateTicketWebhook(ticket, 'created', {
@@ -403,7 +403,7 @@ async function createTicket(interaction, type, customCategory = null, panelConfi
     '{category}': departmentInfo(type)?.name || String(type || ''),
     '{priority}': priorityLabel(ticket.priority)
   };
-  
+
   // 🆕 Usar welcomeMessage da categoria customizada se disponível
   let welcome = cfgTickets.welcomeMsg || `Olá {user}, obrigado por abrir um ticket!`;
   if (customCategory && customCategory.welcomeMessage) {
@@ -426,7 +426,7 @@ async function createTicket(interaction, type, customCategory = null, panelConfi
     // 🆕 Usar cor e nome da categoria customizada se disponível
     const categoryName = customCategory ? customCategory.name : info.name;
     const categoryColor = customCategory ? customCategory.color : info.color;
-    
+
     const introMain = new EmbedBuilder()
       .setColor(categoryColor)
       .setTitle('Ticket Criado com Sucesso! 📌')
@@ -508,7 +508,7 @@ async function createTicket(interaction, type, customCategory = null, panelConfi
 
   // Liberar lock após criação bem-sucedida
   await storage.deleteGeneric(lockKey).catch(() => {});
-  
+
   return safeReply(interaction, { content: `✅ Ticket criado: ${channel}`, flags: MessageFlags.Ephemeral });
 }
 
@@ -547,7 +547,7 @@ async function confirmClose(interaction) {
       action: 'fechado',
       maxMessages: 2000
     });
-    
+
     // Update webhook with closed status
     try {
       if (ticketData) {
@@ -557,7 +557,7 @@ async function confirmClose(interaction) {
           reason: 'Fechado pelo staff',
           messageCount
         });
-        
+
         // Attach transcript if available
         if (attachment && text) {
           await webhookSystem.attachTranscript(
@@ -571,7 +571,7 @@ async function confirmClose(interaction) {
     } catch (err) {
       logger.error('[Tickets] Failed to update webhook for ticket close:', err);
     }
-    
+
     let sent = false;
     if (attachment) {
       // Preferir webhook configurado
@@ -627,23 +627,23 @@ async function isStaff(interaction) {
 
 async function handleButton(interaction) {
   const id = interaction.customId;
-  
+
   // 🆕 Handler para botões de categoria de painéis avançados
   if (id.startsWith('ticket:category:')) {
     const categoryId = id.split(':')[2];
-    
+
     try {
       // Buscar categoria escolhida
-      const category = await TicketCategoryModel.findOne({ 
-        _id: categoryId, 
+      const category = await TicketCategoryModel.findOne({
+        _id: categoryId,
         guild_id: interaction.guild.id,
         enabled: true
       }).lean();
 
       if (!category) {
-        return safeReply(interaction, { 
-          content: '❌ Categoria não encontrada ou desativada.', 
-          flags: MessageFlags.Ephemeral 
+        return safeReply(interaction, {
+          content: '❌ Categoria não encontrada ou desativada.',
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -661,13 +661,13 @@ async function handleButton(interaction) {
 
     } catch (error) {
       logger.error('[Tickets] Error handling category button:', error);
-      return safeReply(interaction, { 
-        content: '❌ Erro ao processar categoria. Tenta novamente.', 
-        flags: MessageFlags.Ephemeral 
+      return safeReply(interaction, {
+        content: '❌ Erro ao processar categoria. Tenta novamente.',
+        flags: MessageFlags.Ephemeral
       });
     }
   }
-  
+
   if (id.startsWith('ticket:create:')) {
     const type = id.split(':')[2];
     // Verificar se existem categorias customizáveis para este servidor
@@ -692,17 +692,17 @@ async function handleButton(interaction) {
           )
           .setTimestamp();
         await interaction.channel.send({ embeds: [embed] });
-        return safeReply(interaction, { 
-          content: '✅ Obrigado pela confirmação!', 
-          flags: MessageFlags.Ephemeral 
+        return safeReply(interaction, {
+          content: '✅ Obrigado pela confirmação!',
+          flags: MessageFlags.Ephemeral
         });
       }
     } catch (err) {
       logger.error('[GiveawayTicket] confirm_receipt error:', err);
     }
-    return safeReply(interaction, { 
-      content: '✅ Confirmação registada.', 
-      flags: MessageFlags.Ephemeral 
+    return safeReply(interaction, {
+      content: '✅ Confirmação registada.',
+      flags: MessageFlags.Ephemeral
     });
   }
 
@@ -716,9 +716,9 @@ async function handleButton(interaction) {
       )
       .setTimestamp();
     await interaction.channel.send({ embeds: [embed] });
-    return safeReply(interaction, { 
-      content: '✅ Equipe notificada. Aguarda resposta.', 
-      flags: MessageFlags.Ephemeral 
+    return safeReply(interaction, {
+      content: '✅ Equipe notificada. Aguarda resposta.',
+      flags: MessageFlags.Ephemeral
     });
   }
 
@@ -787,8 +787,8 @@ async function handleButton(interaction) {
     const modal = new ModalBuilder().setCustomId('ticket:move:other:modal').setTitle('Mover Ticket - Categoria Manual');
     const input = new TextInputBuilder().setCustomId('ticket:move:other:category_id').setLabel('ID da Categoria').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(30).setPlaceholder('Ex: 1234567890123456789');
     modal.addComponents(new ActionRowBuilder().addComponents(input));
-    try { 
-      await interaction.showModal(modal); 
+    try {
+      await interaction.showModal(modal);
     } catch (e) {
       logger.warn('[Tickets] Erro ao mostrar modal de mover categoria:', e.message);
       return safeReply(interaction, { content: '❌ Falha ao abrir modal.', flags: MessageFlags.Ephemeral });
@@ -802,8 +802,8 @@ async function handleButton(interaction) {
     const modal = new ModalBuilder().setCustomId('ticket:add_member:modal').setTitle('Adicionar Membros (IDs)');
     const input = new TextInputBuilder().setCustomId('ticket:add_member:ids').setLabel('IDs ou menções (separados por espaço)').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(400).setPlaceholder('Ex: @user1 @user2 ou 123... 456...');
     modal.addComponents(new ActionRowBuilder().addComponents(input));
-    try { 
-      await interaction.showModal(modal); 
+    try {
+      await interaction.showModal(modal);
     } catch (e) {
       logger.warn('[Tickets] Erro ao mostrar modal de adicionar membros:', e.message);
       return safeReply(interaction, { content: '❌ Falha ao abrir modal.', flags: MessageFlags.Ephemeral });
@@ -817,8 +817,8 @@ async function handleButton(interaction) {
     const modal = new ModalBuilder().setCustomId('ticket:remove_member:modal').setTitle('Remover Membros (IDs)');
     const input = new TextInputBuilder().setCustomId('ticket:remove_member:ids').setLabel('IDs ou menções (separados por espaço)').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(400).setPlaceholder('Ex: @user1 @user2');
     modal.addComponents(new ActionRowBuilder().addComponents(input));
-    try { 
-      await interaction.showModal(modal); 
+    try {
+      await interaction.showModal(modal);
     } catch (e) {
       logger.warn('[Tickets] Erro ao mostrar modal de remover membros:', e.message);
       return safeReply(interaction, { content: '❌ Falha ao abrir modal.', flags: MessageFlags.Ephemeral });
@@ -875,7 +875,7 @@ async function handleButton(interaction) {
   await interaction.channel.send({ embeds: [embed] });
   try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'claim', message: 'Ticket reclamado', data: { channel_id: interaction.channel.id } }); } catch {}
   try { const wm = interaction.client?.webhooks; if (wm?.sendTicketLog) await wm.sendTicketLog(interaction.guild.id, 'claim', { claimedBy: interaction.user, ticketId: String(t.id), guild: interaction.guild, channelId: interaction.channel.id, previousStatus: t.status, newStatus: 'claimed' }); } catch {}
-  
+
   // Update webhook message
   try {
     await webhookSystem.sendOrUpdateTicketWebhook(updated || { ...t, assigned_to: interaction.user.id, status: 'claimed' }, 'claimed', {
@@ -884,7 +884,7 @@ async function handleButton(interaction) {
   } catch (err) {
     logger.error('[Tickets] Failed to update webhook for ticket claim:', err);
   }
-  
+
       await updatePanelHeader(interaction.channel, updated || { ...t, assigned_to: interaction.user.id, status: 'claimed' });
   return safeReply(interaction, { content: '✅ Reclamado.', flags: MessageFlags.Ephemeral });
     }
@@ -930,7 +930,7 @@ async function handleButton(interaction) {
       await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x10B981).setDescription(`✅ Marcado como resolvido por ${interaction.user}.`)] });
       try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'finalize', message: 'Ticket finalizado (resolve)', data: { reason: 'Resolvido' } }); } catch {}
       try { const wm = interaction.client?.webhooks; if (wm?.sendTicketLog) await wm.sendTicketLog(interaction.guild.id, 'close', { closedBy: interaction.user, ticketId: String(t.id), guild: interaction.guild, reason: 'Resolvido' }); } catch {}
-      
+
       // Update webhook message
       try {
         await webhookSystem.sendOrUpdateTicketWebhook(updated || { ...t, status: 'closed' }, 'closed', {
@@ -940,7 +940,7 @@ async function handleButton(interaction) {
       } catch (err) {
         logger.error('[Tickets] Failed to update webhook for ticket resolve:', err);
       }
-      
+
       await updatePanelHeader(interaction.channel, updated || { ...t, status: 'closed' });
       // Remover imediatamente acesso de não-staff (autor e membros adicionados)
       try {
@@ -999,7 +999,7 @@ async function handleButton(interaction) {
       const updated = await storage.updateTicket(t.id, { status: 'open', reopened_at: new Date().toISOString() });
   await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x3B82F6).setDescription(`♻️ Ticket reaberto por ${interaction.user}.`)] });
   try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'reopen', message: 'Ticket reaberto' }); } catch {}
-  
+
   // Update webhook message
   try {
     await webhookSystem.sendOrUpdateTicketWebhook(updated || { ...t, status: 'open' }, 'reopened', {
@@ -1008,7 +1008,7 @@ async function handleButton(interaction) {
   } catch (err) {
     logger.error('[Tickets] Failed to update webhook for ticket reopen:', err);
   }
-  
+
       await updatePanelHeader(interaction.channel, updated || { ...t, status: 'open' });
   return safeReply(interaction, { content: '✅ Reaberto.', flags: MessageFlags.Ephemeral });
     }
@@ -1281,31 +1281,31 @@ async function handleModal(interaction) {
     const t = await storage.getTicketByChannel(interaction.channel.id);
     if (!t) return safeReply(interaction, { content: '⚠️ Ticket não encontrado.', flags: MessageFlags.Ephemeral });
     const raw = interaction.fields.getTextInputValue('ticket:add_member:ids');
-    
+
     // Validar e sanitizar IDs
     const ids = Array.from(new Set(raw.split(/[\s,]+/).map(s=>s.replace(/[^0-9]/g,'')).filter(x => /^\d{17,20}$/.test(x)))).slice(0,10);
     if (!ids.length) return safeReply(interaction, { content: '❌ Nenhum ID válido. Use IDs numéricos (17-20 dígitos) ou menções.', flags: MessageFlags.Ephemeral });
-    
+
     const added = [];
     const failed = [];
     for (const uid of ids) {
-      try { 
+      try {
         // Verificar se membro existe no servidor
         const member = await interaction.guild.members.fetch(uid).catch(() => null);
         if (!member) {
           failed.push(`<@${uid}> (não encontrado)`);
           continue;
         }
-        
-        await interaction.channel.permissionOverwrites.edit(uid, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true }); 
-        added.push(uid); 
+
+        await interaction.channel.permissionOverwrites.edit(uid, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true });
+        added.push(uid);
       } catch (e) {
         logger.warn(`[Tickets] Erro ao adicionar ${uid}:`, e.message);
         failed.push(`<@${uid}>`);
       }
     }
     try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'member:add:bulk', message: `IDs: ${added.join(',')}` }); } catch {}
-    
+
     let msg = added.length ? `✅ Adicionados ${added.length}/${ids.length}: ${added.map(i=>`<@${i}>`).join(', ')}` : '❌ Nenhum membro adicionado.';
     if (failed.length > 0) msg += `\n⚠️ Falhados: ${failed.join(', ')}`;
     return safeReply(interaction, { content: msg, flags: MessageFlags.Ephemeral });
@@ -1331,25 +1331,25 @@ async function handleModal(interaction) {
     if (!t) return safeReply(interaction, { content: '⚠️ Ticket não encontrado.', flags: MessageFlags.Ephemeral });
     const raw = interaction.fields.getTextInputValue('ticket:move:other:category_id').trim();
     const catId = raw.replace(/[^0-9]/g,'');
-    
+
     // Validar formato de ID
     if (!catId || !/^\d{17,20}$/.test(catId)) {
       return safeReply(interaction, { content: '❌ ID inválido. Use um ID de categoria válido (17-20 dígitos).', flags: MessageFlags.Ephemeral });
     }
-    
-    try { 
+
+    try {
       // Verificar se categoria existe
       const targetCat = await interaction.guild.channels.fetch(catId).catch(() => null);
       if (!targetCat || targetCat.type !== ChannelType.GuildCategory) {
         return safeReply(interaction, { content: '❌ Categoria não encontrada. Verifica se o ID está correto.', flags: MessageFlags.Ephemeral });
       }
-      
-      await interaction.channel.setParent(catId, { lockPermissions: false }); 
+
+      await interaction.channel.setParent(catId, { lockPermissions: false });
       await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'move', message: `move->${catId}`, data: { manual: true, categoryName: targetCat.name } });
       return safeReply(interaction, { content: `✅ Ticket movido para **${targetCat.name}**.`, flags: MessageFlags.Ephemeral });
-    } catch (e) { 
+    } catch (e) {
       logger.warn(`[Tickets] Erro ao mover ticket ${t.id}:`, e.message);
-      return safeReply(interaction, { content: `❌ Falha ao mover: ${e.message}`, flags: MessageFlags.Ephemeral }); 
+      return safeReply(interaction, { content: `❌ Falha ao mover: ${e.message}`, flags: MessageFlags.Ephemeral });
     }
   }
 
@@ -1408,7 +1408,7 @@ async function handleModal(interaction) {
   await interaction.channel.setName(newName, `Renomeado por ${interaction.user.tag}`);
       await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x60A5FA).setDescription(`✏️ Canal renomeado para #${newName} por ${interaction.user}.`)] });
   try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'rename', message: `Renomeado para ${newName}` }); } catch {}
-  
+
   // Update webhook message
   try {
     await webhookSystem.sendOrUpdateTicketWebhook(t, 'renamed', {
@@ -1418,7 +1418,7 @@ async function handleModal(interaction) {
   } catch (err) {
     logger.error('[Tickets] Failed to update webhook for ticket rename:', err);
   }
-  
+
       return interaction.reply({ content: '✅ Canal renomeado.', flags: MessageFlags.Ephemeral });
     } catch {
       return interaction.reply({ content: '❌ Falha ao renomear canal.', flags: MessageFlags.Ephemeral });
@@ -1428,29 +1428,29 @@ async function handleModal(interaction) {
 
 async function handleSelect(interaction) {
   const id = interaction.customId;
-  
+
   // 🆕 Handler para seleção de categoria customizável
   if (id === 'ticket:category:select') {
     try {
       const categoryId = interaction.values?.[0];
       if (!categoryId) {
-        return safeReply(interaction, { 
-          content: '❌ Nenhuma categoria selecionada.', 
-          flags: MessageFlags.Ephemeral 
+        return safeReply(interaction, {
+          content: '❌ Nenhuma categoria selecionada.',
+          flags: MessageFlags.Ephemeral
         });
       }
 
       // Buscar categoria escolhida
-      const category = await TicketCategoryModel.findOne({ 
-        _id: categoryId, 
+      const category = await TicketCategoryModel.findOne({
+        _id: categoryId,
         guild_id: interaction.guild.id,
         enabled: true
       }).lean();
 
       if (!category) {
-        return safeReply(interaction, { 
-          content: '❌ Categoria não encontrada ou desativada.', 
-          flags: MessageFlags.Ephemeral 
+        return safeReply(interaction, {
+          content: '❌ Categoria não encontrada ou desativada.',
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -1463,10 +1463,10 @@ async function handleSelect(interaction) {
       await storage.deleteGeneric(tempKey).catch(() => {});
 
       // Atualizar mensagem de seleção
-      await interaction.update({ 
-        content: `✅ Categoria escolhida: **${category.emoji} ${category.name}**\n⏳ A criar ticket...`, 
-        embeds: [], 
-        components: [] 
+      await interaction.update({
+        content: `✅ Categoria escolhida: **${category.emoji} ${category.name}**\n⏳ A criar ticket...`,
+        embeds: [],
+        components: []
       });
 
       // Criar ticket com categoria customizada
@@ -1474,14 +1474,14 @@ async function handleSelect(interaction) {
 
     } catch (error) {
       logger.error('[Tickets] Error handling category selection:', error);
-      return safeReply(interaction, { 
-        content: '❌ Erro ao processar seleção. Tenta novamente.', 
-        flags: MessageFlags.Ephemeral 
+      return safeReply(interaction, {
+        content: '❌ Erro ao processar seleção. Tenta novamente.',
+        flags: MessageFlags.Ephemeral
       });
     }
     return;
   }
-  
+
   // Handler para botões dinâmicos de mover (categoria direta)
   if (id.startsWith('ticket:move:cat:')) {
     const staff = await isStaff(interaction);

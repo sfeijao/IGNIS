@@ -2,107 +2,107 @@ const { mongoose } = require('../mongoose');
 
 /**
  * TimeTrackingSession Model
- * 
+ *
  * Rastreia sessões de trabalho/atividade de membros (bate-ponto)
  * Suporta pausas, retomadas e cálculo de tempo total
  */
 const TimeTrackingSessionSchema = new mongoose.Schema({
-  guild_id: { 
-    type: String, 
-    required: true 
+  guild_id: {
+    type: String,
+    required: true
   },
-  
-  user_id: { 
-    type: String, 
-    required: true 
+
+  user_id: {
+    type: String,
+    required: true
   },
-  
+
   // Timestamps principais
-  started_at: { 
-    type: Date, 
-    required: true, 
-    default: Date.now 
+  started_at: {
+    type: Date,
+    required: true,
+    default: Date.now
   },
-  
-  ended_at: { 
-    type: Date 
+
+  ended_at: {
+    type: Date
   },
-  
+
   // Status da sessão
-  status: { 
-    type: String, 
+  status: {
+    type: String,
     enum: ['active', 'paused', 'ended'],
     default: 'active'
   },
-  
+
   // Pausas durante a sessão
   pauses: [{
-    paused_at: { 
-      type: Date, 
-      required: true 
+    paused_at: {
+      type: Date,
+      required: true
     },
-    resumed_at: { 
-      type: Date 
+    resumed_at: {
+      type: Date
     },
-    duration_ms: { 
-      type: Number 
+    duration_ms: {
+      type: Number
     }, // Calculado quando resumed_at é definido
-    reason: { 
-      type: String 
+    reason: {
+      type: String
     }
   }],
-  
+
   // Tempo total (calculado)
-  total_time_ms: { 
-    type: Number, 
-    default: 0 
+  total_time_ms: {
+    type: Number,
+    default: 0
   },
-  
-  active_time_ms: { 
-    type: Number, 
-    default: 0 
+
+  active_time_ms: {
+    type: Number,
+    default: 0
   }, // Tempo total - pausas
-  
+
   // Message ID do painel de controle
-  control_message_id: { 
-    type: String 
+  control_message_id: {
+    type: String
   },
-  
-  control_channel_id: { 
-    type: String 
+
+  control_channel_id: {
+    type: String
   },
-  
+
   // Metadata
-  notes: { 
-    type: String 
+  notes: {
+    type: String
   },
-  
-  tags: [{ 
-    type: String 
+
+  tags: [{
+    type: String
   }], // Ex: 'development', 'moderation', 'support'
-  
-  created_by: { 
-    type: String 
+
+  created_by: {
+    type: String
   },
-  
-  ended_by: { 
-    type: String 
+
+  ended_by: {
+    type: String
   },
-  
-  created_at: { 
-    type: Date, 
-    default: Date.now 
+
+  created_at: {
+    type: Date,
+    default: Date.now
   },
-  
-  updated_at: { 
-    type: Date, 
-    default: Date.now 
+
+  updated_at: {
+    type: Date,
+    default: Date.now
   }
-}, { 
-  timestamps: { 
-    createdAt: 'created_at', 
-    updatedAt: 'updated_at' 
-  } 
+}, {
+  timestamps: {
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+  }
 });
 
 // Indexes compostos para queries eficientes
@@ -135,7 +135,7 @@ TimeTrackingSessionSchema.methods.resume = function() {
 
   // Encontrar última pausa não finalizada
   const lastPause = this.pauses[this.pauses.length - 1];
-  
+
   if (!lastPause || lastPause.resumed_at) {
     throw new Error('No active pause found');
   }
@@ -188,7 +188,7 @@ TimeTrackingSessionSchema.methods.calculateTotalTime = function() {
   }, 0);
 
   this.active_time_ms = this.total_time_ms - totalPauseTime;
-  
+
   return this;
 };
 
@@ -248,17 +248,17 @@ TimeTrackingSessionSchema.methods.isEnded = function() {
 
 // Métodos estáticos
 TimeTrackingSessionSchema.statics.findActiveSession = function(guildId, userId) {
-  return this.findOne({ 
-    guild_id: guildId, 
-    user_id: userId, 
-    status: { $in: ['active', 'paused'] } 
+  return this.findOne({
+    guild_id: guildId,
+    user_id: userId,
+    status: { $in: ['active', 'paused'] }
   });
 };
 
 TimeTrackingSessionSchema.statics.findUserSessions = function(guildId, userId, limit = 10) {
-  return this.find({ 
-    guild_id: guildId, 
-    user_id: userId 
+  return this.find({
+    guild_id: guildId,
+    user_id: userId
   })
     .sort({ started_at: -1 })
     .limit(limit);
@@ -266,34 +266,34 @@ TimeTrackingSessionSchema.statics.findUserSessions = function(guildId, userId, l
 
 TimeTrackingSessionSchema.statics.findGuildSessions = function(guildId, startDate = null, endDate = null) {
   const query = { guild_id: guildId };
-  
+
   if (startDate || endDate) {
     query.started_at = {};
     if (startDate) query.started_at.$gte = startDate;
     if (endDate) query.started_at.$lte = endDate;
   }
-  
+
   return this.find(query).sort({ started_at: -1 });
 };
 
 TimeTrackingSessionSchema.statics.getGuildStats = async function(guildId, startDate = null, endDate = null) {
-  const query = { 
+  const query = {
     guild_id: guildId,
     status: 'ended'
   };
-  
+
   if (startDate || endDate) {
     query.started_at = {};
     if (startDate) query.started_at.$gte = startDate;
     if (endDate) query.started_at.$lte = endDate;
   }
-  
+
   const sessions = await this.find(query);
-  
+
   const totalSessions = sessions.length;
   const totalTime = sessions.reduce((sum, s) => sum + s.total_time_ms, 0);
   const totalActiveTime = sessions.reduce((sum, s) => sum + s.active_time_ms, 0);
-  
+
   const userStats = {};
   sessions.forEach(session => {
     if (!userStats[session.user_id]) {
@@ -307,7 +307,7 @@ TimeTrackingSessionSchema.statics.getGuildStats = async function(guildId, startD
     userStats[session.user_id].total_time_ms += session.total_time_ms;
     userStats[session.user_id].active_time_ms += session.active_time_ms;
   });
-  
+
   return {
     total_sessions: totalSessions,
     total_time_ms: totalTime,
@@ -317,7 +317,7 @@ TimeTrackingSessionSchema.statics.getGuildStats = async function(guildId, startD
   };
 };
 
-const TimeTrackingSessionModel = mongoose.models.TimeTrackingSession || 
+const TimeTrackingSessionModel = mongoose.models.TimeTrackingSession ||
   mongoose.model('TimeTrackingSession', TimeTrackingSessionSchema);
 
 module.exports = { TimeTrackingSessionModel };

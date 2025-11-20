@@ -2,7 +2,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 
 /**
  * 🎨 PANEL BUILDER
- * 
+ *
  * Utilitários para construir painéis de tickets customizados com embeds e botões.
  * Suporta configuração flexível de categorias, templates e temas.
  */
@@ -68,7 +68,7 @@ function buildPanelEmbed(panel) {
             break;
 
         case 'gamer':
-            embed.setFooter({ 
+            embed.setFooter({
                 text: '🎮 Game On! Nossa equipe está online',
                 iconURL: icon_url || undefined
             });
@@ -95,7 +95,7 @@ function buildCategoryButtons(ticketCategories, selectedCategoryIds) {
     }
 
     // Filtrar apenas as categorias selecionadas
-    const selectedCategories = ticketCategories.filter(cat => 
+    const selectedCategories = ticketCategories.filter(cat =>
         selectedCategoryIds.includes(cat._id.toString()) && cat.enabled
     );
 

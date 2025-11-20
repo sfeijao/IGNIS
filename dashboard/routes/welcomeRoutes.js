@@ -27,17 +27,17 @@ router.post('/guild/:gid/welcome-config', async (req, res) => {
   try {
     const { gid } = req.params;
     const { welcome, goodbye } = req.body;
-    
+
     const update = { updated_at: new Date() };
     if (welcome) update.welcome = welcome;
     if (goodbye) update.goodbye = goodbye;
-    
+
     const config = await WelcomeConfigModel.findOneAndUpdate(
       { guild_id: gid },
       { $set: update },
       { upsert: true, new: true }
     );
-    
+
     return res.json({ ok: true, config });
   } catch (e) {
     console.error('[WelcomeRoutes] POST error:', e);

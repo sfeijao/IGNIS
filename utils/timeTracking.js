@@ -4,7 +4,7 @@ const logger = require('./logger');
 
 /**
  * ⏱️ TIME TRACKING / BATE-PONTO
- * 
+ *
  * Sistema que permite users rastrear tempo de trabalho/estudo.
  * - 1 mensagem por sessão (sempre edita, nunca cria nova)
  * - Start, Pause, Continue, End
@@ -16,11 +16,11 @@ const logger = require('./logger');
  */
 function formatDuration(ms) {
   if (ms < 0) return '0s';
-  
+
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
-  
+
   if (hours > 0) {
     const m = minutes % 60;
     const s = seconds % 60;
@@ -52,24 +52,24 @@ function createTrackingEmbed(session, user) {
   const now = Date.now();
   const startedAt = new Date(session.started_at).getTime();
   const totalElapsed = now - startedAt;
-  
+
   const pauseTime = calculatePauseTime(session.pauses || []);
   const activeTime = totalElapsed - pauseTime;
-  
+
   const embed = new EmbedBuilder()
     .setColor(session.status === 'active' ? 0x10B981 : session.status === 'paused' ? 0xF59E0B : 0x6B7280)
     .setTitle('⏱️ BATE-PONTO')
     .setDescription(`**${user.tag}**`)
     .addFields(
-      { 
-        name: '🟢 Início', 
-        value: `<t:${Math.floor(startedAt / 1000)}:T>`, 
-        inline: true 
+      {
+        name: '🟢 Início',
+        value: `<t:${Math.floor(startedAt / 1000)}:T>`,
+        inline: true
       },
-      { 
-        name: '📊 Status', 
-        value: session.status === 'active' ? '▶️ Ativo' : session.status === 'paused' ? '⏸️ Pausado' : '🏁 Finalizado', 
-        inline: true 
+      {
+        name: '📊 Status',
+        value: session.status === 'active' ? '▶️ Ativo' : session.status === 'paused' ? '⏸️ Pausado' : '🏁 Finalizado',
+        inline: true
       }
     );
 
@@ -95,15 +95,15 @@ function createTrackingEmbed(session, user) {
   }
 
   embed.addFields(
-    { 
-      name: '⏰ Tempo Total', 
-      value: formatDuration(totalElapsed), 
-      inline: true 
+    {
+      name: '⏰ Tempo Total',
+      value: formatDuration(totalElapsed),
+      inline: true
     },
-    { 
-      name: '📊 Tempo Efetivo', 
-      value: formatDuration(activeTime), 
-      inline: true 
+    {
+      name: '📊 Tempo Efetivo',
+      value: formatDuration(activeTime),
+      inline: true
     }
   );
 
@@ -199,7 +199,7 @@ async function startTracking(interaction) {
     // Atualizar sessão com message_id
     await TimeTrackingModel.updateOne(
       { _id: session._id },
-      { 
+      {
         message_id: message.id,
         channel_id: interaction.channel.id
       }
@@ -339,12 +339,12 @@ async function endTracking(interaction) {
 
     session.status = 'ended';
     session.ended_at = new Date();
-    
+
     // Calcular tempo total
     const totalElapsed = new Date(session.ended_at) - new Date(session.started_at);
     const pauseTime = calculatePauseTime(session.pauses);
     session.total_time = totalElapsed - pauseTime;
-    
+
     await session.save();
 
     // Atualizar mensagem

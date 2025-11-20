@@ -41,7 +41,7 @@ export default function PanelCreator({ onClose, existingPanel }: { onClose: () =
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  
+
   // Dados disponíveis
   const [ticketCategories, setTicketCategories] = useState<TicketCategory[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -67,7 +67,7 @@ export default function PanelCreator({ onClose, existingPanel }: { onClose: () =
 
   const loadData = async () => {
     if (!guildId) return;
-    
+
     try {
       setLoading(true);
 
@@ -111,7 +111,7 @@ export default function PanelCreator({ onClose, existingPanel }: { onClose: () =
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!guildId) return;
 
     // Validações
@@ -133,7 +133,7 @@ export default function PanelCreator({ onClose, existingPanel }: { onClose: () =
     try {
       setSaving(true);
 
-      const endpoint = existingPanel 
+      const endpoint = existingPanel
         ? `/api/guild/${guildId}/panels/${existingPanel._id}`
         : `/api/guild/${guildId}/panels`;
 
@@ -355,7 +355,7 @@ export default function PanelCreator({ onClose, existingPanel }: { onClose: () =
                 ))}
               </div>
             )}
-            
+
             {formData.selected_categories.length > 0 && (
               <p className="text-sm text-green-400 mt-4">
                 ✓ {formData.selected_categories.length} categoria(s) selecionada(s)

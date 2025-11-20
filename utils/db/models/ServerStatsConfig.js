@@ -2,76 +2,76 @@ const { mongoose } = require('../mongoose');
 
 /**
  * ServerStatsConfig Model
- * 
+ *
  * Configuração para canais de estatísticas dinâmicas do servidor
  * Cria e atualiza canais de voz com nomes dinâmicos (ex: "👥 Members: 123")
  */
 const ServerStatsConfigSchema = new mongoose.Schema({
-  guild_id: { 
-    type: String, 
-    required: true, 
-    unique: true 
+  guild_id: {
+    type: String,
+    required: true,
+    unique: true
   },
-  
+
   // Status geral do sistema
-  enabled: { 
-    type: Boolean, 
-    default: true 
+  enabled: {
+    type: Boolean,
+    default: true
   },
-  
+
   // Categoria onde os canais serão criados
-  category_id: { 
-    type: String 
+  category_id: {
+    type: String
   },
-  category_name: { 
-    type: String, 
-    default: '📊 SERVER STATS' 
+  category_name: {
+    type: String,
+    default: '📊 SERVER STATS'
   },
-  
+
   // Intervalo de atualização (em minutos)
-  update_interval_minutes: { 
-    type: Number, 
-    default: 10, 
-    min: 5, 
-    max: 60 
+  update_interval_minutes: {
+    type: Number,
+    default: 10,
+    min: 5,
+    max: 60
   },
-  
+
   // Métricas habilitadas
   metrics: {
-    total_members: { 
-      type: Boolean, 
-      default: true 
+    total_members: {
+      type: Boolean,
+      default: true
     },
-    human_members: { 
-      type: Boolean, 
-      default: true 
+    human_members: {
+      type: Boolean,
+      default: true
     },
-    bot_members: { 
-      type: Boolean, 
-      default: false 
+    bot_members: {
+      type: Boolean,
+      default: false
     },
-    online_members: { 
-      type: Boolean, 
-      default: true 
+    online_members: {
+      type: Boolean,
+      default: true
     },
-    boosters: { 
-      type: Boolean, 
-      default: false 
+    boosters: {
+      type: Boolean,
+      default: false
     },
-    total_channels: { 
-      type: Boolean, 
-      default: false 
+    total_channels: {
+      type: Boolean,
+      default: false
     },
-    total_roles: { 
-      type: Boolean, 
-      default: false 
+    total_roles: {
+      type: Boolean,
+      default: false
     },
-    active_tickets: { 
-      type: Boolean, 
-      default: false 
+    active_tickets: {
+      type: Boolean,
+      default: false
     }
   },
-  
+
   // Canais criados (mapping métrica -> channel ID)
   channels: {
     total_members: { type: String },
@@ -83,62 +83,62 @@ const ServerStatsConfigSchema = new mongoose.Schema({
     total_roles: { type: String },
     active_tickets: { type: String }
   },
-  
+
   // Customização de nomes/emojis
   custom_names: {
-    total_members: { 
-      type: String, 
-      default: '👥 Members: {count}' 
+    total_members: {
+      type: String,
+      default: '👥 Members: {count}'
     },
-    human_members: { 
-      type: String, 
-      default: '👤 Humans: {count}' 
+    human_members: {
+      type: String,
+      default: '👤 Humans: {count}'
     },
-    bot_members: { 
-      type: String, 
-      default: '🤖 Bots: {count}' 
+    bot_members: {
+      type: String,
+      default: '🤖 Bots: {count}'
     },
-    online_members: { 
-      type: String, 
-      default: '🟢 Online: {count}' 
+    online_members: {
+      type: String,
+      default: '🟢 Online: {count}'
     },
-    boosters: { 
-      type: String, 
-      default: '💎 Boosters: {count}' 
+    boosters: {
+      type: String,
+      default: '💎 Boosters: {count}'
     },
-    total_channels: { 
-      type: String, 
-      default: '📺 Channels: {count}' 
+    total_channels: {
+      type: String,
+      default: '📺 Channels: {count}'
     },
-    total_roles: { 
-      type: String, 
-      default: '🎭 Roles: {count}' 
+    total_roles: {
+      type: String,
+      default: '🎭 Roles: {count}'
     },
-    active_tickets: { 
-      type: String, 
-      default: '🎫 Tickets: {count}' 
+    active_tickets: {
+      type: String,
+      default: '🎫 Tickets: {count}'
     }
   },
-  
+
   // Timestamp da última atualização
-  last_update_at: { 
-    type: Date 
+  last_update_at: {
+    type: Date
   },
-  
+
   // Metadata
-  created_by: { 
-    type: String 
+  created_by: {
+    type: String
   },
-  created_at: { 
-    type: Date, 
-    default: Date.now 
+  created_at: {
+    type: Date,
+    default: Date.now
   },
-  updated_at: { 
-    type: Date, 
-    default: Date.now 
+  updated_at: {
+    type: Date,
+    default: Date.now
   }
-}, { 
-  timestamps: true 
+}, {
+  timestamps: true
 });
 
 // Indexes para queries eficientes
@@ -198,7 +198,7 @@ ServerStatsConfigSchema.pre('save', function(next) {
   next();
 });
 
-const ServerStatsConfigModel = mongoose.models.ServerStatsConfig || 
+const ServerStatsConfigModel = mongoose.models.ServerStatsConfig ||
   mongoose.model('ServerStatsConfig', ServerStatsConfigSchema);
 
 module.exports = { ServerStatsConfigModel };

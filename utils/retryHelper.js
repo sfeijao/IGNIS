@@ -24,8 +24,8 @@ async function retryWithBackoff(fn, options = {}) {
             lastError = error;
 
             // Verificar se é erro retryable
-            const isRetryable = retryableErrors.some(err => 
-                error.message?.includes(err) || 
+            const isRetryable = retryableErrors.some(err =>
+                error.message?.includes(err) ||
                 error.code === err ||
                 error.status === 500 ||
                 error.status === 502 ||
@@ -39,7 +39,7 @@ async function retryWithBackoff(fn, options = {}) {
 
             // Calcular delay com exponential backoff
             const delay = Math.min(baseDelay * Math.pow(factor, attempt), maxDelay);
-            
+
             if (onRetry) {
                 onRetry(attempt + 1, maxRetries, delay, error);
             } else {
@@ -69,7 +69,7 @@ class RateLimiter {
         const now = Date.now();
         const timePassed = (now - this.lastRefill) / 1000; // segundos
         const tokensToAdd = timePassed * this.refillRate;
-        
+
         this.tokens = Math.min(this.maxTokens, this.tokens + tokensToAdd);
         this.lastRefill = now;
 
@@ -82,9 +82,9 @@ class RateLimiter {
         // Calcular tempo de espera
         const tokensNeeded = tokens - this.tokens;
         const waitTime = (tokensNeeded / this.refillRate) * 1000;
-        
+
         await sleep(waitTime);
-        
+
         this.tokens = 0;
         this.lastRefill = Date.now();
         return true;
@@ -115,19 +115,19 @@ class KeyedRateLimiter {
         if (!this.limiters.has(key)) {
             this.limiters.set(key, new RateLimiter(this.maxTokens, this.refillRate));
         }
-        
+
         return await this.limiters.get(key).acquire(tokens);
     }
 
     check(key) {
         const limiter = this.limiters.get(key);
         if (!limiter) return { allowed: true, tokens: this.maxTokens };
-        
+
         // Refill tokens
         const now = Date.now();
         const timePassed = (now - limiter.lastRefill) / 1000;
         const currentTokens = Math.min(limiter.maxTokens, limiter.tokens + (timePassed * limiter.refillRate));
-        
+
         return {
             allowed: currentTokens >= 1,
             tokens: Math.floor(currentTokens),

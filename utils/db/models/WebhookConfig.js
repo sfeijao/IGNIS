@@ -59,8 +59,8 @@ const webhookConfigSchema = new mongoose.Schema({
 
 // Método helper para obter webhooks por tipo
 webhookConfigSchema.methods.getWebhooksByType = function(type) {
-  return this.webhooks.filter(w => 
-    w.enabled && 
+  return this.webhooks.filter(w =>
+    w.enabled &&
     w.types.includes(type)
   );
 };
@@ -69,7 +69,7 @@ webhookConfigSchema.methods.getWebhooksByType = function(type) {
 webhookConfigSchema.methods.testWebhook = async function(webhookId) {
   const webhook = this.webhooks.id(webhookId);
   if (!webhook) throw new Error('Webhook não encontrado');
-  
+
   try {
     const fetch = require('node-fetch');
     const response = await fetch(webhook.url, {
@@ -85,11 +85,11 @@ webhookConfigSchema.methods.testWebhook = async function(webhookId) {
         }]
       })
     });
-    
+
     webhook.lastTestedAt = new Date();
     webhook.lastTestSuccess = response.ok;
     await this.save();
-    
+
     return response.ok;
   } catch (error) {
     webhook.lastTestedAt = new Date();

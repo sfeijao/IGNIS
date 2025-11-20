@@ -39,7 +39,7 @@ export default function TimeTrackingPage() {
                 : 'bg-gray-800/50 border border-gray-700 hover:bg-gray-700/50 text-gray-300'
             }`}
           >
-            📊 Ver Relatórios
+            📊 Bate-Ponto
           </button>
         </div>
 

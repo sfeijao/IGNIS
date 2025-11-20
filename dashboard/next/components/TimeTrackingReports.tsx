@@ -40,7 +40,7 @@ export default function TimeTrackingReports({ guildId }: TimeTrackingReportsProp
   const [stats, setStats] = useState<GuildStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filters
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -132,7 +132,7 @@ export default function TimeTrackingReports({ guildId }: TimeTrackingReportsProp
     );
   }
 
-  const filteredSessions = selectedUser 
+  const filteredSessions = selectedUser
     ? sessions.filter(s => s.user_id === selectedUser)
     : sessions;
 

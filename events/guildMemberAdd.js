@@ -9,11 +9,11 @@ const logger = require('../utils/logger');
  */
 function replacePlaceholders(text, member, guild) {
   if (!text) return '';
-  
+
   const memberCount = guild.memberCount;
   const createdAt = Math.floor(member.user.createdTimestamp / 1000);
   const joinedAt = Math.floor(Date.now() / 1000);
-  
+
   return text
     .replace(/\{user\}/g, `${member}`) // Menção
     .replace(/\{user\.mention\}/g, `${member}`)
@@ -34,65 +34,65 @@ module.exports = {
     name: Events.GuildMemberAdd,
     async execute(member) {
         const guild = member.guild;
-        
+
         // 🆕 SISTEMA DE BOAS-VINDAS CUSTOMIZÁVEL
         try {
-          const welcomeConfig = await WelcomeConfigModel.findOne({ 
-            guild_id: guild.id 
+          const welcomeConfig = await WelcomeConfigModel.findOne({
+            guild_id: guild.id
           }).lean();
-          
+
           if (welcomeConfig?.welcome?.enabled && welcomeConfig.welcome.channel_id) {
             const channel = guild.channels.cache.get(welcomeConfig.welcome.channel_id) ||
                            await guild.channels.fetch(welcomeConfig.welcome.channel_id).catch(() => null);
-            
+
             if (channel) {
               const payload = {};
-              
+
               // Mensagem de texto (opcional)
               if (welcomeConfig.welcome.message) {
                 payload.content = replacePlaceholders(welcomeConfig.welcome.message, member, guild);
               }
-              
+
               // Embed (se habilitado)
               if (welcomeConfig.welcome.embed?.enabled) {
                 const embedData = welcomeConfig.welcome.embed;
                 const embed = new EmbedBuilder()
                   .setColor(embedData.color || 0x10B981);
-                
+
                 if (embedData.title) {
                   embed.setTitle(replacePlaceholders(embedData.title, member, guild));
                 }
-                
+
                 if (embedData.description) {
                   embed.setDescription(replacePlaceholders(embedData.description, member, guild));
                 }
-                
+
                 // Thumbnail
                 if (embedData.thumbnail) {
                   const thumb = replacePlaceholders(embedData.thumbnail, member, guild);
                   if (thumb) embed.setThumbnail(thumb);
                 }
-                
+
                 // Image (banner)
                 if (embedData.image) {
                   const img = replacePlaceholders(embedData.image, member, guild);
                   if (img) embed.setImage(img);
                 }
-                
+
                 // Footer
                 if (embedData.footer || embedData.show_footer_timestamp) {
-                  const footerText = embedData.footer ? 
-                    replacePlaceholders(embedData.footer, member, guild) : 
+                  const footerText = embedData.footer ?
+                    replacePlaceholders(embedData.footer, member, guild) :
                     null;
                   embed.setFooter({ text: footerText || 'Conta criada' });
                   if (embedData.show_footer_timestamp) {
                     embed.setTimestamp(member.user.createdAt);
                   }
                 }
-                
+
                 payload.embeds = [embed];
               }
-              
+
               // Enviar mensagem
               if (payload.content || payload.embeds) {
                 await channel.send(payload);
@@ -104,11 +104,11 @@ module.exports = {
           logger.error('[Welcome] Error sending welcome message:', welcomeError);
           // Não bloquear outros sistemas se falhar
         }
-        
+
         // Sistema de verificação legado (manter compatibilidade)
         const welcomeChannel = guild.channels.cache.get(config.CHANNELS.VERIFICATION);
         const logsChannel = guild.channels.cache.get(config.CHANNELS.LOGS);
-        
+
         // Analytics e database logging
         try {
             // Log member join to database
@@ -125,8 +125,8 @@ module.exports = {
 
                 // Record analytics
                 await member.client.database.recordAnalytics(
-                    member.guild.id, 
-                    'member_joined', 
+                    member.guild.id,
+                    'member_joined',
                     1,
                     {
                         userId: member.id,
@@ -153,7 +153,7 @@ module.exports = {
         } catch (error) {
             console.error('Erro ao processar entrada de membro:', error);
         }
-        
+
         // Log de novo membro
         if (logsChannel) {
             const logEmbed = new EmbedBuilder()
@@ -184,14 +184,14 @@ module.exports = {
                     '4. Diverte-te na comunidade!')
                 .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }))
                 .setTimestamp()
-                .setFooter({ 
-                    text: 'IGNIS Community', 
-                    iconURL: member.user.displayAvatarURL() 
+                .setFooter({
+                    text: 'IGNIS Community',
+                    iconURL: member.user.displayAvatarURL()
                 });
 
-            welcomeChannel.send({ 
-                content: `${member}`, 
-                embeds: [welcomeEmbed] 
+            welcomeChannel.send({
+                content: `${member}`,
+                embeds: [welcomeEmbed]
             });
         }
     },

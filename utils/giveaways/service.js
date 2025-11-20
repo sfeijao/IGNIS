@@ -103,16 +103,16 @@ async function enterGiveaway(giveawayId, guildId, entry){
 async function cleanupStaleLocks() {
   const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
   const cutoff = new Date(Date.now() - TIMEOUT_MS);
-  
+
   const result = await GiveawayModel.updateMany(
     { processing: true, processing_started_at: { $lt: cutoff } },
     { $set: { processing: false }, $unset: { processing_started_at: '' } }
   );
-  
+
   if (result.modifiedCount > 0) {
     console.log(`[GiveawayService] Released ${result.modifiedCount} stale processing locks`);
   }
-  
+
   return result.modifiedCount;
 }
 

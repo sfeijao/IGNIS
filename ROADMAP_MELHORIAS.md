@@ -1,7 +1,7 @@
 # 🚀 ROADMAP DE MELHORIAS - BOT IGNIS
 
-**Data Início:** 18 Novembro 2025  
-**Status:** Em Implementação  
+**Data Início:** 18 Novembro 2025
+**Status:** Em Implementação
 **Versão Alvo:** 3.0.0
 
 ---
@@ -17,7 +17,7 @@
 ### 🔄 EM IMPLEMENTAÇÃO
 
 #### 🎫 1. CATEGORIAS CUSTOMIZÁVEIS DE TICKETS (Alta Prioridade)
-**Status:** Schema MongoDB criado ✅  
+**Status:** Schema MongoDB criado ✅
 **Próximos Passos:**
 - [ ] API Routes para CRUD de categorias
 - [ ] Dashboard React component para gerenciar
@@ -36,7 +36,7 @@
 #### 🎁 2. MELHORIAS GIVEAWAYS
 
 ##### 2.1 Editar Data/Hora de Término
-**Status:** Pendente  
+**Status:** Pendente
 **Implementação:**
 - [ ] Adicionar campo `ends_at` editável no `GiveawayManager.tsx`
 - [ ] API endpoint PATCH para atualizar `ends_at`
@@ -50,7 +50,7 @@
 - `utils/giveaways/messageUpdater.js`
 
 ##### 2.2 Vencedor Automático + Ticket
-**Status:** Pendente  
+**Status:** Pendente
 **Implementação:**
 - [ ] Worker que verifica giveaways expirados (cron)
 - [ ] Ao terminar: criar ticket automaticamente
@@ -84,8 +84,8 @@ Boa sorte! 🍀
 
 #### 👋 3. SISTEMA DE BOAS-VINDAS E SAÍDAS
 
-**Status:** Pendente  
-**Complexidade:** Média  
+**Status:** Pendente
+**Complexidade:** Média
 
 **Schema MongoDB:**
 ```javascript
@@ -134,8 +134,8 @@ WelcomeConfigSchema = {
 
 #### ⏱️ 4. SISTEMA DE BATE-PONTO / TIME-TRACKING
 
-**Status:** Pendente  
-**Complexidade:** Média-Alta  
+**Status:** Pendente
+**Complexidade:** Média-Alta
 
 **Funcionalidades:**
 - Iniciar: Cria mensagem única
@@ -184,8 +184,8 @@ TimeTrackingSchema = {
 
 #### 📊 5. SISTEMA DE SERVER STATUS (CONTADORES)
 
-**Status:** Pendente  
-**Complexidade:** Baixa  
+**Status:** Pendente
+**Complexidade:** Baixa
 
 **Canais Dinâmicos:**
 - 👥 Total: {count} Membros
@@ -222,7 +222,7 @@ ServerStatsSchema = {
 
 #### 🆕 6. MELHORIAS PAINEL DE TICKETS
 
-**Status:** Pendente  
+**Status:** Pendente
 
 **Melhorias Design:**
 - [ ] Layout moderno card-based
@@ -244,8 +244,8 @@ ServerStatsSchema = {
 
 #### 🌐 7. WEBHOOKS AVANÇADOS PARA TICKETS
 
-**Status:** Pendente  
-**Complexidade:** Alta  
+**Status:** Pendente
+**Complexidade:** Alta
 
 **Funcionalidade:**
 - **1 mensagem por ticket** (nunca múltiplas)
@@ -284,7 +284,7 @@ TicketSchema.add({
 
 #### 🎨 8. MELHORIAS GERAIS DO DASHBOARD
 
-**Status:** Contínuo  
+**Status:** Contínuo
 
 **Melhorias:**
 - [ ] Tema dark mode aprimorado
@@ -392,5 +392,5 @@ Antes de marcar como completo:
 
 ---
 
-**Última Atualização:** 18 Nov 2025  
+**Última Atualização:** 18 Nov 2025
 **Próxima Revisão:** Após implementar Categorias de Tickets

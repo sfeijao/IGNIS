@@ -43,11 +43,11 @@ class SimpleStorage {
         this.configFile = path.join(this.storageDir, 'config.json');
         this.tagsFile = path.join(this.storageDir, 'tags.json');
         this.logsFile = path.join(this.storageDir, 'logs.json');
-        
+
         // Cache de configs de guilds (TTL: 5 minutos)
         this.configCache = new Map();
         this.CACHE_TTL = 5 * 60 * 1000; // 5 minutos
-        
+
         // Cleanup automático do cache a cada 10 minutos
         setInterval(() => {
             const now = Date.now();
@@ -57,14 +57,14 @@ class SimpleStorage {
                 }
             }
         }, 10 * 60 * 1000);
-        
+
         this.init();
     }
-    
+
     async init() {
         try {
             await fs.mkdir(this.storageDir, { recursive: true });
-            
+
             // Initialize files if they don't exist
             await this.ensureFileExists(this.ticketsFile, []);
             await this.ensureFileExists(this.configFile, {});
@@ -74,7 +74,7 @@ class SimpleStorage {
             console.error('Storage initialization error:', error);
         }
     }
-    
+
     async ensureFileExists(filePath, defaultData) {
         try {
             await fs.access(filePath);
@@ -82,7 +82,7 @@ class SimpleStorage {
             await fs.writeFile(filePath, JSON.stringify(defaultData, null, 2));
         }
     }
-    
+
     async readFile(filePath) {
         try {
             const data = await fs.readFile(filePath, 'utf8');
@@ -91,15 +91,15 @@ class SimpleStorage {
             return null;
         }
     }
-    
+
     async writeFile(filePath, data) {
         try {
             // Ensure directory exists
             await fs.mkdir(path.dirname(filePath), { recursive: true });
-            
+
             // Convert data to JSON string with proper formatting
             const jsonString = JSON.stringify(data, null, 2);
-            
+
             // Write to file
             await fs.writeFile(filePath, jsonString, 'utf8');
             return true;
@@ -108,7 +108,7 @@ class SimpleStorage {
             throw new Error(`Failed to write to file: ${error.message}`);
         }
     }
-    
+
     // Ticket methods
     async createTicket(ticketData) {
         if (useMongo && TicketModel) {
@@ -148,7 +148,7 @@ class SimpleStorage {
             return ticket;
         }
     }
-    
+
     async getTickets(guildId) {
         if (useMongo && TicketModel) {
             const docs = await TicketModel.find({ guild_id: guildId }).lean();
@@ -157,7 +157,7 @@ class SimpleStorage {
         const tickets = await this.readFile(this.ticketsFile) || [];
         return tickets.filter(ticket => ticket.guild_id === guildId);
     }
-    
+
     async getUserActiveTickets(userId, guildId) {
         if (useMongo && TicketModel) {
             return await TicketModel.find({ guild_id: guildId, user_id: userId, status: 'open' }).lean();
@@ -165,7 +165,7 @@ class SimpleStorage {
         const tickets = await this.readFile(this.ticketsFile) || [];
         return tickets.filter(ticket => ticket.guild_id === guildId && ticket.user_id === userId && ticket.status === 'open');
     }
-    
+
     async getTicketByChannel(channelId) {
         if (useMongo && TicketModel) {
             return await TicketModel.findOne({ channel_id: channelId }).lean();
@@ -173,7 +173,7 @@ class SimpleStorage {
         const tickets = await this.readFile(this.ticketsFile) || [];
         return tickets.find(ticket => ticket.channel_id === channelId);
     }
-    
+
     async updateTicket(ticketId, updates) {
         if (useMongo && TicketModel) {
             const updated = await TicketModel.findOneAndUpdate({ id: ticketId }, { $set: updates }, { new: true }).lean();
@@ -186,14 +186,14 @@ class SimpleStorage {
         await this.writeFile(this.ticketsFile, tickets);
         return tickets[ticketIndex];
     }
-    
+
     async closeTicket(ticketId) {
         return this.updateTicket(ticketId, {
             status: 'closed',
             closed_at: new Date().toISOString()
         });
     }
-    
+
     // Config methods
     async getGuildConfig(guildId, key) {
         // Verificar cache primeiro
@@ -202,7 +202,7 @@ class SimpleStorage {
         if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
             return cached.data;
         }
-        
+
         let result;
         if (useMongo && GuildConfigModel) {
             const doc = await GuildConfigModel.findOne({ guild_id: guildId }).lean();
@@ -213,17 +213,17 @@ class SimpleStorage {
             const guildConfig = config[guildId] || {};
             result = key ? guildConfig[key] : guildConfig;
         }
-        
+
         // Guardar em cache
         this.configCache.set(cacheKey, { data: result, timestamp: Date.now() });
         return result;
     }
-    
+
     async setGuildConfig(guildId, key, value) {
         // Invalidar cache
         this.configCache.delete(`${guildId}:${key}`);
         this.configCache.delete(`${guildId}:all`);
-        
+
         if (useMongo && GuildConfigModel) {
             const doc = await GuildConfigModel.findOneAndUpdate(
                 { guild_id: guildId },
@@ -245,7 +245,7 @@ class SimpleStorage {
         for (const key of Object.keys(updates)) {
             this.configCache.delete(`${guildId}:${key}`);
         }
-        
+
         if (useMongo && GuildConfigModel) {
             const doc = await GuildConfigModel.findOne({ guild_id: guildId });
             const current = doc?.data || {};
@@ -263,7 +263,7 @@ class SimpleStorage {
         await this.writeFile(this.configFile, config);
         return config[guildId];
     }
-    
+
     // Tags methods
     async getUserTags(guildId, userId) {
         if (useMongo && TagModel) {
@@ -274,7 +274,7 @@ class SimpleStorage {
         const guildTags = tags[guildId] || {};
         return guildTags[userId] || [];
     }
-    
+
     async addUserTag(guildId, userId, tag) {
         if (useMongo && TagModel) {
             await TagModel.findOneAndUpdate(
@@ -293,7 +293,7 @@ class SimpleStorage {
         }
         return true;
     }
-    
+
     async removeUserTag(guildId, userId, tag) {
         if (useMongo && TagModel) {
             await TagModel.findOneAndUpdate(
@@ -309,7 +309,7 @@ class SimpleStorage {
         await this.writeFile(this.tagsFile, tags);
         return true;
     }
-    
+
     // Log methods
     async addLog(logData) {
         const logs = await this.readFile(this.logsFile) || [];
@@ -318,18 +318,18 @@ class SimpleStorage {
             ...logData,
             timestamp: new Date().toISOString()
         };
-        
+
         logs.push(log);
-        
+
         // Keep only last 1000 logs
         if (logs.length > 1000) {
             logs.splice(0, logs.length - 1000);
         }
-        
+
         await this.writeFile(this.logsFile, logs);
         return log;
     }
-    
+
     async getLogs(guildId, limit = 50) {
         const logs = await this.readFile(this.logsFile) || [];
         return logs

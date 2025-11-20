@@ -4,7 +4,7 @@ const { ChannelType, PermissionFlagsBits } = require('discord.js');
 
 /**
  * ServerStatsProcessor
- * 
+ *
  * Job que atualiza canais de estatísticas dinâmicas do servidor
  * Executa periodicamente para manter os nomes dos canais atualizados
  */
@@ -34,7 +34,7 @@ class ServerStatsProcessor {
     }
 
     logger.info('[ServerStatsProcessor] Starting server stats update job...');
-    
+
     // Executa imediatamente na inicialização
     this.run().catch(err => {
       logger.error('[ServerStatsProcessor] Initial run failed:', err);
@@ -79,7 +79,7 @@ class ServerStatsProcessor {
 
       // Buscar todas as configurações habilitadas
       const configs = await ServerStatsConfigModel.find({ enabled: true });
-      
+
       if (configs.length === 0) {
         logger.debug('[ServerStatsProcessor] No enabled configurations found');
         return;
@@ -119,7 +119,7 @@ class ServerStatsProcessor {
    */
   async updateGuildStats(config) {
     const guild = this.client.guilds.cache.get(config.guild_id);
-    
+
     if (!guild) {
       logger.warn(`[ServerStatsProcessor] Guild ${config.guild_id} not found in cache`);
       return;
@@ -148,10 +148,10 @@ class ServerStatsProcessor {
 
     // Atualizar cada canal habilitado
     const enabledMetrics = config.getEnabledMetrics();
-    
+
     for (const metric of enabledMetrics) {
       const channelId = config.channels[metric];
-      
+
       if (!channelId) {
         logger.debug(`[ServerStatsProcessor] No channel ID for metric: ${metric}`);
         continue;
@@ -185,9 +185,9 @@ class ServerStatsProcessor {
     metrics.bot_members = members.filter(m => m.user.bot).size;
 
     // Membros online (aproximado - baseado no cache)
-    metrics.online_members = members.filter(m => 
-      m.presence?.status === 'online' || 
-      m.presence?.status === 'idle' || 
+    metrics.online_members = members.filter(m =>
+      m.presence?.status === 'online' ||
+      m.presence?.status === 'idle' ||
       m.presence?.status === 'dnd'
     ).size;
 
@@ -204,7 +204,7 @@ class ServerStatsProcessor {
     if (global.ticketStorage) {
       try {
         const tickets = await global.ticketStorage.getGuildTickets(guild.id);
-        metrics.active_tickets = tickets.filter(t => 
+        metrics.active_tickets = tickets.filter(t =>
           t.status === 'open' || t.status === 'claimed'
         ).length;
       } catch (err) {
@@ -269,7 +269,7 @@ class ServerStatsProcessor {
    */
   async setupChannels(guildId, userId, selectedMetrics, categoryId = null) {
     const guild = this.client.guilds.cache.get(guildId);
-    
+
     if (!guild) {
       throw new Error('Guild not found');
     }
@@ -285,7 +285,7 @@ class ServerStatsProcessor {
     // Buscar ou criar configuração
     let config = await ServerStatsConfigModel.findByGuild(guildId);
     if (!config) {
-      config = new ServerStatsConfigModel({ 
+      config = new ServerStatsConfigModel({
         guild_id: guildId,
         created_by: userId
       });
@@ -313,7 +313,7 @@ class ServerStatsProcessor {
 
     // Criar canais para cada métrica selecionada
     const createdChannels = [];
-    
+
     for (const metric of selectedMetrics) {
       // Ativar métrica
       config.metrics[metric] = true;
@@ -335,7 +335,7 @@ class ServerStatsProcessor {
 
       // Criar novo canal de voz
       const channelName = config.getChannelName(metric, metrics[metric]);
-      
+
       try {
         const channel = await guild.channels.create({
           name: channelName,
@@ -351,7 +351,7 @@ class ServerStatsProcessor {
         });
 
         config.channels[metric] = channel.id;
-        
+
         createdChannels.push({
           metric,
           channelId: channel.id,
@@ -381,7 +381,7 @@ class ServerStatsProcessor {
    */
   async disableStats(guildId, deleteChannels = false) {
     const config = await ServerStatsConfigModel.findByGuild(guildId);
-    
+
     if (!config) {
       throw new Error('Stats not configured for this guild');
     }
@@ -391,7 +391,7 @@ class ServerStatsProcessor {
     // Deletar canais se solicitado
     if (deleteChannels && guild) {
       const channelIds = Object.values(config.channels).filter(id => id);
-      
+
       for (const channelId of channelIds) {
         try {
           const channel = guild.channels.cache.get(channelId);

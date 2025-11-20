@@ -14,10 +14,10 @@ async function handleGiveawayEntry(interaction, giveawayId) {
         const { GiveawayModel, GiveawayEntryModel } = require('../db/giveawayModels');
         const giveaway = await retryWithBackoff(
             () => GiveawayModel.findById(giveawayId),
-            { 
-                maxRetries: 2, 
+            {
+                maxRetries: 2,
                 baseDelay: 500,
-                onRetry: (attempt, max) => logger.debug(`[Giveaway] Retry ${attempt}/${max} - findById`) 
+                onRetry: (attempt, max) => logger.debug(`[Giveaway] Retry ${attempt}/${max} - findById`)
             }
         );
 

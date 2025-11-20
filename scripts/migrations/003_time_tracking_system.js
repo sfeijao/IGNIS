@@ -1,6 +1,6 @@
 /**
  * Migration: Time Tracking System
- * 
+ *
  * Creates timetrackingsessions collection and indexes
  * No data migration needed - new feature
  */
@@ -25,7 +25,7 @@ async function migrate() {
 
     // Check if collection exists
     const collections = await db.listCollections({ name: 'timetrackingsessions' }).toArray();
-    
+
     if (collections.length === 0) {
       logger.info('📦 Creating timetrackingsessions collection...');
       await db.createCollection('timetrackingsessions');
@@ -36,9 +36,9 @@ async function migrate() {
 
     // Create indexes
     logger.info('🔧 Creating indexes...');
-    
+
     const collection = db.collection('timetrackingsessions');
-    
+
     // Single field indexes
     await collection.createIndex({ guild_id: 1 });
     logger.info('  ✅ guild_id');

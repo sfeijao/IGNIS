@@ -27,11 +27,11 @@ const EVENTS = [
 export default function WebhookConfigSimple() {
   const guildId = useGuildId()
   const { toast } = useToast()
-  
+
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
-  
+
   const [config, setConfig] = useState<WebhookConfig>({
     enabled: false,
     url: '',
@@ -66,13 +66,13 @@ export default function WebhookConfigSimple() {
 
   const save = async () => {
     if (!guildId) return
-    
+
     // Validar URL se webhook está habilitado
     if (config.enabled && !config.url.trim()) {
       toast({ type: 'error', title: 'URL obrigatória', description: 'Insira uma URL de webhook do Discord' })
       return
     }
-    
+
     if (config.enabled && !/^https:\/\/discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(config.url)) {
       toast({ type: 'error', title: 'URL inválida', description: 'Use uma URL de webhook válida do Discord' })
       return
@@ -87,7 +87,7 @@ export default function WebhookConfigSimple() {
         body: JSON.stringify(config)
       })
       const data = await res.json()
-      
+
       if (data.success) {
         toast({ type: 'success', title: 'Configuração salva!' })
         if (data.config) setConfig(data.config)
@@ -116,7 +116,7 @@ export default function WebhookConfigSimple() {
         body: JSON.stringify({ url: config.url })
       })
       const data = await res.json()
-      
+
       if (data.success) {
         toast({ type: 'success', title: 'Teste enviado!', description: 'Verifica o canal do webhook' })
       } else {
