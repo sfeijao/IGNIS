@@ -171,7 +171,8 @@ async function startTracking(interaction) {
     });
 
     if (existing) {
-      return interaction.reply({
+      const replyMethod = interaction.deferred || interaction.replied ? 'followUp' : 'reply';
+      return interaction[replyMethod]({
         content: `⚠️ Você já tem uma sessão ativa! Use os botões na mensagem <#${existing.channel_id}> ou finalize primeiro.`,
         ephemeral: true
       });
@@ -190,11 +191,21 @@ async function startTracking(interaction) {
     const embed = createTrackingEmbed(session, interaction.user);
     const buttons = createTrackingButtons('active');
 
-    const message = await interaction.reply({
-      embeds: [embed],
-      components: buttons ? [buttons] : [],
-      fetchReply: true
-    });
+    // Se a interação foi deferida ou já respondida, usar followUp; caso contrário, reply
+    let message;
+    if (interaction.deferred || interaction.replied) {
+      message = await interaction.followUp({
+        embeds: [embed],
+        components: buttons ? [buttons] : [],
+        fetchReply: true
+      });
+    } else {
+      message = await interaction.reply({
+        embeds: [embed],
+        components: buttons ? [buttons] : [],
+        fetchReply: true
+      });
+    }
 
     // Atualizar sessão com message_id
     await TimeTrackingModel.updateOne(
@@ -209,7 +220,8 @@ async function startTracking(interaction) {
 
   } catch (error) {
     logger.error('[TimeTracking] Start error:', error);
-    return interaction.reply({
+    const replyMethod = interaction.deferred || interaction.replied ? 'followUp' : 'reply';
+    return interaction[replyMethod]({
       content: '❌ Erro ao iniciar sessão de tracking.',
       ephemeral: true
     });
@@ -229,7 +241,8 @@ async function pauseTracking(interaction) {
     });
 
     if (!session) {
-      return interaction.reply({
+      const replyMethod = interaction.deferred || interaction.replied ? 'followUp' : 'reply';
+      return interaction[replyMethod]({
         content: '❌ Sessão não encontrada ou já pausada.',
         ephemeral: true
       });
@@ -253,7 +266,8 @@ async function pauseTracking(interaction) {
 
   } catch (error) {
     logger.error('[TimeTracking] Pause error:', error);
-    return interaction.reply({
+    const replyMethod = interaction.deferred || interaction.replied ? 'followUp' : 'reply';
+    return interaction[replyMethod]({
       content: '❌ Erro ao pausar.',
       ephemeral: true
     });
@@ -273,7 +287,8 @@ async function continueTracking(interaction) {
     });
 
     if (!session) {
-      return interaction.reply({
+      const replyMethod = interaction.deferred || interaction.replied ? 'followUp' : 'reply';
+      return interaction[replyMethod]({
         content: '❌ Sessão não encontrada ou não está pausada.',
         ephemeral: true
       });
@@ -303,7 +318,8 @@ async function continueTracking(interaction) {
 
   } catch (error) {
     logger.error('[TimeTracking] Continue error:', error);
-    return interaction.reply({
+    const replyMethod = interaction.deferred || interaction.replied ? 'followUp' : 'reply';
+    return interaction[replyMethod]({
       content: '❌ Erro ao continuar.',
       ephemeral: true
     });
@@ -323,7 +339,8 @@ async function endTracking(interaction) {
     });
 
     if (!session) {
-      return interaction.reply({
+      const replyMethod = interaction.deferred || interaction.replied ? 'followUp' : 'reply';
+      return interaction[replyMethod]({
         content: '❌ Sessão não encontrada.',
         ephemeral: true
       });
@@ -359,7 +376,8 @@ async function endTracking(interaction) {
 
   } catch (error) {
     logger.error('[TimeTracking] End error:', error);
-    return interaction.reply({
+    const replyMethod = interaction.deferred || interaction.replied ? 'followUp' : 'reply';
+    return interaction[replyMethod]({
       content: '❌ Erro ao finalizar.',
       ephemeral: true
     });
