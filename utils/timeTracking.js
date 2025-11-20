@@ -390,5 +390,7 @@ module.exports = {
   continueTracking,
   endTracking,
   formatDuration,
+  createTrackingEmbed,
+  createTrackingButtons,
   TimeTrackingModel
 };

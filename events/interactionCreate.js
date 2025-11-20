@@ -219,9 +219,9 @@ module.exports = {
                 if (customId === 'timetracking_punch') {
                     try {
                         const storage = require('../utils/storage');
+                        const { TimeTrackingModel } = require('../utils/db/timeTracking');
                         const guildId = interaction.guildId;
                         const userId = interaction.user.id;
-                        const userName = interaction.user.tag;
 
                         // Verificar se o painel está ativo
                         const panelsConfig = await storage.getGuildConfig(guildId, 'timeTrackingPanels') || { panels: [] };
@@ -234,73 +234,30 @@ module.exports = {
                             });
                         }
 
-                        // Obter dados de tracking do utilizador
-                        const trackingData = await storage.getGuildConfig(guildId, 'timeTrackingSessions') || { sessions: {} };
-                        const userSession = trackingData.sessions?.[userId];
+                        // Verificar se já tem sessão ativa no servidor
+                        const existingSession = await TimeTrackingModel.findOne({
+                            guild_id: guildId,
+                            user_id: userId,
+                            status: { $in: ['active', 'paused'] }
+                        });
 
-                        // Criar botões baseados no estado atual
-                        const { startTracking, pauseTracking, continueTracking, endTracking } = require('../utils/timeTracking');
+                        if (existingSession) {
+                            // Já tem sessão - mostrar status atual
+                            const { createTrackingEmbed, createTrackingButtons } = require('../utils/timeTracking');
+                            const embed = createTrackingEmbed(existingSession, interaction.user);
+                            const buttons = createTrackingButtons(existingSession.status);
 
-                        if (!userSession || userSession.status === 'stopped') {
-                            // Utilizador não tem sessão ativa - mostrar botão INICIAR
-                            const row = new ActionRowBuilder()
-                                .addComponents(
-                                    new ButtonBuilder()
-                                        .setCustomId('timetrack:start')
-                                        .setLabel('🟢 Iniciar Trabalho')
-                                        .setStyle(ButtonStyle.Success)
-                                );
-
-                            await interaction.reply({
-                                content: '⏱️ **Sistema de Bate-Ponto**\n\nClique para **iniciar** o seu turno de trabalho.',
-                                components: [row],
-                                flags: MessageFlags.Ephemeral
-                            });
-
-                        } else if (userSession.status === 'active') {
-                            // Sessão ativa - mostrar PAUSAR e FINALIZAR
-                            const elapsed = Date.now() - new Date(userSession.startTime).getTime();
-                            const hours = Math.floor(elapsed / 3600000);
-                            const minutes = Math.floor((elapsed % 3600000) / 60000);
-
-                            const row = new ActionRowBuilder()
-                                .addComponents(
-                                    new ButtonBuilder()
-                                        .setCustomId('timetrack:pause')
-                                        .setLabel('⏸️ Pausar')
-                                        .setStyle(ButtonStyle.Secondary),
-                                    new ButtonBuilder()
-                                        .setCustomId('timetrack:end')
-                                        .setLabel('🔴 Finalizar')
-                                        .setStyle(ButtonStyle.Danger)
-                                );
-
-                            await interaction.reply({
-                                content: `⏱️ **Sessão Ativa**\n\n⏰ Tempo decorrido: **${hours}h ${minutes}m**\n\nEscolha uma ação:`,
-                                components: [row],
-                                flags: MessageFlags.Ephemeral
-                            });
-
-                        } else if (userSession.status === 'paused') {
-                            // Sessão pausada - mostrar CONTINUAR e FINALIZAR
-                            const row = new ActionRowBuilder()
-                                .addComponents(
-                                    new ButtonBuilder()
-                                        .setCustomId('timetrack:continue')
-                                        .setLabel('▶️ Continuar')
-                                        .setStyle(ButtonStyle.Success),
-                                    new ButtonBuilder()
-                                        .setCustomId('timetrack:end')
-                                        .setLabel('🔴 Finalizar')
-                                        .setStyle(ButtonStyle.Danger)
-                                );
-
-                            await interaction.reply({
-                                content: '⏱️ **Sessão Pausada**\n\nEscolha uma ação:',
-                                components: [row],
+                            return await interaction.reply({
+                                content: '⏱️ **Você já tem uma sessão ativa:**',
+                                embeds: [embed],
+                                components: buttons ? [buttons] : [],
                                 flags: MessageFlags.Ephemeral
                             });
                         }
+
+                        // Não tem sessão - iniciar diretamente
+                        const { startTracking } = require('../utils/timeTracking');
+                        await startTracking(interaction);
 
                         logger.interaction('button', 'timetracking_punch', interaction, true);
                     } catch (error) {
