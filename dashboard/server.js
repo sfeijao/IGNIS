@@ -1030,7 +1030,7 @@ app.post('/api/guild/:guildId/stats/auto-create', async (req, res) => {
 
         // Get current config or use defaults
         const storage = require('../utils/storage');
-        let config = storage.get(guildId, 'serverStats') || {
+        let config = await storage.getGuildConfig(guildId, 'serverStats') || {
             enabled: false,
             updateInterval: 5,
             totalMembers: { enabled: true, channelId: '', format: '👥 Membros: {count}' },
@@ -1069,7 +1069,7 @@ app.post('/api/guild/:guildId/stats/auto-create', async (req, res) => {
 
         if (created > 0) {
             config.enabled = true;
-            storage.set(guildId, 'serverStats', config);
+            await storage.setGuildConfig(guildId, 'serverStats', config);
         }
 
         res.json({ success: true, created, config });
@@ -4610,7 +4610,7 @@ app.get('/api/guild/:guildId/webhook-unified', async (req, res) => {
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
         const storage = require('../utils/storage');
-        const config = storage.get(guildId, 'webhookUnified') || {
+        const config = await storage.getGuildConfig(guildId, 'webhookUnified') || {
             enabled: false,
             url: '',
             events: {
@@ -4660,7 +4660,7 @@ app.post('/api/guild/:guildId/webhook-unified', async (req, res) => {
         };
 
         const storage = require('../utils/storage');
-        storage.set(guildId, 'webhookUnified', config);
+        await storage.setGuildConfig(guildId, 'webhookUnified', config);
 
         res.json({ success: true, config });
     } catch (e) {
