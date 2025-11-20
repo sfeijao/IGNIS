@@ -146,7 +146,7 @@ app.use((req, res, next) => {
 app.get('/favicon.ico', (req, res) => {
     const nextFavicon = path.join(__dirname, 'next', 'public', 'favicon.ico');
     const publicFavicon = path.join(__dirname, 'public', 'favicon.ico');
-    
+
     if (fs.existsSync(nextFavicon)) {
         res.sendFile(nextFavicon);
     } else if (fs.existsSync(publicFavicon)) {
@@ -4169,32 +4169,103 @@ app.get('/api/guild/:guildId/time-tracking', async (req, res) => {
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
-        const storage = require('../utils/storage');
-        const data = await storage.getGuildConfig(req.params.guildId, 'timeTracking') || { entries: [] };
+        const { TimeTrackingModel } = require('../utils/db/timeTracking');
+        
+        // Fetch all sessions for this guild (ended sessions)
+        const sessions = await TimeTrackingModel.find({ 
+            guild_id: req.params.guildId,
+            status: 'ended'
+        }).sort({ started_at: -1 });
 
-        // Calculate summaries
+        // Create entries list
+        const entries = [];
         const summaries = new Map();
-        (data.entries || []).forEach(entry => {
-            if (!summaries.has(entry.userId)) {
-                summaries.set(entry.userId, {
-                    userId: entry.userId,
-                    userName: entry.userName,
+
+        for (const session of sessions) {
+            const guild = client.guilds.cache.get(req.params.guildId);
+            let userName = 'Unknown User';
+            if (guild) {
+                try {
+                    const member = await guild.members.fetch(session.user_id);
+                    userName = member.user.username;
+                } catch (err) {
+                    // User might have left
+                }
+            }
+
+            // Add start entry
+            entries.push({
+                id: `${session._id}_start`,
+                userId: session.user_id,
+                userName,
+                action: 'start',
+                timestamp: session.started_at.toISOString(),
+                duration: null
+            });
+
+            // Add pause/continue entries
+            for (const pause of session.pauses || []) {
+                if (pause.started) {
+                    entries.push({
+                        id: `${session._id}_pause_${pause.started.getTime()}`,
+                        userId: session.user_id,
+                        userName,
+                        action: 'stop',
+                        timestamp: pause.started.toISOString(),
+                        duration: null
+                    });
+                }
+                if (pause.ended) {
+                    entries.push({
+                        id: `${session._id}_continue_${pause.ended.getTime()}`,
+                        userId: session.user_id,
+                        userName,
+                        action: 'continue',
+                        timestamp: pause.ended.toISOString(),
+                        duration: null
+                    });
+                }
+            }
+
+            // Add end entry
+            if (session.ended_at) {
+                entries.push({
+                    id: `${session._id}_end`,
+                    userId: session.user_id,
+                    userName,
+                    action: 'stop',
+                    timestamp: session.ended_at.toISOString(),
+                    duration: session.total_time
+                });
+            }
+
+            // Update summary
+            if (!summaries.has(session.user_id)) {
+                summaries.set(session.user_id, {
+                    userId: session.user_id,
+                    userName,
                     totalTime: 0,
                     entries: 0,
                     lastAction: null
                 });
             }
-            const summary = summaries.get(entry.userId);
+            const summary = summaries.get(session.user_id);
             summary.entries++;
-            if (entry.duration) summary.totalTime += entry.duration;
-            if (!summary.lastAction || new Date(entry.timestamp) > new Date(summary.lastAction)) {
-                summary.lastAction = entry.action;
+            summary.totalTime += session.total_time || 0;
+            
+            // Determine last action
+            if (session.ended_at) {
+                summary.lastAction = 'stop';
+            } else if (session.status === 'paused') {
+                summary.lastAction = 'stop';
+            } else if (session.status === 'active') {
+                summary.lastAction = session.pauses?.length > 0 ? 'continue' : 'start';
             }
-        });
+        }
 
         res.json({
             success: true,
-            entries: data.entries || [],
+            entries: entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)),
             summaries: Array.from(summaries.values())
         });
     } catch (e) {
