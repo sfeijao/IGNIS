@@ -148,6 +148,19 @@ module.exports = {
             if (interaction.isButton()) {
                 const customId = interaction.customId;
 
+                // 🎁 Handler para botões de giveaway winner tickets
+                if (customId?.startsWith('giveaway_ticket:')) {
+                    try {
+                        const { handleTicketButton } = require('../utils/communityTickets');
+                        await handleTicketButton(interaction);
+                        logger.interaction('button', customId, interaction, true);
+                    } catch (error) {
+                        logger.error('[GiveawayTicket] Button error:', error);
+                        await errorHandler.handleInteractionError(interaction, error, 'Giveaway Ticket Button');
+                    }
+                    return;
+                }
+
                 // Delegar o novo sistema de tickets (prefixo 'ticket:') para o handler dedicado
                 if (customId?.startsWith('ticket:')) {
                     // Delegado para events/ticketHandler.js
