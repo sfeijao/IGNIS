@@ -151,8 +151,8 @@ module.exports = {
                 // 🎁 Handler para botões de giveaway winner tickets
                 if (customId?.startsWith('giveaway_ticket:')) {
                     try {
-                        const { handleTicketButton } = require('../utils/communityTickets');
-                        await handleTicketButton(interaction);
+                        const { handleButton } = require('../utils/communityTickets');
+                        await handleButton(interaction);
                         logger.interaction('button', customId, interaction, true);
                     } catch (error) {
                         logger.error('[GiveawayTicket] Button error:', error);
