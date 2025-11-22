@@ -475,6 +475,44 @@ class SimpleStorage {
         await this.writeFile(genericFile, data);
         return true;
     }
+
+    /**
+     * Salvar configuração de painel de tickets
+     */
+    async saveTicketPanel(guildId, panelData) {
+        try {
+            const config = await this.getGuildConfig(guildId);
+            const panels = config.ticketPanels || [];
+            
+            // Adicionar novo painel
+            panels.push({
+                ...panelData,
+                id: `panel_${Date.now()}`,
+                guildId
+            });
+            
+            // Atualizar config
+            await this.setGuildConfig(guildId, 'ticketPanels', panels);
+            
+            return true;
+        } catch (error) {
+            console.error('[Storage] Erro ao salvar painel de tickets:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Obter painéis de tickets de uma guild
+     */
+    async getTicketPanels(guildId) {
+        try {
+            const config = await this.getGuildConfig(guildId);
+            return config.ticketPanels || [];
+        } catch (error) {
+            console.error('[Storage] Erro ao obter painéis de tickets:', error);
+            return [];
+        }
+    }
 }
 
 module.exports = new SimpleStorage();

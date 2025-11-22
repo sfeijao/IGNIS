@@ -4,7 +4,11 @@ const storage = require('./storage');
 const logger = require('./logger');
 const { KeyedRateLimiter } = require('./retryHelper');
 const { TicketCategoryModel } = require('./db/models');
-const webhookSystem = require('./webhookSystem');
+const TICKET_IDS = require('../constants/ticketButtonIds');
+const { UnifiedWebhookSystem } = require('./webhooks');
+
+// Inicializar sistema de webhooks unificado
+const webhookSystem = new UnifiedWebhookSystem();
 
 // Rate limiter: 2 tickets por minuto por usuário
 const ticketRateLimiter = new KeyedRateLimiter(2, 2 / 60); // 2 tokens, refill 2 por 60s
@@ -178,7 +182,7 @@ async function createTicketWithCategorySelection(interaction, defaultType) {
     }));
 
     const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId('ticket:category:select')
+      .setCustomId(TICKET_IDS.CATEGORY_SELECT)
       .setPlaceholder('📋 Escolhe a categoria do ticket...')
       .addOptions(options);
 
@@ -463,17 +467,17 @@ async function createTicket(interaction, type, customCategory = null, panelConfi
       new ButtonBuilder().setCustomId('ticket:how_dm').setLabel('Como libero minha DM?').setStyle(ButtonStyle.Secondary).setEmoji('❓'),
     );
     const row2 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('ticket:call_member').setLabel('Chamar Membro').setStyle(ButtonStyle.Primary).setEmoji('🔔'),
-      new ButtonBuilder().setCustomId('ticket:add_member').setLabel('Adicionar Membro').setStyle(ButtonStyle.Success).setEmoji('➕'),
-      new ButtonBuilder().setCustomId('ticket:remove_member').setLabel('Remover Membro').setStyle(ButtonStyle.Danger).setEmoji('❌'),
-      new ButtonBuilder().setCustomId('ticket:move').setLabel('Mover Ticket').setStyle(ButtonStyle.Secondary).setEmoji('🔁'),
-      new ButtonBuilder().setCustomId('ticket:rename').setLabel('Trocar Nome do Canal').setStyle(ButtonStyle.Secondary).setEmoji('📝'),
+      new ButtonBuilder().setCustomId(TICKET_IDS.CALL_MEMBER).setLabel('Chamar Membro').setStyle(ButtonStyle.Primary).setEmoji('🔔'),
+      new ButtonBuilder().setCustomId(TICKET_IDS.ADD_MEMBER).setLabel('Adicionar Membro').setStyle(ButtonStyle.Success).setEmoji('➕'),
+      new ButtonBuilder().setCustomId(TICKET_IDS.REMOVE_MEMBER).setLabel('Remover Membro').setStyle(ButtonStyle.Danger).setEmoji('❌'),
+      new ButtonBuilder().setCustomId(TICKET_IDS.MOVE).setLabel('Mover Ticket').setStyle(ButtonStyle.Secondary).setEmoji('🔁'),
+      new ButtonBuilder().setCustomId(TICKET_IDS.RENAME).setLabel('Trocar Nome do Canal').setStyle(ButtonStyle.Secondary).setEmoji('📝'),
     );
     const row3 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('ticket:claim').setLabel('Assumir Atendimento').setStyle(ButtonStyle.Primary).setEmoji('🟦'),
-      new ButtonBuilder().setCustomId('ticket:greet').setLabel('Saudar Atendimento').setStyle(ButtonStyle.Primary).setEmoji('👋'),
-      new ButtonBuilder().setCustomId('ticket:note').setLabel('Adicionar Observação Interna').setStyle(ButtonStyle.Secondary).setEmoji('🗒️'),
-      new ButtonBuilder().setCustomId('ticket:close').setLabel('Finalizar Ticket').setStyle(ButtonStyle.Success).setEmoji('✅'),
+      new ButtonBuilder().setCustomId(TICKET_IDS.CLAIM).setLabel('Assumir Atendimento').setStyle(ButtonStyle.Primary).setEmoji('🟦'),
+      new ButtonBuilder().setCustomId(TICKET_IDS.GREET).setLabel('Saudar Atendimento').setStyle(ButtonStyle.Primary).setEmoji('👋'),
+      new ButtonBuilder().setCustomId(TICKET_IDS.NOTE).setLabel('Adicionar Observação Interna').setStyle(ButtonStyle.Secondary).setEmoji('🗒️'),
+      new ButtonBuilder().setCustomId(TICKET_IDS.CLOSE).setLabel('Finalizar Ticket').setStyle(ButtonStyle.Success).setEmoji('✅'),
     );
     components = [row1, row2, row3];
   }
@@ -514,8 +518,8 @@ async function createTicket(interaction, type, customCategory = null, panelConfi
 
 async function requestClose(interaction) {
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('ticket:close:confirm').setLabel('Confirmar').setEmoji('✅').setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId('ticket:close:cancel').setLabel('Cancelar').setEmoji('❌').setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId(TICKET_IDS.CLOSE_CONFIRM).setLabel('Confirmar').setEmoji('✅').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(TICKET_IDS.CLOSE_CANCEL).setLabel('Cancelar').setEmoji('❌').setStyle(ButtonStyle.Secondary)
   );
   return safeReply(interaction, { content: 'Tens a certeza que queres fechar este ticket?', components: [row], flags: MessageFlags.Ephemeral });
 }
@@ -668,14 +672,14 @@ async function handleButton(interaction) {
     }
   }
 
-  if (id.startsWith('ticket:create:')) {
+  if (TICKET_IDS.extractCategory(id)) {
     const type = id.split(':')[2];
     // Verificar se existem categorias customizáveis para este servidor
     return createTicketWithCategorySelection(interaction, type);
   }
   if (id === 'ticket:close:request') return requestClose(interaction);
-  if (id === 'ticket:close:confirm') return confirmClose(interaction);
-  if (id === 'ticket:close:cancel') return interaction.update({ content: '❎ Cancelado.', components: [] });
+  if (id === TICKET_IDS.CLOSE_CONFIRM) return confirmClose(interaction);
+  if (id === TICKET_IDS.CLOSE_CANCEL) return interaction.update({ content: '❎ Cancelado.', components: [] });
 
   // 🆕 Botões de Giveaway Winner Ticket
   if (id === 'giveaway_ticket:confirm_receipt') {
@@ -739,16 +743,16 @@ async function handleButton(interaction) {
   if (id === 'ticket:note') {
     // Modal para nota interna
     const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
-    const modal = new ModalBuilder().setCustomId('ticket:note:modal').setTitle('Nota interna');
-    const input = new TextInputBuilder().setCustomId('ticket:note:text').setLabel('Conteúdo da nota').setStyle(TextInputStyle.Paragraph).setMinLength(2).setMaxLength(500).setRequired(true);
+    const modal = new ModalBuilder().setCustomId(TICKET_IDS.MODAL_NOTE).setTitle('Nota interna');
+    const input = new TextInputBuilder().setCustomId(TICKET_IDS.INPUT_NOTE_TEXT).setLabel('Conteúdo da nota').setStyle(TextInputStyle.Paragraph).setMinLength(2).setMaxLength(500).setRequired(true);
     modal.addComponents(new ActionRowBuilder().addComponents(input));
     try { await interaction.showModal(modal); } catch { return safeReply(interaction, { content: '❌ Falha ao mostrar modal.', flags: MessageFlags.Ephemeral }); }
     return;
   }
   if (id === 'ticket:rename') {
     const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
-    const modal = new ModalBuilder().setCustomId('ticket:rename:modal').setTitle('Renomear Canal');
-    const input = new TextInputBuilder().setCustomId('ticket:rename:name').setLabel('Novo nome').setStyle(TextInputStyle.Short).setMinLength(2).setMaxLength(90).setRequired(true);
+    const modal = new ModalBuilder().setCustomId(TICKET_IDS.MODAL_RENAME).setTitle('Renomear Canal');
+    const input = new TextInputBuilder().setCustomId(TICKET_IDS.INPUT_CHANNEL_NAME).setLabel('Novo nome').setStyle(TextInputStyle.Short).setMinLength(2).setMaxLength(90).setRequired(true);
     modal.addComponents(new ActionRowBuilder().addComponents(input));
     try { await interaction.showModal(modal); } catch { return safeReply(interaction, { content: '❌ Falha ao abrir modal.', flags: MessageFlags.Ephemeral }); }
     return;
@@ -764,7 +768,7 @@ async function handleButton(interaction) {
     let r = new ActionRowBuilder();
     for (const cat of cats) {
       if (r.components.length >= 5) { rows.push(r); r = new ActionRowBuilder(); }
-      r.addComponents(new ButtonBuilder().setCustomId(`ticket:move:cat:${cat.id}`).setLabel(cat.name.substring(0,20)).setStyle(ButtonStyle.Secondary));
+      r.addComponents(new ButtonBuilder().setCustomId(TICKET_IDS.MOVE_CATEGORY(cat.id)).setLabel(cat.name.substring(0,20)).setStyle(ButtonStyle.Secondary));
     }
     if (r.components.length) rows.push(r);
     const extra = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('ticket:move:other').setLabel('Outra Categoria').setStyle(ButtonStyle.Primary));
@@ -841,7 +845,7 @@ async function handleButton(interaction) {
   // (Removido) painel efémero Ctrl-Staff: botões agora estão sempre visíveis nas linhas principais
 
   // Ações administrativas (staff)
-  if (id === 'ticket:close' || id === 'ticket:finalize:open' || id === 'ticket:claim' || id === 'ticket:release' || id === 'ticket:resolve' || id === 'ticket:reopen' || id.startsWith('ticket:priority') || id === 'ticket:note:open' || id === 'ticket:transcript' || id === 'ticket:member:add' || id === 'ticket:member:remove' || id === 'ticket:rename:open' || id === 'ticket:lock-toggle' || id === 'ticket:unlock:author' || id === 'ticket:unlock:everyone') {
+  if (id === TICKET_IDS.CLOSE || id === 'ticket:finalize:open' || id === TICKET_IDS.CLAIM || id === 'ticket:release' || id === 'ticket:resolve' || id === 'ticket:reopen' || id.startsWith('ticket:priority') || id === 'ticket:note:open' || id === 'ticket:transcript' || id === 'ticket:member:add' || id === 'ticket:member:remove' || id === 'ticket:rename:open' || id === 'ticket:lock-toggle' || id === 'ticket:unlock:author' || id === 'ticket:unlock:everyone') {
     const staff = await isStaff(interaction);
     if (!staff) {
       return safeReply(interaction, { content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
@@ -850,7 +854,7 @@ async function handleButton(interaction) {
     const t = await storage.getTicketByChannel(interaction.channel.id);
   if (!t) return safeReply(interaction, { content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
 
-    if (id === 'ticket:close' || id === 'ticket:finalize:open') {
+    if (id === TICKET_IDS.CLOSE || id === 'ticket:finalize:open') {
       if (t.status === 'closed') return interaction.reply({ content: '⚠️ Já está finalizado/fechado.', flags: MessageFlags.Ephemeral });
       const modal = new ModalBuilder()
         .setCustomId('ticket:finalize:submit')
@@ -866,7 +870,7 @@ async function handleButton(interaction) {
       return interaction.showModal(modal);
     }
 
-    if (id === 'ticket:claim') {
+    if (id === TICKET_IDS.CLAIM) {
       if (t.assigned_to) {
         return interaction.reply({ content: `⚠️ Já está reclamado por <@${t.assigned_to}>.`, flags: MessageFlags.Ephemeral });
       }
@@ -1171,14 +1175,14 @@ async function handleButton(interaction) {
 
 async function handleModal(interaction) {
   const id = interaction.customId;
-  if (id === 'ticket:note:submit') {
+  if (id === TICKET_IDS.MODAL_NOTE) {
     const staff = await isStaff(interaction);
     if (!staff) {
   return safeReply(interaction, { content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
     }
     const t = await storage.getTicketByChannel(interaction.channel.id);
   if (!t) return safeReply(interaction, { content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
-    const content = interaction.fields.getTextInputValue('ticket:note:content');
+    const content = interaction.fields.getTextInputValue(TICKET_IDS.INPUT_NOTE_TEXT);
     const notes = Array.isArray(t.notes) ? t.notes.slice() : [];
     notes.push({ id: Date.now().toString(), content, author: interaction.user.id, timestamp: new Date().toISOString() });
   await storage.updateTicket(t.id, { notes });
@@ -1390,14 +1394,14 @@ async function handleModal(interaction) {
     }
   }
 
-  if (id === 'ticket:rename:submit') {
+  if (id === TICKET_IDS.MODAL_RENAME) {
     const staff = await isStaff(interaction);
     if (!staff) {
   return safeReply(interaction, { content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
     }
     const t = await storage.getTicketByChannel(interaction.channel.id);
   if (!t) return safeReply(interaction, { content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
-    const newName = interaction.fields.getTextInputValue('ticket:rename:newname')
+    const newName = interaction.fields.getTextInputValue(TICKET_IDS.INPUT_CHANNEL_NAME)
       .trim()
       .toLowerCase()
       .replace(/\s+/g, '-')
@@ -1430,7 +1434,7 @@ async function handleSelect(interaction) {
   const id = interaction.customId;
 
   // 🆕 Handler para seleção de categoria customizável
-  if (id === 'ticket:category:select') {
+  if (id === TICKET_IDS.CATEGORY_SELECT) {
     try {
       const categoryId = interaction.values?.[0];
       if (!categoryId) {
