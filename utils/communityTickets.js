@@ -5,10 +5,7 @@ const logger = require('./logger');
 const { KeyedRateLimiter } = require('./retryHelper');
 const { TicketCategoryModel } = require('./db/models');
 const TICKET_IDS = require('../constants/ticketButtonIds');
-const { UnifiedWebhookSystem } = require('./webhooks');
-
-// Inicializar sistema de webhooks unificado
-const webhookSystem = new UnifiedWebhookSystem();
+const { webhookSystem } = require('./webhooks');
 
 // Rate limiter: 2 tickets por minuto por usuário
 const ticketRateLimiter = new KeyedRateLimiter(2, 2 / 60); // 2 tokens, refill 2 por 60s

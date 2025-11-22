@@ -5,7 +5,7 @@ const storage = require('../utils/storage');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('ticket-panel')
+        .setName('painel-tickets')
         .setDescription('🎫 Criar painel de tickets (simples ou avançado)')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .addSubcommand(subcommand =>
