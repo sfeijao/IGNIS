@@ -23,7 +23,9 @@ router.post('/tickets/:ticketId/export', checkAuth, ticketController.exportTicke
 // Rotas de Configuração de Webhooks (requer admin do servidor)
 router.get('/guilds/:guildId/webhooks', checkAuth, checkGuildAdmin, webhookController.getWebhooks);
 router.post('/guilds/:guildId/webhooks', checkAuth, checkGuildAdmin, webhookController.setWebhook);
+router.patch('/guilds/:guildId/webhooks/:eventType/toggle', checkAuth, checkGuildAdmin, webhookController.toggleWebhook);
 router.delete('/guilds/:guildId/webhooks/:eventType', checkAuth, checkGuildAdmin, webhookController.removeWebhook);
 router.post('/guilds/:guildId/webhooks/test', checkAuth, checkGuildAdmin, webhookController.testWebhook);
+router.get('/webhooks/stats', checkAuth, webhookController.getStats);
 
 module.exports = router;

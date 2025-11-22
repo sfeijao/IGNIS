@@ -1,6 +1,7 @@
 const { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const logger = require('./logger');
 const config = require('./config');
+const { ticketWebhooks } = require('./webhooks');
 
 class TicketSystem {
     constructor(client) {
@@ -10,66 +11,26 @@ class TicketSystem {
     // Função para enviar logs via webhook com retry e fallback
     async sendLogWebhook(guild, data, type = 'create', retryCount = 3) {
         try {
-            const guildConfig = await this.client.storage.getGuildConfig(guild.id);
-            const webhookUrl = guildConfig?.ticketWebhookUrl;
-
-            if (!webhookUrl) {
-                logger.warn('Webhook não configurado para logs de tickets', { guildId: guild.id });
-                return;
-            }
-
-            const embed = new EmbedBuilder()
-                .setColor(this.getStatusColor(type))
-                .setTitle(`🎫 Ticket ${this.getStatusText(type)}`)
-                .addFields(this.generateLogFields(data))
-                .setTimestamp();
-
-            try {
-                const webhook = await this.client.fetchWebhook(webhookUrl);
-                await webhook.send({ embeds: [embed] });
-                logger.info(`Log de ticket enviado via webhook: ${type}`, {
-                    ticketId: data.id,
-                    guildId: guild.id
-                });
-            } catch (webhookError) {
-                if (retryCount > 0) {
-                    logger.warn('Falha ao enviar webhook, tentando novamente...', {
-                        guildId: guild.id,
-                        retryCount,
-                        error: webhookError.message
-                    });
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    return this.sendLogWebhook(guild, data, type, retryCount - 1);
-                }
-
-                // Fallback: salvar log localmente
-                const fallbackPath = `./logs/webhooks/${guild.id}`;
-                const fs = require('fs').promises;
-                await fs.mkdir(fallbackPath, { recursive: true });
-
-                const fallbackLog = {
-                    timestamp: new Date().toISOString(),
-                    type,
-                    data,
-                    error: webhookError.message
-                };
-
-                await fs.writeFile(
-                    `${fallbackPath}/${Date.now()}_${type}.json`,
-                    JSON.stringify(fallbackLog, null, 2)
-                );
-
-                logger.warn('Log salvo localmente após falha do webhook', {
-                    guildId: guild.id,
-                    ticketId: data.id
-                });
+            // Usar novo sistema unificado de webhooks
+            switch (type) {
+                case 'create':
+                    await ticketWebhooks.logCreate(guild.id, data);
+                    break;
+                case 'claim':
+                case 'assign':
+                    await ticketWebhooks.logClaim(guild.id, data, data.claimer || data.assigned_user);
+                    break;
+                case 'close':
+                    await ticketWebhooks.logClose(guild.id, data, data.closer, data.close_reason, data.transcript);
+                    break;
+                case 'update':
+                    await ticketWebhooks.logUpdate(guild.id, data, data.changes, data.updater);
+                    break;
+                default:
+                    logger.warn(`[TicketSystem] Tipo de log desconhecido: ${type}`);
             }
         } catch (error) {
-            logger.error('Erro crítico ao processar webhook', {
-                guildId: guild.id,
-                error: error.message,
-                data: JSON.stringify(data)
-            });
+            logger.error(`[TicketSystem] Erro ao enviar webhook:`, error);
         }
     }
 
