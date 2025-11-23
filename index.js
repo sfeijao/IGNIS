@@ -263,72 +263,11 @@ client.once('ready', () => {
         console.error('Stats Processor Error Details:', statsProcessorErr);
     }
 
-    // Atualizar avatar/banner do bot no arranque se variáveis estiverem definidas
-    (async () => {
-        try {
-            // Formas suportadas:
-            //  - BOT_AVATAR_URL / BOT_BANNER_URL: URLs diretas (http/https)
-            //  - BOT_AVATAR_FILE / BOT_BANNER_FILE: caminhos locais para ficheiros (ex: assets/avatar.png)
-            //  - Se ambos (URL e FILE) estiverem definidos para o mesmo recurso, FILE tem prioridade.
-            let newAvatar = null;
-            if (process.env.BOT_AVATAR_FILE) {
-                try { newAvatar = fs.readFileSync(path.resolve(process.env.BOT_AVATAR_FILE)); } catch {}
-            } else if (process.env.BOT_AVATAR_URL) {
-                const url = process.env.BOT_AVATAR_URL.trim();
-                try {
-                    if (/^https?:\/\//i.test(url)) {
-                        const res = await fetch(url);
-                        if (res.ok) newAvatar = Buffer.from(await res.arrayBuffer());
-                        else logger.warn(`⚠️ Download do avatar falhou: HTTP ${res.status}`);
-                    } else {
-                        newAvatar = url; // fallback (caso seja data URI)
-                    }
-                } catch (e) { logger.warn('⚠️ Download do avatar falhou:', e?.message || e); }
-            }
-            let newBanner = null;
-            if (process.env.BOT_BANNER_FILE) {
-                try { newBanner = fs.readFileSync(path.resolve(process.env.BOT_BANNER_FILE)); } catch {}
-            } else if (process.env.BOT_BANNER_URL) {
-                const urlb = process.env.BOT_BANNER_URL.trim();
-                try {
-                    if (/^https?:\/\//i.test(urlb)) {
-                        const res = await fetch(urlb);
-                        if (res.ok) newBanner = Buffer.from(await res.arrayBuffer());
-                        else logger.warn(`⚠️ Download do banner falhou: HTTP ${res.status}`);
-                    } else {
-                        newBanner = urlb; // fallback data URI
-                    }
-                } catch (e) { logger.warn('⚠️ Download do banner falhou:', e?.message || e); }
-            }
-            if (newAvatar) {
-                try {
-                    await client.user.setAvatar(newAvatar);
-                    logger.info('🖼️ Avatar do bot atualizado com sucesso.');
-                } catch (e) {
-                    logger.warn('⚠️ Falha ao atualizar avatar do bot:', e?.message || e);
-                }
-            } else {
-                logger.info('🖼️ BOT_AVATAR_URL/BOT_AVATAR_FILE não definidos - mantendo avatar atual.');
-            }
-            if (newBanner) {
-                try {
-                    // Nem todas as apps têm permissão de banner; ignorar erro silenciosamente
-                    if (client.user.setBanner) {
-                        await client.user.setBanner(newBanner);
-                        logger.info('🎏 Banner do bot atualizado com sucesso.');
-                    } else {
-                        logger.info('🎏 setBanner não disponível nesta versão/permissão - ignorando.');
-                    }
-                } catch (e) {
-                    logger.warn('⚠️ Falha ao atualizar banner do bot (possível falta de permissão/recurso):', e?.message || e);
-                }
-            } else {
-                logger.info('🎏 BOT_BANNER_URL/BOT_BANNER_FILE não definidos - mantendo banner atual.');
-            }
-        } catch (e) {
-            logger.warn('⚠️ Erro inesperado ao tentar atualizar avatar/banner:', e?.message || e);
-        }
-    })();
+    // ============================================================================
+    // 🔥 REMOVIDO: Sistema de atualização automática de avatar/banner do bot
+    // ============================================================================
+    // O bot agora mantém sempre o avatar e banner configurados manualmente no Discord
+    // Não há mais tentativa programática de alterar o perfil do bot
 
     // Tornar cliente disponível globalmente para o dashboard
     global.discordClient = client;

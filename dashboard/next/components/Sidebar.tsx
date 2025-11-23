@@ -83,7 +83,6 @@ const nav = [
       { href: '/settings', key: 'nav.settings', icon: '🔧' },
       { href: '/webhooks', key: 'nav.webhooks', icon: '🔗' },
       { href: '/guild/{gid}/webhooks-config', key: 'nav.webhooksConfig', icon: '🔌', requiresGuild: true },
-      { href: '/guild/{gid}/assets', key: 'nav.assets', icon: '🖼️', requiresGuild: true },
       { href: '/diagnostics', key: 'nav.diagnostics', icon: '🔍' },
     ]
   },
