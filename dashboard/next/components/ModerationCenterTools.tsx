@@ -20,7 +20,8 @@ export default function ModerationCenterTools() {
   const [contextChannelId, setContextChannelId] = useState<string>('')
   const [enabled, setEnabled] = useState(true)
 
-  const isTextChannel = (ch: { id: string; name: string; type?: string }) => {
+  const isTextChannel = (ch: { id: string; name: string; type?: string } | null | undefined) => {
+    if (!ch) return false
     const t = String(ch.type || '').toLowerCase()
     return t.includes('text') || t.includes('announcement')
   }
@@ -180,7 +181,7 @@ export default function ModerationCenterTools() {
           onChange={e => setContextChannelId(e.target.value)}
         >
           <option value="">— Select Channel —</option>
-          {channels.filter(isTextChannel).map((ch) => (
+          {Array.isArray(channels) && channels.filter(isTextChannel).map((ch) => (
             <option key={ch.id} value={ch.id}>{`#${ch.name} (${channelTypeLabel(ch)})`}</option>
           ))}
         </select>

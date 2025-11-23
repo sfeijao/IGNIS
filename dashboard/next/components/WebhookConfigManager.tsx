@@ -43,6 +43,7 @@ export default function WebhookConfigManager() {
   const [loading, setLoading] = useState(false)
   const [enabled, setEnabled] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [editingWebhook, setEditingWebhook] = useState<Webhook | null>(null)
   const [testing, setTesting] = useState<string | null>(null)
 
   // Form state
@@ -134,6 +135,66 @@ export default function WebhookConfigManager() {
       if (data.success) {
         setConfig(data.config)
         toast({ type: 'success', title: 'Webhook removido' })
+      } else {
+        toast({ type: 'error', title: 'Erro', description: data.error })
+      }
+    } catch (e: any) {
+      toast({ type: 'error', title: 'Erro', description: e.message })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const editWebhook = (webhook: Webhook) => {
+    setEditingWebhook(webhook)
+    setFormData({
+      name: webhook.name,
+      url: webhook.url,
+      types: webhook.types
+    })
+  }
+
+  const saveEditWebhook = async () => {
+    if (!guildId || !editingWebhook) return
+
+    // Validações
+    if (!formData.name.trim()) {
+      toast({ type: 'error', title: 'Nome obrigatório' })
+      return
+    }
+    if (!formData.url.trim()) {
+      toast({ type: 'error', title: 'URL obrigatória' })
+      return
+    }
+    if (!/^https:\/\/discord\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(formData.url)) {
+      toast({ type: 'error', title: 'URL inválida', description: 'Use uma URL de webhook do Discord válida' })
+      return
+    }
+    if (formData.types.length === 0) {
+      toast({ type: 'error', title: 'Selecione pelo menos um tipo de log' })
+      return
+    }
+
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/guild/${guildId}/webhooks-config/${editingWebhook._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: formData.name,
+          url: formData.url,
+          events: formData.types,
+          enabled: editingWebhook.enabled
+        })
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        setConfig(data.config)
+        setFormData({ name: '', url: '', types: [] })
+        setEditingWebhook(null)
+        toast({ type: 'success', title: 'Webhook atualizado com sucesso!' })
       } else {
         toast({ type: 'error', title: 'Erro', description: data.error })
       }
@@ -314,7 +375,7 @@ export default function WebhookConfigManager() {
         </div>
 
         {/* Formulário de Adicionar */}
-        {showAddForm && (
+        {showAddForm && !editingWebhook && (
           <div className="bg-gray-900/50 border border-purple-600/50 rounded-xl p-6 mb-6">
             <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
               <span className="text-xl">➕</span>
@@ -379,6 +440,75 @@ export default function WebhookConfigManager() {
           </div>
         )}
 
+        {/* Formulário de Editar */}
+        {editingWebhook && (
+          <div className="bg-gray-900/50 border border-yellow-600/50 rounded-xl p-6 mb-6">
+            <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
+              <span className="text-xl">✏️</span>
+              Editar Webhook
+            </h4>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-300 mb-2 font-medium">Nome do Webhook</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Logs Servidor Y"
+                  className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-300 mb-2 font-medium">URL do Webhook</label>
+                <input
+                  type="text"
+                  placeholder="https://discord.com/api/webhooks/..."
+                  className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white font-mono text-sm focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all"
+                  value={formData.url}
+                  onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                />
+                <p className="text-xs text-gray-500 mt-1">Cole a URL completa do webhook do Discord</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-300 mb-3 font-medium">Receber logs de:</label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {LOG_TYPES.map(logType => (
+                    <label key={logType.key} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.types.includes(logType.key)}
+                        onChange={() => toggleFormType(logType.key)}
+                        className="w-4 h-4 text-yellow-600 bg-gray-700 border-gray-600 rounded focus:ring-yellow-500"
+                      />
+                      <span className="text-sm text-gray-300">{logType.emoji} {logType.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={saveEditWebhook}
+                  className="px-6 py-3 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-white rounded-xl font-semibold transition-all duration-200"
+                  disabled={loading}
+                >
+                  {loading ? 'A guardar...' : 'Guardar Alterações'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingWebhook(null)
+                    setFormData({ name: '', url: '', types: [] })
+                  }}
+                  className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-medium transition-all duration-200"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Lista */}
         <div className="space-y-3">
           {!config || config.webhooks.length === 0 ? (
@@ -428,6 +558,14 @@ export default function WebhookConfigManager() {
                   <div className="flex gap-2 flex-shrink-0">
                     <button
                       type="button"
+                      onClick={() => editWebhook(webhook)}
+                      className="px-3 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg transition-all text-sm font-medium"
+                      disabled={!enabled}
+                    >
+                      ✏️ Editar
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => testWebhook(webhook._id)}
                       className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all text-sm font-medium"
                       disabled={testing === webhook._id || !enabled}
@@ -437,7 +575,7 @@ export default function WebhookConfigManager() {
                     <button
                       type="button"
                       onClick={() => toggleWebhook(webhook._id, webhook.enabled)}
-                      className={`px-3 py-2 rounded-lg transition-all text-sm font-medium ${webhook.enabled ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-green-600 hover:bg-green-500'} text-white`}
+                      className={`px-3 py-2 rounded-lg transition-all text-sm font-medium ${webhook.enabled ? 'bg-orange-600 hover:bg-orange-500' : 'bg-green-600 hover:bg-green-500'} text-white`}
                       disabled={!enabled}
                     >
                       {webhook.enabled ? '⏸️ Pausar' : '▶️ Ativar'}

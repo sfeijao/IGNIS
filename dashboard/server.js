@@ -4550,18 +4550,57 @@ app.delete('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) =>
             return res.status(404).json({ success: false, error: 'Configuração não encontrada' });
         }
 
-        const webhook = config.webhooks.id(req.params.webhookId);
-        if (!webhook) {
+        const webhookIndex = config.webhooks.findIndex(w => w._id.toString() === req.params.webhookId);
+        if (webhookIndex === -1) {
             return res.status(404).json({ success: false, error: 'Webhook não encontrado' });
         }
 
-        webhook.remove();
+        config.webhooks.splice(webhookIndex, 1);
         await config.save();
 
         res.json({ success: true, config });
     } catch (e) {
         logger.error('Error removing webhook:', e);
-        res.status(500).json({ success: false, error: 'Failed to remove webhook' });
+        res.status(500).json({ success: false, error: e.message || 'Failed to remove webhook' });
+    }
+});
+
+// PUT: Editar webhook
+app.put('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const client = global.discordClient;
+        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+        const { name, url, events, enabled } = req.body;
+        if (!name || !url) {
+            return res.status(400).json({ success: false, error: 'Nome e URL são obrigatórios' });
+        }
+
+        const config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
+        if (!config) {
+            return res.status(404).json({ success: false, error: 'Configuração não encontrada' });
+        }
+
+        const webhook = config.webhooks.id(req.params.webhookId);
+        if (!webhook) {
+            return res.status(404).json({ success: false, error: 'Webhook não encontrado' });
+        }
+
+        webhook.name = name;
+        webhook.url = url;
+        webhook.events = events || [];
+        webhook.enabled = enabled !== undefined ? enabled : true;
+        webhook.updatedAt = new Date();
+
+        await config.save();
+
+        res.json({ success: true, webhook, config });
+    } catch (e) {
+        logger.error('Error updating webhook:', e);
+        res.status(500).json({ success: false, error: e.message || 'Failed to update webhook' });
     }
 });
 
