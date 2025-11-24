@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useGuildId } from '@/hooks/useGuildId';
 
 interface Announcement {
   _id: string;
@@ -27,8 +27,7 @@ interface Announcement {
 }
 
 export default function AnnouncementsPage() {
-  const params = useParams();
-  const guildId = params?.guildId as string;
+  const guildId = useGuildId();
 
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);

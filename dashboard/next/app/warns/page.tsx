@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useGuildId } from '@/hooks/useGuildId';
 
 interface Warn {
   _id: string;
@@ -21,8 +21,7 @@ interface Warn {
 }
 
 export default function WarnsPage() {
-  const params = useParams();
-  const guildId = params?.guildId as string;
+  const guildId = useGuildId();
 
   const [warns, setWarns] = useState<Warn[]>([]);
   const [loading, setLoading] = useState(true);

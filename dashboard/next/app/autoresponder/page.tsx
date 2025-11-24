@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useGuildId } from '@/hooks/useGuildId';
 
 interface AutoResponse {
   _id: string;
@@ -19,8 +19,7 @@ interface AutoResponse {
 }
 
 export default function AutoResponderPage() {
-  const params = useParams();
-  const guildId = params?.guildId as string;
+  const guildId = useGuildId();
 
   const [responses, setResponses] = useState<AutoResponse[]>([]);
   const [loading, setLoading] = useState(true);

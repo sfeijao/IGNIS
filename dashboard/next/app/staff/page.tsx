@@ -1,7 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useGuildId } from '@/hooks/useGuildId';
+
+interface StaffStats {
+  staffId: string;
+  total: number;
+  byType: Record<string, number>;
+}
 
 interface StaffMember {
   staffId: string;
@@ -19,8 +25,7 @@ interface RecentAction {
 }
 
 export default function StaffMonitoringPage() {
-  const params = useParams();
-  const guildId = params?.guildId as string;
+  const guildId = useGuildId();
 
   const [leaderboard, setLeaderboard] = useState<StaffMember[]>([]);
   const [recentActions, setRecentActions] = useState<RecentAction[]>([]);
@@ -104,7 +109,7 @@ export default function StaffMonitoringPage() {
                       <div className="flex gap-2 mt-1 flex-wrap">
                         {Object.entries(staff.byType).map(([type, count]) => (
                           <span key={type} className="text-xs px-2 py-1 bg-purple-600 text-white rounded">
-                            {actionEmojis[type]} {count}
+                            {actionEmojis[type] || '📋'} {count}
                           </span>
                         ))}
                       </div>

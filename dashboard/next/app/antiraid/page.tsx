@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useGuildId } from '@/hooks/useGuildId';
 
 interface AntiRaidConfig {
   sensitivity: 'low' | 'medium' | 'high' | 'paranoid';
@@ -36,8 +36,7 @@ interface RaidEvent {
 }
 
 export default function AntiRaidPage() {
-  const params = useParams();
-  const guildId = params?.guildId as string;
+  const guildId = useGuildId();
 
   const [config, setConfig] = useState<AntiRaidConfig | null>(null);
   const [raids, setRaids] = useState<RaidEvent[]>([]);
