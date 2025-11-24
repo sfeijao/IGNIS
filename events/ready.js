@@ -49,7 +49,7 @@ module.exports = {
         // 📅 EVENTOS & ANÚNCIOS: Iniciar checagem periódica
         const eventService = require('../src/services/eventService');
         const scheduledAnnouncementService = require('../src/services/scheduledAnnouncementService');
-        
+
         setInterval(async () => {
             try {
                 await eventService.checkReminders(client);
@@ -57,7 +57,7 @@ module.exports = {
                 logger.error('[Events] Error checking reminders:', e);
             }
         }, 60000); // Check every minute
-        
+
         setInterval(async () => {
             try {
                 await scheduledAnnouncementService.checkPendingAnnouncements(client);
@@ -65,13 +65,13 @@ module.exports = {
                 logger.error('[Announcements] Error checking pending:', e);
             }
         }, 30000); // Check every 30 seconds
-        
+
         logger.info('📅 [Events] Reminder checker started');
         logger.info('📢 [Announcements] Pending checker started');
 
         // Definir status inicial
         client.user.setActivity('IGNIS COMMUNITY', { type: ActivityType.Watching });
-        
+
         // Sistema de atualização automática do status a cada 2 minutos
         setInterval(async () => {
             await updateStatusPanels(client);
@@ -137,7 +137,7 @@ async function handleStartupLogs(client) {
         const changelogPath = path.join(__dirname, '..', 'changelog.json');
         let logsState;
         let changelog;
-        
+
         try {
             logsState = JSON.parse(fs.readFileSync(logsStatePath, 'utf8'));
         } catch (error) {
@@ -161,7 +161,7 @@ async function handleStartupLogs(client) {
 
         // Verificar se é um novo deployment
         const currentDeployTime = new Date().toISOString();
-        const isNewDeployment = !changelog.lastDeployment || 
+        const isNewDeployment = !changelog.lastDeployment ||
                                new Date(currentDeployTime) - new Date(changelog.lastDeployment) > 60000; // 1 minuto
 
         // Enviar para canal de updates (só em novos deployments)
@@ -169,7 +169,7 @@ async function handleStartupLogs(client) {
         if (updatesChannel && isNewDeployment) {
             // Obter a versão mais recente do changelog
             const latestRelease = changelog.releases[changelog.releases.length - 1];
-            
+
             if (latestRelease) {
                 const changesText = latestRelease.changes
                     .map(change => `+ ${change}`)
@@ -192,11 +192,11 @@ async function handleStartupLogs(client) {
                     .setFooter({ text: 'IGNIS Bot System • Railway Deploy', iconURL: client.user.displayAvatarURL() });
 
                 await updatesChannel.send({ embeds: [updateEmbed] });
-                
+
                 // Atualizar timestamp do último deployment
                 changelog.lastDeployment = currentDeployTime;
                 fs.writeFileSync(changelogPath, JSON.stringify(changelog, null, 2));
-                
+
                 logger.info('🚀 Deploy notification enviado para canal de updates');
             }
         } else if (!isNewDeployment) {

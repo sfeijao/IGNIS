@@ -46,7 +46,7 @@ export default function MembersList() {
 
   const filteredMembers = useMemo(() => {
     let filtered = [...members]
-    
+
     // Filter by status (online/offline) if we have presence data
     if (status !== 'all') {
       filtered = filtered.filter(m => {
@@ -55,7 +55,7 @@ export default function MembersList() {
         return true
       })
     }
-    
+
     // Sort members
     if (sortBy === 'name') {
       filtered.sort((a, b) => (a.username || '').localeCompare(b.username || ''))
@@ -64,7 +64,7 @@ export default function MembersList() {
     } else if (sortBy === 'recent') {
       filtered.sort((a, b) => (b.joinedAt || 0) - (a.joinedAt || 0))
     }
-    
+
     return filtered
   }, [members, status, sortBy])
 

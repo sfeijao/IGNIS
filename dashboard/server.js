@@ -1121,12 +1121,12 @@ app.get('/api/guild/:guildId/roles', async (req, res) => {
         const guildId = req.params.guildId;
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        
+
         const check = await ensureGuildAdmin(client, guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const guild = check.guild;
-        
+
         // Try fetching roles if cache is empty
         if (guild.roles.cache.size === 0) {
             try {
@@ -1137,23 +1137,23 @@ app.get('/api/guild/:guildId/roles', async (req, res) => {
                 logger.error('[Roles API] Failed to fetch roles from Discord API:', fetchError);
             }
         }
-        
+
         const me = guild.members.me || guild.members.cache.get(client.user.id);
         const myHighest = me?.roles?.highest?.position ?? 0;
-        
+
         const roles = guild.roles.cache
             .sort((a,b)=> b.position - a.position) // Highest first
-            .map(r => ({ 
-                id: r.id, 
-                name: r.name, 
-                color: r.hexColor, 
-                position: r.position, 
-                managed: r.managed, 
-                hoist: r.hoist, 
-                mentionable: r.mentionable, 
-                manageable: !r.managed && r.position < myHighest 
+            .map(r => ({
+                id: r.id,
+                name: r.name,
+                color: r.hexColor,
+                position: r.position,
+                managed: r.managed,
+                hoist: r.hoist,
+                mentionable: r.mentionable,
+                manageable: !r.managed && r.position < myHighest
             }));
-            
+
         return res.json({ success: true, roles, botMax: myHighest, cached: guild.roles.cache.size });
     } catch (e) {
         logger.error('roles list error', e);
@@ -4043,9 +4043,9 @@ app.get('/api/guild/:guildId/time-tracking', async (req, res) => {
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
         const { TimeTrackingModel } = require('../utils/db/timeTracking');
-        
+
         // Fetch all sessions for this guild (ended sessions)
-        const sessions = await TimeTrackingModel.find({ 
+        const sessions = await TimeTrackingModel.find({
             guild_id: req.params.guildId,
             status: 'ended'
         }).sort({ started_at: -1 });
@@ -4125,7 +4125,7 @@ app.get('/api/guild/:guildId/time-tracking', async (req, res) => {
             const summary = summaries.get(session.user_id);
             summary.entries++;
             summary.totalTime += session.total_time || 0;
-            
+
             // Determine last action
             if (session.ended_at) {
                 summary.lastAction = 'stop';
@@ -8239,10 +8239,10 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
             const { userId } = req.query;
-            const warns = userId 
+            const warns = userId
                 ? await warnService.getUserWarns(req.params.guildId, userId)
                 : await warnService.getActiveWarns(req.params.guildId);
-            
+
             res.json({ success: true, warns });
         } catch (e) {
             logger.error('Error fetching warns:', e);
@@ -8261,7 +8261,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
 
             const { userId, reason, level } = req.body;
             const warn = await warnService.addWarn(req.params.guildId, userId, req.user.id, reason, level);
-            
+
             res.json({ success: true, warn });
         } catch (e) {
             logger.error('Error adding warn:', e);
@@ -8280,7 +8280,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
 
             const { reason } = req.body;
             const warn = await warnService.revokeWarn(req.params.warnId, req.user.id, reason);
-            
+
             res.json({ success: true, warn });
         } catch (e) {
             logger.error('Error revoking warn:', e);
@@ -8303,7 +8303,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
 
             const { status } = req.query;
             const suggestions = await suggestionService.getGuildSuggestions(req.params.guildId, status);
-            
+
             res.json({ success: true, suggestions });
         } catch (e) {
             logger.error('Error fetching suggestions:', e);
@@ -8322,7 +8322,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
 
             const { status, reviewNote } = req.body;
             const suggestion = await suggestionService.updateStatus(client, req.params.messageId, status, req.user.id, reviewNote);
-            
+
             res.json({ success: true, suggestion });
         } catch (e) {
             logger.error('Error updating suggestion:', e);
@@ -8364,7 +8364,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
                 ...req.body,
                 createdBy: req.user.id
             });
-            
+
             res.json({ success: true, response });
         } catch (e) {
             logger.error('Error creating auto-response:', e);
@@ -8476,7 +8476,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
 
             const { days } = req.query;
             const stats = await staffMonitoringService.getStaffStats(req.params.guildId, req.params.staffId, parseInt(days) || 30);
-            
+
             res.json({ success: true, stats });
         } catch (e) {
             logger.error('Error fetching staff stats:', e);
@@ -8495,7 +8495,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
 
             const { days } = req.query;
             const leaderboard = await staffMonitoringService.getLeaderboard(req.params.guildId, parseInt(days) || 30);
-            
+
             res.json({ success: true, leaderboard });
         } catch (e) {
             logger.error('Error fetching leaderboard:', e);
@@ -8514,7 +8514,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
 
             const { limit } = req.query;
             const actions = await staffMonitoringService.getRecentActions(req.params.guildId, parseInt(limit) || 50);
-            
+
             res.json({ success: true, actions });
         } catch (e) {
             logger.error('Error fetching recent actions:', e);
@@ -8537,7 +8537,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
 
             const { status } = req.query;
             const announcements = await scheduledAnnouncementService.getGuildAnnouncements(req.params.guildId, status);
-            
+
             res.json({ success: true, announcements });
         } catch (e) {
             logger.error('Error fetching announcements:', e);

@@ -4,10 +4,10 @@ const warnSchema = new mongoose.Schema({
     guildId: { type: String, required: true, index: true },
     userId: { type: String, required: true, index: true },
     moderatorId: { type: String, required: true },
-    
+
     reason: { type: String, required: true },
     level: { type: Number, default: 1, min: 1, max: 5 }, // 1-5 severity
-    
+
     // Auto-punição
     punishment: {
         type: String,
@@ -15,14 +15,14 @@ const warnSchema = new mongoose.Schema({
         default: 'none'
     },
     punishmentDuration: { type: Number, default: null }, // em minutos
-    
+
     // Status
     active: { type: Boolean, default: true },
     expiresAt: { type: Date, default: null },
     revokedBy: { type: String, default: null },
     revokedAt: { type: Date, default: null },
     revokedReason: { type: String, default: null },
-    
+
     createdAt: { type: Date, default: Date.now, index: true }
 }, { timestamps: true });
 

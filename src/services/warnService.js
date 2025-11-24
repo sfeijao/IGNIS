@@ -5,21 +5,21 @@ class WarnService {
     async addWarn(guildId, userId, moderatorId, reason, level = 1, expiresInDays = null) {
         try {
             const expiresAt = expiresInDays ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000) : null;
-            
+
             const warn = await Warn.create({
                 guildId, userId, moderatorId, reason, level,
                 expiresAt, active: true
             });
-            
+
             // Auto-punish baseado no total de warns
             const activeWarns = await this.getActiveWarns(guildId, userId);
             const punishment = this.calculatePunishment(activeWarns.length, level);
-            
+
             if (punishment !== 'none') {
                 warn.punishment = punishment;
                 await warn.save();
             }
-            
+
             logger.info(`[Warn] Added warn for ${userId} in ${guildId}: ${reason}`);
             return warn;
         } catch (error) {
@@ -39,7 +39,7 @@ class WarnService {
             revokedAt: new Date(),
             revokedReason: reason
         }, { new: true });
-        
+
         return warn;
     }
 

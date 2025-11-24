@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 /**
  * Invite Tracker Schema - Rastreia convites e detecta fake invites
- * 
+ *
  * Campos:
  * - inviteCode: Código do convite (ex: "abc123")
  * - guildId: ID do servidor Discord
@@ -15,7 +15,7 @@ const mongoose = require('mongoose');
  * - createdAt: Data de criação do convite
  * - expiresAt: Data de expiração calculada
  * - isActive: Se o convite ainda está ativo
- * 
+ *
  * Métricas:
  * - totalJoins: Total de membros que entraram
  * - validJoins: Membros que ficaram (não saíram)
@@ -42,7 +42,7 @@ const inviteTrackerSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    
+
     // Configurações do convite
     uses: {
         type: Number,
@@ -60,7 +60,7 @@ const inviteTrackerSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    
+
     // Métricas
     totalJoins: {
         type: Number,
@@ -78,7 +78,7 @@ const inviteTrackerSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    
+
     // Status
     isActive: {
         type: Boolean,
@@ -108,7 +108,7 @@ inviteTrackerSchema.index({ guildId: 1, isActive: 1 });
 
 /**
  * Member Join Log Schema - Registra cada membro que entrou
- * 
+ *
  * Detecta fake invites baseado em:
  * - Tempo no servidor (saiu < 1 hora = suspeito)
  * - Idade da conta (< 7 dias = suspeito)
@@ -134,12 +134,12 @@ const memberJoinSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    
+
     // Informações do membro
     username: String,
     discriminator: String,
     accountCreatedAt: Date,
-    
+
     // Timestamps
     joinedAt: {
         type: Date,
@@ -150,7 +150,7 @@ const memberJoinSchema = new mongoose.Schema({
         type: Date,
         default: null
     },
-    
+
     // Métricas de detecção
     accountAgeAtJoin: {
         type: Number, // em dias
@@ -160,7 +160,7 @@ const memberJoinSchema = new mongoose.Schema({
         type: Number, // em horas
         default: null
     },
-    
+
     // Status
     isFake: {
         type: Boolean,
@@ -182,7 +182,7 @@ const memberJoinSchema = new mongoose.Schema({
         default: false,
         index: true
     },
-    
+
     // Métricas de atividade (opcional - pode ser preenchido por outros sistemas)
     messageCount: {
         type: Number,

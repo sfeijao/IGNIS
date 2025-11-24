@@ -4,7 +4,7 @@ const logger = require('../logger');
 
 /**
  * 🎉 GIVEAWAY WEBHOOK HANDLERS
- * 
+ *
  * Funções especializadas para enviar logs de giveaways via webhook
  * COMPLETAMENTE SEPARADO dos logs de tickets
  */

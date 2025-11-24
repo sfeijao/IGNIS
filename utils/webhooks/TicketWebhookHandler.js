@@ -4,7 +4,7 @@ const logger = require('../logger');
 
 /**
  * 🎫 TICKET WEBHOOK HANDLERS
- * 
+ *
  * Funções especializadas para enviar logs de tickets via webhook
  */
 

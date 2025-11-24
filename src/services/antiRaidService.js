@@ -21,7 +21,7 @@ class AntiRaidService {
     async getConfig(guildId) {
         try {
             let config = await AntiRaidConfig.findOne({ guildId });
-            
+
             if (!config) {
                 // Criar configuração padrão
                 config = await AntiRaidConfig.create({
@@ -42,7 +42,7 @@ class AntiRaidService {
                     }
                 });
             }
-            
+
             return config;
         } catch (error) {
             logger.error('[AntiRaid] Error getting config:', error);
@@ -60,7 +60,7 @@ class AntiRaidService {
                 { $set: { ...updates, updatedAt: new Date() } },
                 { new: true, upsert: true }
             );
-            
+
             logger.info(`[AntiRaid] Config updated for guild ${guildId}`);
             return config;
         } catch (error) {
@@ -79,44 +79,44 @@ class AntiRaidService {
         try {
             const guildId = guild.id;
             const config = await this.getConfig(guildId);
-            
+
             if (!config.enabled) return null;
 
             // Adicionar join ao cache
             if (!this.recentJoins.has(guildId)) {
                 this.recentJoins.set(guildId, []);
             }
-            
+
             const now = Date.now();
             const joins = this.recentJoins.get(guildId);
             joins.push(now);
-            
+
             // Limpar joins antigos (mais de 5 minutos)
             const fiveMinutesAgo = now - (5 * 60 * 1000);
             const recentJoins = joins.filter(t => t > fiveMinutesAgo);
             this.recentJoins.set(guildId, recentJoins);
-            
+
             // Contar joins no último minuto
             const oneMinuteAgo = now - (60 * 1000);
             const joinsLastMinute = recentJoins.filter(t => t > oneMinuteAgo).length;
-            
+
             // Verificar thresholds
             const isRaid = joinsLastMinute >= config.thresholds.joinsPerMinute ||
                           recentJoins.length >= config.thresholds.joinsPerFiveMinutes;
-            
+
             if (isRaid && !this.activeRaids.has(guildId)) {
                 // Criar novo evento de raid
                 const severity = this.calculateSeverity(joinsLastMinute, recentJoins.length, config);
                 const raidEvent = await this.createRaidEvent(guildId, severity);
                 this.activeRaids.set(guildId, raidEvent._id);
-                
+
                 // Enviar alerta
                 await this.sendRaidAlert(guild, raidEvent, config);
-                
+
                 return raidEvent;
             }
-            
-            return this.activeRaids.has(guildId) ? 
+
+            return this.activeRaids.has(guildId) ?
                 await RaidEvent.findById(this.activeRaids.get(guildId)) : null;
         } catch (error) {
             logger.error('[AntiRaid] Error detecting raid:', error);
@@ -129,7 +129,7 @@ class AntiRaidService {
      */
     calculateSeverity(joinsPerMinute, totalJoins, config) {
         const ratio = joinsPerMinute / config.thresholds.joinsPerMinute;
-        
+
         if (ratio >= 3) return 'critical';
         if (ratio >= 2) return 'high';
         if (ratio >= 1.5) return 'medium';
@@ -155,7 +155,7 @@ class AntiRaidService {
                 },
                 indicators: []
             });
-            
+
             logger.warn(`[AntiRaid] 🚨 RAID DETECTED in guild ${guildId} - Severity: ${severity}`);
             return raidEvent;
         } catch (error) {
@@ -171,18 +171,18 @@ class AntiRaidService {
         try {
             const config = await this.getConfig(guild.id);
             const flags = [];
-            
+
             // Verificar idade da conta
             const accountAge = Math.floor((Date.now() - member.user.createdAt.getTime()) / (1000 * 60 * 60 * 24));
             if (accountAge < config.thresholds.minimumAccountAge) {
                 flags.push('new_account');
             }
-            
+
             // Verificar avatar padrão
             if (!member.user.avatar) {
                 flags.push('no_avatar');
             }
-            
+
             // Verificar username suspeito (números demais, caracteres especiais)
             const username = member.user.username;
             const hasLotsOfNumbers = (username.match(/\d/g) || []).length > username.length / 2;
@@ -190,15 +190,15 @@ class AntiRaidService {
             if (hasLotsOfNumbers || hasWeirdChars) {
                 flags.push('suspicious_name');
             }
-            
+
             // Se há raid ativo, adicionar flag
             if (raidEvent) {
                 flags.push('mass_join_pattern');
             }
-            
+
             // Decidir ação baseado nas flags e configuração
             let actionTaken = 'none';
-            
+
             if (flags.length >= 2) {
                 if (config.actions.autoBan && raidEvent?.severity === 'critical') {
                     actionTaken = 'ban';
@@ -214,7 +214,7 @@ class AntiRaidService {
                     }
                 }
             }
-            
+
             // Registrar membro suspeito
             const suspiciousMember = await SuspiciousMember.create({
                 guildId: guild.id,
@@ -228,7 +228,7 @@ class AntiRaidService {
                 actionTaken,
                 raidEventId: raidEvent?._id || null
             });
-            
+
             // Atualizar estatísticas do raid
             if (raidEvent) {
                 await RaidEvent.findByIdAndUpdate(raidEvent._id, {
@@ -240,7 +240,7 @@ class AntiRaidService {
                     $push: { memberIds: member.id }
                 });
             }
-            
+
             logger.info(`[AntiRaid] Analyzed ${member.user.tag}: ${flags.length} flags, action: ${actionTaken}`);
             return { suspiciousMember, actionTaken, flags };
         } catch (error) {
@@ -263,7 +263,7 @@ class AntiRaidService {
                 },
                 { new: true }
             );
-            
+
             this.activeRaids.delete(guildId);
             logger.info(`[AntiRaid] Raid ${raidEventId} resolved in guild ${guildId}`);
             return raidEvent;
@@ -281,7 +281,7 @@ class AntiRaidService {
             const embed = new EmbedBuilder()
                 .setTitle('🚨 RAID DETECTED!')
                 .setDescription(`A raid has been detected in **${guild.name}**`)
-                .setColor(raidEvent.severity === 'critical' ? 0xFF0000 : 
+                .setColor(raidEvent.severity === 'critical' ? 0xFF0000 :
                          raidEvent.severity === 'high' ? 0xFF6600 :
                          raidEvent.severity === 'medium' ? 0xFFAA00 : 0xFFDD00)
                 .addFields(
@@ -326,12 +326,12 @@ class AntiRaidService {
             const totalRaids = await RaidEvent.countDocuments({ guildId });
             const activeRaids = await RaidEvent.countDocuments({ guildId, status: 'active' });
             const resolvedRaids = await RaidEvent.countDocuments({ guildId, status: 'resolved' });
-            
+
             const suspiciousMembers = await SuspiciousMember.countDocuments({ guildId });
             const quarantined = await SuspiciousMember.countDocuments({ guildId, actionTaken: 'quarantine' });
             const kicked = await SuspiciousMember.countDocuments({ guildId, actionTaken: 'kick' });
             const banned = await SuspiciousMember.countDocuments({ guildId, actionTaken: 'ban' });
-            
+
             return {
                 raids: {
                     total: totalRaids,
@@ -357,7 +357,7 @@ class AntiRaidService {
     cleanupCache() {
         const now = Date.now();
         const fiveMinutesAgo = now - (5 * 60 * 1000);
-        
+
         for (const [guildId, joins] of this.recentJoins.entries()) {
             const recentJoins = joins.filter(t => t > fiveMinutesAgo);
             if (recentJoins.length === 0) {

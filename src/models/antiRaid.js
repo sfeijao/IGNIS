@@ -11,20 +11,20 @@ const antiRaidConfigSchema = new mongoose.Schema({
         unique: true,
         index: true
     },
-    
+
     // Status do sistema
     enabled: {
         type: Boolean,
         default: false
     },
-    
+
     // Sensibilidade (low, medium, high, paranoid)
     sensitivity: {
         type: String,
         enum: ['low', 'medium', 'high', 'paranoid'],
         default: 'medium'
     },
-    
+
     // Limites de detecção
     thresholds: {
         // Máximo de joins por minuto antes de alertar
@@ -48,7 +48,7 @@ const antiRaidConfigSchema = new mongoose.Schema({
             default: 70 // 70%
         }
     },
-    
+
     // Ações automáticas
     actions: {
         // Kickar automaticamente membros suspeitos
@@ -72,30 +72,30 @@ const antiRaidConfigSchema = new mongoose.Schema({
             default: false
         }
     },
-    
+
     // Role de quarentena
     quarantineRoleId: {
         type: String,
         default: null
     },
-    
+
     // Canal de logs de raid
     logChannelId: {
         type: String,
         default: null
     },
-    
+
     // Webhook para alertas críticos
     alertWebhook: {
         type: String,
         default: null
     },
-    
+
     // Whitelist de usuários (IDs que nunca serão afetados)
     whitelist: [{
         type: String
     }],
-    
+
     updatedAt: {
         type: Date,
         default: Date.now
@@ -114,7 +114,7 @@ const raidEventSchema = new mongoose.Schema({
         required: true,
         index: true
     },
-    
+
     // Status do raid
     status: {
         type: String,
@@ -122,27 +122,27 @@ const raidEventSchema = new mongoose.Schema({
         default: 'active',
         index: true
     },
-    
+
     // Severidade (low, medium, high, critical)
     severity: {
         type: String,
         enum: ['low', 'medium', 'high', 'critical'],
         default: 'medium'
     },
-    
+
     // Momento de início
     startedAt: {
         type: Date,
         default: Date.now,
         index: true
     },
-    
+
     // Momento de resolução
     resolvedAt: {
         type: Date,
         default: null
     },
-    
+
     // Estatísticas do raid
     stats: {
         totalJoins: {
@@ -166,7 +166,7 @@ const raidEventSchema = new mongoose.Schema({
             default: 0
         }
     },
-    
+
     // Indicadores de raid detectados
     indicators: [{
         type: {
@@ -176,12 +176,12 @@ const raidEventSchema = new mongoose.Schema({
         count: Number,
         timestamp: Date
     }],
-    
+
     // Membros envolvidos (IDs)
     memberIds: [{
         type: String
     }],
-    
+
     // Nota do staff
     notes: {
         type: String,
@@ -209,7 +209,7 @@ const suspiciousMemberSchema = new mongoose.Schema({
         required: true,
         index: true
     },
-    
+
     // Dados do membro
     username: String,
     discriminator: String,
@@ -218,10 +218,10 @@ const suspiciousMemberSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
-    
+
     // Idade da conta em dias ao entrar
     accountAgeInDays: Number,
-    
+
     // Flags de suspeita
     flags: [{
         type: String,
@@ -234,21 +234,21 @@ const suspiciousMemberSchema = new mongoose.Schema({
             'suspicious_name'
         ]
     }],
-    
+
     // Ação tomada
     actionTaken: {
         type: String,
         enum: ['none', 'quarantine', 'kick', 'ban'],
         default: 'none'
     },
-    
+
     // ID do evento de raid relacionado
     raidEventId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'RaidEvent',
         default: null
     },
-    
+
     // Se ainda está no servidor
     isInGuild: {
         type: Boolean,

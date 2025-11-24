@@ -483,17 +483,17 @@ class SimpleStorage {
         try {
             const config = await this.getGuildConfig(guildId);
             const panels = config.ticketPanels || [];
-            
+
             // Adicionar novo painel
             panels.push({
                 ...panelData,
                 id: `panel_${Date.now()}`,
                 guildId
             });
-            
+
             // Atualizar config
             await this.setGuildConfig(guildId, 'ticketPanels', panels);
-            
+
             return true;
         } catch (error) {
             console.error('[Storage] Erro ao salvar painel de tickets:', error);

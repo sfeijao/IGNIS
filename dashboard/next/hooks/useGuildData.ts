@@ -37,7 +37,7 @@ interface UseRolesOptions {
  */
 export function useChannels(guildId: string | null | undefined, options: UseChannelsOptions = {}) {
   const { types, includeCategories = false, autoFetch = true } = options
-  
+
   const [channels, setChannels] = useState<Channel[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -126,7 +126,7 @@ export function useChannels(guildId: string | null | undefined, options: UseChan
  */
 export function useRoles(guildId: string | null | undefined, options: UseRolesOptions = {}) {
   const { autoFetch = true } = options
-  
+
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

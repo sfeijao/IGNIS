@@ -48,7 +48,7 @@ export default function OptimizedChannelSelect({
           )}
         </div>
       )}
-      
+
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -71,7 +71,7 @@ export default function OptimizedChannelSelect({
             15: '💭' // forum
           }
           const emoji = emojiMap[channel.type] || '📝'
-          
+
           return (
             <option key={channel.id} value={channel.id}>
               {emoji} {channel.parentName ? `${channel.parentName} > ` : ''}{channel.name}
@@ -79,7 +79,7 @@ export default function OptimizedChannelSelect({
           )
         })}
       </select>
-      
+
       {error && !loading && (
         <p className="text-xs text-red-400">
           ⚠️ {error} - <button type="button" onClick={refetch} className="underline hover:text-red-300">Tentar novamente</button>

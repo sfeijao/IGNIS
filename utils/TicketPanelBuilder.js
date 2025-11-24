@@ -4,7 +4,7 @@ const logger = require('./logger');
 
 /**
  * 🎫 TICKET PANEL BUILDER
- * 
+ *
  * Cria painéis de tickets com dois modos:
  * 1. SIMPLES: 1 botão → Select menu de categorias
  * 2. AVANÇADO: Botões individuais por categoria
@@ -109,7 +109,7 @@ class TicketPanelBuilder {
 
         // Criar botões por categoria
         const buttons = this.createCategoryButtons(categories);
-        
+
         // Dividir em rows (máx 5 botões por row)
         const rows = [];
         for (let i = 0; i < buttons.length; i += 5) {
@@ -129,29 +129,29 @@ class TicketPanelBuilder {
     static createCategoryButtons(categories = []) {
         // Categorias padrão
         const defaultCategories = [
-            { 
-                id: 'support', 
-                label: 'Suporte', 
-                emoji: '🎫', 
-                style: ButtonStyle.Primary 
+            {
+                id: 'support',
+                label: 'Suporte',
+                emoji: '🎫',
+                style: ButtonStyle.Primary
             },
-            { 
-                id: 'technical', 
-                label: 'Suporte Técnico', 
-                emoji: '🔧', 
-                style: ButtonStyle.Primary 
+            {
+                id: 'technical',
+                label: 'Suporte Técnico',
+                emoji: '🔧',
+                style: ButtonStyle.Primary
             },
-            { 
-                id: 'incident', 
-                label: 'Reportar Problema', 
-                emoji: '⚠️', 
-                style: ButtonStyle.Danger 
+            {
+                id: 'incident',
+                label: 'Reportar Problema',
+                emoji: '⚠️',
+                style: ButtonStyle.Danger
             },
-            { 
-                id: 'general', 
-                label: 'Dúvidas Gerais', 
-                emoji: '💬', 
-                style: ButtonStyle.Secondary 
+            {
+                id: 'general',
+                label: 'Dúvidas Gerais',
+                emoji: '💬',
+                style: ButtonStyle.Secondary
             }
         ];
 
@@ -159,7 +159,7 @@ class TicketPanelBuilder {
 
         return categoriesToUse.map(cat => {
             const customId = TICKET_IDS[`CREATE_${cat.id.toUpperCase()}`] || `ticket:create:${cat.id}`;
-            
+
             const button = new ButtonBuilder()
                 .setCustomId(customId)
                 .setLabel(cat.label)

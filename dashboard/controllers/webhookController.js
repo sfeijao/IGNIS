@@ -6,7 +6,7 @@ class WebhookController {
         try {
             const { guildId } = req.params;
             const config = getConfiguracao(guildId);
-            
+
             // Retornar configuração formatada
             const formattedConfig = {
                 guildId,
@@ -20,7 +20,7 @@ class WebhookController {
                 })),
                 availableEventTypes: Object.values(EventTypes)
             };
-            
+
             res.json(formattedConfig);
         } catch (error) {
             console.error('Error getting webhooks:', error);
@@ -39,7 +39,7 @@ class WebhookController {
 
         // Validar event type
         if (!Object.values(EventTypes).includes(eventType)) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Invalid event type',
                 availableTypes: Object.values(EventTypes)
             });
@@ -59,7 +59,7 @@ class WebhookController {
             // Enviar webhook de confirmação
             await testarWebhook(guildId, eventType, req.user?.tag || 'Dashboard User');
 
-            res.json({ 
+            res.json({
                 success: true,
                 message: 'Webhook configured successfully',
                 eventType,
@@ -83,12 +83,12 @@ class WebhookController {
 
         try {
             const success = await toggleWebhook(guildId, eventType, enabled);
-            
+
             if (!success) {
                 return res.status(404).json({ error: 'Webhook not found for this event type' });
             }
 
-            res.json({ 
+            res.json({
                 success: true,
                 message: `Webhook ${enabled ? 'enabled' : 'disabled'}`,
                 eventType,
@@ -106,12 +106,12 @@ class WebhookController {
 
         try {
             const removed = await removerWebhook(guildId, eventType);
-            
+
             if (!removed) {
                 return res.status(404).json({ error: 'Webhook not found' });
             }
-            
-            res.json({ 
+
+            res.json({
                 success: true,
                 message: 'Webhook removed successfully',
                 eventType
@@ -132,7 +132,7 @@ class WebhookController {
         }
 
         if (!Object.values(EventTypes).includes(eventType)) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Invalid event type',
                 availableTypes: Object.values(EventTypes)
             });
@@ -140,18 +140,18 @@ class WebhookController {
 
         try {
             const success = await testarWebhook(
-                guildId, 
-                eventType, 
+                guildId,
+                eventType,
                 req.user?.tag || 'Dashboard User'
             );
 
             if (!success) {
-                return res.status(404).json({ 
-                    error: 'Webhook not found or disabled for this event type' 
+                return res.status(404).json({
+                    error: 'Webhook not found or disabled for this event type'
                 });
             }
 
-            res.json({ 
+            res.json({
                 success: true,
                 message: 'Test message sent successfully',
                 eventType
@@ -167,7 +167,7 @@ class WebhookController {
         try {
             const { webhookSystem } = require('../../utils/webhooks');
             const stats = webhookSystem.getStats();
-            
+
             res.json({
                 success: true,
                 stats

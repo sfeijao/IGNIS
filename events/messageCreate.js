@@ -6,23 +6,23 @@ module.exports = {
     async execute(message) {
         // Ignorar bots
         if (message.author.bot) return;
-        
+
         // Apenas processar mensagens de servidores
         if (!message.guild) return;
 
         try {
             // Auto-responder (verificar triggers primeiro)
             await autoResponseService.checkTriggers(message);
-            
+
             // Verificar se é um canal de ticket (para métricas leves)
             const tickets = (message.client.storage && await message.client.storage.getTickets(message.guild.id)) || [];
             const ticket = tickets.find(t => t.channel_id === message.channel.id);
-            
+
             // Analytics - registrar mensagem criada
             if (message.client.database) {
                 await message.client.database.recordAnalytics(
-                    message.guild.id, 
-                    'message_created', 
+                    message.guild.id,
+                    'message_created',
                     1,
                     {
                         channelId: message.channel.id,
@@ -32,7 +32,7 @@ module.exports = {
                     }
                 );
             }
-            
+
             // Send real-time update to dashboard
             if (message.client.socketManager) {
                 message.client.socketManager.onDiscordEvent('messageCreate', message.guild.id, {

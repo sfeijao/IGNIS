@@ -16,10 +16,10 @@ class InviteTrackerService {
     async syncGuildInvites(guild) {
         try {
             const guildId = guild.id;
-            
+
             // Buscar convites atuais do Discord
             const discordInvites = await guild.invites.fetch().catch(() => new Map());
-            
+
             // Atualizar cache
             const inviteMap = new Map();
             for (const [code, invite] of discordInvites) {

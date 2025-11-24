@@ -59,7 +59,7 @@ export default function OptimizedRoleSelect({
           )}
         </div>
       )}
-      
+
       <select
         value={value}
         onChange={handleChange}
@@ -79,10 +79,10 @@ export default function OptimizedRoleSelect({
           const isManaged = role.managed ? ' 🔒' : ''
           const isAboveBot = role.position >= botMaxPosition ? ' ⚠️' : ''
           const colorDot = role.color !== '#000000' ? `●` : '○'
-          
+
           return (
-            <option 
-              key={role.id} 
+            <option
+              key={role.id}
               value={role.id}
               style={{ color: role.color !== '#000000' ? role.color : undefined }}
               disabled={!role.manageable && !multiple}
@@ -92,13 +92,13 @@ export default function OptimizedRoleSelect({
           )
         })}
       </select>
-      
+
       {error && !loading && (
         <p className="text-xs text-red-400">
           ⚠️ {error} - <button type="button" onClick={refetch} className="underline hover:text-red-300">Tentar novamente</button>
         </p>
       )}
-      
+
       {multiple && (
         <p className="text-xs text-gray-500">
           💡 Segure Ctrl/Cmd para selecionar múltiplos cargos

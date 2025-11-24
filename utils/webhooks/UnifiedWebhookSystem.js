@@ -5,7 +5,7 @@ const path = require('path');
 
 /**
  * 🔥 UNIFIED WEBHOOK SYSTEM
- * 
+ *
  * Sistema modular e robusto de webhooks com:
  * - Separação por tipo de evento (tickets, giveaways, moderation, etc)
  * - Fila de processamento para evitar rate limiting
@@ -25,7 +25,7 @@ class UnifiedWebhookSystem {
         this.retryDelay = 2000; // 2s base delay
         this.maxRetries = 3;
         this.rateLimit = 1000; // 1s entre mensagens
-        
+
         // Tipos de eventos suportados
         this.eventTypes = {
             TICKET_CREATE: 'ticket_create',
@@ -224,13 +224,13 @@ class UnifiedWebhookSystem {
                 } else {
                     // Enviar nova mensagem (POST)
                     const message = await client.send(payload);
-                    
+
                     // Salvar messageId para futuros updates
                     if (trackingId && webhookConfig.updateMode === 'update') {
                         webhookConfig.messageTracking[trackingId] = message.id;
                         await this.save();
                     }
-                    
+
                     logger.info(`[UnifiedWebhook] Mensagem enviada: ${message.id} (${eventType})`);
                 }
 
@@ -244,7 +244,7 @@ class UnifiedWebhookSystem {
                 if (retries < this.maxRetries) {
                     const delay = this.retryDelay * Math.pow(2, retries);
                     logger.warn(`[UnifiedWebhook] Tentando novamente em ${delay}ms (tentativa ${retries + 1}/${this.maxRetries})`);
-                    
+
                     await this.sleep(delay);
                     item.retries = retries + 1;
                     this.messageQueue.unshift(item); // Re-adicionar no início da fila
