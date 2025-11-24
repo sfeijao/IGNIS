@@ -8112,6 +8112,372 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
         }
     });
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // WARNS API ROUTES
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const warnService = require('../src/services/warnService');
+
+    // GET: Lista de warns de um servidor
+    app.get('/api/guild/:guildId/warns', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const { userId } = req.query;
+            const warns = userId 
+                ? await warnService.getUserWarns(req.params.guildId, userId)
+                : await warnService.getActiveWarns(req.params.guildId);
+            
+            res.json({ success: true, warns });
+        } catch (e) {
+            logger.error('Error fetching warns:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch warns' });
+        }
+    });
+
+    // POST: Adicionar warn
+    app.post('/api/guild/:guildId/warns', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const { userId, reason, level } = req.body;
+            const warn = await warnService.addWarn(req.params.guildId, userId, req.user.id, reason, level);
+            
+            res.json({ success: true, warn });
+        } catch (e) {
+            logger.error('Error adding warn:', e);
+            res.status(500).json({ success: false, error: 'Failed to add warn' });
+        }
+    });
+
+    // DELETE: Revogar warn
+    app.delete('/api/guild/:guildId/warns/:warnId', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const { reason } = req.body;
+            const warn = await warnService.revokeWarn(req.params.warnId, req.user.id, reason);
+            
+            res.json({ success: true, warn });
+        } catch (e) {
+            logger.error('Error revoking warn:', e);
+            res.status(500).json({ success: false, error: 'Failed to revoke warn' });
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SUGGESTIONS API ROUTES
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const suggestionService = require('../src/services/suggestionService');
+
+    // GET: Sugestões do servidor
+    app.get('/api/guild/:guildId/suggestions', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const { status } = req.query;
+            const suggestions = await suggestionService.getGuildSuggestions(req.params.guildId, status);
+            
+            res.json({ success: true, suggestions });
+        } catch (e) {
+            logger.error('Error fetching suggestions:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch suggestions' });
+        }
+    });
+
+    // POST: Atualizar status de sugestão
+    app.post('/api/guild/:guildId/suggestions/:messageId/status', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const { status, reviewNote } = req.body;
+            const suggestion = await suggestionService.updateStatus(client, req.params.messageId, status, req.user.id, reviewNote);
+            
+            res.json({ success: true, suggestion });
+        } catch (e) {
+            logger.error('Error updating suggestion:', e);
+            res.status(500).json({ success: false, error: 'Failed to update suggestion' });
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // AUTO-RESPONDER API ROUTES
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const autoResponseService = require('../src/services/autoResponseService');
+
+    // GET: Auto-responses do servidor
+    app.get('/api/guild/:guildId/autoresponses', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const responses = await autoResponseService.getGuildResponses(req.params.guildId);
+            res.json({ success: true, responses });
+        } catch (e) {
+            logger.error('Error fetching auto-responses:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch auto-responses' });
+        }
+    });
+
+    // POST: Criar auto-response
+    app.post('/api/guild/:guildId/autoresponses', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const response = await autoResponseService.createResponse(req.params.guildId, req.body.name, req.body.triggers, req.body.response, {
+                ...req.body,
+                createdBy: req.user.id
+            });
+            
+            res.json({ success: true, response });
+        } catch (e) {
+            logger.error('Error creating auto-response:', e);
+            res.status(500).json({ success: false, error: 'Failed to create auto-response' });
+        }
+    });
+
+    // PUT: Atualizar auto-response
+    app.put('/api/guild/:guildId/autoresponses/:id', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const response = await autoResponseService.updateResponse(req.params.id, req.body);
+            res.json({ success: true, response });
+        } catch (e) {
+            logger.error('Error updating auto-response:', e);
+            res.status(500).json({ success: false, error: 'Failed to update auto-response' });
+        }
+    });
+
+    // DELETE: Deletar auto-response
+    app.delete('/api/guild/:guildId/autoresponses/:id', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            await autoResponseService.deleteResponse(req.params.id);
+            res.json({ success: true });
+        } catch (e) {
+            logger.error('Error deleting auto-response:', e);
+            res.status(500).json({ success: false, error: 'Failed to delete auto-response' });
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // EVENTS API ROUTES
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const eventService = require('../src/services/eventService');
+
+    // GET: Eventos do servidor
+    app.get('/api/guild/:guildId/events', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const events = await eventService.getUpcomingEvents(req.params.guildId);
+            res.json({ success: true, events });
+        } catch (e) {
+            logger.error('Error fetching events:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch events' });
+        }
+    });
+
+    // POST: Criar evento
+    app.post('/api/guild/:guildId/events', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const event = await eventService.createEvent(client, req.params.guildId, req.user.id, req.body);
+            res.json({ success: true, event });
+        } catch (e) {
+            logger.error('Error creating event:', e);
+            res.status(500).json({ success: false, error: 'Failed to create event' });
+        }
+    });
+
+    // DELETE: Deletar evento
+    app.delete('/api/guild/:guildId/events/:eventId', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            await eventService.deleteEvent(req.params.eventId);
+            res.json({ success: true });
+        } catch (e) {
+            logger.error('Error deleting event:', e);
+            res.status(500).json({ success: false, error: 'Failed to delete event' });
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // STAFF MONITORING API ROUTES
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const staffMonitoringService = require('../src/services/staffMonitoringService');
+
+    // GET: Estatísticas de staff
+    app.get('/api/guild/:guildId/staff/stats/:staffId', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const { days } = req.query;
+            const stats = await staffMonitoringService.getStaffStats(req.params.guildId, req.params.staffId, parseInt(days) || 30);
+            
+            res.json({ success: true, stats });
+        } catch (e) {
+            logger.error('Error fetching staff stats:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch staff stats' });
+        }
+    });
+
+    // GET: Leaderboard de staff
+    app.get('/api/guild/:guildId/staff/leaderboard', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const { days } = req.query;
+            const leaderboard = await staffMonitoringService.getLeaderboard(req.params.guildId, parseInt(days) || 30);
+            
+            res.json({ success: true, leaderboard });
+        } catch (e) {
+            logger.error('Error fetching leaderboard:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch leaderboard' });
+        }
+    });
+
+    // GET: Ações recentes
+    app.get('/api/guild/:guildId/staff/recent', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const { limit } = req.query;
+            const actions = await staffMonitoringService.getRecentActions(req.params.guildId, parseInt(limit) || 50);
+            
+            res.json({ success: true, actions });
+        } catch (e) {
+            logger.error('Error fetching recent actions:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch recent actions' });
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SCHEDULED ANNOUNCEMENTS API ROUTES
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const scheduledAnnouncementService = require('../src/services/scheduledAnnouncementService');
+
+    // GET: Anúncios agendados
+    app.get('/api/guild/:guildId/announcements', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const { status } = req.query;
+            const announcements = await scheduledAnnouncementService.getGuildAnnouncements(req.params.guildId, status);
+            
+            res.json({ success: true, announcements });
+        } catch (e) {
+            logger.error('Error fetching announcements:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch announcements' });
+        }
+    });
+
+    // POST: Criar anúncio
+    app.post('/api/guild/:guildId/announcements', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const announcement = await scheduledAnnouncementService.createAnnouncement(req.params.guildId, req.user.id, req.body);
+            res.json({ success: true, announcement });
+        } catch (e) {
+            logger.error('Error creating announcement:', e);
+            res.status(500).json({ success: false, error: 'Failed to create announcement' });
+        }
+    });
+
+    // DELETE: Cancelar/deletar anúncio
+    app.delete('/api/guild/:guildId/announcements/:id', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            await scheduledAnnouncementService.deleteAnnouncement(req.params.id);
+            res.json({ success: true });
+        } catch (e) {
+            logger.error('Error deleting announcement:', e);
+            res.status(500).json({ success: false, error: 'Failed to delete announcement' });
+        }
+    });
+
     server.listen(PORT, () => {
         const callbackURL = getCallbackURL();
         logger.info(`🌐 Dashboard servidor iniciado em http://localhost:${PORT}`);
