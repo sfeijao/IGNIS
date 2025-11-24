@@ -2,6 +2,7 @@ const { Events, EmbedBuilder } = require('discord.js');
 const config = require('../utils/config');
 const { EMBED_COLORS, EMOJIS } = require('../constants/ui');
 const { WelcomeConfigModel } = require('../utils/db/models');
+const inviteTrackerService = require('../src/services/inviteTrackerService');
 const logger = require('../utils/logger');
 
 /**
@@ -34,6 +35,17 @@ module.exports = {
     name: Events.GuildMemberAdd,
     async execute(member) {
         const guild = member.guild;
+
+        // 🎯 INVITE TRACKER: Detectar convite usado
+        try {
+            const usedInvite = await inviteTrackerService.detectUsedInvite(guild, member);
+            if (usedInvite) {
+                await inviteTrackerService.trackMemberJoin(guild, member, usedInvite.code);
+                logger.info(`[MemberAdd] ${member.user.tag} joined via invite ${usedInvite.code}`);
+            }
+        } catch (error) {
+            logger.error('[MemberAdd] Error tracking invite:', error);
+        }
 
         // 🆕 SISTEMA DE BOAS-VINDAS CUSTOMIZÁVEL
         try {

@@ -2,6 +2,7 @@ const { Events, EmbedBuilder } = require('discord.js');
 const config = require('../utils/config');
 const { EMBED_COLORS, EMOJIS } = require('../constants/ui');
 const { WelcomeConfigModel } = require('../utils/db/models');
+const inviteTrackerService = require('../src/services/inviteTrackerService');
 const logger = require('../utils/logger');
 
 /**
@@ -38,6 +39,14 @@ module.exports = {
     name: Events.GuildMemberRemove,
     async execute(member) {
         const guild = member.guild;
+
+        // 🎯 INVITE TRACKER: Rastrear saída e detectar fake invites
+        try {
+            await inviteTrackerService.trackMemberLeave(guild, member);
+            logger.info(`[MemberRemove] ${member.user.tag} left the server`);
+        } catch (error) {
+            logger.error('[MemberRemove] Error tracking member leave:', error);
+        }
 
         // 🆕 SISTEMA DE GOODBYE CUSTOMIZÁVEL
         try {

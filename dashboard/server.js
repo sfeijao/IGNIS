@@ -7939,6 +7939,82 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
         };
     } catch (e) { logger.warn('socket.io init failed:', e?.message||e); }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🎯 INVITE TRACKER API ROUTES
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const inviteTrackerService = require('../src/services/inviteTrackerService');
+
+    // GET: Estatísticas gerais de convites do servidor
+    app.get('/api/guild/:guildId/invites/stats', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const stats = await inviteTrackerService.getGuildStats(req.params.guildId);
+            res.json({ success: true, stats });
+        } catch (e) {
+            logger.error('Error fetching invite stats:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch invite statistics' });
+        }
+    });
+
+    // GET: Top inviters do servidor
+    app.get('/api/guild/:guildId/invites/top', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const limit = parseInt(req.query.limit, 10) || 10;
+            const topInviters = await inviteTrackerService.getTopInviters(req.params.guildId, limit);
+            res.json({ success: true, inviters: topInviters });
+        } catch (e) {
+            logger.error('Error fetching top inviters:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch top inviters' });
+        }
+    });
+
+    // GET: Convites de um usuário específico
+    app.get('/api/guild/:guildId/invites/user/:userId', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const data = await inviteTrackerService.getUserInvites(req.params.guildId, req.params.userId);
+            res.json({ success: true, ...data });
+        } catch (e) {
+            logger.error('Error fetching user invites:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch user invites' });
+        }
+    });
+
+    // POST: Sincronizar convites manualmente
+    app.post('/api/guild/:guildId/invites/sync', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const guild = check.guild;
+            await inviteTrackerService.syncGuildInvites(guild);
+            res.json({ success: true, message: 'Invites synced successfully' });
+        } catch (e) {
+            logger.error('Error syncing invites:', e);
+            res.status(500).json({ success: false, error: 'Failed to sync invites' });
+        }
+    });
+
     server.listen(PORT, () => {
         const callbackURL = getCallbackURL();
         logger.info(`🌐 Dashboard servidor iniciado em http://localhost:${PORT}`);
