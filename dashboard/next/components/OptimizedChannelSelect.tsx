@@ -61,7 +61,7 @@ export default function OptimizedChannelSelect({
         {!loading && !error && channels.length === 0 && (
           <option value="" disabled>Nenhum canal disponível</option>
         )}
-        {channels.map((channel: { id: string; name: string; type: number; parentName?: string }) => {
+        {channels.map((channel: { id: string; name: string; type: number; parentName?: string | null }) => {
           const emojiMap: Record<number, string> = {
             0: '💬', // text
             2: '🔊', // voice
