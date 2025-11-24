@@ -19,16 +19,38 @@ const config = require('../utils/config');
 const logger = require('../utils/logger');
 const { PermissionFlagsBits, ActivityType } = require('discord.js');
 
-// ==================== Services ====================
-const inviteTrackerService = require('../src/services/inviteTrackerService');
-const antiRaidService = require('../src/services/antiRaidService');
-const warnService = require('../src/services/warnService');
-const suggestionService = require('../src/services/suggestionService');
-const autoResponseService = require('../src/services/autoResponseService');
-const eventService = require('../src/services/eventService');
-const staffMonitoringService = require('../src/services/staffMonitoringService');
-const scheduledAnnouncementService = require('../src/services/scheduledAnnouncementService');
-const ticketEnhancedService = require('../src/services/ticketEnhancedService');
+// ==================== Services (Lazy Loading) ====================
+let inviteTrackerService, antiRaidService, warnService, suggestionService;
+let autoResponseService, eventService, staffMonitoringService;
+let scheduledAnnouncementService, ticketEnhancedService;
+
+try {
+    inviteTrackerService = require('../src/services/inviteTrackerService');
+} catch (e) { logger.warn('inviteTrackerService not loaded:', e.message); }
+try {
+    antiRaidService = require('../src/services/antiRaidService');
+} catch (e) { logger.warn('antiRaidService not loaded:', e.message); }
+try {
+    warnService = require('../src/services/warnService');
+} catch (e) { logger.warn('warnService not loaded:', e.message); }
+try {
+    suggestionService = require('../src/services/suggestionService');
+} catch (e) { logger.warn('suggestionService not loaded:', e.message); }
+try {
+    autoResponseService = require('../src/services/autoResponseService');
+} catch (e) { logger.warn('autoResponseService not loaded:', e.message); }
+try {
+    eventService = require('../src/services/eventService');
+} catch (e) { logger.warn('eventService not loaded:', e.message); }
+try {
+    staffMonitoringService = require('../src/services/staffMonitoringService');
+} catch (e) { logger.warn('staffMonitoringService not loaded:', e.message); }
+try {
+    scheduledAnnouncementService = require('../src/services/scheduledAnnouncementService');
+} catch (e) { logger.warn('scheduledAnnouncementService not loaded:', e.message); }
+try {
+    ticketEnhancedService = require('../src/services/ticketEnhancedService');
+} catch (e) { logger.warn('ticketEnhancedService not loaded:', e.message); }
 
 const app = express();
 let io = null;
@@ -8038,8 +8060,6 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     // 📊 INVITE TRACKER API ROUTES
     // ============================================================================
 
-    const inviteTrackerService = require('../src/services/inviteTrackerService');
-
     // GET: Estatísticas gerais de convites do servidor
     app.get('/api/guild/:guildId/invites/stats', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -8113,8 +8133,6 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     // ============================================================================
     // 🛡️ ANTI-RAID API ROUTES
     // ============================================================================
-
-    const antiRaidService = require('../src/services/antiRaidService');
 
     // GET: Configuração de anti-raid
     app.get('/api/guild/:guildId/antiraid/config', async (req, res) => {
