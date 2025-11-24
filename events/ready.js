@@ -29,6 +29,23 @@ module.exports = {
     logger.info(`👥 Utilizadores: ${client.users.cache.size}`);
     logger.info('==========================================');
 
+        // 🎯 INVITE TRACKER: Sincronizar convites de todos os servidores
+        try {
+            const inviteTrackerService = require('../src/services/inviteTrackerService');
+            let syncedCount = 0;
+            for (const guild of client.guilds.cache.values()) {
+                try {
+                    await inviteTrackerService.syncGuildInvites(guild);
+                    syncedCount++;
+                } catch (e) {
+                    logger.warn(`[InviteTracker] Failed to sync invites for ${guild.name}:`, e.message);
+                }
+            }
+            logger.info(`🎯 [InviteTracker] Synced invites for ${syncedCount}/${client.guilds.cache.size} guilds`);
+        } catch (error) {
+            logger.error('[InviteTracker] Failed to sync invites on startup:', error);
+        }
+
         // Definir status inicial
         client.user.setActivity('IGNIS COMMUNITY', { type: ActivityType.Watching });
         

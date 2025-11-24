@@ -19,6 +19,7 @@ const nav = [
     children: [
       { href: '/members', key: 'nav.members', icon: '👤' },
       { href: '/roles', key: 'nav.roles', icon: '🎭' },
+      { href: '/invites', key: 'nav.invites', icon: '🎯' },
       { href: '/guild/{gid}/welcome', key: 'nav.welcome', icon: '👋', requiresGuild: true },
     ]
   },
