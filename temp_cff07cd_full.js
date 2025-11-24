@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const http = require('http');
 const { spawn } = require('child_process');
 const session = require('express-session');
@@ -6,7 +6,7 @@ let MongoStore = null;
 try {
     MongoStore = require('connect-mongo');
 } catch (e) {
-    console.warn('[Dashboard] connect-mongo não disponível:', e.message);
+    console.warn('[Dashboard] connect-mongo n├úo dispon├¡vel:', e.message);
 }
 const passport = require('passport');
 const DiscordStrategy = require('passport-discord').Strategy;
@@ -18,39 +18,6 @@ require('dotenv').config();
 const config = require('../utils/config');
 const logger = require('../utils/logger');
 const { PermissionFlagsBits, ActivityType } = require('discord.js');
-
-// ==================== Services (Lazy Loading) ====================
-let inviteTrackerService, antiRaidService, warnService, suggestionService;
-let autoResponseService, eventService, staffMonitoringService;
-let scheduledAnnouncementService, ticketEnhancedService;
-
-try {
-    inviteTrackerService = require('../src/services/inviteTrackerService');
-} catch (e) { logger.warn('inviteTrackerService not loaded:', e.message); }
-try {
-    antiRaidService = require('../src/services/antiRaidService');
-} catch (e) { logger.warn('antiRaidService not loaded:', e.message); }
-try {
-    warnService = require('../src/services/warnService');
-} catch (e) { logger.warn('warnService not loaded:', e.message); }
-try {
-    suggestionService = require('../src/services/suggestionService');
-} catch (e) { logger.warn('suggestionService not loaded:', e.message); }
-try {
-    autoResponseService = require('../src/services/autoResponseService');
-} catch (e) { logger.warn('autoResponseService not loaded:', e.message); }
-try {
-    eventService = require('../src/services/eventService');
-} catch (e) { logger.warn('eventService not loaded:', e.message); }
-try {
-    staffMonitoringService = require('../src/services/staffMonitoringService');
-} catch (e) { logger.warn('staffMonitoringService not loaded:', e.message); }
-try {
-    scheduledAnnouncementService = require('../src/services/scheduledAnnouncementService');
-} catch (e) { logger.warn('scheduledAnnouncementService not loaded:', e.message); }
-try {
-    ticketEnhancedService = require('../src/services/ticketEnhancedService');
-} catch (e) { logger.warn('ticketEnhancedService not loaded:', e.message); }
 
 const app = express();
 let io = null;
@@ -382,7 +349,7 @@ const useMongoSession = ((process.env.NODE_ENV || 'production') === 'production'
 // SECURITY: Require SESSION_SECRET in production
 const SESSION_SECRET = process.env.SESSION_SECRET;
 if ((process.env.NODE_ENV || 'production') === 'production' && !SESSION_SECRET) {
-    logger.error('❌ FATAL: SESSION_SECRET environment variable is required in production!');
+    logger.error('ÔØî FATAL: SESSION_SECRET environment variable is required in production!');
     logger.error('Set SESSION_SECRET to a random string (min 32 chars) in your environment variables.');
     process.exit(1);
 }
@@ -410,7 +377,7 @@ if (useMongoSession) {
             ttl: 14 * 24 * 60 * 60, // 14 days
             touchAfter: 24 * 3600 // reduce write frequency
         });
-        logger.info(`🧠 Using MongoDB session store (db=${dbName})`);
+        logger.info(`­ƒºá Using MongoDB session store (db=${dbName})`);
     } catch (e) {
         logger.warn('Session store fallback to MemoryStore (connect-mongo setup failed):', e?.message || String(e));
     }
@@ -465,7 +432,7 @@ try {
 try {
     const ticketCategoryRoutes = require('./routes/ticketCategoryRoutes');
     app.use('/api', ticketCategoryRoutes);
-    logger.info('✅ Ticket Category routes mounted successfully');
+    logger.info('Ô£à Ticket Category routes mounted successfully');
 } catch (e) {
     try { console.warn('Ticket Category routes not mounted:', e.message); } catch {}
 }
@@ -473,7 +440,7 @@ try {
 try {
     const welcomeRoutes = require('./routes/welcomeRoutes');
     app.use('/api', welcomeRoutes);
-    logger.info('✅ Welcome/Goodbye routes mounted successfully');
+    logger.info('Ô£à Welcome/Goodbye routes mounted successfully');
 } catch (e) {
     try { console.warn('Welcome routes not mounted:', e.message); } catch {}
 }
@@ -481,7 +448,7 @@ try {
 try {
     const serverStatsRoutes = require('./routes/serverStatsRoutes');
     app.use('/api', serverStatsRoutes);
-    logger.info('✅ Server Stats routes mounted successfully');
+    logger.info('Ô£à Server Stats routes mounted successfully');
 } catch (e) {
     try { console.warn('Server Stats routes not mounted:', e.message); } catch {}
 }
@@ -637,7 +604,7 @@ app.get(['/dashboard/ticket.html','/dashboard/ticket'], requireAuth, (req, res) 
 // Auth routes
 app.get('/auth/discord', passport.authenticate('discord'));
 
-// Debug endpoint para verificar configuração OAuth
+// Debug endpoint para verificar configura├º├úo OAuth
 app.get('/auth/debug', (req, res) => {
     const baseUrl = (config.getBaseUrl && config.getBaseUrl()) || (config.WEBSITE?.BASE_URL) || `http://localhost:${PORT}`;
     res.json({
@@ -656,7 +623,7 @@ app.get('/auth/debug', (req, res) => {
     });
 });
 
-// Debug endpoint para verificar sessão
+// Debug endpoint para verificar sess├úo
 app.get('/debug/session', (req, res) => {
     res.json({
         isAuthenticated: req.isAuthenticated(),
@@ -1066,11 +1033,11 @@ app.post('/api/guild/:guildId/stats/auto-create', async (req, res) => {
         let config = await storage.getGuildConfig(guildId, 'serverStats') || {
             enabled: false,
             updateInterval: 5,
-            totalMembers: { enabled: true, channelId: '', format: '👥 Membros: {count}' },
-            onlineMembers: { enabled: false, channelId: '', format: '🟢 Online: {count}' },
-            botCount: { enabled: false, channelId: '', format: '🤖 Bots: {count}' },
-            channelCount: { enabled: false, channelId: '', format: '📝 Canais: {count}' },
-            roleCount: { enabled: false, channelId: '', format: '🎭 Cargos: {count}' }
+            totalMembers: { enabled: true, channelId: '', format: '­ƒæÑ Membros: {count}' },
+            onlineMembers: { enabled: false, channelId: '', format: '­ƒƒó Online: {count}' },
+            botCount: { enabled: false, channelId: '', format: '­ƒñû Bots: {count}' },
+            channelCount: { enabled: false, channelId: '', format: '­ƒôØ Canais: {count}' },
+            roleCount: { enabled: false, channelId: '', format: '­ƒÄ¡ Cargos: {count}' }
         };
 
         const counters = ['totalMembers', 'onlineMembers', 'botCount', 'channelCount', 'roleCount'];
@@ -1194,7 +1161,7 @@ app.post('/api/guild/:guildId/roles', async (req,res)=>{
 });
 
 // Delete role
-app.delete('/api/guild/:guildId/roles/:roleId', ensureGuildAdmin, async (req,res)=>{
+app.delete('/api/guild/:guildId/roles/:roleId', async (req,res)=>{
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
         const guildId = req.params.guildId; const roleId = req.params.roleId;
@@ -1211,7 +1178,7 @@ app.delete('/api/guild/:guildId/roles/:roleId', ensureGuildAdmin, async (req,res
 });
 
 // Reorder / move role (set new position or relative move)
-app.post('/api/guild/:guildId/roles/:roleId/move', ensureGuildAdmin, async (req,res)=>{
+app.post('/api/guild/:guildId/roles/:roleId/move', async (req,res)=>{
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
         const guildId = req.params.guildId; const roleId = req.params.roleId;
@@ -1244,13 +1211,13 @@ app.post('/api/guild/:guildId/roles/:roleId/move', ensureGuildAdmin, async (req,
 });
 
 // Get role details (including permissions)
-app.get('/api/guild/:guildId/roles/:roleId', ensureGuildAdmin, async (req,res)=>{
+app.get('/api/guild/:guildId/roles/:roleId', async (req,res)=>{
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
         const guildId = req.params.guildId;
         const roleId = req.params.roleId;
 
-        // Validação básica dos parâmetros
+        // Valida├º├úo b├ísica dos par├ómetros
         if (!guildId || !roleId) {
             return res.status(400).json({ success:false, error:'Missing guildId or roleId' });
         }
@@ -1290,7 +1257,7 @@ app.get('/api/guild/:guildId/roles/:roleId', ensureGuildAdmin, async (req,res)=>
 });
 
 // Update role properties (name/color/hoist/mentionable/permissions)
-app.patch('/api/guild/:guildId/roles/:roleId', ensureGuildAdmin, async (req,res)=>{
+app.patch('/api/guild/:guildId/roles/:roleId', async (req,res)=>{
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
         const guildId = req.params.guildId; const roleId = req.params.roleId;
@@ -1352,7 +1319,7 @@ app.get('/api/guild/:guildId/mod-presets', (req,res)=>{
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
         const guildId = req.params.guildId;
-        // Basic membership check (bot in guild) – deeper permission could be added later
+        // Basic membership check (bot in guild) ÔÇô deeper permission could be added later
         const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
         if(!client.guilds.cache.get(guildId)) return res.status(404).json({ success:false, error:'Guild not found' });
         return res.json({ success:true, presets: loadModPresetsSafe() });
@@ -1599,13 +1566,13 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
             return res.status(500).json({ success: false, error: 'Bot not available' });
         }
 
-        // Verificar se o usuário tem permissões no servidor
+        // Verificar se o usu├írio tem permiss├Áes no servidor
         const guild = client.guilds.cache.get(guildId);
         if (!guild) {
             return res.status(404).json({ success: false, error: 'Guild not found' });
         }
 
-        // Usar storage para obter tickets e aplicar filtros/paginação
+        // Usar storage para obter tickets e aplicar filtros/pagina├º├úo
         const storage = require('../utils/storage');
         const allTickets = await storage.getTickets(guildId);
 
@@ -1714,7 +1681,7 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
                     ...ticket,
                     channelExists: !!channel,
                     channelName: channel?.name || 'Canal deletado',
-                    ownerTag: owner ? `${owner.username}#${owner.discriminator}` : 'Usuário desconhecido',
+                    ownerTag: owner ? `${owner.username}#${owner.discriminator}` : 'Usu├írio desconhecido',
                     ownerAvatar: owner?.displayAvatarURL({ size: 32 }) || null,
                     claimedByTag: claimedBy ? `${claimedBy.username}#${claimedBy.discriminator}` : null,
                     claimedByAvatar: claimedBy?.displayAvatarURL({ size: 32 }) || null,
@@ -1831,7 +1798,7 @@ app.get('/api/guild/:guildId/tickets/export', async (req, res) => {
     }
 });
 
-// Painéis de Tickets - Listar e gerir
+// Pain├®is de Tickets - Listar e gerir
 app.get('/api/guild/:guildId/panels', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -1849,7 +1816,7 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
 
-        // Buscar painéis do storage ativo
+        // Buscar pain├®is do storage ativo
         let panels = [];
         try {
             if (preferSqlite) {
@@ -1884,11 +1851,11 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
             return { ...p, channelName, channelExists, messageExists };
         }));
 
-        // Deteção leve de painéis criados dentro do Discord (sem registo no Mongo)
-        // Estratégia: escanear todos os canais de texto, com limites de canais e mensagens por canal
+        // Dete├º├úo leve de pain├®is criados dentro do Discord (sem registo no Mongo)
+        // Estrat├®gia: escanear todos os canais de texto, com limites de canais e mensagens por canal
         const detected = [];
         const textChannels = guild.channels.cache.filter(c => c.type === 0);
-        const channelCap = 40; // número máximo de canais a escanear nesta chamada
+        const channelCap = 40; // n├║mero m├íximo de canais a escanear nesta chamada
         const msgsPerChannel = 20; // mensagens por canal (raso, mais profundo via "scan now")
         let scannedChannels = 0;
         for (const channel of textChannels.values()) {
@@ -1919,13 +1886,13 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                         messageExists: true,
                         detected: true
                     });
-                    if (detected.length >= 50) break; // limitar deteções
+                    if (detected.length >= 50) break; // limitar dete├º├Áes
                 }
             } catch {}
             if (detected.length >= 50) break;
         }
 
-        // Tentar persistir deteções no backend ativo e refletir imediatamente como "guardado" na resposta
+        // Tentar persistir dete├º├Áes no backend ativo e refletir imediatamente como "guardado" na resposta
         let enrichedCombined = [...enriched];
         let remainingDetected = [...detected];
         try {
@@ -1998,7 +1965,7 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
 
 // ========================================
 // POST /api/guild/:guildId/panels
-// Criar novo painel avançado com seleção de categorias
+// Criar novo painel avan├ºado com sele├º├úo de categorias
 // ========================================
 app.post('/api/guild/:guildId/panels', async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -2025,7 +1992,7 @@ app.post('/api/guild/:guildId/panels', async (req, res) => {
             theme = 'dark'
         } = req.body;
 
-        // Validações
+        // Valida├º├Áes
         if (!channel_id) {
             return res.status(400).json({ success: false, error: 'channel_id is required' });
         }
@@ -2052,7 +2019,7 @@ app.post('/api/guild/:guildId/panels', async (req, res) => {
             template,
             theme,
             title: title || 'Centro de Suporte',
-            description: description || 'Clique em um botão abaixo para abrir um ticket.',
+            description: description || 'Clique em um bot├úo abaixo para abrir um ticket.',
             icon_url: icon_url || undefined,
             banner_url: banner_url || undefined,
             target_category_id,
@@ -2081,7 +2048,7 @@ app.post('/api/guild/:guildId/panels', async (req, res) => {
             await panel.save();
         } catch (error) {
             logger.error('Error sending panel to Discord:', error);
-            // Não falhar a criação se não conseguir enviar
+            // N├úo falhar a cria├º├úo se n├úo conseguir enviar
         }
 
         return res.status(201).json({
@@ -2124,7 +2091,7 @@ app.patch('/api/guild/:guildId/panels/:panelId', async (req, res) => {
             theme
         } = req.body;
 
-        // Validações opcionais
+        // Valida├º├Áes opcionais
         if (selected_categories && (!Array.isArray(selected_categories) || selected_categories.length === 0)) {
             return res.status(400).json({ success: false, error: 'selected_categories must be a non-empty array' });
         }
@@ -2177,7 +2144,7 @@ app.patch('/api/guild/:guildId/panels/:panelId', async (req, res) => {
             }
         } catch (error) {
             logger.error('Error updating panel in Discord:', error);
-            // Não falhar a atualização se não conseguir enviar
+            // N├úo falhar a atualiza├º├úo se n├úo conseguir enviar
         }
 
         return res.json({
@@ -2191,7 +2158,7 @@ app.patch('/api/guild/:guildId/panels/:panelId', async (req, res) => {
     }
 });
 
-// Painéis - "Scan now": varredura mais profunda com paginação e limites configuráveis
+// Pain├®is - "Scan now": varredura mais profunda com pagina├º├úo e limites configur├íveis
 app.post('/api/guild/:guildId/panels/scan', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -2255,7 +2222,7 @@ app.post('/api/guild/:guildId/panels/scan', async (req, res) => {
             if (detected.length >= 200) break;
         }
 
-        // Persistir deteções (opcional) no backend ativo
+        // Persistir dete├º├Áes (opcional) no backend ativo
         let persisted = 0;
         if (persist && detected.length) {
             try {
@@ -2297,7 +2264,7 @@ app.post('/api/guild/:guildId/panels/scan', async (req, res) => {
     }
 });
 
-// Endpoint simples para verificar se o utilizador é admin no guild (para gating de UI)
+// Endpoint simples para verificar se o utilizador ├® admin no guild (para gating de UI)
 app.get('/api/guild/:guildId/is-admin', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -2315,7 +2282,7 @@ app.get('/api/guild/:guildId/is-admin', async (req, res) => {
     }
 });
 
-// Tickets: sincronizar painéis V2 em todos os tickets abertos do servidor
+// Tickets: sincronizar pain├®is V2 em todos os tickets abertos do servidor
 app.post('/api/guild/:guildId/tickets/sync', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -2326,7 +2293,7 @@ app.post('/api/guild/:guildId/tickets/sync', async (req, res) => {
 
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
-        // Permissão mínima para staff gerir painéis dos tickets
+        // Permiss├úo m├¡nima para staff gerir pain├®is dos tickets
         const canManage = member.permissions.has(PermissionFlagsBits.ManageChannels);
         if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
 
@@ -2384,7 +2351,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
             }
         }
 
-        // Suportar guardar painéis detetados (IDs sintéticos começados por 'detected:')
+        // Suportar guardar pain├®is detetados (IDs sint├®ticos come├ºados por 'detected:')
         if (action === 'save' && panelId.startsWith('detected:')) {
             try {
                 const parts = panelId.split(':');
@@ -2429,7 +2396,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
         let updated = null;
         switch (action) {
             case 'resend': {
-                const payload = panel.payload || { content: '🎫 Painel de tickets' };
+                const payload = panel.payload || { content: '­ƒÄ½ Painel de tickets' };
                 message = await channel.send(payload);
                 if (useMongoPanels) {
                     updated = await PanelModel.findByIdAndUpdate(panelId, { $set: { message_id: message.id } }, { new: true }).lean();
@@ -2444,7 +2411,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                     const old = await channel.messages.fetch(panel.message_id).catch(() => null);
                     if (old) await old.delete().catch(() => {});
                 }
-                const payload = panel.payload || { content: '🎫 Painel de tickets' };
+                const payload = panel.payload || { content: '­ƒÄ½ Painel de tickets' };
                 message = await channel.send(payload);
                 if (useMongoPanels) {
                     updated = await PanelModel.findByIdAndUpdate(panelId, { $set: { message_id: message.id } }, { new: true }).lean();
@@ -2501,59 +2468,59 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                     .setImage(brandedBanner || visualAssets.realImages.supportBanner);
                 let rows = [];
                 if (tpl === 'compact') {
-                    embed.setTitle('🎫 Tickets • Compacto').setDescription('Escolhe abaixo e abre um ticket privado.');
+                    embed.setTitle('­ƒÄ½ Tickets ÔÇó Compacto').setDescription('Escolhe abaixo e abre um ticket privado.');
                     rows = [ new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('ticket:create:support').setLabel('Suporte').setEmoji('🎫').setStyle(ButtonStyle.Primary),
-                        new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger)
+                        new ButtonBuilder().setCustomId('ticket:create:support').setLabel('Suporte').setEmoji('­ƒÄ½').setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Problema').setEmoji('ÔÜá´©Å').setStyle(ButtonStyle.Danger)
                     ) ];
                 } else if (tpl === 'minimal') {
-                    embed.setTitle('🎫 Abrir ticket').setDescription('Carrega num botão para abrir um ticket.');
+                    embed.setTitle('­ƒÄ½ Abrir ticket').setDescription('Carrega num bot├úo para abrir um ticket.');
                     rows = [ new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Abrir Ticket').setEmoji('🎟️').setStyle(ButtonStyle.Primary)
+                        new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Abrir Ticket').setEmoji('­ƒÄƒ´©Å').setStyle(ButtonStyle.Primary)
                     ) ];
                 } else if (tpl === 'premium') {
-                    embed.setTitle('🎫 Centro de Suporte • Premium')
-                        .setDescription('Serviço prioritário, acompanhamento dedicado e histórico guardado.')
+                    embed.setTitle('­ƒÄ½ Centro de Suporte ÔÇó Premium')
+                        .setDescription('Servi├ºo priorit├írio, acompanhamento dedicado e hist├│rico guardado.')
                         .addFields(
-                            { name: '• Resposta express', value: 'Prioridade máxima', inline: true },
-                            { name: '• Privado & seguro', value: 'Só tu e equipa', inline: true },
-                            { name: '• Transcript', value: 'Disponível a pedido', inline: true },
+                            { name: 'ÔÇó Resposta express', value: 'Prioridade m├íxima', inline: true },
+                            { name: 'ÔÇó Privado & seguro', value: 'S├│ tu e equipa', inline: true },
+                            { name: 'ÔÇó Transcript', value: 'Dispon├¡vel a pedido', inline: true },
                         );
                     const r1 = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('ticket:create:vip').setLabel('VIP / Premium').setEmoji('👑').setStyle(ButtonStyle.Success),
-                        new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
-                        new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger)
+                        new ButtonBuilder().setCustomId('ticket:create:vip').setLabel('VIP / Premium').setEmoji('­ƒææ').setStyle(ButtonStyle.Success),
+                        new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte T├®cnico').setEmoji('­ƒöº').setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('ÔÜá´©Å').setStyle(ButtonStyle.Danger)
                     );
                     const r2 = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary),
-                        new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary)
+                        new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Modera├º├úo & Seguran├ºa').setEmoji('­ƒøí´©Å').setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId('ticket:create:general').setLabel('D├║vidas Gerais').setEmoji('­ƒÆ¼').setStyle(ButtonStyle.Secondary)
                     );
                     rows = [r1, r2];
                 } else if (tpl === 'gamer') {
-                    embed.setTitle('Precisas de ajuda? Clica aí 👇').setDescription('Escolhe o tipo de ajuda abaixo. Visual gamer, chill e funcional.');
+                    embed.setTitle('Precisas de ajuda? Clica a├¡ ­ƒæç').setDescription('Escolhe o tipo de ajuda abaixo. Visual gamer, chill e funcional.');
                     const r = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
-                        new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
-                        new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
-                        new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('👤').setStyle(ButtonStyle.Secondary)
+                        new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte T├®cnico').setEmoji('­ƒöº').setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('ÔÜá´©Å').setStyle(ButtonStyle.Danger),
+                        new ButtonBuilder().setCustomId('ticket:create:general').setLabel('D├║vidas Gerais').setEmoji('­ƒÆ¼').setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('­ƒæñ').setStyle(ButtonStyle.Secondary)
                     );
                     rows = [r];
                 } else {
-                    embed.setTitle('🎫 Centro de Suporte')
+                    embed.setTitle('­ƒÄ½ Centro de Suporte')
                         .setDescription('Escolhe o departamento abaixo para abrir um ticket privado com a equipa.')
                         .addFields(
-                            { name: '• Resposta rápida', value: 'Tempo médio: minutos', inline: true },
-                            { name: '• Canal privado', value: 'Visível só para ti e staff', inline: true },
-                            { name: '• Histórico guardado', value: 'Transcript disponível', inline: true },
+                            { name: 'ÔÇó Resposta r├ípida', value: 'Tempo m├®dio: minutos', inline: true },
+                            { name: 'ÔÇó Canal privado', value: 'Vis├¡vel s├│ para ti e staff', inline: true },
+                            { name: 'ÔÇó Hist├│rico guardado', value: 'Transcript dispon├¡vel', inline: true },
                         );
                     const r1 = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
-                        new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
-                        new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary)
+                        new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte T├®cnico').setEmoji('­ƒöº').setStyle(ButtonStyle.Primary),
+                        new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('ÔÜá´©Å').setStyle(ButtonStyle.Danger),
+                        new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Modera├º├úo & Seguran├ºa').setEmoji('­ƒøí´©Å').setStyle(ButtonStyle.Secondary)
                     );
                     const r2 = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
-                        new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('🧾').setStyle(ButtonStyle.Secondary)
+                        new ButtonBuilder().setCustomId('ticket:create:general').setLabel('D├║vidas Gerais').setEmoji('­ƒÆ¼').setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('­ƒº¥').setStyle(ButtonStyle.Secondary)
                     );
                     rows = [r1, r2];
                 }
@@ -2588,61 +2555,9 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
 });
 
 // WebhookConfig CRUD (Mongo only)
-app.get('/api/guild/:guildId/webhooks', async (req, res) => {
-    if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    try {
-        const { guildId } = req.params;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
-        const member = await guild.members.fetch(req.user.id).catch(() => null);
-        if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
-        const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
-        if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
-        const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
-        if (!hasMongoEnv) {
-            // Fallback para SQLite (legacy) quando Mongo não está configurado.
-            try {
-                const storage = require('../utils/storage-sqlite');
-                const rows = await storage.listWebhooks(guildId);
-                // Mapear para o formato esperado pelo dashboard (OutgoingWebhooksManager)
-                const items = rows.map(r => {
-                    const masked = (r.url && r.url.length > 16)
-                        ? r.url.slice(0, r.url.length - 12).replace(/./g, '*') + r.url.slice(-12)
-                        : '****';
-                    return {
-                        id: r._id,
-                        guildId: r.guild_id,
-                        type: ['logs','tickets','updates','transcript','vlog','modlog','generic'].includes(r.type) ? r.type : 'generic',
-                        enabled: !!r.enabled,
-                        channelId: r.channel_id || null,
-                        urlMasked: masked,
-                        lastOk: r.last_ok == null ? null : !!r.last_ok,
-                        lastStatus: r.last_status == null ? null : Number(r.last_status),
-                        lastError: r.last_error || null,
-                        lastAt: r.last_at || null,
-                        createdAt: null,
-                        updatedAt: null
-                    };
-                });
-                return res.json({ success: true, items, webhooks: items });
-            } catch (e) {
-                logger.error('Webhook list sqlite fallback error:', e);
-                return res.status(500).json({ success: false, error: 'Failed to list webhooks (sqlite fallback)' });
-            }
-        }
-        const { isReady } = require('../utils/db/mongoose');
-        if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
-        const svc = require('../src/services/webhookService');
-    const list = await svc.listConfigs(guildId);
-    return res.json({ success: true, items: list, webhooks: list });
-    } catch (e) {
-        logger.error('Webhook list error:', e);
-        return res.status(500).json({ success: false, error: 'Failed to list webhooks' });
-    }
-});
+// REMOVED DUPLICATE: Webhook GET route already defined at line 799 with better diagnostics and preferredTarget support
 
+// Webhook POST route - Create new webhook
 app.post('/api/guild/:guildId/webhooks', async (req, res) => {
     if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -2657,8 +2572,8 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
         if (!canManage) return res.status(403).json({ success: false, error: 'Missing permission' });
         const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
         const schema = Joi.object({
-            // Aceitar os tipos usados no dashboard (logs, tickets, updates) e também os antigos
-            // Evitar 400 desnecessário por validação muito restrita
+            // Aceitar os tipos usados no dashboard (logs, tickets, updates) e tamb├®m os antigos
+            // Evitar 400 desnecess├írio por valida├º├úo muito restrita
             type: Joi.string().trim().valid('logs','tickets','updates','transcript','vlog','modlog','generic').required(),
             url: Joi.string().uri({ scheme: ['https'] }).required(),
             enabled: Joi.boolean().optional(),
@@ -2753,13 +2668,13 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         if (error) return res.status(400).json({ success: false, error: error.message });
         const hasMongoEnv = !!(process.env.MONGO_URI || process.env.MONGODB_URI);
         if (!hasMongoEnv) {
-            // SQLite fallback: validar alterações; se habilitar, testar a URL antes
+            // SQLite fallback: validar altera├º├Áes; se habilitar, testar a URL antes
             try {
                 const storage = require('../utils/storage-sqlite');
                 const list = await storage.listWebhooks(guildId);
                 const row = list.find(r => String(r._id) === String(id));
                 if (!row) return res.status(404).json({ success: false, error: 'Not found' });
-                // Se URL mudar, forçar desativar até teste
+                // Se URL mudar, for├ºar desativar at├® teste
                 let nextUrl = row.url;
                 let nextEnabled = row.enabled;
                 let last_ok = row.last_ok == null ? null : !!row.last_ok;
@@ -2767,14 +2682,14 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
                 let last_error = row.last_error || null;
                 let last_at = row.last_at || null;
                 if (value.url) {
-                    // Aceitar qualquer HTTPS (Joi já validou)
+                    // Aceitar qualquer HTTPS (Joi j├í validou)
                     nextUrl = value.url;
                     nextEnabled = LEGACY_WEBHOOKS ? true : false;
                     last_ok = null; last_status = null; last_error = null; last_at = null;
                 }
                 if (typeof value.enabled === 'boolean') {
                     if (value.enabled === true) {
-                        // Teste obrigatório antes de ativar
+                        // Teste obrigat├│rio antes de ativar
                         const fetch = require('node-fetch');
                         const controller = new AbortController();
                         const timeout = setTimeout(() => controller.abort(), 7000);
@@ -2936,7 +2851,7 @@ app.post('/api/guild/:guildId/webhooks/test', async (req, res) => {
                         const isDiscord = typeof url === 'string' && /discord(app)?\.com\/api\/webhooks\//i.test(url);
                         const hasMessage = body && (typeof body.content === 'string' || (Array.isArray(body.embeds) && body.embeds.length > 0));
                         if (isDiscord && !hasMessage) {
-                            body = { content: `🔔 Teste de Webhook (${r.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${r.type}` };
+                            body = { content: `­ƒöö Teste de Webhook (${r.type}) ÔÇó ${new Date().toISOString()}`, username: `IGNIS ÔÇó ${r.type}` };
                         }
                     } catch {}
                     try {
@@ -2977,7 +2892,7 @@ app.post('/api/guild/:guildId/webhooks/test', async (req, res) => {
                         const isDiscord = typeof url === 'string' && /discord(app)?\.com\/api\/webhooks\//i.test(url);
                         const hasMessage = body && (typeof body.content === 'string' || (Array.isArray(body.embeds) && body.embeds.length > 0));
                         if (isDiscord && !hasMessage) {
-                            body = { content: `🔔 Teste de Webhook (${r.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${r.type}` };
+                            body = { content: `­ƒöö Teste de Webhook (${r.type}) ÔÇó ${new Date().toISOString()}`, username: `IGNIS ÔÇó ${r.type}` };
                         }
                     } catch {}
                     try { const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body), signal: controller.signal }); status = resp.status; ok = resp.ok; } catch(e){ errMsg = e?.message || 'network error'; } finally { clearTimeout(timeout); }
@@ -3041,7 +2956,7 @@ app.post('/api/guild/:guildId/webhooks/test-all', async (req, res) => {
                         const isDiscord = typeof url === 'string' && /discord(app)?\.com\/api\/webhooks\//i.test(url);
                         const hasMessage = body && (typeof body.content === 'string' || (Array.isArray(body.embeds) && body.embeds.length > 0));
                         if (isDiscord && !hasMessage) {
-                            body = { content: `🔔 Teste de Webhook (${r.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${r.type}` };
+                            body = { content: `­ƒöö Teste de Webhook (${r.type}) ÔÇó ${new Date().toISOString()}`, username: `IGNIS ÔÇó ${r.type}` };
                         }
                     } catch {}
                     try {
@@ -3081,7 +2996,7 @@ app.post('/api/guild/:guildId/webhooks/test-all', async (req, res) => {
                         const isDiscord = typeof url === 'string' && /discord(app)?\.com\/api\/webhooks\//i.test(url);
                         const hasMessage = body && (typeof body.content === 'string' || (Array.isArray(body.embeds) && body.embeds.length > 0));
                         if (isDiscord && !hasMessage) {
-                            body = { content: `🔔 Teste de Webhook (${r.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${r.type}` };
+                            body = { content: `­ƒöö Teste de Webhook (${r.type}) ÔÇó ${new Date().toISOString()}`, username: `IGNIS ÔÇó ${r.type}` };
                         }
                     } catch {}
                     try { const resp = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body), signal: controller.signal }); status = resp.status; ok = resp.ok; } catch(e){ errMsg = e?.message || 'network error'; } finally { clearTimeout(timeout); }
@@ -3141,7 +3056,7 @@ app.post('/api/guild/:guildId/webhooks/:id/test-activate', async (req, res) => {
                         const isDiscord = typeof url === 'string' && /discord(app)?\.com\/api\/webhooks\//i.test(url);
                         const hasMessage = body && (typeof body.content === 'string' || (Array.isArray(body.embeds) && body.embeds.length > 0));
                         if (isDiscord && !hasMessage) {
-                            body = { content: `🔔 Teste de Webhook (${row.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${row.type}` };
+                            body = { content: `­ƒöö Teste de Webhook (${row.type}) ÔÇó ${new Date().toISOString()}`, username: `IGNIS ÔÇó ${row.type}` };
                         }
                     } catch {}
                     const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal });
@@ -3392,10 +3307,10 @@ app.post('/api/guild/:guildId/channels/verify', async (req, res) => {
 });
 
 // ==============================================
-// SERVER STATS - Canais dinâmicos de estatísticas
+// SERVER STATS - Canais din├ómicos de estat├¡sticas
 // ==============================================
 
-// GET configuração de estatísticas
+// GET configura├º├úo de estat├¡sticas
 app.get('/api/guild/:guildId/stats/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
@@ -3409,7 +3324,7 @@ app.get('/api/guild/:guildId/stats/config', async (req, res) => {
         const { ServerStatsConfigModel } = require('../utils/db/models');
         let config = await ServerStatsConfigModel.findByGuild(req.params.guildId);
 
-        // Se não existir, retornar configuração padrão
+        // Se n├úo existir, retornar configura├º├úo padr├úo
         if (!config) {
             return res.json({
                 success: true,
@@ -3438,7 +3353,7 @@ app.get('/api/guild/:guildId/stats/config', async (req, res) => {
     }
 });
 
-// POST setup de estatísticas (criar canais)
+// POST setup de estat├¡sticas (criar canais)
 app.post('/api/guild/:guildId/stats/setup', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
@@ -3455,7 +3370,7 @@ app.post('/api/guild/:guildId/stats/setup', async (req, res) => {
             return res.status(400).json({ success: false, error: 'No metrics selected' });
         }
 
-        // Validar métricas
+        // Validar m├®tricas
         const validMetrics = [
             'total_members', 'human_members', 'bot_members',
             'online_members', 'boosters', 'total_channels',
@@ -3501,7 +3416,7 @@ app.post('/api/guild/:guildId/stats/setup', async (req, res) => {
     }
 });
 
-// POST atualizar configuração
+// POST atualizar configura├º├úo
 app.post('/api/guild/:guildId/stats/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
@@ -3548,7 +3463,7 @@ app.post('/api/guild/:guildId/stats/config', async (req, res) => {
     }
 });
 
-// DELETE desativar estatísticas
+// DELETE desativar estat├¡sticas
 app.delete('/api/guild/:guildId/stats', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
@@ -3579,7 +3494,7 @@ app.delete('/api/guild/:guildId/stats', async (req, res) => {
     }
 });
 
-// GET métricas atuais (preview)
+// GET m├®tricas atuais (preview)
 app.get('/api/guild/:guildId/stats/metrics', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
@@ -3599,7 +3514,7 @@ app.get('/api/guild/:guildId/stats/metrics', async (req, res) => {
         let config = await ServerStatsConfigModel.findByGuild(req.params.guildId);
 
         if (!config) {
-            // Criar config temporária para calcular métricas
+            // Criar config tempor├íria para calcular m├®tricas
             config = new ServerStatsConfigModel({ guild_id: req.params.guildId });
         }
 
@@ -3616,7 +3531,7 @@ app.get('/api/guild/:guildId/stats/metrics', async (req, res) => {
 // TIME TRACKING - Sistema de bate-ponto
 // ==============================================
 
-// GET sessões de um utilizador
+// GET sess├Áes de um utilizador
 app.get('/api/guild/:guildId/timetracking/user/:userId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
@@ -3643,7 +3558,7 @@ app.get('/api/guild/:guildId/timetracking/user/:userId', async (req, res) => {
     }
 });
 
-// GET relatório geral do servidor
+// GET relat├│rio geral do servidor
 app.get('/api/guild/:guildId/timetracking/report', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
@@ -3696,7 +3611,7 @@ app.get('/api/guild/:guildId/timetracking/report', async (req, res) => {
     }
 });
 
-// GET sessão ativa de um utilizador
+// GET sess├úo ativa de um utilizador
 app.get('/api/guild/:guildId/timetracking/active/:userId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
@@ -3731,7 +3646,7 @@ app.get('/api/guild/:guildId/timetracking/active/:userId', async (req, res) => {
     }
 });
 
-// GET todas as sessões do servidor (com filtros)
+// GET todas as sess├Áes do servidor (com filtros)
 app.get('/api/guild/:guildId/timetracking/sessions', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
@@ -3941,9 +3856,9 @@ app.get('/api/guild/:guildId/welcome', async (req, res) => {
             welcome: config.welcome || {
                 enabled: false,
                 channelId: '',
-                message: 'Bem-vindo(a) {user}! 🎉',
+                message: 'Bem-vindo(a) {user}! ­ƒÄë',
                 embedEnabled: true,
-                embedTitle: 'Novo Membro! 👋',
+                embedTitle: 'Novo Membro! ­ƒæï',
                 embedDescription: '{user} acabou de entrar no servidor!',
                 embedColor: '#7C3AED',
                 embedImage: '',
@@ -3952,9 +3867,9 @@ app.get('/api/guild/:guildId/welcome', async (req, res) => {
             goodbye: config.goodbye || {
                 enabled: false,
                 channelId: '',
-                message: '{user} saiu do servidor. 😢',
+                message: '{user} saiu do servidor. ­ƒÿó',
                 embedEnabled: true,
-                embedTitle: 'Membro Saiu 👋',
+                embedTitle: 'Membro Saiu ­ƒæï',
                 embedDescription: '{user} deixou o servidor.',
                 embedColor: '#EF4444'
             }
@@ -4001,11 +3916,11 @@ app.get('/api/guild/:guildId/stats/config', async (req, res) => {
             config: config.statsCounters || {
                 enabled: false,
                 updateInterval: 5,
-                totalMembers: { enabled: true, channelId: '', format: '👥 Membros: {count}' },
-                onlineMembers: { enabled: false, channelId: '', format: '🟢 Online: {count}' },
-                botCount: { enabled: false, channelId: '', format: '🤖 Bots: {count}' },
-                channelCount: { enabled: false, channelId: '', format: '📝 Canais: {count}' },
-                roleCount: { enabled: false, channelId: '', format: '🎭 Cargos: {count}' }
+                totalMembers: { enabled: true, channelId: '', format: '­ƒæÑ Membros: {count}' },
+                onlineMembers: { enabled: false, channelId: '', format: '­ƒƒó Online: {count}' },
+                botCount: { enabled: false, channelId: '', format: '­ƒñû Bots: {count}' },
+                channelCount: { enabled: false, channelId: '', format: '­ƒôØ Canais: {count}' },
+                roleCount: { enabled: false, channelId: '', format: '­ƒÄ¡ Cargos: {count}' }
             }
         });
     } catch (e) {
@@ -4149,7 +4064,7 @@ app.get('/api/guild/:guildId/time-tracking', async (req, res) => {
 
 // ===================== Time Tracking Panels (Bate-Ponto Panels) =====================
 
-// GET: Listar painéis de bate-ponto
+// GET: Listar pain├®is de bate-ponto
 app.get('/api/guild/:guildId/time-tracking/panels', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -4183,7 +4098,7 @@ app.post('/api/guild/:guildId/time-tracking/panels', async (req, res) => {
         const { name, message, channelId } = req.body;
 
         if (!name || !channelId) {
-            return res.status(400).json({ success: false, error: 'Nome e canal são obrigatórios' });
+            return res.status(400).json({ success: false, error: 'Nome e canal s├úo obrigat├│rios' });
         }
 
         const storage = require('../utils/storage');
@@ -4193,7 +4108,7 @@ app.post('/api/guild/:guildId/time-tracking/panels', async (req, res) => {
         const channel = await guild.channels.fetch(channelId).catch(() => null);
 
         if (!channel || (channel.type !== 0 && channel.type !== 5)) {
-            return res.status(400).json({ success: false, error: 'Canal inválido ou não é de texto' });
+            return res.status(400).json({ success: false, error: 'Canal inv├ílido ou n├úo ├® de texto' });
         }
 
         // Criar embed do painel
@@ -4201,8 +4116,8 @@ app.post('/api/guild/:guildId/time-tracking/panels', async (req, res) => {
 
         const embed = new EmbedBuilder()
             .setColor('#FF6B35')
-            .setTitle('⏱️ Sistema de Bate-Ponto')
-            .setDescription(message || '**Sistema de Controlo de Ponto**\n\nClique no botão abaixo para registar a sua entrada, pausa ou saída.')
+            .setTitle('ÔÅ▒´©Å Sistema de Bate-Ponto')
+            .setDescription(message || '**Sistema de Controlo de Ponto**\n\nClique no bot├úo abaixo para registar a sua entrada, pausa ou sa├¡da.')
             .setFooter({ text: `Painel: ${name}` })
             .setTimestamp();
 
@@ -4210,7 +4125,7 @@ app.post('/api/guild/:guildId/time-tracking/panels', async (req, res) => {
             .addComponents(
                 new ButtonBuilder()
                     .setCustomId('timetracking_punch')
-                    .setLabel('⚡ Bater Ponto')
+                    .setLabel('ÔÜí Bater Ponto')
                     .setStyle(ButtonStyle.Primary)
             );
 
@@ -4258,7 +4173,7 @@ app.patch('/api/guild/:guildId/time-tracking/panels/:panelId', async (req, res) 
 
         const panel = config.panels.find(p => p.id === req.params.panelId);
         if (!panel) {
-            return res.status(404).json({ success: false, error: 'Painel não encontrado' });
+            return res.status(404).json({ success: false, error: 'Painel n├úo encontrado' });
         }
 
         if (req.body.enabled !== undefined) {
@@ -4288,7 +4203,7 @@ app.delete('/api/guild/:guildId/time-tracking/panels/:panelId', async (req, res)
 
         const panelIndex = config.panels.findIndex(p => p.id === req.params.panelId);
         if (panelIndex === -1) {
-            return res.status(404).json({ success: false, error: 'Painel não encontrado' });
+            return res.status(404).json({ success: false, error: 'Painel n├úo encontrado' });
         }
 
         const panel = config.panels[panelIndex];
@@ -4319,7 +4234,7 @@ app.delete('/api/guild/:guildId/time-tracking/panels/:panelId', async (req, res)
 const { WebhookConfigModel, TicketWebhookLogModel } = require('../utils/db/models');
 const webhookSystem = require('../utils/webhookSystem');
 
-// GET: Obter configuração de webhooks do servidor
+// GET: Obter configura├º├úo de webhooks do servidor
 app.get('/api/guild/:guildId/webhooks-config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -4331,7 +4246,7 @@ app.get('/api/guild/:guildId/webhooks-config', async (req, res) => {
         let config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
 
         if (!config) {
-            // Criar configuração padrão
+            // Criar configura├º├úo padr├úo
             config = await WebhookConfigModel.create({
                 guildId: req.params.guildId,
                 logsEnabled: {
@@ -4365,12 +4280,12 @@ app.post('/api/guild/:guildId/webhooks-config/add', async (req, res) => {
 
         // Validar URL do webhook
         if (!url || !/^https:\/\/discord\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(url)) {
-            return res.status(400).json({ success: false, error: 'URL de webhook inválida' });
+            return res.status(400).json({ success: false, error: 'URL de webhook inv├ílida' });
         }
 
         // Validar nome
         if (!name || name.trim().length === 0) {
-            return res.status(400).json({ success: false, error: 'Nome do webhook é obrigatório' });
+            return res.status(400).json({ success: false, error: 'Nome do webhook ├® obrigat├│rio' });
         }
 
         // Validar tipos
@@ -4379,7 +4294,7 @@ app.post('/api/guild/:guildId/webhooks-config/add', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Selecione pelo menos um tipo de log' });
         }
         if (!types.every(t => validTypes.includes(t))) {
-            return res.status(400).json({ success: false, error: 'Tipo de log inválido' });
+            return res.status(400).json({ success: false, error: 'Tipo de log inv├ílido' });
         }
 
         let config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
@@ -4388,9 +4303,9 @@ app.post('/api/guild/:guildId/webhooks-config/add', async (req, res) => {
             config = new WebhookConfigModel({ guildId: req.params.guildId });
         }
 
-        // Verificar se já existe webhook com a mesma URL
+        // Verificar se j├í existe webhook com a mesma URL
         if (config.webhooks.some(w => w.url === url)) {
-            return res.status(400).json({ success: false, error: 'Este webhook já está configurado' });
+            return res.status(400).json({ success: false, error: 'Este webhook j├í est├í configurado' });
         }
 
         config.webhooks.push({
@@ -4420,12 +4335,12 @@ app.delete('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) =>
 
         const config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
         if (!config) {
-            return res.status(404).json({ success: false, error: 'Configuração não encontrada' });
+            return res.status(404).json({ success: false, error: 'Configura├º├úo n├úo encontrada' });
         }
 
         const webhookIndex = config.webhooks.findIndex(w => w._id.toString() === req.params.webhookId);
         if (webhookIndex === -1) {
-            return res.status(404).json({ success: false, error: 'Webhook não encontrado' });
+            return res.status(404).json({ success: false, error: 'Webhook n├úo encontrado' });
         }
 
         config.webhooks.splice(webhookIndex, 1);
@@ -4449,17 +4364,17 @@ app.put('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) => {
 
         const { name, url, events, enabled } = req.body;
         if (!name || !url) {
-            return res.status(400).json({ success: false, error: 'Nome e URL são obrigatórios' });
+            return res.status(400).json({ success: false, error: 'Nome e URL s├úo obrigat├│rios' });
         }
 
         const config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
         if (!config) {
-            return res.status(404).json({ success: false, error: 'Configuração não encontrada' });
+            return res.status(404).json({ success: false, error: 'Configura├º├úo n├úo encontrada' });
         }
 
         const webhook = config.webhooks.id(req.params.webhookId);
         if (!webhook) {
-            return res.status(404).json({ success: false, error: 'Webhook não encontrado' });
+            return res.status(404).json({ success: false, error: 'Webhook n├úo encontrado' });
         }
 
         webhook.name = name;
@@ -4477,7 +4392,7 @@ app.put('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) => {
     }
 });
 
-// PATCH: Atualizar configuração de logs habilitados (MUST be before :webhookId route)
+// PATCH: Atualizar configura├º├úo de logs habilitados (MUST be before :webhookId route)
 app.patch('/api/guild/:guildId/webhooks-config/logs-enabled', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -4510,7 +4425,7 @@ app.patch('/api/guild/:guildId/webhooks-config/logs-enabled', async (req, res) =
 // UNIFIED WEBHOOK ROUTES (NEW SIMPLIFIED SYSTEM)
 // ========================================
 
-// GET: Obter configuração de webhook unificado
+// GET: Obter configura├º├úo de webhook unificado
 app.get('/api/guild/:guildId/webhook-unified', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -4541,7 +4456,7 @@ app.get('/api/guild/:guildId/webhook-unified', async (req, res) => {
     }
 });
 
-// POST: Salvar configuração de webhook unificado
+// POST: Salvar configura├º├úo de webhook unificado
 app.post('/api/guild/:guildId/webhook-unified', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -4600,13 +4515,13 @@ app.post('/api/guild/:guildId/webhook-unified/test', async (req, res) => {
         // Enviar mensagem de teste
         const { EmbedBuilder } = require('discord.js');
         const embed = new EmbedBuilder()
-            .setTitle('✅ Teste de Webhook')
-            .setDescription('Se estás a ver esta mensagem, o webhook está configurado corretamente!')
+            .setTitle('Ô£à Teste de Webhook')
+            .setDescription('Se est├ís a ver esta mensagem, o webhook est├í configurado corretamente!')
             .setColor(0x00FF00)
             .addFields([
-                { name: '🎫 Eventos de Tickets', value: 'Receberás notificações quando tickets forem criados, assumidos ou fechados' },
-                { name: '📄 Transcripts', value: 'Históricos de tickets serão enviados automaticamente' },
-                { name: '📅 Lembretes', value: 'Notificações de eventos agendados (se ativado)' }
+                { name: '­ƒÄ½ Eventos de Tickets', value: 'Receber├ís notifica├º├Áes quando tickets forem criados, assumidos ou fechados' },
+                { name: '­ƒôä Transcripts', value: 'Hist├│ricos de tickets ser├úo enviados automaticamente' },
+                { name: '­ƒôà Lembretes', value: 'Notifica├º├Áes de eventos agendados (se ativado)' }
             ])
             .setFooter({ text: `Guild: ${guildId}` })
             .setTimestamp();
@@ -4645,12 +4560,12 @@ app.patch('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) => 
 
         const config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
         if (!config) {
-            return res.status(404).json({ success: false, error: 'Configuração não encontrada' });
+            return res.status(404).json({ success: false, error: 'Configura├º├úo n├úo encontrada' });
         }
 
         const webhook = config.webhooks.id(req.params.webhookId);
         if (!webhook) {
-            return res.status(404).json({ success: false, error: 'Webhook não encontrado' });
+            return res.status(404).json({ success: false, error: 'Webhook n├úo encontrado' });
         }
 
         if (name !== undefined) webhook.name = name.trim();
@@ -4677,12 +4592,12 @@ app.post('/api/guild/:guildId/webhooks-config/:webhookId/test', async (req, res)
 
         const config = await WebhookConfigModel.findOne({ guildId: req.params.guildId });
         if (!config) {
-            return res.status(404).json({ success: false, error: 'Configuração não encontrada' });
+            return res.status(404).json({ success: false, error: 'Configura├º├úo n├úo encontrada' });
         }
 
         const webhook = config.webhooks.id(req.params.webhookId);
         if (!webhook) {
-            return res.status(404).json({ success: false, error: 'Webhook não encontrado' });
+            return res.status(404).json({ success: false, error: 'Webhook n├úo encontrado' });
         }
 
         const success = await webhookSystem.testWebhook(webhook.url);
@@ -4698,7 +4613,7 @@ app.post('/api/guild/:guildId/webhooks-config/:webhookId/test', async (req, res)
     }
 });
 
-// GET: Histórico de webhooks enviados
+// GET: Hist├│rico de webhooks enviados
 app.get('/api/guild/:guildId/webhooks-logs', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -5339,7 +5254,7 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
     }
 });
 
-// Logs count (for pagination UIs) — mirrors filters of list/export
+// Logs count (for pagination UIs) ÔÇö mirrors filters of list/export
 app.get('/api/guild/:guildId/logs/count', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -5814,8 +5729,8 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                     if (!channel || !channel.send) return res.status(404).json({ success:false, error:'channel_not_found' });
                     // Truncate to fit Discord message length
                     const maxLen = 1800;
-                    const snippet = String(content).length > maxLen ? (String(content).slice(0,maxLen) + '…') : String(content);
-                    const header = `🧩 Mensagem recuperada pelo dashboard\n— Autor: <@${data.authorId||'desconhecido'}>\n— ID original: ${log.message || data.messageId || 'N/A'}\n`;
+                    const snippet = String(content).length > maxLen ? (String(content).slice(0,maxLen) + 'ÔÇª') : String(content);
+                    const header = `­ƒº® Mensagem recuperada pelo dashboard\nÔÇö Autor: <@${data.authorId||'desconhecido'}>\nÔÇö ID original: ${log.message || data.messageId || 'N/A'}\n`;
                     const body = `${header}\n${'```'}\n${snippet}\n${'```'}`;
                     await channel.send({ content: body, allowedMentions: { parse: [] } });
                     await logAction('mod_dashboard_restore_message', `Restored message ${log.message||''}`, { channelId, logId: log.id });
@@ -6019,40 +5934,7 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
 });
 
 // Webhooks API
-app.get('/api/guild/:guildId/webhooks', async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        const guildId = req.params.guildId;
-        const loadedTypes = (global.discordClient?.webhooks?.getLoadedTypes?.(guildId)) || [];
-
-        // Prefer SQLite when configured, or fallback to SQLite if Mongo is not configured or not ready
-        const { isReady } = (() => { try { return require('../utils/db/mongoose'); } catch { return { isReady: () => false }; } })();
-        if (preferSqlite || !hasMongoEnv || !isReady()) {
-            try {
-                const storage = require('../utils/storage-sqlite');
-                const raw = await storage.listWebhooks(guildId);
-                const items = (raw || []).map(r => ({
-                    id: r._id,
-                    guildId: r.guild_id,
-                    type: ['logs','tickets','updates','transcript','vlog','modlog','generic'].includes(r.type) ? r.type : 'generic',
-                    enabled: !!r.enabled,
-                    channelId: r.channel_id || null,
-                    urlMasked: r.url && r.url.length > 16 ? (r.url.slice(0, r.url.length - 12).replace(/./g, '*') + r.url.slice(-12)) : '****',
-                    loaded: loadedTypes.includes(r.type || 'logs'),
-                    lastOk: r.last_ok == null ? null : !!r.last_ok,
-                    lastStatus: r.last_status == null ? null : Number(r.last_status),
-                    lastError: r.last_error || null,
-                    lastAt: r.last_at || null,
-                    createdAt: null,
-                    updatedAt: null
-                }));
-                return res.json({ success: true, items, webhooks: items });
-            } catch (e) {
-                logger.error('Webhook list sqlite fallback error:', e);
+// REMOVED DUPLICATE: Third GET /webhooks route - already defined at line 799 with complete diagnostics
                 return res.status(500).json({ success: false, error: 'Failed to list webhooks (sqlite fallback)' });
             }
         }
@@ -6606,10 +6488,10 @@ app.get('/api/guild/:guildId/diagnostics', async (req, res) => {
         // Duplicate role names
         const byName = new Map();
         for (const r of roles) { const k = (r.name||'').toLowerCase(); byName.set(k, (byName.get(k)||0)+1); }
-        for (const [name,count] of byName) { if (count>1) suggestions.push({ type:'roles', message:`Há ${count} cargos com o nome "${name}"` }); }
+        for (const [name,count] of byName) { if (count>1) suggestions.push({ type:'roles', message:`H├í ${count} cargos com o nome "${name}"` }); }
         // Inactive text channels heuristic: no topic and low message limit on cache (shallow)
         const inactive = channels.filter(c => c.type === 0 && !c.topic);
-        if (inactive.length >= 10) suggestions.push({ type:'channels', message: `${inactive.length} canais de texto sem tópico (pode indicar desorganização)` });
+        if (inactive.length >= 10) suggestions.push({ type:'channels', message: `${inactive.length} canais de texto sem t├│pico (pode indicar desorganiza├º├úo)` });
         // Bots without manage roles/admin (best-effort)
         const bots = guild.members.cache.filter(m => m.user.bot);
         const weakBots = [];
@@ -6618,7 +6500,7 @@ app.get('/api/guild/:guildId/diagnostics', async (req, res) => {
             if (perms && !perms.has) continue;
             weakBots.push(m.user.username);
         }
-        if (weakBots.length) suggestions.push({ type:'bots', message:`Bots com permissões possivelmente insuficientes: ${weakBots.slice(0,5).join(', ')}` });
+        if (weakBots.length) suggestions.push({ type:'bots', message:`Bots com permiss├Áes possivelmente insuficientes: ${weakBots.slice(0,5).join(', ')}` });
         res.json({ success: true, stats: { memberCount: guild.memberCount, roleCount: roles.length, channelCount: channels.length }, suggestions });
     } catch (e) { logger.error('Error diagnostics:', e); res.status(500).json({ success: false, error: 'Failed to run diagnostics' }); }
 });
@@ -6709,7 +6591,7 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
     if (preferSqlite) {
         const storage = require('../utils/storage-sqlite');
         await storage.deleteWebhookById(req.params.id, req.params.guildId);
-        // Remover do gestor em memória
+        // Remover do gestor em mem├│ria
         try {
             const client = global.discordClient;
             if (client?.webhooks?.removeWebhook) {
@@ -6724,7 +6606,7 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         if (!isReady()) return res.status(503).json({ success: false, error: 'Mongo not connected' });
         const { WebhookModel } = require('../utils/db/models');
         const result = await WebhookModel.deleteOne({ _id: req.params.id, guild_id: req.params.guildId });
-        // Remover do gestor em memória
+        // Remover do gestor em mem├│ria
         try {
             const client = global.discordClient;
             if (client?.webhooks?.removeWebhook) {
@@ -6738,7 +6620,8 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
         logger.error('Error deleting webhook:', e);
         res.status(500).json({ success: false, error: 'Failed to delete webhook' });
     }
-});
+
+// REMOVED DUPLICATE: DELETE /webhooks/:id route consolidated at line 6584 with better SQL/Mongo handling
 
 // Auto-setup a logs webhook using bot capabilities
 app.post('/api/guild/:guildId/webhooks/auto-setup', async (req, res) => {
@@ -7006,37 +6889,37 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
                 const method = (vcfg.method || 'button');
                 const isReaction = method === 'reaction';
                 const isImage = method === 'image';
-                const defaultTitle = '🔒 Verificação do Servidor';
+                const defaultTitle = '­ƒöÆ Verifica├º├úo do Servidor';
                 const defaultDesc = isReaction
                     ? (effOptions.template === 'rich'
-                        ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, reage com ✅ nesta mensagem para concluir a verificação.`
-                        : 'Reage com ✅ nesta mensagem para te verificares.'
+                        ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, reage com Ô£à nesta mensagem para concluir a verifica├º├úo.`
+                        : 'Reage com Ô£à nesta mensagem para te verificares.'
                       )
                     : isImage
                         ? (effOptions.template === 'rich'
-                            ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nCarrega em Verificar para receberes um captcha por imagem e concluir a verificação.`
+                            ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nCarrega em Verificar para receberes um captcha por imagem e concluir a verifica├º├úo.`
                             : 'Carrega em Verificar para resolveres o captcha por imagem.'
                           )
                         : (effOptions.template === 'rich'
-                            ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, conclui a verificação clicando no botão abaixo.`
+                            ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, conclui a verifica├º├úo clicando no bot├úo abaixo.`
                             : 'Clica em Verificar para concluir e ganhar acesso aos canais.'
                           );
                 const title = (typeof effOptions.title === 'string' && effOptions.title.trim()) ? effOptions.title.trim().slice(0,100) : defaultTitle;
                 const description = (typeof effOptions.description === 'string' && effOptions.description.trim()) ? effOptions.description.trim().slice(0,2000) : defaultDesc;
                 // Thumbnail: prefer per-guild icon override
                 let thumbUrl = null; try { const iu = (cfg?.botSettings && typeof cfg.botSettings.iconUrl === 'string') ? cfg.botSettings.iconUrl.trim() : '' ; if (iu) thumbUrl = iu; } catch {}
-                embed.setTitle(title).setDescription(description).setThumbnail(thumbUrl || guild.iconURL({ size: 256 })).setFooter({ text: 'IGNIS COMMUNITY™ • Sistema de verificação' }).setTimestamp();
+                embed.setTitle(title).setDescription(description).setThumbnail(thumbUrl || guild.iconURL({ size: 256 })).setFooter({ text: 'IGNIS COMMUNITYÔäó ÔÇó Sistema de verifica├º├úo' }).setTimestamp();
                 if (effOptions.template === 'rich') {
-                    embed.addFields({ name: '⚠️ Importante', value: 'Segue as regras do servidor e mantém um perfil adequado.' });
+                    embed.addFields({ name: 'ÔÜá´©Å Importante', value: 'Segue as regras do servidor e mant├®m um perfil adequado.' });
                 }
                 if (!isReaction) {
                     const row = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId('verify_user').setLabel((typeof effOptions.buttonLabel === 'string' && effOptions.buttonLabel.trim()) ? effOptions.buttonLabel.trim().slice(0,80) : 'Verificar').setEmoji('✅').setStyle(ButtonStyle.Primary)
+                        new ButtonBuilder().setCustomId('verify_user').setLabel((typeof effOptions.buttonLabel === 'string' && effOptions.buttonLabel.trim()) ? effOptions.buttonLabel.trim().slice(0,80) : 'Verificar').setEmoji('Ô£à').setStyle(ButtonStyle.Primary)
                     );
                     rows = [row];
                 }
             } else {
-                embed.setTitle('Pré-visualização de painel').setDescription('Este é um envio de teste (DM).');
+                embed.setTitle('Pr├®-visualiza├º├úo de painel').setDescription('Este ├® um envio de teste (DM).');
             }
             // Guild-branded banner override for preview
             try {
@@ -7093,19 +6976,19 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             const method = (vcfg.method || 'button');
             const isReaction = method === 'reaction';
                         const isImage = method === 'image';
-                        const defaultTitle = '🔒 Verificação do Servidor';
+                        const defaultTitle = '­ƒöÆ Verifica├º├úo do Servidor';
                         const defaultDesc = isReaction
                   ? (template === 'rich'
-                      ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, reage com ✅ nesta mensagem para concluir a verificação.`
-                      : 'Reage com ✅ nesta mensagem para te verificares.'
+                      ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, reage com Ô£à nesta mensagem para concluir a verifica├º├úo.`
+                      : 'Reage com Ô£à nesta mensagem para te verificares.'
                     )
                                     : isImage
                                         ? (template === 'rich'
-                                                ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nCarrega em Verificar para receberes um captcha por imagem e concluir a verificação.`
+                                                ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nCarrega em Verificar para receberes um captcha por imagem e concluir a verifica├º├úo.`
                                                 : 'Carrega em Verificar para resolveres o captcha por imagem.'
                                             )
                                         : (template === 'rich'
-                      ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, conclui a verificação clicando no botão abaixo.`
+                      ? `Bem-vindo(a) a **${cfg.serverName || guild.name}**.\n\nPara aceder a todos os canais, conclui a verifica├º├úo clicando no bot├úo abaixo.`
                       : 'Clica em Verificar para concluir e ganhar acesso aos canais.'
                     );
                         const title = (typeof effOptions.title === 'string' && effOptions.title.trim()) ? effOptions.title.trim().slice(0, 100) : defaultTitle;
@@ -7114,14 +6997,14 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
                                 .setTitle(title)
                                 .setDescription(description)
                 .setThumbnail(guild.iconURL({ size: 256 }))
-                .setFooter({ text: 'IGNIS COMMUNITY™ • Sistema de verificação' })
+                .setFooter({ text: 'IGNIS COMMUNITYÔäó ÔÇó Sistema de verifica├º├úo' })
                 .setTimestamp();
             if (template === 'rich') {
-                embed.addFields({ name: '⚠️ Importante', value: 'Segue as regras do servidor e mantém um perfil adequado.' });
+                embed.addFields({ name: 'ÔÜá´©Å Importante', value: 'Segue as regras do servidor e mant├®m um perfil adequado.' });
             }
             if (!isReaction) {
                 const row = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('verify_user').setLabel((typeof effOptions.buttonLabel === 'string' && effOptions.buttonLabel.trim()) ? effOptions.buttonLabel.trim().slice(0, 80) : 'Verificar').setEmoji('✅').setStyle(ButtonStyle.Primary)
+                    new ButtonBuilder().setCustomId('verify_user').setLabel((typeof effOptions.buttonLabel === 'string' && effOptions.buttonLabel.trim()) ? effOptions.buttonLabel.trim().slice(0, 80) : 'Verificar').setEmoji('Ô£à').setStyle(ButtonStyle.Primary)
                 );
                 rows = [row];
             } else {
@@ -7129,42 +7012,42 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             }
     } else if (template === 'compact') {
             embed
-                .setTitle('🎫 Tickets • Compacto')
+                .setTitle('­ƒÄ½ Tickets ÔÇó Compacto')
         .setDescription('Escolhe abaixo e abre um ticket privado.')
                 // prefer per-guild icon override
                 .setThumbnail(((cfg?.botSettings && typeof cfg.botSettings.iconUrl === 'string' && cfg.botSettings.iconUrl.trim()) ? cfg.botSettings.iconUrl.trim() : (check.guild?.iconURL({ size: 256, dynamic: true }) || null)));
             const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('ticket:create:support').setLabel('Suporte').setEmoji('🎫').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger)
+                new ButtonBuilder().setCustomId('ticket:create:support').setLabel('Suporte').setEmoji('­ƒÄ½').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Problema').setEmoji('ÔÜá´©Å').setStyle(ButtonStyle.Danger)
             );
             rows = [row];
     } else if (template === 'minimal') {
             embed
-                .setTitle('🎫 Abrir ticket')
-        .setDescription('Carrega num botão para abrir um ticket.')
+                .setTitle('­ƒÄ½ Abrir ticket')
+        .setDescription('Carrega num bot├úo para abrir um ticket.')
                 .setThumbnail(((cfg?.botSettings && typeof cfg.botSettings.iconUrl === 'string' && cfg.botSettings.iconUrl.trim()) ? cfg.botSettings.iconUrl.trim() : (check.guild?.iconURL({ size: 256, dynamic: true }) || null)));
             const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Abrir Ticket').setEmoji('🎟️').setStyle(ButtonStyle.Primary)
+                new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Abrir Ticket').setEmoji('­ƒÄƒ´©Å').setStyle(ButtonStyle.Primary)
             );
             rows = [row];
     } else if (template === 'premium') {
             embed
-                .setTitle('🎫 Centro de Suporte • Premium')
-                .setDescription('Serviço prioritário, acompanhamento dedicado e histórico guardado.')
+                .setTitle('­ƒÄ½ Centro de Suporte ÔÇó Premium')
+                .setDescription('Servi├ºo priorit├írio, acompanhamento dedicado e hist├│rico guardado.')
     .setThumbnail(((cfg?.botSettings && typeof cfg.botSettings.iconUrl === 'string' && cfg.botSettings.iconUrl.trim()) ? cfg.botSettings.iconUrl.trim() : (check.guild?.iconURL({ size: 256, dynamic: true }) || null)))
                 .addFields(
-                    { name: '• Resposta express', value: 'Prioridade máxima', inline: true },
-                    { name: '• Privado & seguro', value: 'Só tu e equipa', inline: true },
-                    { name: '• Transcript', value: 'Disponível a pedido', inline: true },
+                    { name: 'ÔÇó Resposta express', value: 'Prioridade m├íxima', inline: true },
+                    { name: 'ÔÇó Privado & seguro', value: 'S├│ tu e equipa', inline: true },
+                    { name: 'ÔÇó Transcript', value: 'Dispon├¡vel a pedido', inline: true },
                 );
             const row1 = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('ticket:create:vip').setLabel('VIP / Premium').setEmoji('👑').setStyle(ButtonStyle.Success),
-                new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger)
+                new ButtonBuilder().setCustomId('ticket:create:vip').setLabel('VIP / Premium').setEmoji('­ƒææ').setStyle(ButtonStyle.Success),
+                new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte T├®cnico').setEmoji('­ƒöº').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('ÔÜá´©Å').setStyle(ButtonStyle.Danger)
             );
             const row2 = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary)
+                new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Modera├º├úo & Seguran├ºa').setEmoji('­ƒøí´©Å').setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId('ticket:create:general').setLabel('D├║vidas Gerais').setEmoji('­ƒÆ¼').setStyle(ButtonStyle.Secondary)
             );
             rows = [row1, row2];
         } else if (template === 'gamer') {
@@ -7173,35 +7056,35 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             const fallback = (visualAssets && visualAssets.realImages && visualAssets.realImages.supportBanner)
                 || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1200&h=400&fit=crop&crop=center';
             embed
-                .setTitle('Precisas de ajuda? Clica aí 👇')
+                .setTitle('Precisas de ajuda? Clica a├¡ ­ƒæç')
                 .setDescription('Escolhe o tipo de ajuda abaixo. Visual gamer, chill e funcional.')
                 .setImage(iconUrl || fallback);
             const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
-                new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('👤').setStyle(ButtonStyle.Secondary)
+                new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte T├®cnico').setEmoji('­ƒöº').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('ÔÜá´©Å').setStyle(ButtonStyle.Danger),
+                new ButtonBuilder().setCustomId('ticket:create:general').setLabel('D├║vidas Gerais').setEmoji('­ƒÆ¼').setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('­ƒæñ').setStyle(ButtonStyle.Secondary)
             );
             rows = [row];
     } else {
             // classic (default)
             embed
-                .setTitle('🎫 Centro de Suporte')
+                .setTitle('­ƒÄ½ Centro de Suporte')
                 .setDescription('Escolhe o departamento abaixo para abrir um ticket privado com a equipa.')
         .setThumbnail(check.guild?.iconURL({ size: 256, dynamic: true }) || null)
                 .addFields(
-                    { name: '• Resposta rápida', value: 'Tempo médio: minutos', inline: true },
-                    { name: '• Canal privado', value: 'Visível só para ti e staff', inline: true },
-                    { name: '• Histórico guardado', value: 'Transcript disponível', inline: true },
+                    { name: 'ÔÇó Resposta r├ípida', value: 'Tempo m├®dio: minutos', inline: true },
+                    { name: 'ÔÇó Canal privado', value: 'Vis├¡vel s├│ para ti e staff', inline: true },
+                    { name: 'ÔÇó Hist├│rico guardado', value: 'Transcript dispon├¡vel', inline: true },
                 );
             const row1 = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
-                new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary)
+                new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte T├®cnico').setEmoji('­ƒöº').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('ÔÜá´©Å').setStyle(ButtonStyle.Danger),
+                new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Modera├º├úo & Seguran├ºa').setEmoji('­ƒøí´©Å').setStyle(ButtonStyle.Secondary)
             );
             const row2 = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('🧾').setStyle(ButtonStyle.Secondary)
+                new ButtonBuilder().setCustomId('ticket:create:general').setLabel('D├║vidas Gerais').setEmoji('­ƒÆ¼').setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('­ƒº¥').setStyle(ButtonStyle.Secondary)
             );
             rows = [row1, row2];
         }
@@ -7212,12 +7095,12 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
         } catch {}
         const payload = { embeds: [embed], components: rows };
         const msg = await channel.send(payload);
-        // If method=reaction, add the ✅ reaction to guide users
+        // If method=reaction, add the Ô£à reaction to guide users
         try {
             if (type === 'verification') {
                 const vcfg = cfg?.verification || {};
                 if ((vcfg.method || 'button') === 'reaction') {
-                    await msg.react('✅').catch(() => {});
+                    await msg.react('Ô£à').catch(() => {});
                 }
             }
         } catch {}
@@ -7242,7 +7125,7 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
     }
 });
 
-// Nova rota para detalhes de um ticket específico
+// Nova rota para detalhes de um ticket espec├¡fico
 app.get('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -7303,7 +7186,7 @@ app.get('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
             ...ticket,
             channelExists: !!channel,
             channelName: channel?.name || 'Canal deletado',
-            ownerTag: owner ? `${owner.username}#${owner.discriminator}` : 'Usuário desconhecido',
+            ownerTag: owner ? `${owner.username}#${owner.discriminator}` : 'Usu├írio desconhecido',
             ownerAvatar: owner?.displayAvatarURL({ size: 64 }) || null,
             claimedByTag: claimedBy ? `${claimedBy.username}#${claimedBy.discriminator}` : null,
             claimedByAvatar: claimedBy?.displayAvatarURL({ size: 64 }) || null,
@@ -7339,7 +7222,7 @@ app.get('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
     }
 });
 
-// Rota para histórico de ações (ticket_logs)
+// Rota para hist├│rico de a├º├Áes (ticket_logs)
 app.get('/api/guild/:guildId/tickets/:ticketId/logs', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -7360,7 +7243,7 @@ app.get('/api/guild/:guildId/tickets/:ticketId/logs', async (req, res) => {
     let offset = parseInt(String(req.query.offset||'0'), 10);
     if (!Number.isFinite(offset) || offset < 0) offset = 0;
     const logs = await storage.getTicketLogs(ticketId, limit, offset);
-        // Enriquecer com informações do ator
+        // Enriquecer com informa├º├Áes do ator
         const enriched = await Promise.all((logs || []).map(async (l) => {
             let actorTag = null, actorAvatar = null;
             try {
@@ -7510,7 +7393,7 @@ app.get('/api/guild/:guildId/tickets/:ticketId/messages', async (req, res) => {
     }
 });
 
-// Rota para ações em tickets (claim, close, etc.)
+// Rota para a├º├Áes em tickets (claim, close, etc.)
 app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -7530,7 +7413,7 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Guild not found' });
         }
 
-        // Verificar se o usuário é membro do servidor
+        // Verificar se o usu├írio ├® membro do servidor
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) {
             return res.status(403).json({ success: false, error: 'You are not a member of this server' });
@@ -7762,7 +7645,7 @@ app.delete('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Guild not found' });
         }
 
-        // Verificar se o usuário é admin do servidor
+        // Verificar se o usu├írio ├® admin do servidor
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) {
             return res.status(403).json({ success: false, error: 'You are not a member of this server' });
@@ -7992,7 +7875,7 @@ app.post('/api/guild/:guildId/tickets/:ticketId/transcript/regenerate', async (r
     }
 });
 
-// Função helper para formatar tempo
+// Fun├º├úo helper para formatar tempo
 function formatTimeAgo(date) {
     const now = new Date();
     const diff = now - date;
@@ -8000,9 +7883,9 @@ function formatTimeAgo(date) {
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
-    if (days > 0) return `${days}d atrás`;
-    if (hours > 0) return `${hours}h atrás`;
-    if (minutes > 0) return `${minutes}m atrás`;
+    if (days > 0) return `${days}d atr├ís`;
+    if (hours > 0) return `${hours}h atr├ís`;
+    if (minutes > 0) return `${minutes}m atr├ís`;
     return 'Agora mesmo';
 }
 
@@ -8056,11 +7939,13 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
         };
     } catch (e) { logger.warn('socket.io init failed:', e?.message||e); }
 
-    // ============================================================================
-    // 📊 INVITE TRACKER API ROUTES
-    // ============================================================================
+    // ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+    // ­ƒÄ» INVITE TRACKER API ROUTES
+    // ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
 
-    // GET: Estatísticas gerais de convites do servidor
+    const inviteTrackerService = require('../src/services/inviteTrackerService');
+
+    // GET: Estat├¡sticas gerais de convites do servidor
     app.get('/api/guild/:guildId/invites/stats', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
@@ -8095,7 +7980,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
         }
     });
 
-    // GET: Convites de um usuário específico
+    // GET: Convites de um usu├írio espec├¡fico
     app.get('/api/guild/:guildId/invites/user/:userId', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
@@ -8130,11 +8015,13 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
         }
     });
 
-    // ============================================================================
-    // 🛡️ ANTI-RAID API ROUTES
-    // ============================================================================
+    // ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+    // ­ƒøí´©Å ANTI-RAID API ROUTES
+    // ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
 
-    // GET: Configuração de anti-raid
+    const antiRaidService = require('../src/services/antiRaidService');
+
+    // GET: Configura├º├úo de anti-raid
     app.get('/api/guild/:guildId/antiraid/config', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
@@ -8151,7 +8038,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
         }
     });
 
-    // POST: Atualizar configuração
+    // POST: Atualizar configura├º├úo
     app.post('/api/guild/:guildId/antiraid/config', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
@@ -8168,7 +8055,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
         }
     });
 
-    // GET: Estatísticas de raids
+    // GET: Estat├¡sticas de raids
     app.get('/api/guild/:guildId/antiraid/stats', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
@@ -8199,7 +8086,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
                 .sort({ startedAt: -1 })
                 .limit(50)
                 .lean();
-
+            
             res.json({ success: true, raids });
         } catch (e) {
             logger.error('Error fetching raids:', e);
@@ -8225,515 +8112,16 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
         }
     });
 
-    // ════════════════════════════════════════════════════════════════════
-    // 🚨 WARNS API ROUTES
-    // ════════════════════════════════════════════════════════════════════
-
-    // GET: Lista de warns de um servidor
-    app.get('/api/guild/:guildId/warns', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const { userId } = req.query;
-            const warns = userId 
-                ? await warnService.getUserWarns(req.params.guildId, userId)
-                : await warnService.getActiveWarns(req.params.guildId);
-            
-            res.json({ success: true, warns });
-        } catch (e) {
-            logger.error('Error fetching warns:', e);
-            res.status(500).json({ success: false, error: 'Failed to fetch warns' });
-        }
-    });
-
-    // POST: Adicionar warn
-    app.post('/api/guild/:guildId/warns', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const { userId, reason, level } = req.body;
-            const warn = await warnService.addWarn(req.params.guildId, userId, req.user.id, reason, level);
-            
-            res.json({ success: true, warn });
-        } catch (e) {
-            logger.error('Error adding warn:', e);
-            res.status(500).json({ success: false, error: 'Failed to add warn' });
-        }
-    });
-
-    // DELETE: Revogar warn
-    app.delete('/api/guild/:guildId/warns/:warnId', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const { reason } = req.body;
-            const warn = await warnService.revokeWarn(req.params.warnId, req.user.id, reason);
-            
-            res.json({ success: true, warn });
-        } catch (e) {
-            logger.error('Error revoking warn:', e);
-            res.status(500).json({ success: false, error: 'Failed to revoke warn' });
-        }
-    });
-
-    // ════════════════════════════════════════════════════════════════════
-    // 💡 SUGGESTIONS API ROUTES
-    // ════════════════════════════════════════════════════════════════════
-
-    // GET: Sugestões do servidor
-    app.get('/api/guild/:guildId/suggestions', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const { status } = req.query;
-            const suggestions = await suggestionService.getGuildSuggestions(req.params.guildId, status);
-            
-            res.json({ success: true, suggestions });
-        } catch (e) {
-            logger.error('Error fetching suggestions:', e);
-            res.status(500).json({ success: false, error: 'Failed to fetch suggestions' });
-        }
-    });
-
-    // POST: Atualizar status de sugestão
-    app.post('/api/guild/:guildId/suggestions/:messageId/status', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const { status, reviewNote } = req.body;
-            const suggestion = await suggestionService.updateStatus(client, req.params.messageId, status, req.user.id, reviewNote);
-            
-            res.json({ success: true, suggestion });
-        } catch (e) {
-            logger.error('Error updating suggestion:', e);
-            res.status(500).json({ success: false, error: 'Failed to update suggestion' });
-        }
-    });
-
-    // ════════════════════════════════════════════════════════════════════
-    // 🤖 AUTO-RESPONDER API ROUTES
-    // ════════════════════════════════════════════════════════════════════
-
-    // GET: Auto-responses do servidor
-    app.get('/api/guild/:guildId/autoresponses', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const responses = await autoResponseService.getGuildResponses(req.params.guildId);
-            res.json({ success: true, responses });
-        } catch (e) {
-            logger.error('Error fetching auto-responses:', e);
-            res.status(500).json({ success: false, error: 'Failed to fetch auto-responses' });
-        }
-    });
-
-    // POST: Criar auto-response
-    app.post('/api/guild/:guildId/autoresponses', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const response = await autoResponseService.createResponse(req.params.guildId, req.body.name, req.body.triggers, req.body.response, {
-                ...req.body,
-                createdBy: req.user.id
-            });
-            
-            res.json({ success: true, response });
-        } catch (e) {
-            logger.error('Error creating auto-response:', e);
-            res.status(500).json({ success: false, error: 'Failed to create auto-response' });
-        }
-    });
-
-    // PUT: Atualizar auto-response
-    app.put('/api/guild/:guildId/autoresponses/:id', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const response = await autoResponseService.updateResponse(req.params.id, req.body);
-            res.json({ success: true, response });
-        } catch (e) {
-            logger.error('Error updating auto-response:', e);
-            res.status(500).json({ success: false, error: 'Failed to update auto-response' });
-        }
-    });
-
-    // DELETE: Deletar auto-response
-    app.delete('/api/guild/:guildId/autoresponses/:id', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            await autoResponseService.deleteResponse(req.params.id);
-            res.json({ success: true });
-        } catch (e) {
-            logger.error('Error deleting auto-response:', e);
-            res.status(500).json({ success: false, error: 'Failed to delete auto-response' });
-        }
-    });
-
-    // ════════════════════════════════════════════════════════════════════
-    // 📅 EVENTS API ROUTES
-    // ════════════════════════════════════════════════════════════════════
-
-    // GET: Eventos do servidor
-    app.get('/api/guild/:guildId/events', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const events = await eventService.getUpcomingEvents(req.params.guildId);
-            res.json({ success: true, events });
-        } catch (e) {
-            logger.error('Error fetching events:', e);
-            res.status(500).json({ success: false, error: 'Failed to fetch events' });
-        }
-    });
-
-    // POST: Criar evento
-    app.post('/api/guild/:guildId/events', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const event = await eventService.createEvent(client, req.params.guildId, req.user.id, req.body);
-            res.json({ success: true, event });
-        } catch (e) {
-            logger.error('Error creating event:', e);
-            res.status(500).json({ success: false, error: 'Failed to create event' });
-        }
-    });
-
-    // DELETE: Deletar evento
-    app.delete('/api/guild/:guildId/events/:eventId', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            await eventService.deleteEvent(req.params.eventId);
-            res.json({ success: true });
-        } catch (e) {
-            logger.error('Error deleting event:', e);
-            res.status(500).json({ success: false, error: 'Failed to delete event' });
-        }
-    });
-
-    // ════════════════════════════════════════════════════════════════════
-    // 👥 STAFF MONITORING API ROUTES
-    // ════════════════════════════════════════════════════════════════════
-
-    // GET: Estatísticas de staff
-    app.get('/api/guild/:guildId/staff/stats/:staffId', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const { days } = req.query;
-            const stats = await staffMonitoringService.getStaffStats(req.params.guildId, req.params.staffId, parseInt(days) || 30);
-            
-            res.json({ success: true, stats });
-        } catch (e) {
-            logger.error('Error fetching staff stats:', e);
-            res.status(500).json({ success: false, error: 'Failed to fetch staff stats' });
-        }
-    });
-
-    // GET: Leaderboard de staff
-    app.get('/api/guild/:guildId/staff/leaderboard', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const { days } = req.query;
-            const leaderboard = await staffMonitoringService.getLeaderboard(req.params.guildId, parseInt(days) || 30);
-            
-            res.json({ success: true, leaderboard });
-        } catch (e) {
-            logger.error('Error fetching leaderboard:', e);
-            res.status(500).json({ success: false, error: 'Failed to fetch leaderboard' });
-        }
-    });
-
-    // GET: Ações recentes
-    app.get('/api/guild/:guildId/staff/recent', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const { limit } = req.query;
-            const actions = await staffMonitoringService.getRecentActions(req.params.guildId, parseInt(limit) || 50);
-            
-            res.json({ success: true, actions });
-        } catch (e) {
-            logger.error('Error fetching recent actions:', e);
-            res.status(500).json({ success: false, error: 'Failed to fetch recent actions' });
-        }
-    });
-
-    // ════════════════════════════════════════════════════════════════════
-    // 📢 SCHEDULED ANNOUNCEMENTS API ROUTES
-    // ════════════════════════════════════════════════════════════════════
-
-    // GET: Anúncios agendados
-    app.get('/api/guild/:guildId/announcements', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const { status } = req.query;
-            const announcements = await scheduledAnnouncementService.getGuildAnnouncements(req.params.guildId, status);
-            
-            res.json({ success: true, announcements });
-        } catch (e) {
-            logger.error('Error fetching announcements:', e);
-            res.status(500).json({ success: false, error: 'Failed to fetch announcements' });
-        }
-    });
-
-    // POST: Criar anúncio
-    app.post('/api/guild/:guildId/announcements', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const announcement = await scheduledAnnouncementService.createAnnouncement(req.params.guildId, req.user.id, req.body);
-            res.json({ success: true, announcement });
-        } catch (e) {
-            logger.error('Error creating announcement:', e);
-            res.status(500).json({ success: false, error: 'Failed to create announcement' });
-        }
-    });
-
-    // DELETE: Cancelar/deletar anúncio
-    app.delete('/api/guild/:guildId/announcements/:id', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            await scheduledAnnouncementService.deleteAnnouncement(req.params.id);
-            res.json({ success: true });
-        } catch (e) {
-            logger.error('Error deleting announcement:', e);
-            res.status(500).json({ success: false, error: 'Failed to delete announcement' });
-        }
-    });
-
-    // ════════════════════════════════════════════════════════════════════
-    // 🎫 TICKETS 2.0 ENHANCED API ROUTES
-    // ════════════════════════════════════════════════════════════════════
-
-    // CATEGORIAS
-    // GET: Listar categorias
-    app.get('/api/guild/:guildId/ticket-categories', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const categories = await ticketEnhancedService.getCategories(req.params.guildId, false);
-            res.json({ success: true, categories });
-        } catch (e) {
-            logger.error('Error fetching ticket categories:', e);
-            res.status(500).json({ success: false, error: 'Failed to fetch categories' });
-        }
-    });
-
-    // POST: Criar categoria
-    app.post('/api/guild/:guildId/ticket-categories', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const category = await ticketEnhancedService.createCategory(req.params.guildId, req.body);
-            res.json({ success: true, category });
-        } catch (e) {
-            logger.error('Error creating ticket category:', e);
-            res.status(500).json({ success: false, error: 'Failed to create category' });
-        }
-    });
-
-    // PUT: Atualizar categoria
-    app.put('/api/guild/:guildId/ticket-categories/:categoryId', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const category = await ticketEnhancedService.updateCategory(req.params.categoryId, req.body);
-            res.json({ success: true, category });
-        } catch (e) {
-            logger.error('Error updating ticket category:', e);
-            res.status(500).json({ success: false, error: 'Failed to update category' });
-        }
-    });
-
-    // DELETE: Deletar categoria
-    app.delete('/api/guild/:guildId/ticket-categories/:categoryId', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            await ticketEnhancedService.deleteCategory(req.params.categoryId);
-            res.json({ success: true });
-        } catch (e) {
-            logger.error('Error deleting ticket category:', e);
-            res.status(500).json({ success: false, error: 'Failed to delete category' });
-        }
-    });
-
-    // TICKETS
-    // GET: Listar tickets
-    app.get('/api/guild/:guildId/tickets-enhanced', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const tickets = await ticketEnhancedService.getGuildTickets(req.params.guildId, req.query);
-            res.json({ success: true, tickets });
-        } catch (e) {
-            logger.error('Error fetching tickets:', e);
-            res.status(500).json({ success: false, error: 'Failed to fetch tickets' });
-        }
-    });
-
-    // GET: Estatísticas de tickets
-    app.get('/api/guild/:guildId/tickets-enhanced/stats', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const { days } = req.query;
-            const stats = await ticketEnhancedService.getTicketStats(req.params.guildId, parseInt(days) || 30);
-            res.json({ success: true, stats });
-        } catch (e) {
-            logger.error('Error fetching ticket stats:', e);
-            res.status(500).json({ success: false, error: 'Failed to fetch stats' });
-        }
-    });
-
-    // POST: Adicionar nota a ticket
-    app.post('/api/guild/:guildId/tickets-enhanced/:ticketId/notes', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const { content } = req.body;
-            const ticket = await ticketEnhancedService.addNote(req.params.ticketId, req.user.id, content);
-            res.json({ success: true, ticket });
-        } catch (e) {
-            logger.error('Error adding note:', e);
-            res.status(500).json({ success: false, error: 'Failed to add note' });
-        }
-    });
-
-    // POST: Fechar ticket
-    app.post('/api/guild/:guildId/tickets-enhanced/:ticketId/close', async (req, res) => {
-        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-        try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-
-            const { reason } = req.body;
-            const ticket = await ticketEnhancedService.closeTicket(client, req.params.ticketId, req.user.id, reason);
-            res.json({ success: true, ticket });
-        } catch (e) {
-            logger.error('Error closing ticket:', e);
-            res.status(500).json({ success: false, error: 'Failed to close ticket' });
-        }
-    });
-
     server.listen(PORT, () => {
         const callbackURL = getCallbackURL();
-        logger.info(`🌐 Dashboard servidor iniciado em http://localhost:${PORT}`);
-        logger.info(`🔑 OAuth Callback URL: ${callbackURL}`);
-        logger.info(`🆔 Client ID: ${config.DISCORD.CLIENT_ID}`);
-        logger.info(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+        logger.info(`­ƒîÉ Dashboard servidor iniciado em http://localhost:${PORT}`);
+        logger.info(`­ƒöæ OAuth Callback URL: ${callbackURL}`);
+        logger.info(`­ƒåö Client ID: ${config.DISCORD.CLIENT_ID}`);
+        logger.info(`­ƒôì Environment: ${process.env.NODE_ENV || 'development'}`);
     });
 } else {
     if ((process.env.NODE_ENV || '') !== 'test') {
-        logger.warn('⚠️ Dashboard não iniciado - CLIENT_SECRET não configurado');
+        logger.warn('ÔÜá´©Å Dashboard n├úo iniciado - CLIENT_SECRET n├úo configurado');
     }
 }
 

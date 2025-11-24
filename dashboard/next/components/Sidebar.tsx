@@ -128,7 +128,8 @@ export default function Sidebar() {
           const isOpen = openDropdown === n.key
 
           // Check if any child is active
-          const isChildActive = n.children?.some(child => {
+          const isChildActive = hasChildren && n.children?.some(child => {
+            if (!child || !child.href) return false
             const childHref = child.requiresGuild && guildId ? child.href.replace('{gid}', guildId) : child.href
             return pathname === childHref
           }) || false
@@ -162,7 +163,7 @@ export default function Sidebar() {
                   {/* Dropdown children */}
                   {isOpen && (
                     <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-700/50 pl-2">
-                      {n.children?.map((child) => {
+                      {n.children?.filter(child => child && child.href).map((child) => {
                         // Skip guild-specific items if no guild selected
                         if (child.requiresGuild && !guildId) return null
 
