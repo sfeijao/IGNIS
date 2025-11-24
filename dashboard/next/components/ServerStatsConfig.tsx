@@ -50,7 +50,9 @@ export default function ServerStatsConfig() {
           api.getStatsConfig(guildId),
           api.getChannels(guildId)
         ])
-        if (configRes.config) setConfig(configRes.config)
+        if (configRes.config) {
+          setConfig(prev => ({ ...prev, ...configRes.config }))
+        }
         setChannels((channelsRes.channels || []).filter((c: any) => c.type === 2 || c.type === '2'))
       } catch (e: any) {
         toast({ type: 'error', title: 'Erro ao carregar', description: e?.message })
@@ -198,32 +200,34 @@ export default function ServerStatsConfig() {
 
       {/* Counters */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {counters.map(({ key, icon, label }) => (
-          <section key={key} className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 rounded-2xl overflow-hidden shadow-xl">
-            <div className="bg-gradient-to-r from-blue-600/10 to-cyan-600/10 border-b border-gray-700/50 px-4 py-3 flex items-center justify-between">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <span className="text-xl">{icon}</span>
-                {label}
-              </h4>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={config[key].enabled}
-                  onChange={e => updateCounter(key, 'enabled', e.target.checked)}
-                  disabled={!config.enabled}
-                  className="sr-only peer"
-                />
-                <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-3 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
-            </div>
-            <div className="p-4 space-y-3">
-              <div>
+        {counters.map(({ key, icon, label }) => {
+          const counter = config[key] || { enabled: false, channelId: '', format: '' }
+          return (
+            <section key={key} className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 rounded-2xl overflow-hidden shadow-xl">
+              <div className="bg-gradient-to-r from-blue-600/10 to-cyan-600/10 border-b border-gray-700/50 px-4 py-3 flex items-center justify-between">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  <span className="text-xl">{icon}</span>
+                  {label}
+                </h4>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={counter.enabled}
+                    onChange={e => updateCounter(key, 'enabled', e.target.checked)}
+                    disabled={!config.enabled}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-3 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+              <div className="p-4 space-y-3">
+                <div>
                 <label className="text-xs font-medium text-gray-400 mb-1.5 block">Canal de Voz</label>
                 <select
-                  value={config[key].channelId}
+                  value={counter.channelId}
                   onChange={e => updateCounter(key, 'channelId', e.target.value)}
                   className="w-full px-3 py-2 text-sm bg-gray-900/50 border border-gray-700/50 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  disabled={!config.enabled || !config[key].enabled}
+                  disabled={!config.enabled || !counter.enabled}
                 >
                   <option value="">Selecione um canal de voz...</option>
                   {channels.map(ch => (
@@ -237,16 +241,16 @@ export default function ServerStatsConfig() {
                   <span className="text-[10px] text-gray-600">({'{count}'} = número)</span>
                 </label>
                 <input
-                  value={config[key].format}
+                  value={counter.format}
                   onChange={e => updateCounter(key, 'format', e.target.value)}
                   className="w-full px-3 py-2 text-sm bg-gray-900/50 border border-gray-700/50 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all"
-                  disabled={!config.enabled || !config[key].enabled}
+                  disabled={!config.enabled || !counter.enabled}
                   placeholder={`${icon} ${label}: {count}`}
                 />
               </div>
             </div>
           </section>
-        ))}
+        )})}
       </div>
 
       {/* Info Box */}

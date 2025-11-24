@@ -67,8 +67,12 @@ export default function WelcomeGoodbyeConfig() {
           api.getWelcomeConfig(guildId),
           api.getChannels(guildId)
         ])
-        if (configRes.welcome) setWelcome(configRes.welcome)
-        if (configRes.goodbye) setGoodbye(configRes.goodbye)
+        if (configRes.welcome) {
+          setWelcome(prev => ({ ...prev, ...configRes.welcome }))
+        }
+        if (configRes.goodbye) {
+          setGoodbye(prev => ({ ...prev, ...configRes.goodbye }))
+        }
         setChannels((channelsRes.channels || []).filter((c: any) => c.type === 0 || c.type === '0'))
       } catch (e: any) {
         toast({ type: 'error', title: 'Erro ao carregar', description: e?.message })
