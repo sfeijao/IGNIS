@@ -8478,6 +8478,153 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
         }
     });
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // TICKETS 2.0 ENHANCED API ROUTES
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const ticketEnhancedService = require('../src/services/ticketEnhancedService');
+
+    // CATEGORIAS
+    // GET: Listar categorias
+    app.get('/api/guild/:guildId/ticket-categories', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const categories = await ticketEnhancedService.getCategories(req.params.guildId, false);
+            res.json({ success: true, categories });
+        } catch (e) {
+            logger.error('Error fetching ticket categories:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch categories' });
+        }
+    });
+
+    // POST: Criar categoria
+    app.post('/api/guild/:guildId/ticket-categories', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const category = await ticketEnhancedService.createCategory(req.params.guildId, req.body);
+            res.json({ success: true, category });
+        } catch (e) {
+            logger.error('Error creating ticket category:', e);
+            res.status(500).json({ success: false, error: 'Failed to create category' });
+        }
+    });
+
+    // PUT: Atualizar categoria
+    app.put('/api/guild/:guildId/ticket-categories/:categoryId', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const category = await ticketEnhancedService.updateCategory(req.params.categoryId, req.body);
+            res.json({ success: true, category });
+        } catch (e) {
+            logger.error('Error updating ticket category:', e);
+            res.status(500).json({ success: false, error: 'Failed to update category' });
+        }
+    });
+
+    // DELETE: Deletar categoria
+    app.delete('/api/guild/:guildId/ticket-categories/:categoryId', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            await ticketEnhancedService.deleteCategory(req.params.categoryId);
+            res.json({ success: true });
+        } catch (e) {
+            logger.error('Error deleting ticket category:', e);
+            res.status(500).json({ success: false, error: 'Failed to delete category' });
+        }
+    });
+
+    // TICKETS
+    // GET: Listar tickets
+    app.get('/api/guild/:guildId/tickets-enhanced', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const tickets = await ticketEnhancedService.getGuildTickets(req.params.guildId, req.query);
+            res.json({ success: true, tickets });
+        } catch (e) {
+            logger.error('Error fetching tickets:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch tickets' });
+        }
+    });
+
+    // GET: Estatísticas de tickets
+    app.get('/api/guild/:guildId/tickets-enhanced/stats', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const { days } = req.query;
+            const stats = await ticketEnhancedService.getTicketStats(req.params.guildId, parseInt(days) || 30);
+            res.json({ success: true, stats });
+        } catch (e) {
+            logger.error('Error fetching ticket stats:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch stats' });
+        }
+    });
+
+    // POST: Adicionar nota a ticket
+    app.post('/api/guild/:guildId/tickets-enhanced/:ticketId/notes', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const { content } = req.body;
+            const ticket = await ticketEnhancedService.addNote(req.params.ticketId, req.user.id, content);
+            res.json({ success: true, ticket });
+        } catch (e) {
+            logger.error('Error adding note:', e);
+            res.status(500).json({ success: false, error: 'Failed to add note' });
+        }
+    });
+
+    // POST: Fechar ticket
+    app.post('/api/guild/:guildId/tickets-enhanced/:ticketId/close', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const { reason } = req.body;
+            const ticket = await ticketEnhancedService.closeTicket(client, req.params.ticketId, req.user.id, reason);
+            res.json({ success: true, ticket });
+        } catch (e) {
+            logger.error('Error closing ticket:', e);
+            res.status(500).json({ success: false, error: 'Failed to close ticket' });
+        }
+    });
+
     server.listen(PORT, () => {
         const callbackURL = getCallbackURL();
         logger.info(`🌐 Dashboard servidor iniciado em http://localhost:${PORT}`);
