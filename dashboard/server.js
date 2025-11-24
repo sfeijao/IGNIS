@@ -5944,36 +5944,7 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
     }
 });
 
-// Webhooks API
-// REMOVED DUPLICATE: Third GET /webhooks route - already defined at line 799 with complete diagnostics
-                return res.status(500).json({ success: false, error: 'Failed to list webhooks (sqlite fallback)' });
-            }
-        }
-
-        // Mongo path
-        const { WebhookModel } = require('../utils/db/models');
-        const list = await WebhookModel.find({ guild_id: guildId }).lean();
-        const items = (list || []).map(w => ({
-            id: w._id || w.id,
-            guildId: w.guild_id || guildId,
-            type: w.type || 'logs',
-            enabled: !!w.enabled,
-            channelId: w.channel_id || w.channelId || null,
-            urlMasked: w.url && w.url.length > 16 ? (w.url.slice(0, w.url.length - 12).replace(/./g, '*') + w.url.slice(-12)) : (w.url ? '****' : null),
-            loaded: loadedTypes.includes(w.type || 'logs'),
-            lastOk: w.last_ok == null ? (w.lastOk == null ? null : !!w.lastOk) : !!w.last_ok,
-            lastStatus: w.last_status == null ? (w.lastStatus == null ? null : Number(w.lastStatus)) : Number(w.last_status),
-            lastError: w.last_error || w.lastError || null,
-            lastAt: w.last_at || w.lastAt || null,
-            createdAt: w.createdAt || null,
-            updatedAt: w.updatedAt || null
-        }));
-        return res.json({ success: true, items, webhooks: items });
-    } catch (e) {
-        logger.error('Error listing webhooks:', e);
-        res.status(500).json({ success: false, error: 'Failed to list webhooks' });
-    }
-});
+// Webhooks API - Note: GET /webhooks route already defined at line 799 with complete diagnostics
 
 // Verification Config (stub)
 app.get('/api/guild/:guildId/verification/config', async (req, res) => {
