@@ -31,7 +31,7 @@ export default function OptimizedRoleSelect({
 }: OptimizedRoleSelectProps) {
   const { roles, loading, error, botMaxPosition, refetch } = useRoles(guildId)
 
-  const filteredRoles = excludeManaged ? roles.filter(r => !r.managed) : roles
+  const filteredRoles = excludeManaged ? roles.filter((r: { managed: boolean }) => !r.managed) : roles
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     if (multiple) {
@@ -75,7 +75,7 @@ export default function OptimizedRoleSelect({
         {!loading && !error && filteredRoles.length === 0 && (
           <option value="" disabled>Nenhum cargo disponível</option>
         )}
-        {filteredRoles.map((role) => {
+        {filteredRoles.map((role: { id: string; name: string; color: string; position: number; manageable: boolean; managed: boolean }) => {
           const isManaged = role.managed ? ' 🔒' : ''
           const isAboveBot = role.position >= botMaxPosition ? ' ⚠️' : ''
           const colorDot = role.color !== '#000000' ? `●` : '○'

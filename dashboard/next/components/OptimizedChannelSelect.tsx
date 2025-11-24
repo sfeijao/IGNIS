@@ -61,15 +61,16 @@ export default function OptimizedChannelSelect({
         {!loading && !error && channels.length === 0 && (
           <option value="" disabled>Nenhum canal disponível</option>
         )}
-        {channels.map((channel) => {
-          const emoji = {
+        {channels.map((channel: { id: string; name: string; type: number; parentName?: string }) => {
+          const emojiMap: Record<number, string> = {
             0: '💬', // text
             2: '🔊', // voice
             4: '📁', // category
             5: '📢', // announcement
             13: '🎤', // stage
             15: '💭' // forum
-          }[channel.type] || '📝'
+          }
+          const emoji = emojiMap[channel.type] || '📝'
           
           return (
             <option key={channel.id} value={channel.id}>

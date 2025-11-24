@@ -26,11 +26,18 @@ export default function AutoResponderPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    triggers: string;
+    response: string;
+    matchType: 'exact' | 'contains' | 'startsWith' | 'endsWith' | 'regex';
+    caseSensitive: boolean;
+    cooldown: number;
+  }>({
     name: '',
     triggers: '',
     response: '',
-    matchType: 'contains' as const,
+    matchType: 'contains',
     caseSensitive: false,
     cooldown: 0
   });
