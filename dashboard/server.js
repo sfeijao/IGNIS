@@ -1088,15 +1088,40 @@ app.get('/api/guild/:guildId/roles', async (req, res) => {
         const guildId = req.params.guildId;
         const client = global.discordClient;
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
-        // Fetch roles
+        
+        const check = await ensureGuildAdmin(client, guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const guild = check.guild;
+        
+        // Try fetching roles if cache is empty
+        if (guild.roles.cache.size === 0) {
+            try {
+                logger.info(`[Roles API] Cache empty for guild ${guild.id}, fetching from Discord API...`);
+                await guild.roles.fetch();
+                logger.info(`[Roles API] Fetched ${guild.roles.cache.size} roles from API`);
+            } catch (fetchError) {
+                logger.error('[Roles API] Failed to fetch roles from Discord API:', fetchError);
+            }
+        }
+        
         const me = guild.members.me || guild.members.cache.get(client.user.id);
         const myHighest = me?.roles?.highest?.position ?? 0;
+        
         const roles = guild.roles.cache
-            .sort((a,b)=> a.position === b.position ? 0 : a.position > b.position ? -1 : 1)
-            .map(r => ({ id: r.id, name: r.name, color: r.hexColor, position: r.position, managed: r.managed, hoist: r.hoist, mentionable: r.mentionable, manageable: !r.managed && r.position < myHighest }));
-        return res.json({ success: true, roles, botMax: myHighest });
+            .sort((a,b)=> b.position - a.position) // Highest first
+            .map(r => ({ 
+                id: r.id, 
+                name: r.name, 
+                color: r.hexColor, 
+                position: r.position, 
+                managed: r.managed, 
+                hoist: r.hoist, 
+                mentionable: r.mentionable, 
+                manageable: !r.managed && r.position < myHighest 
+            }));
+            
+        return res.json({ success: true, roles, botMax: myHighest, cached: guild.roles.cache.size });
     } catch (e) {
         logger.error('roles list error', e);
         return res.status(500).json({ success: false, error: 'roles_failed' });
@@ -3750,24 +3775,6 @@ app.post('/api/guild/:guildId/categories/create', async (req, res) => {
 });
 
 // Roles list (for UIs)
-app.get('/api/guild/:guildId/roles', async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-    try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        const roles = check.guild.roles.cache
-            .filter(r => r.editable || r.managed || r.permissions.bitfield)
-            .map(r => ({ id: r.id, name: r.name }))
-            .sort((a,b) => a.name.localeCompare(b.name));
-        res.json({ success: true, roles });
-    } catch (e) {
-        logger.error('Error listing roles:', e);
-        res.status(500).json({ success: false, error: 'Failed to list roles' });
-    }
-});
-
 // Members search (for pickers) - admin gated
 app.get('/api/guild/:guildId/members/search', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
