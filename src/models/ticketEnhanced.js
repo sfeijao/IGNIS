@@ -139,6 +139,6 @@ const ticketEnhancedSchema = new mongoose.Schema({
 ticketEnhancedSchema.index({ guildId: 1, ticketNumber: 1 }, { unique: true });
 
 module.exports = {
-    TicketCategory: mongoose.model('TicketCategory', ticketCategorySchema),
-    TicketEnhanced: mongoose.model('TicketEnhanced', ticketEnhancedSchema)
+    TicketCategory: mongoose.models.TicketCategory || mongoose.model('TicketCategory', ticketCategorySchema),
+    TicketEnhanced: mongoose.models.TicketEnhanced || mongoose.model('TicketEnhanced', ticketEnhancedSchema)
 };
