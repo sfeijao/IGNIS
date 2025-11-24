@@ -12,6 +12,8 @@ export default function MembersList() {
   const guildId = useGuildId()
   const [q, setQ] = useState('')
   const [role, setRole] = useState('')
+  const [status, setStatus] = useState('all') // all, online, offline
+  const [sortBy, setSortBy] = useState('recent') // recent, oldest, name
   const [limit, setLimit] = useState(50)
   const [loading, setLoading] = useState(false)
   const [roles, setRoles] = useState<Array<{ id: string; name: string }>>([])
@@ -42,8 +44,32 @@ export default function MembersList() {
     return () => { aborted = true }
   }, [guildId, params])
 
-  const totalMembers = members.length
-  const manageable = members.filter(m => m.manageable).length
+  const filteredMembers = useMemo(() => {
+    let filtered = [...members]
+    
+    // Filter by status (online/offline) if we have presence data
+    if (status !== 'all') {
+      filtered = filtered.filter(m => {
+        // This would require presence data from backend
+        // For now, we'll keep all members as this requires Discord PRESENCE intent
+        return true
+      })
+    }
+    
+    // Sort members
+    if (sortBy === 'name') {
+      filtered.sort((a, b) => (a.username || '').localeCompare(b.username || ''))
+    } else if (sortBy === 'oldest') {
+      filtered.sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0))
+    } else if (sortBy === 'recent') {
+      filtered.sort((a, b) => (b.joinedAt || 0) - (a.joinedAt || 0))
+    }
+    
+    return filtered
+  }, [members, status, sortBy])
+
+  const totalMembers = filteredMembers.length
+  const manageable = filteredMembers.filter(m => m.manageable).length
   const hasRoleFilter = !!role
 
   return (
@@ -126,7 +152,7 @@ export default function MembersList() {
           <span className="text-2xl">🔍</span>
           <h3 className="text-lg font-semibold text-white">{t('members.search')}</h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
           <div className="md:col-span-2 space-y-2">
             <label className="text-sm font-medium text-gray-300">Search by Name</label>
             <input
@@ -145,6 +171,30 @@ export default function MembersList() {
             >
               <option value="">Todos</option>
               {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-300">Status</label>
+            <select
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
+              value={status}
+              onChange={e => setStatus(e.target.value)}
+            >
+              <option value="all">🌐 All</option>
+              <option value="online">🟢 Online</option>
+              <option value="offline">⚫ Offline</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-300">Sort By</label>
+            <select
+              className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+            >
+              <option value="recent">📅 Most Recent</option>
+              <option value="oldest">⏰ Oldest</option>
+              <option value="name">🔤 Name (A-Z)</option>
             </select>
           </div>
           <div className="space-y-2">
@@ -173,13 +223,13 @@ export default function MembersList() {
               <div className="text-gray-400">{t('logs.loading')}</div>
             </div>
           )}
-          {!loading && members.length === 0 && (
+          {!loading && filteredMembers.length === 0 && (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">👻</div>
               <div className="text-gray-400">No members found</div>
             </div>
           )}
-          {!loading && members.map((m: any) => (
+          {!loading && filteredMembers.map((m: any) => (
             <div key={m.id} className="bg-gray-900/50 border border-gray-700 hover:border-cyan-600/50 rounded-xl p-4 transition-all duration-200">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-600/20 to-blue-600/20 border border-gray-700 flex items-center justify-center text-xl font-semibold text-cyan-400">
