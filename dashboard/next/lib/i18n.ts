@@ -78,6 +78,8 @@ const STRINGS: Record<Lang, Record<string, string>> = {
   'nav.autoresponder': 'Auto-Responder',
   'nav.events': 'Eventos',
   'nav.announcements': 'Anúncios',
+  'nav.tickets.enhanced': 'Tickets 2.0',
+  'nav.tickets.categoriesNew': 'Categorias (Novo)',
   'nav.settings': 'Configurações',
   'nav.openMenu': 'Abrir menu',
   'nav.closeMenu': 'Fechar menu',

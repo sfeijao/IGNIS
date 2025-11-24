@@ -47,6 +47,8 @@ const nav = [
     flag: 'stable',
     children: [
       { href: '/tickets', key: 'nav.tickets.list', icon: '📋' },
+      { href: '/tickets-enhanced', key: 'nav.tickets.enhanced', icon: '🎫' },
+      { href: '/ticket-categories', key: 'nav.tickets.categoriesNew', icon: '🏷️' },
       { href: '/tickets/categories', key: 'nav.tickets.categories', icon: '🏷️' },
       { href: '/tickets/panels', key: 'nav.tickets.panels', icon: '🎨' },
       { href: '/tickets/config', key: 'nav.tickets.config', icon: '⚙️' },
