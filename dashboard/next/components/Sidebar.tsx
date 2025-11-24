@@ -34,6 +34,9 @@ const nav = [
       { href: '/automod', key: 'nav.automod', icon: '🤖' },
       { href: '/verification', key: 'nav.verification', icon: '✅' },
       { href: '/appeals', key: 'nav.appeals', icon: '📝' },
+      { href: '/antiraid', key: 'nav.antiraid', icon: '🛡️' },
+      { href: '/warns', key: 'nav.warns', icon: '⚠️' },
+      { href: '/staff', key: 'nav.staffMonitoring', icon: '👮' },
     ]
   },
 
@@ -59,6 +62,10 @@ const nav = [
       { href: '/giveaways', key: 'nav.giveaways', icon: '🎁' },
       { href: '/tags', key: 'nav.tags', icon: '🏷️' },
       { href: '/commands', key: 'nav.commands', icon: '⌨️' },
+      { href: '/suggestions', key: 'nav.suggestions', icon: '💡' },
+      { href: '/autoresponder', key: 'nav.autoresponder', icon: '🤖' },
+      { href: '/events', key: 'nav.events', icon: '📅' },
+      { href: '/announcements', key: 'nav.announcements', icon: '📢' },
     ]
   },
 
