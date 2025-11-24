@@ -83,6 +83,9 @@ class InviteTrackerService {
     /**
      * Detecta qual convite foi usado quando um membro entra
      * Compara cache antes/depois para identificar o convite
+     * @param {Guild} guild - Guild do Discord
+     * @param {GuildMember} member - Membro que entrou
+     * @returns {Promise<{code: string, inviterId: string}|null>} Dados do convite usado ou null
      */
     async detectUsedInvite(guild, member) {
         try {

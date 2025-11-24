@@ -26,8 +26,15 @@ class TicketEnhancedService {
         return await TicketCategory.findByIdAndDelete(categoryId);
     }
     
-    // ==================== TICKETS ====================
-    
+    /**
+     * Criar um novo ticket enhanced
+     * @param {Client} client - Cliente do Discord
+     * @param {string} guildId - ID do servidor
+     * @param {string} userId - ID do usuário
+     * @param {string} categoryId - ID da categoria (opcional)
+     * @param {Object} options - Opções adicionais (subject, reason, priority, initialAnswers)
+     * @returns {Promise<{success: boolean, ticket?: TicketEnhanced, channel?: Channel, error?: string}>}
+     */
     async createTicket(client, guildId, userId, categoryId, options = {}) {
         const guild = await client.guilds.fetch(guildId);
         const category = categoryId ? await TicketCategory.findById(categoryId) : null;

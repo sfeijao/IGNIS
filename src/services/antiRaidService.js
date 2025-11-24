@@ -71,6 +71,9 @@ class AntiRaidService {
 
     /**
      * Detectar se há um raid em andamento
+     * @param {Guild} guild - Guild do Discord
+     * @param {GuildMember} member - Membro que acabou de entrar
+     * @returns {Promise<RaidEvent|null>} Evento de raid criado ou null se não detectado
      */
     async detectRaid(guild, member) {
         try {

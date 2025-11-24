@@ -19,6 +19,17 @@ const config = require('../utils/config');
 const logger = require('../utils/logger');
 const { PermissionFlagsBits, ActivityType } = require('discord.js');
 
+// ==================== Services ====================
+const inviteTrackerService = require('../src/services/inviteTrackerService');
+const antiRaidService = require('../src/services/antiRaidService');
+const warnService = require('../src/services/warnService');
+const suggestionService = require('../src/services/suggestionService');
+const autoResponseService = require('../src/services/autoResponseService');
+const eventService = require('../src/services/eventService');
+const staffMonitoringService = require('../src/services/staffMonitoringService');
+const scheduledAnnouncementService = require('../src/services/scheduledAnnouncementService');
+const ticketEnhancedService = require('../src/services/ticketEnhancedService');
+
 const app = express();
 let io = null;
 const PORT = process.env.PORT || 4000;
@@ -7943,8 +7954,6 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     // 🎯 INVITE TRACKER API ROUTES
     // ═══════════════════════════════════════════════════════════════════════
 
-    const inviteTrackerService = require('../src/services/inviteTrackerService');
-
     // GET: Estatísticas gerais de convites do servidor
     app.get('/api/guild/:guildId/invites/stats', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -8018,8 +8027,6 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     // ═══════════════════════════════════════════════════════════════════════
     // 🛡️ ANTI-RAID API ROUTES
     // ═══════════════════════════════════════════════════════════════════════
-
-    const antiRaidService = require('../src/services/antiRaidService');
 
     // GET: Configuração de anti-raid
     app.get('/api/guild/:guildId/antiraid/config', async (req, res) => {
@@ -8116,8 +8123,6 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     // WARNS API ROUTES
     // ═══════════════════════════════════════════════════════════════════════
 
-    const warnService = require('../src/services/warnService');
-
     // GET: Lista de warns de um servidor
     app.get('/api/guild/:guildId/warns', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -8181,8 +8186,6 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     // SUGGESTIONS API ROUTES
     // ═══════════════════════════════════════════════════════════════════════
 
-    const suggestionService = require('../src/services/suggestionService');
-
     // GET: Sugestões do servidor
     app.get('/api/guild/:guildId/suggestions', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -8224,8 +8227,6 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     // ═══════════════════════════════════════════════════════════════════════
     // AUTO-RESPONDER API ROUTES
     // ═══════════════════════════════════════════════════════════════════════
-
-    const autoResponseService = require('../src/services/autoResponseService');
 
     // GET: Auto-responses do servidor
     app.get('/api/guild/:guildId/autoresponses', async (req, res) => {
@@ -8303,8 +8304,6 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     // EVENTS API ROUTES
     // ═══════════════════════════════════════════════════════════════════════
 
-    const eventService = require('../src/services/eventService');
-
     // GET: Eventos do servidor
     app.get('/api/guild/:guildId/events', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -8359,8 +8358,6 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     // ═══════════════════════════════════════════════════════════════════════
     // STAFF MONITORING API ROUTES
     // ═══════════════════════════════════════════════════════════════════════
-
-    const staffMonitoringService = require('../src/services/staffMonitoringService');
 
     // GET: Estatísticas de staff
     app.get('/api/guild/:guildId/staff/stats/:staffId', async (req, res) => {
@@ -8423,8 +8420,6 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     // SCHEDULED ANNOUNCEMENTS API ROUTES
     // ═══════════════════════════════════════════════════════════════════════
 
-    const scheduledAnnouncementService = require('../src/services/scheduledAnnouncementService');
-
     // GET: Anúncios agendados
     app.get('/api/guild/:guildId/announcements', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -8481,8 +8476,6 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     // ═══════════════════════════════════════════════════════════════════════
     // TICKETS 2.0 ENHANCED API ROUTES
     // ═══════════════════════════════════════════════════════════════════════
-
-    const ticketEnhancedService = require('../src/services/ticketEnhancedService');
 
     // CATEGORIAS
     // GET: Listar categorias
