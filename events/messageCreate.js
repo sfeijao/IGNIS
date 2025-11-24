@@ -1,4 +1,5 @@
 const { Events } = require('discord.js');
+const autoResponseService = require('../src/services/autoResponseService');
 
 module.exports = {
     name: Events.MessageCreate,
@@ -10,6 +11,9 @@ module.exports = {
         if (!message.guild) return;
 
         try {
+            // Auto-responder (verificar triggers primeiro)
+            await autoResponseService.checkTriggers(message);
+            
             // Verificar se é um canal de ticket (para métricas leves)
             const tickets = (message.client.storage && await message.client.storage.getTickets(message.guild.id)) || [];
             const ticket = tickets.find(t => t.channel_id === message.channel.id);

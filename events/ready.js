@@ -46,6 +46,29 @@ module.exports = {
             logger.error('[InviteTracker] Failed to sync invites on startup:', error);
         }
 
+        // 📅 EVENTOS & ANÚNCIOS: Iniciar checagem periódica
+        const eventService = require('../src/services/eventService');
+        const scheduledAnnouncementService = require('../src/services/scheduledAnnouncementService');
+        
+        setInterval(async () => {
+            try {
+                await eventService.checkReminders(client);
+            } catch (e) {
+                logger.error('[Events] Error checking reminders:', e);
+            }
+        }, 60000); // Check every minute
+        
+        setInterval(async () => {
+            try {
+                await scheduledAnnouncementService.checkPendingAnnouncements(client);
+            } catch (e) {
+                logger.error('[Announcements] Error checking pending:', e);
+            }
+        }, 30000); // Check every 30 seconds
+        
+        logger.info('📅 [Events] Reminder checker started');
+        logger.info('📢 [Announcements] Pending checker started');
+
         // Definir status inicial
         client.user.setActivity('IGNIS COMMUNITY', { type: ActivityType.Watching });
         
