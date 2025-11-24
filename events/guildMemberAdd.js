@@ -3,6 +3,7 @@ const config = require('../utils/config');
 const { EMBED_COLORS, EMOJIS } = require('../constants/ui');
 const { WelcomeConfigModel } = require('../utils/db/models');
 const inviteTrackerService = require('../src/services/inviteTrackerService');
+const antiRaidService = require('../src/services/antiRaidService');
 const logger = require('../utils/logger');
 
 /**
@@ -35,6 +36,19 @@ module.exports = {
     name: Events.GuildMemberAdd,
     async execute(member) {
         const guild = member.guild;
+
+        // 🛡️ ANTI-RAID: Detectar e prevenir raids
+        try {
+            const raidEvent = await antiRaidService.detectRaid(guild, member);
+            if (raidEvent) {
+                const analysis = await antiRaidService.analyzeMember(guild, member, raidEvent);
+                if (analysis.actionTaken !== 'none') {
+                    logger.warn(`[AntiRaid] Action taken on ${member.user.tag}: ${analysis.actionTaken}`);
+                }
+            }
+        } catch (error) {
+            logger.error('[MemberAdd] Error in anti-raid check:', error);
+        }
 
         // 🎯 INVITE TRACKER: Detectar convite usado
         try {

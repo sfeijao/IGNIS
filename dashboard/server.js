@@ -8015,6 +8015,103 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
         }
     });
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 🛡️ ANTI-RAID API ROUTES
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const antiRaidService = require('../src/services/antiRaidService');
+
+    // GET: Configuração de anti-raid
+    app.get('/api/guild/:guildId/antiraid/config', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const config = await antiRaidService.getConfig(req.params.guildId);
+            res.json({ success: true, config });
+        } catch (e) {
+            logger.error('Error fetching anti-raid config:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch anti-raid configuration' });
+        }
+    });
+
+    // POST: Atualizar configuração
+    app.post('/api/guild/:guildId/antiraid/config', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const config = await antiRaidService.updateConfig(req.params.guildId, req.body);
+            res.json({ success: true, config });
+        } catch (e) {
+            logger.error('Error updating anti-raid config:', e);
+            res.status(500).json({ success: false, error: 'Failed to update anti-raid configuration' });
+        }
+    });
+
+    // GET: Estatísticas de raids
+    app.get('/api/guild/:guildId/antiraid/stats', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const stats = await antiRaidService.getGuildStats(req.params.guildId);
+            res.json({ success: true, stats });
+        } catch (e) {
+            logger.error('Error fetching anti-raid stats:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch anti-raid statistics' });
+        }
+    });
+
+    // GET: Listar raids
+    app.get('/api/guild/:guildId/antiraid/raids', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const { RaidEvent } = require('../src/models/antiRaid');
+            const raids = await RaidEvent.find({ guildId: req.params.guildId })
+                .sort({ startedAt: -1 })
+                .limit(50)
+                .lean();
+            
+            res.json({ success: true, raids });
+        } catch (e) {
+            logger.error('Error fetching raids:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch raids' });
+        }
+    });
+
+    // POST: Resolver raid
+    app.post('/api/guild/:guildId/antiraid/raids/:raidId/resolve', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const client = global.discordClient;
+            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const { notes } = req.body;
+            const raid = await antiRaidService.resolveRaid(req.params.guildId, req.params.raidId, notes || '');
+            res.json({ success: true, raid });
+        } catch (e) {
+            logger.error('Error resolving raid:', e);
+            res.status(500).json({ success: false, error: 'Failed to resolve raid' });
+        }
+    });
+
     server.listen(PORT, () => {
         const callbackURL = getCallbackURL();
         logger.info(`🌐 Dashboard servidor iniciado em http://localhost:${PORT}`);
