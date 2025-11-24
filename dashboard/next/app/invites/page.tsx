@@ -41,7 +41,7 @@ interface Member {
 export default function InvitesPage() {
   const guildId = useGuildId();
   const { t } = useI18n();
-  
+
   const [stats, setStats] = useState<InviteStats | null>(null);
   const [topInviters, setTopInviters] = useState<Inviter[]>([]);
   const [recentMembers, setRecentMembers] = useState<Member[]>([]);
@@ -57,7 +57,7 @@ export default function InvitesPage() {
 
   const loadData = async () => {
     if (!guildId) return;
-    
+
     setLoading(true);
     try {
       const [statsRes, topRes] = await Promise.all([
@@ -76,7 +76,7 @@ export default function InvitesPage() {
 
   const handleSync = async () => {
     if (!guildId) return;
-    
+
     setSyncing(true);
     try {
       const res = await api.post(`/api/guild/${guildId}/invites/sync`);

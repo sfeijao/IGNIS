@@ -23,12 +23,12 @@ interface Warn {
 export default function WarnsPage() {
   const params = useParams();
   const guildId = params?.guildId as string;
-  
+
   const [warns, setWarns] = useState<Warn[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'active' | 'revoked'>('active');
   const [selectedUser, setSelectedUser] = useState<string>('');
-  
+
   // Add warn modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [newWarn, setNewWarn] = useState({
@@ -48,7 +48,7 @@ export default function WarnsPage() {
       const url = selectedUser
         ? `/api/guild/${guildId}/warns?userId=${selectedUser}`
         : `/api/guild/${guildId}/warns`;
-      
+
       const res = await fetch(url, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
@@ -171,7 +171,7 @@ export default function WarnsPage() {
                 </button>
               ))}
             </div>
-            
+
             <input
               type="text"
               placeholder="Filtrar por User ID..."
@@ -204,7 +204,7 @@ export default function WarnsPage() {
                     <span className="text-2xl">{getPunishmentEmoji(warn.punishment)}</span>
                     <span className="text-white font-semibold">{warn.punishment.toUpperCase()}</span>
                   </div>
-                  
+
                   {warn.active ? (
                     <button
                       onClick={() => revokeWarn(warn._id)}
@@ -265,7 +265,7 @@ export default function WarnsPage() {
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
             <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full border border-purple-500/30">
               <h2 className="text-2xl font-bold text-white mb-4">➕ Adicionar Aviso</h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-white mb-2">User ID</label>

@@ -21,7 +21,7 @@ interface AutoResponse {
 export default function AutoResponderPage() {
   const params = useParams();
   const guildId = params?.guildId as string;
-  
+
   const [responses, setResponses] = useState<AutoResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -70,7 +70,7 @@ export default function AutoResponderPage() {
       const url = editingId
         ? `/api/guild/${guildId}/autoresponses/${editingId}`
         : `/api/guild/${guildId}/autoresponses`;
-      
+
       const res = await fetch(url, {
         method: editingId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },

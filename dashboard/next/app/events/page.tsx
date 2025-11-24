@@ -19,7 +19,7 @@ interface Event {
 export default function EventsPage() {
   const params = useParams();
   const guildId = params?.guildId as string;
-  
+
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);

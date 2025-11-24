@@ -38,7 +38,7 @@ interface Stats {
 export default function TicketsEnhancedPage() {
   const params = useParams();
   const guildId = params?.guildId as string;
-  
+
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);

@@ -32,7 +32,7 @@ interface TicketCategory {
 export default function TicketCategoriesPage() {
   const params = useParams();
   const guildId = params?.guildId as string;
-  
+
   const [categories, setCategories] = useState<TicketCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -70,7 +70,7 @@ export default function TicketCategoriesPage() {
       const url = editingId
         ? `/api/guild/${guildId}/ticket-categories/${editingId}`
         : `/api/guild/${guildId}/ticket-categories`;
-      
+
       const res = await fetch(url, {
         method: editingId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },

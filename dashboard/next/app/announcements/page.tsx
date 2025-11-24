@@ -29,7 +29,7 @@ interface Announcement {
 export default function AnnouncementsPage() {
   const params = useParams();
   const guildId = params?.guildId as string;
-  
+
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -185,7 +185,7 @@ export default function AnnouncementsPage() {
                 <div><label className="block text-white mb-2">Mensagem</label><textarea value={formData.message} onChange={(e) => setFormData({...formData, message: e.target.value})} className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg h-32"/></div>
                 <div><label className="block text-white mb-2">Canal ID</label><input type="text" value={formData.channelId} onChange={(e) => setFormData({...formData, channelId: e.target.value})} className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg" placeholder="123456789012345678"/></div>
                 <div><label className="block text-white mb-2">Data/Hora</label><input type="datetime-local" value={formData.scheduledFor} onChange={(e) => setFormData({...formData, scheduledFor: e.target.value})} className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg"/></div>
-                
+
                 <div className="border-t border-gray-700 pt-4">
                   <label className="flex items-center gap-3 mb-3 cursor-pointer">
                     <input type="checkbox" checked={formData.embedEnabled} onChange={(e) => setFormData({...formData, embedEnabled: e.target.checked})} className="w-5 h-5"/>

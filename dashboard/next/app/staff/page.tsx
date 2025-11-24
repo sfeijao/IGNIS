@@ -21,7 +21,7 @@ interface RecentAction {
 export default function StaffMonitoringPage() {
   const params = useParams();
   const guildId = params?.guildId as string;
-  
+
   const [leaderboard, setLeaderboard] = useState<StaffMember[]>([]);
   const [recentActions, setRecentActions] = useState<RecentAction[]>([]);
   const [loading, setLoading] = useState(true);

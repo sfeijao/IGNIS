@@ -38,7 +38,7 @@ interface RaidEvent {
 export default function AntiRaidPage() {
   const params = useParams();
   const guildId = params?.guildId as string;
-  
+
   const [config, setConfig] = useState<AntiRaidConfig | null>(null);
   const [raids, setRaids] = useState<RaidEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,7 +154,7 @@ export default function AntiRaidPage() {
         {/* Configuration Panel */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 mb-6 border border-purple-500/30">
           <h2 className="text-2xl font-bold text-white mb-4">⚙️ Configuração</h2>
-          
+
           {/* Enable Toggle */}
           <div className="mb-6">
             <label className="flex items-center gap-3 cursor-pointer">
@@ -286,7 +286,7 @@ export default function AntiRaidPage() {
         {/* Recent Raids */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-purple-500/30">
           <h2 className="text-2xl font-bold text-white mb-4">🚨 Raids Recentes</h2>
-          
+
           {raids.length === 0 ? (
             <p className="text-gray-400 text-center py-8">Nenhum raid detectado</p>
           ) : (
@@ -321,11 +321,11 @@ export default function AntiRaidPage() {
                       {raid.status}
                     </span>
                   </div>
-                  
+
                   <p className="text-gray-300 mb-3">
                     👥 Membros Suspeitos: {raid.suspiciousMembers.length}
                   </p>
-                  
+
                   {raid.status === 'active' && (
                     <div className="flex gap-3">
                       <button

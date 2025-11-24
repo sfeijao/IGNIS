@@ -24,7 +24,7 @@ interface Suggestion {
 export default function SuggestionsPage() {
   const params = useParams();
   const guildId = params?.guildId as string;
-  
+
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
@@ -40,7 +40,7 @@ export default function SuggestionsPage() {
       const url = filter === 'all'
         ? `/api/guild/${guildId}/suggestions`
         : `/api/guild/${guildId}/suggestions?status=${filter}`;
-      
+
       const res = await fetch(url, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
@@ -180,7 +180,7 @@ export default function SuggestionsPage() {
                     </div>
                     <p className="text-gray-300 mb-3">{suggestion.description}</p>
                   </div>
-                  
+
                   <span className={`px-3 py-1 rounded-full text-white font-semibold ${getStatusColor(suggestion.status)}`}>
                     {suggestion.status.toUpperCase()}
                   </span>
