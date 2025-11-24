@@ -61,12 +61,12 @@ export default function InvitesPage() {
     setLoading(true);
     try {
       const [statsRes, topRes] = await Promise.all([
-        api.get(`/api/guild/${guildId}/invites/stats`),
-        api.get(`/api/guild/${guildId}/invites/top?limit=10`)
+        api.get<{ stats: InviteStats }>(`/api/guild/${guildId}/invites/stats`),
+        api.get<{ inviters: Inviter[] }>(`/api/guild/${guildId}/invites/top?limit=10`)
       ]);
 
-      if (statsRes.success) setStats(statsRes.stats);
-      if (topRes.success) setTopInviters(topRes.inviters);
+      if (statsRes.success && statsRes.data) setStats(statsRes.data.stats);
+      if (topRes.success && topRes.data) setTopInviters(topRes.data.inviters);
     } catch (error) {
       console.error('Error loading invite data:', error);
     } finally {

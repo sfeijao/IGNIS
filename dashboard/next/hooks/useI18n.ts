@@ -1,5 +1,17 @@
 import { useCallback } from 'react'
-import translations from '@/lib/i18n'
+
+// Basic translations structure
+const translations: Record<string, any> = {
+  invites: {
+    title: 'Invite Tracking',
+    stats: 'Statistics'
+  },
+  common: {
+    loading: 'Loading...',
+    save: 'Save',
+    cancel: 'Cancel'
+  }
+}
 
 /**
  * Hook para internacionalização (i18n)
@@ -23,3 +35,4 @@ export function useI18n() {
 
   return { t }
 }
+
