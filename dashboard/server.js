@@ -8069,11 +8069,16 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
+            if (!inviteTrackerService) {
+                logger.warn('inviteTrackerService not loaded, returning default stats');
+                return res.json({ success: true, stats: { totalInvites: 0, activeInvites: 0, totalJoins: 0, validJoins: 0, fakeJoins: 0, leftJoins: 0, fakeRate: '0%' } });
+            }
+
             const stats = await inviteTrackerService.getGuildStats(req.params.guildId);
-            res.json({ success: true, stats });
+            res.json({ success: true, stats: stats || { totalInvites: 0, activeInvites: 0, totalJoins: 0, validJoins: 0, fakeJoins: 0, leftJoins: 0, fakeRate: '0%' } });
         } catch (e) {
             logger.error('Error fetching invite stats:', e);
-            res.status(500).json({ success: false, error: 'Failed to fetch invite statistics' });
+            res.status(200).json({ success: true, stats: { totalInvites: 0, activeInvites: 0, totalJoins: 0, validJoins: 0, fakeJoins: 0, leftJoins: 0, fakeRate: '0%' }, error: 'Service temporarily unavailable' });
         }
     });
 
@@ -8086,12 +8091,17 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
+            if (!inviteTrackerService) {
+                logger.warn('inviteTrackerService not loaded, returning empty array');
+                return res.json({ success: true, inviters: [] });
+            }
+
             const limit = parseInt(req.query.limit, 10) || 10;
             const topInviters = await inviteTrackerService.getTopInviters(req.params.guildId, limit);
-            res.json({ success: true, inviters: topInviters });
+            res.json({ success: true, inviters: topInviters || [] });
         } catch (e) {
             logger.error('Error fetching top inviters:', e);
-            res.status(500).json({ success: false, error: 'Failed to fetch top inviters' });
+            res.status(200).json({ success: true, inviters: [], error: 'Service temporarily unavailable' });
         }
     });
 
@@ -8343,11 +8353,16 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
+            if (!autoResponseService) {
+                logger.warn('autoResponseService not loaded, returning empty array');
+                return res.json({ success: true, responses: [] });
+            }
+
             const responses = await autoResponseService.getGuildResponses(req.params.guildId);
-            res.json({ success: true, responses });
+            res.json({ success: true, responses: responses || [] });
         } catch (e) {
             logger.error('Error fetching auto-responses:', e);
-            res.status(500).json({ success: false, error: 'Failed to fetch auto-responses' });
+            res.status(200).json({ success: true, responses: [], error: 'Service temporarily unavailable' });
         }
     });
 
@@ -8419,11 +8434,16 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
+            if (!eventService) {
+                logger.warn('eventService not loaded, returning empty array');
+                return res.json({ success: true, events: [] });
+            }
+
             const events = await eventService.getUpcomingEvents(req.params.guildId);
-            res.json({ success: true, events });
+            res.json({ success: true, events: events || [] });
         } catch (e) {
             logger.error('Error fetching events:', e);
-            res.status(500).json({ success: false, error: 'Failed to fetch events' });
+            res.status(200).json({ success: true, events: [], error: 'Service temporarily unavailable' });
         }
     });
 
@@ -8436,11 +8456,16 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
+            if (!eventService) {
+                logger.error('eventService not loaded');
+                return res.status(503).json({ success: false, error: 'Event service unavailable' });
+            }
+
             const event = await eventService.createEvent(client, req.params.guildId, req.user.id, req.body);
-            res.json({ success: true, event });
+            res.json({ success: true, event: event || {} });
         } catch (e) {
             logger.error('Error creating event:', e);
-            res.status(500).json({ success: false, error: 'Failed to create event' });
+            res.status(500).json({ success: false, error: e.message || 'Failed to create event' });
         }
     });
 

@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useGuildId } from '@/hooks/useGuildId';
+import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
+import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
 interface Event {
   _id: string;
@@ -19,8 +21,6 @@ interface Event {
 export default function EventsPage() {
   const guildId = useGuildId();
 
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -32,46 +32,33 @@ export default function EventsPage() {
     imageUrl: ''
   });
 
-  useEffect(() => {
-    if (guildId) fetchEvents();
-  }, [guildId]);
+  const { data, loading, error, refetch } = useSafeAPI<{ success: boolean; events: Event[] }>(
+    () => safeFetch(`/api/guild/${guildId}/events`),
+    [guildId],
+    { skip: !guildId }
+  );
 
-  const fetchEvents = async () => {
-    try {
-      const res = await fetch(`/api/guild/${guildId}/events`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setEvents(data.events || []);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const events = data?.events || [];
 
   const createEvent = async () => {
     try {
-      const data = {
+      const payload = {
         ...formData,
         maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants) : null
       };
 
-      const res = await fetch(`/api/guild/${guildId}/events`, {
+      await safeFetch(`/api/guild/${guildId}/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data)
+        body: JSON.stringify(payload)
       });
 
-      if (res.ok) {
-        setShowModal(false);
-        setFormData({ title: '', description: '', startDate: '', endDate: '', channelId: '', maxParticipants: '', imageUrl: '' });
-        fetchEvents();
-        alert('✅ Evento criado!');
-      }
-    } catch (error) {
-      console.error('Error:', error);
+      setShowModal(false);
+      setFormData({ title: '', description: '', startDate: '', endDate: '', channelId: '', maxParticipants: '', imageUrl: '' });
+      refetch();
+      alert('✅ Evento criado!');
+    } catch (err) {
+      alert(`❌ Erro: ${err instanceof Error ? err.message : 'Falha ao criar evento'}`);
     }
   };
 
@@ -82,14 +69,24 @@ export default function EventsPage() {
         method: 'DELETE',
         credentials: 'include'
       });
-      fetchEvents();
-    } catch (error) {
-      console.error('Error:', error);
+      await safeFetch(`/api/guild/${guildId}/events/${eventId}`, { method: 'DELETE' });
+      refetch();
+      alert('✅ Evento deletado!');
+    } catch (err) {
+      alert(`❌ Erro: ${err instanceof Error ? err.message : 'Falha ao deletar evento'}`);
     }
   };
 
+  if (!guildId) {
+    return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para gerenciar eventos" />;
+  }
+
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>;
+    return <LoadingState message="Carregando eventos..." />;
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={refetch} />;
   }
 
   return (
@@ -104,8 +101,13 @@ export default function EventsPage() {
 
         <div className="grid md:grid-cols-2 gap-6">
           {events.length === 0 ? (
-            <div className="col-span-2 bg-gray-800/50 rounded-lg p-8 text-center border border-purple-500/30">
-              <p className="text-gray-400">Nenhum evento agendado</p>
+            <div className="col-span-2">
+              <EmptyState
+                icon="📅"
+                title="Nenhum evento agendado"
+                description="Crie seu primeiro evento para começar"
+                action={{ label: '➕ Criar Evento', onClick: () => setShowModal(true) }}
+              />
             </div>
           ) : (
             events.map((event) => (
