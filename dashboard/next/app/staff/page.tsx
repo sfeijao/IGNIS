@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useGuildId } from '@/hooks/useGuildId';
+import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
+import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
 interface StaffStats {
   staffId: string;
@@ -24,40 +26,32 @@ interface RecentAction {
   timestamp: Date;
 }
 
+interface StaffData {
+  leaderboard: StaffMember[];
+  actions: RecentAction[];
+}
+
 export default function StaffMonitoringPage() {
   const guildId = useGuildId();
-
-  const [leaderboard, setLeaderboard] = useState<StaffMember[]>([]);
-  const [recentActions, setRecentActions] = useState<RecentAction[]>([]);
-  const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
 
-  useEffect(() => {
-    if (guildId) fetchData();
-  }, [guildId, days]);
-
-  const fetchData = async () => {
-    try {
+  const { data, loading, error, refetch } = useSafeAPI<StaffData>(
+    async () => {
       const [leaderRes, actionsRes] = await Promise.all([
-        fetch(`/api/guild/${guildId}/staff/leaderboard?days=${days}`, { credentials: 'include' }),
-        fetch(`/api/guild/${guildId}/staff/recent?limit=50`, { credentials: 'include' })
+        safeFetch(`/api/guild/${guildId}/staff/leaderboard?days=${days}`),
+        safeFetch(`/api/guild/${guildId}/staff/recent?limit=50`)
       ]);
+      return {
+        leaderboard: leaderRes.leaderboard || [],
+        actions: actionsRes.actions || []
+      };
+    },
+    [guildId, days],
+    { skip: !guildId }
+  );
 
-      if (leaderRes.ok) {
-        const data = await leaderRes.json();
-        setLeaderboard(data.leaderboard || []);
-      }
-
-      if (actionsRes.ok) {
-        const data = await actionsRes.json();
-        setRecentActions(data.actions || []);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const leaderboard = data?.leaderboard || [];
+  const recentActions = data?.actions || [];
 
   const actionEmojis: Record<string, string> = {
     warn: '⚠️',
@@ -72,8 +66,16 @@ export default function StaffMonitoringPage() {
     ticket_delete: '🗑️'
   };
 
+  if (!guildId) {
+    return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para monitorar staff" />;
+  }
+
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>;
+    return <LoadingState message="Carregando estatísticas de staff..." />;
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={refetch} />;
   }
 
   return (

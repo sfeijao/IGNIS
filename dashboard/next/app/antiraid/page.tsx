@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useGuildId } from '@/hooks/useGuildId';
+import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
+import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
 interface AntiRaidConfig {
   sensitivity: 'low' | 'medium' | 'high' | 'paranoid';
@@ -35,90 +37,93 @@ interface RaidEvent {
   actionsToken: number;
 }
 
+interface AntiRaidData {
+  config: AntiRaidConfig | null;
+  raids: RaidEvent[];
+}
+
 export default function AntiRaidPage() {
   const guildId = useGuildId();
-
-  const [config, setConfig] = useState<AntiRaidConfig | null>(null);
-  const [raids, setRaids] = useState<RaidEvent[]>([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [localConfig, setLocalConfig] = useState<AntiRaidConfig | null>(null);
 
-  useEffect(() => {
-    if (guildId) {
-      fetchData();
-    }
-  }, [guildId]);
-
-  const fetchData = async () => {
-    try {
+  const { data, loading, error, refetch } = useSafeAPI<AntiRaidData>(
+    async () => {
       const [configRes, raidsRes] = await Promise.all([
-        fetch(`/api/guild/${guildId}/antiraid/config`, { credentials: 'include' }),
-        fetch(`/api/guild/${guildId}/antiraid/raids`, { credentials: 'include' })
+        safeFetch(`/api/guild/${guildId}/antiraid/config`),
+        safeFetch(`/api/guild/${guildId}/antiraid/raids`)
       ]);
+      const config = configRes.config || null;
+      setLocalConfig(config);
+      return {
+        config,
+        raids: raidsRes.raids || []
+      };
+    },
+    [guildId],
+    { skip: !guildId }
+  );
 
-      if (configRes.ok) {
-        const data = await configRes.json();
-        setConfig(data.config);
-      }
-
-      if (raidsRes.ok) {
-        const data = await raidsRes.json();
-        setRaids(data.raids || []);
-      }
-    } catch (error) {
-      console.error('Error fetching anti-raid data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const config = localConfig;
+  const raids = data?.raids || [];
 
   const saveConfig = async () => {
     if (!config) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/guild/${guildId}/antiraid/config`, {
+      const res = await safeFetch<{ success: boolean }>(`/api/guild/${guildId}/antiraid/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(config)
       });
 
-      if (res.ok) {
+      if (res.success) {
         alert('✅ Configuração salva com sucesso!');
+        refetch();
       } else {
         alert('❌ Erro ao salvar configuração');
       }
     } catch (error) {
       console.error('Error saving config:', error);
-      alert('❌ Erro ao salvar');
+      alert('❌ Erro ao salvar: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     } finally {
       setSaving(false);
     }
   };
 
-  const resolveRaid = async (raidId: string, status: 'resolved' | 'false_alarm') => {
-    try {
-      const res = await fetch(`/api/guild/${guildId}/antiraid/raids/${raidId}/resolve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ status })
-      });
-
-      if (res.ok) {
-        fetchData();
-      }
-    } catch (error) {
-      console.error('Error resolving raid:', error);
+  const setConfig = (newConfig: AntiRaidConfig | ((prev: AntiRaidConfig | null) => AntiRaidConfig)) => {
+    if (typeof newConfig === 'function') {
+      setLocalConfig(prev => prev ? newConfig(prev) : null);
+    } else {
+      setLocalConfig(newConfig);
     }
   };
 
+  const resolveRaid = async (raidId: string, status: 'resolved' | 'false_alarm') => {
+    try {
+      await safeFetch(`/api/guild/${guildId}/antiraid/raids/${raidId}/resolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      alert('✅ Raid marcado como ' + status);
+      refetch();
+    } catch (error) {
+      console.error('Error resolving raid:', error);
+      alert('❌ Erro ao resolver raid: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
+    }
+  };
+
+  if (!guildId) {
+    return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para configurar anti-raid" />;
+  }
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-      </div>
-    );
+    return <LoadingState message="Carregando configurações anti-raid..." />;
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={refetch} />;
   }
 
   if (!config) {

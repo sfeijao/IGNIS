@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useGuildId } from '@/hooks/useGuildId';
+import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
+import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
 interface Warn {
   _id: string;
@@ -22,9 +24,6 @@ interface Warn {
 
 export default function WarnsPage() {
   const guildId = useGuildId();
-
-  const [warns, setWarns] = useState<Warn[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'active' | 'revoked'>('active');
   const [selectedUser, setSelectedUser] = useState<string>('');
 
@@ -36,50 +35,32 @@ export default function WarnsPage() {
     level: 1
   });
 
-  useEffect(() => {
-    if (guildId) {
-      fetchWarns();
-    }
-  }, [guildId, selectedUser]);
-
-  const fetchWarns = async () => {
-    try {
+  const { data: warns = [], loading, error, refetch } = useSafeAPI<Warn[]>(
+    async () => {
       const url = selectedUser
         ? `/api/guild/${guildId}/warns?userId=${selectedUser}`
         : `/api/guild/${guildId}/warns`;
-
-      const res = await fetch(url, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setWarns(data.warns || []);
-      }
-    } catch (error) {
-      console.error('Error fetching warns:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      const res = await safeFetch<{ warns: Warn[] }>(url);
+      return res.warns || [];
+    },
+    [guildId, selectedUser],
+    { skip: !guildId }
+  );
 
   const addWarn = async () => {
     try {
-      const res = await fetch(`/api/guild/${guildId}/warns`, {
+      await safeFetch(`/api/guild/${guildId}/warns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(newWarn)
       });
-
-      if (res.ok) {
-        setShowAddModal(false);
-        setNewWarn({ userId: '', reason: '', level: 1 });
-        fetchWarns();
-        alert('✅ Aviso adicionado com sucesso!');
-      } else {
-        alert('❌ Erro ao adicionar aviso');
-      }
+      setShowAddModal(false);
+      setNewWarn({ userId: '', reason: '', level: 1 });
+      refetch();
+      alert('✅ Aviso adicionado com sucesso!');
     } catch (error) {
       console.error('Error adding warn:', error);
-      alert('❌ Erro ao adicionar');
+      alert('❌ Erro ao adicionar: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };
 
@@ -88,23 +69,20 @@ export default function WarnsPage() {
     if (!reason) return;
 
     try {
-      const res = await fetch(`/api/guild/${guildId}/warns/${warnId}`, {
+      await safeFetch(`/api/guild/${guildId}/warns/${warnId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ reason })
       });
-
-      if (res.ok) {
-        fetchWarns();
-        alert('✅ Aviso revogado!');
-      }
+      refetch();
+      alert('✅ Aviso revogado!');
     } catch (error) {
       console.error('Error revoking warn:', error);
+      alert('❌ Erro ao revogar: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };
 
-  const filteredWarns = warns.filter(w => {
+  const filteredWarns = (warns || []).filter(w => {
     if (filter === 'active') return w.active;
     if (filter === 'revoked') return !w.active;
     return true;
@@ -129,12 +107,16 @@ export default function WarnsPage() {
     return emojis[punishment] || '⚪';
   };
 
+  if (!guildId) {
+    return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para gerenciar avisos" />;
+  }
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-      </div>
-    );
+    return <LoadingState message="Carregando avisos..." />;
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={refetch} />;
   }
 
   return (

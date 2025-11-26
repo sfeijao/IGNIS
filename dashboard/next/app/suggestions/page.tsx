@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useGuildId } from '@/hooks/useGuildId';
+import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
+import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
 interface Suggestion {
   _id: string;
@@ -24,49 +26,32 @@ interface Suggestion {
 export default function SuggestionsPage() {
   const guildId = useGuildId();
 
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
 
-  useEffect(() => {
-    if (guildId) {
-      fetchSuggestions();
-    }
-  }, [guildId, filter]);
+  const url = filter === 'all'
+    ? `/api/guild/${guildId}/suggestions`
+    : `/api/guild/${guildId}/suggestions?status=${filter}`;
 
-  const fetchSuggestions = async () => {
-    try {
-      const url = filter === 'all'
-        ? `/api/guild/${guildId}/suggestions`
-        : `/api/guild/${guildId}/suggestions?status=${filter}`;
+  const { data, loading, error, refetch } = useSafeAPI<{ success: boolean; suggestions: Suggestion[] }>(
+    () => safeFetch(url),
+    [guildId, filter],
+    { skip: !guildId }
+  );
 
-      const res = await fetch(url, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setSuggestions(data.suggestions || []);
-      }
-    } catch (error) {
-      console.error('Error fetching suggestions:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const suggestions = data?.suggestions || [];
 
   const updateStatus = async (messageId: string, status: string, reviewNote?: string) => {
     try {
-      const res = await fetch(`/api/guild/${guildId}/suggestions/${messageId}/status`, {
+      await safeFetch(`/api/guild/${guildId}/suggestions/${messageId}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ status, reviewNote })
       });
 
-      if (res.ok) {
-        fetchSuggestions();
-        alert('✅ Status atualizado!');
-      }
-    } catch (error) {
-      console.error('Error updating suggestion:', error);
+      refetch();
+      alert('✅ Status atualizado!');
+    } catch (err) {
+      alert(`❌ Erro: ${err instanceof Error ? err.message : 'Falha ao atualizar'}`);
     }
   };
 
@@ -97,12 +82,16 @@ export default function SuggestionsPage() {
 
   const filteredSuggestions = suggestions;
 
+  if (!guildId) {
+    return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para gerenciar sugestões" />;
+  }
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-      </div>
-    );
+    return <LoadingState message="Carregando sugestões..." />;
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={refetch} />;
   }
 
   return (

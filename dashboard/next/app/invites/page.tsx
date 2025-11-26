@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useGuildId } from '@/hooks/useGuildId';
 import { useI18n } from '@/hooks/useI18n';
-import api from '@/utils/api';
+import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
+import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
 interface InviteStats {
   totalInvites: number;
@@ -42,49 +43,36 @@ export default function InvitesPage() {
   const guildId = useGuildId();
   const { t } = useI18n();
 
-  const [stats, setStats] = useState<InviteStats | null>(null);
-  const [topInviters, setTopInviters] = useState<Inviter[]>([]);
-  const [recentMembers, setRecentMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'overview' | 'leaderboard' | 'recent'>('overview');
 
-  useEffect(() => {
-    if (guildId) {
-      loadData();
-    }
-  }, [guildId]);
+  const { data: statsData, loading: statsLoading, error: statsError, refetch: refetchStats } = useSafeAPI<{ success: boolean; stats: InviteStats }>(
+    () => safeFetch(`/api/guild/${guildId}/invites/stats`),
+    [guildId],
+    { skip: !guildId }
+  );
 
-  const loadData = async () => {
-    if (!guildId) return;
+  const { data: topData, loading: topLoading, error: topError } = useSafeAPI<{ success: boolean; inviters: Inviter[] }>(
+    () => safeFetch(`/api/guild/${guildId}/invites/top?limit=10`),
+    [guildId],
+    { skip: !guildId }
+  );
 
-    setLoading(true);
-    try {
-      const [statsRes, topRes] = await Promise.all([
-        api.get<{ stats: InviteStats }>(`/api/guild/${guildId}/invites/stats`),
-        api.get<{ inviters: Inviter[] }>(`/api/guild/${guildId}/invites/top?limit=10`)
-      ]);
-
-      if (statsRes.success && statsRes.data) setStats(statsRes.data.stats);
-      if (topRes.success && topRes.data) setTopInviters(topRes.data.inviters);
-    } catch (error) {
-      console.error('Error loading invite data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const stats = statsData?.stats || null;
+  const topInviters = topData?.inviters || [];
+  const loading = statsLoading || topLoading;
+  const error = statsError || topError;
 
   const handleSync = async () => {
     if (!guildId) return;
 
     setSyncing(true);
     try {
-      const res = await api.post(`/api/guild/${guildId}/invites/sync`);
-      if (res.success) {
-        await loadData();
-      }
-    } catch (error) {
-      console.error('Error syncing invites:', error);
+      await safeFetch(`/api/guild/${guildId}/invites/sync`, { method: 'POST' });
+      refetchStats();
+      alert('✅ Sincronização concluída!');
+    } catch (err) {
+      alert(`❌ Erro: ${err instanceof Error ? err.message : 'Falha ao sincronizar'}`);
     } finally {
       setSyncing(false);
     }
@@ -113,16 +101,15 @@ export default function InvitesPage() {
   };
 
   if (!guildId) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8">
-        <div className="bg-yellow-600/20 backdrop-blur-xl border border-yellow-600/50 rounded-xl p-4">
-          <div className="flex items-center gap-2 text-yellow-400">
-            <span>⚠️</span>
-            <span>Please select a server to view invite statistics</span>
-          </div>
-        </div>
-      </div>
-    );
+    return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para visualizar estatísticas de convites" />;
+  }
+
+  if (loading) {
+    return <LoadingState message="Carregando estatísticas de convites..." />;
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={refetchStats} />;
   }
 
   return (

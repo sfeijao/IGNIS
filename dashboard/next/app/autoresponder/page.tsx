@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useGuildId } from '@/hooks/useGuildId';
+import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
+import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
 interface AutoResponse {
   _id: string;
@@ -21,8 +23,6 @@ interface AutoResponse {
 export default function AutoResponderPage() {
   const guildId = useGuildId();
 
-  const [responses, setResponses] = useState<AutoResponse[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<{
@@ -41,26 +41,16 @@ export default function AutoResponderPage() {
     cooldown: 0
   });
 
-  useEffect(() => {
-    if (guildId) fetchResponses();
-  }, [guildId]);
+  const { data, loading, error, refetch } = useSafeAPI<{ success: boolean; responses: AutoResponse[] }>(
+    () => safeFetch(`/api/guild/${guildId}/autoresponses`),
+    [guildId],
+    { skip: !guildId }
+  );
 
-  const fetchResponses = async () => {
-    try {
-      const res = await fetch(`/api/guild/${guildId}/autoresponses`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setResponses(data.responses || []);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const responses = data?.responses || [];
 
   const saveResponse = async () => {
-    const data = {
+    const payload = {
       ...formData,
       triggers: formData.triggers.split(',').map(t => t.trim()).filter(Boolean)
     };
@@ -70,34 +60,32 @@ export default function AutoResponderPage() {
         ? `/api/guild/${guildId}/autoresponses/${editingId}`
         : `/api/guild/${guildId}/autoresponses`;
 
-      const res = await fetch(url, {
+      await safeFetch(url, {
         method: editingId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data)
+        body: JSON.stringify(payload)
       });
 
-      if (res.ok) {
-        setShowModal(false);
-        setEditingId(null);
-        setFormData({ name: '', triggers: '', response: '', matchType: 'contains', caseSensitive: false, cooldown: 0 });
-        fetchResponses();
-      }
-    } catch (error) {
-      console.error('Error:', error);
+      setShowModal(false);
+      setEditingId(null);
+      setFormData({ name: '', triggers: '', response: '', matchType: 'contains', caseSensitive: false, cooldown: 0 });
+      refetch();
+      alert('✅ Resposta salva!');
+    } catch (err) {
+      alert(`❌ Erro: ${err instanceof Error ? err.message : 'Falha ao salvar'}`);
     }
   };
 
   const deleteResponse = async (id: string) => {
     if (!confirm('Deletar esta resposta automática?')) return;
     try {
-      await fetch(`/api/guild/${guildId}/autoresponses/${id}`, {
-        method: 'DELETE',
-        credentials: 'include'
+      await safeFetch(`/api/guild/${guildId}/autoresponses/${id}`, {
+        method: 'DELETE'
       });
-      fetchResponses();
-    } catch (error) {
-      console.error('Error:', error);
+      refetch();
+      alert('✅ Resposta deletada!');
+    } catch (err) {
+      alert(`❌ Erro: ${err instanceof Error ? err.message : 'Falha ao deletar'}`);
     }
   };
 
@@ -114,8 +102,16 @@ export default function AutoResponderPage() {
     setShowModal(true);
   };
 
+  if (!guildId) {
+    return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para gerenciar auto-respostas" />;
+  }
+
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>;
+    return <LoadingState message="Carregando auto-respostas..." />;
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={refetch} />;
   }
 
   return (
