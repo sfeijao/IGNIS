@@ -17,22 +17,22 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
-    "baseUrl": ".",
+    "ignoreDeprecations": "5.0",
     "paths": {
       "@/components/*": [
-        "components/*"
+        "./components/*"
       ],
       "@/lib/*": [
-        "lib/*"
+        "./lib/*"
       ],
       "@/hooks/*": [
-        "hooks/*"
+        "./hooks/*"
       ],
       "@/utils/*": [
-        "utils/*"
+        "./utils/*"
       ],
       "@/app/*": [
-        "app/*"
+        "./app/*"
       ]
     },
     "incremental": true,

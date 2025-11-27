@@ -1,4 +1,4 @@
-import AppealsManager from '../../components/AppealsManager'
+import AppealsManager from '@/components/AppealsManager'
 
 export const dynamic = 'force-static'
 

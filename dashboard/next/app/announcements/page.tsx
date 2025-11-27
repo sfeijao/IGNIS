@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useGuildId } from '@/hooks/useGuildId';
+import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
+import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
 interface Announcement {
   _id: string;
@@ -28,9 +30,6 @@ interface Announcement {
 
 export default function AnnouncementsPage() {
   const guildId = useGuildId();
-
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -44,23 +43,16 @@ export default function AnnouncementsPage() {
     repeatInterval: 'daily' as 'daily' | 'weekly' | 'monthly'
   });
 
-  useEffect(() => {
-    if (guildId) fetchAnnouncements();
-  }, [guildId]);
+  const { data, loading, error, refetch } = useSafeAPI<Announcement[]>(
+    async () => {
+      const res = await safeFetch<{ announcements: Announcement[] }>(`/api/guild/${guildId}/announcements`);
+      return res.announcements || [];
+    },
+    [guildId],
+    { skip: !guildId }
+  );
 
-  const fetchAnnouncements = async () => {
-    try {
-      const res = await fetch(`/api/guild/${guildId}/announcements`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setAnnouncements(data.announcements || []);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const announcements = data || [];
 
   const createAnnouncement = async () => {
     try {
@@ -94,8 +86,10 @@ export default function AnnouncementsPage() {
           embedEnabled: true, embedColor: '#5865F2', embedImage: '',
           repeatEnabled: false, repeatInterval: 'daily'
         });
-        fetchAnnouncements();
+        refetch();
         alert('✅ Anúncio agendado!');
+      } else {
+        alert('❌ Erro ao agendar anúncio');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -109,9 +103,11 @@ export default function AnnouncementsPage() {
         method: 'DELETE',
         credentials: 'include'
       });
-      fetchAnnouncements();
+      refetch();
+      alert('✅ Anúncio deletado!');
     } catch (error) {
       console.error('Error:', error);
+      alert('❌ Erro ao deletar anúncio');
     }
   };
 
@@ -125,8 +121,16 @@ export default function AnnouncementsPage() {
     return colors[status] || 'bg-gray-600';
   };
 
+  if (!guildId) {
+    return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para gerenciar anúncios" />;
+  }
+
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>;
+    return <LoadingState message="Carregando anúncios..." />;
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={refetch} />;
   }
 
   return (

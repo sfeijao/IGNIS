@@ -1,4 +1,4 @@
-import TicketsConfigForm from '../../../components/TicketsConfigForm'
+import TicketsConfigForm from '@/components/TicketsConfigForm'
 
 export const dynamic = 'force-static'
 

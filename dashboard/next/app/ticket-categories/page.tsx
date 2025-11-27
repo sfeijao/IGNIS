@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
+import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
 interface TicketCategory {
   _id: string;
@@ -32,9 +34,6 @@ interface TicketCategory {
 export default function TicketCategoriesPage() {
   const params = useParams();
   const guildId = params?.guildId as string;
-
-  const [categories, setCategories] = useState<TicketCategory[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -47,23 +46,16 @@ export default function TicketCategoriesPage() {
     enabled: true
   });
 
-  useEffect(() => {
-    if (guildId) fetchCategories();
-  }, [guildId]);
+  const { data, loading, error, refetch } = useSafeAPI<TicketCategory[]>(
+    async () => {
+      const res = await safeFetch<{ categories: TicketCategory[] }>(`/api/guild/${guildId}/ticket-categories`);
+      return res.categories || [];
+    },
+    [guildId],
+    { skip: !guildId }
+  );
 
-  const fetchCategories = async () => {
-    try {
-      const res = await fetch(`/api/guild/${guildId}/ticket-categories`, { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setCategories(data.categories || []);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const categories = data || [];
 
   const saveCategory = async () => {
     try {
@@ -82,7 +74,7 @@ export default function TicketCategoriesPage() {
         setShowModal(false);
         setEditingId(null);
         setFormData({ name: '', description: '', emoji: '🎫', namingPattern: 'ticket-{number}', maxOpenPerUser: 1, requireReason: false, enabled: true });
-        fetchCategories();
+        refetch();
         alert('✅ Categoria salva!');
       }
     } catch (error) {
@@ -97,9 +89,11 @@ export default function TicketCategoriesPage() {
         method: 'DELETE',
         credentials: 'include'
       });
-      fetchCategories();
+      refetch();
+      alert('✅ Categoria deletada!');
     } catch (error) {
       console.error('Error:', error);
+      alert('❌ Erro ao deletar categoria');
     }
   };
 
@@ -117,8 +111,16 @@ export default function TicketCategoriesPage() {
     setShowModal(true);
   };
 
+  if (!guildId) {
+    return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para gerenciar categorias de tickets" />;
+  }
+
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>;
+    return <LoadingState message="Carregando categorias..." />;
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={refetch} />;
   }
 
   return (

@@ -1,4 +1,4 @@
-import AutomodEvents from '../../components/AutomodEvents'
+import AutomodEvents from '@/components/AutomodEvents'
 
 export const dynamic = 'force-static'
 

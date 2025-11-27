@@ -1,4 +1,4 @@
-import TicketPanels from '../../../components/TicketPanels'
+import TicketPanels from '@/components/TicketPanels'
 
 export const dynamic = 'force-static'
 

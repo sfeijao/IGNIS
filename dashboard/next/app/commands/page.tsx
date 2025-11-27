@@ -1,4 +1,4 @@
-import CommandsManager from '../../components/CommandsManager'
+import CommandsManager from '@/components/CommandsManager'
 
 export const dynamic = 'force-static'
 

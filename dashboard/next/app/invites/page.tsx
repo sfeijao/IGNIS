@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useGuildId } from '@/hooks/useGuildId';
-import { useI18n } from '@/hooks/useI18n';
+import { useI18n } from '@/lib/i18n';
 import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
 import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 

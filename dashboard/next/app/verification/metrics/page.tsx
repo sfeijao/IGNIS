@@ -1,4 +1,4 @@
-import VerificationMetrics from '../../../components/VerificationMetrics'
+import VerificationMetrics from '@/components/VerificationMetrics'
 
 export const dynamic = 'force-static'
 

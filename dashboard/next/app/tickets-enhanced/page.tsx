@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
+import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
 interface Ticket {
   _id: string;
@@ -35,46 +37,39 @@ interface Stats {
   totalClosed: number;
 }
 
+interface TicketsData {
+  tickets: Ticket[];
+  stats: Stats | null;
+}
+
 export default function TicketsEnhancedPage() {
   const params = useParams();
   const guildId = params?.guildId as string;
-
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({ status: '', priority: '', categoryId: '' });
 
-  useEffect(() => {
-    if (guildId) fetchData();
-  }, [guildId, filter]);
-
-  const fetchData = async () => {
-    try {
+  const { data, loading, error, refetch } = useSafeAPI<TicketsData>(
+    async () => {
       const queryParams = new URLSearchParams();
       if (filter.status) queryParams.append('status', filter.status);
       if (filter.priority) queryParams.append('priority', filter.priority);
       if (filter.categoryId) queryParams.append('categoryId', filter.categoryId);
 
       const [ticketsRes, statsRes] = await Promise.all([
-        fetch(`/api/guild/${guildId}/tickets-enhanced?${queryParams}`, { credentials: 'include' }),
-        fetch(`/api/guild/${guildId}/tickets-enhanced/stats`, { credentials: 'include' })
+        safeFetch<{ tickets: Ticket[] }>(`/api/guild/${guildId}/tickets-enhanced?${queryParams}`),
+        safeFetch<{ stats: Stats }>(`/api/guild/${guildId}/tickets-enhanced/stats`)
       ]);
 
-      if (ticketsRes.ok) {
-        const data = await ticketsRes.json();
-        setTickets(data.tickets || []);
-      }
+      return {
+        tickets: ticketsRes.tickets || [],
+        stats: statsRes.stats || null
+      };
+    },
+    [guildId, filter.status, filter.priority, filter.categoryId],
+    { skip: !guildId }
+  );
 
-      if (statsRes.ok) {
-        const data = await statsRes.json();
-        setStats(data.stats);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const tickets = data?.tickets || [];
+  const stats = data?.stats || null;
 
   const closeTicket = async (ticketId: string) => {
     const reason = prompt('Motivo do fechamento:');
@@ -89,8 +84,10 @@ export default function TicketsEnhancedPage() {
       });
 
       if (res.ok) {
-        fetchData();
+        refetch();
         alert('✅ Ticket fechado!');
+      } else {
+        alert('❌ Erro ao fechar ticket');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -118,8 +115,16 @@ export default function TicketsEnhancedPage() {
     return colors[priority] || 'bg-gray-500';
   };
 
+  if (!guildId) {
+    return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para ver tickets" />;
+  }
+
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div></div>;
+    return <LoadingState message="Carregando tickets..." />;
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={refetch} />;
   }
 
   return (
