@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useGuildId } from '@/lib/guild';
+import { useGuildIdWithLoading } from '@/lib/guild';
 import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
 import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
@@ -29,7 +29,7 @@ interface Announcement {
 }
 
 export default function AnnouncementsPage() {
-  const guildId = useGuildId();
+  const { guildId, loading: guildLoading } = useGuildIdWithLoading();
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -115,6 +115,10 @@ export default function AnnouncementsPage() {
     };
     return colors[status] || 'bg-gray-600';
   };
+
+  if (guildLoading) {
+    return <LoadingState message="Carregando..." />;
+  }
 
   if (!guildId) {
     return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para gerenciar anúncios" />;

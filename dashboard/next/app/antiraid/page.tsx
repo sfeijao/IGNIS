@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useGuildId } from '@/lib/guild';
+import { useGuildIdWithLoading } from '@/lib/guild';
 import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
 import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
@@ -43,7 +43,7 @@ interface AntiRaidData {
 }
 
 export default function AntiRaidPage() {
-  const guildId = useGuildId();
+  const { guildId, loading: guildLoading } = useGuildIdWithLoading();
   const [saving, setSaving] = useState(false);
   const [localConfig, setLocalConfig] = useState<AntiRaidConfig | null>(null);
 
@@ -113,6 +113,10 @@ export default function AntiRaidPage() {
       alert('❌ Erro ao resolver raid: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };
+
+  if (guildLoading) {
+    return <LoadingState message="Carregando..." />;
+  }
 
   if (!guildId) {
     return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para configurar anti-raid" />;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useGuildId } from '@/lib/guild';
+import { useGuildIdWithLoading } from '@/lib/guild';
 import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
 import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
@@ -32,7 +32,7 @@ interface StaffData {
 }
 
 export default function StaffMonitoringPage() {
-  const guildId = useGuildId();
+  const { guildId, loading: guildLoading } = useGuildIdWithLoading();
   const [days, setDays] = useState(30);
 
   const { data, loading, error, refetch } = useSafeAPI<StaffData>(
@@ -65,6 +65,10 @@ export default function StaffMonitoringPage() {
     ticket_close: '🎫',
     ticket_delete: '🗑️'
   };
+
+  if (guildLoading) {
+    return <LoadingState message="Carregando..." />;
+  }
 
   if (!guildId) {
     return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para monitorar staff" />;

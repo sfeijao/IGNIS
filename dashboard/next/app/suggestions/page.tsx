@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useGuildId } from '@/lib/guild';
+import { useGuildIdWithLoading } from '@/lib/guild';
 import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
 import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
@@ -24,7 +24,7 @@ interface Suggestion {
 }
 
 export default function SuggestionsPage() {
-  const guildId = useGuildId();
+  const { guildId, loading: guildLoading } = useGuildIdWithLoading();
 
   const [filter, setFilter] = useState<string>('all');
 
@@ -81,6 +81,10 @@ export default function SuggestionsPage() {
   };
 
   const filteredSuggestions = suggestions;
+
+  if (guildLoading) {
+    return <LoadingState message="Carregando..." />;
+  }
 
   if (!guildId) {
     return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para gerenciar sugestões" />;

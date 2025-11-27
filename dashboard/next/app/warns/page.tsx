@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useGuildId } from '@/lib/guild';
+import { useGuildIdWithLoading } from '@/lib/guild';
 import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
 import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
@@ -23,7 +23,7 @@ interface Warn {
 }
 
 export default function WarnsPage() {
-  const guildId = useGuildId();
+  const { guildId, loading: guildLoading } = useGuildIdWithLoading();
   const [filter, setFilter] = useState<'all' | 'active' | 'revoked'>('active');
   const [selectedUser, setSelectedUser] = useState<string>('');
 
@@ -106,6 +106,10 @@ export default function WarnsPage() {
     };
     return emojis[punishment] || '⚪';
   };
+
+  if (guildLoading) {
+    return <LoadingState message="Carregando..." />;
+  }
 
   if (!guildId) {
     return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para gerenciar avisos" />;

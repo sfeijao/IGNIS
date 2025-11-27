@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useGuildId } from '@/lib/guild';
+import { useGuildIdWithLoading } from '@/lib/guild';
 import { useI18n } from '@/lib/i18n';
 import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
 import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
@@ -40,7 +40,7 @@ interface Member {
 }
 
 export default function InvitesPage() {
-  const guildId = useGuildId();
+  const { guildId, loading: guildLoading } = useGuildIdWithLoading();
   const { t } = useI18n();
 
   const [syncing, setSyncing] = useState(false);
@@ -99,6 +99,10 @@ export default function InvitesPage() {
       default: return 'Unknown';
     }
   };
+
+  if (guildLoading) {
+    return <LoadingState message="Carregando..." />;
+  }
 
   if (!guildId) {
     return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para visualizar estatísticas de convites" />;

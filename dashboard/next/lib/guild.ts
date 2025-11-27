@@ -38,3 +38,17 @@ export function useGuildId(): string | null {
   }, [])
   return id
 }
+
+// Hook with loading state - use this in pages to avoid showing EmptyState during hydration
+export function useGuildIdWithLoading(): { guildId: string | null; loading: boolean } {
+  const [guildId, setGuildId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  
+  useEffect(() => {
+    const id = getGuildId()
+    setGuildId(id)
+    setLoading(false)
+  }, [])
+  
+  return { guildId, loading }
+}
