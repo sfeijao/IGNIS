@@ -63,37 +63,30 @@ export default function TicketCategoriesPage() {
         ? `/api/guild/${guildId}/ticket-categories/${editingId}`
         : `/api/guild/${guildId}/ticket-categories`;
 
-      const res = await fetch(url, {
+      await safeFetch(url, {
         method: editingId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(formData)
       });
 
-      if (res.ok) {
-        setShowModal(false);
-        setEditingId(null);
-        setFormData({ name: '', description: '', emoji: '🎫', namingPattern: 'ticket-{number}', maxOpenPerUser: 1, requireReason: false, enabled: true });
-        refetch();
-        alert('✅ Categoria salva!');
-      }
+      setShowModal(false);
+      setEditingId(null);
+      setFormData({ name: '', description: '', emoji: '🎫', namingPattern: 'ticket-{number}', maxOpenPerUser: 1, requireReason: false, enabled: true });
+      refetch();
+      alert('✅ Categoria salva!');
     } catch (error) {
-      console.error('Error:', error);
+      alert(`❌ Erro: ${error instanceof Error ? error.message : 'Falha ao salvar'}`);
     }
   };
 
   const deleteCategory = async (id: string) => {
     if (!confirm('Deletar esta categoria?')) return;
     try {
-      await fetch(`/api/guild/${guildId}/ticket-categories/${id}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
+      await safeFetch(`/api/guild/${guildId}/ticket-categories/${id}`, { method: 'DELETE' });
       refetch();
       alert('✅ Categoria deletada!');
     } catch (error) {
-      console.error('Error:', error);
-      alert('❌ Erro ao deletar categoria');
+      alert(`❌ Erro: ${error instanceof Error ? error.message : 'Falha ao deletar'}`);
     }
   };
 

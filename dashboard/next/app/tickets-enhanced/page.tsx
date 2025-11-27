@@ -76,21 +76,16 @@ export default function TicketsEnhancedPage() {
     if (!reason) return;
 
     try {
-      const res = await fetch(`/api/guild/${guildId}/tickets-enhanced/${ticketId}/close`, {
+      await safeFetch(`/api/guild/${guildId}/tickets-enhanced/${ticketId}/close`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ reason })
       });
 
-      if (res.ok) {
-        refetch();
-        alert('✅ Ticket fechado!');
-      } else {
-        alert('❌ Erro ao fechar ticket');
-      }
+      refetch();
+      alert('✅ Ticket fechado!');
     } catch (error) {
-      console.error('Error:', error);
+      alert(`❌ Erro: ${error instanceof Error ? error.message : 'Falha ao fechar ticket'}`);
     }
   };
 

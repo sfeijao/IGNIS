@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useGuildId } from '@/hooks/useGuildId';
+import { useGuildId } from '@/lib/guild';
 import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
 import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
@@ -65,10 +65,6 @@ export default function EventsPage() {
   const deleteEvent = async (eventId: string) => {
     if (!confirm('Deletar este evento?')) return;
     try {
-      await fetch(`/api/guild/${guildId}/events/${eventId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
       await safeFetch(`/api/guild/${guildId}/events/${eventId}`, { method: 'DELETE' });
       refetch();
       alert('✅ Evento deletado!');

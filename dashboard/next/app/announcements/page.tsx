@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useGuildId } from '@/hooks/useGuildId';
+import { useGuildId } from '@/lib/guild';
 import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
 import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
@@ -72,14 +72,13 @@ export default function AnnouncementsPage() {
         }
       };
 
-      const res = await fetch(`/api/guild/${guildId}/announcements`, {
+      const res = await safeFetch<{ success: boolean }>(`/api/guild/${guildId}/announcements`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(data)
       });
 
-      if (res.ok) {
+      if (res.success) {
         setShowModal(false);
         setFormData({
           title: '', message: '', channelId: '', scheduledFor: '',
@@ -92,22 +91,18 @@ export default function AnnouncementsPage() {
         alert('❌ Erro ao agendar anúncio');
       }
     } catch (error) {
-      console.error('Error:', error);
+      alert(`❌ Erro: ${error instanceof Error ? error.message : 'Falha ao criar anúncio'}`);
     }
   };
 
   const deleteAnnouncement = async (id: string) => {
     if (!confirm('Deletar este anúncio?')) return;
     try {
-      await fetch(`/api/guild/${guildId}/announcements/${id}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
+      await safeFetch(`/api/guild/${guildId}/announcements/${id}`, { method: 'DELETE' });
       refetch();
       alert('✅ Anúncio deletado!');
     } catch (error) {
-      console.error('Error:', error);
-      alert('❌ Erro ao deletar anúncio');
+      alert(`❌ Erro: ${error instanceof Error ? error.message : 'Falha ao deletar'}`);
     }
   };
 
