@@ -1,7 +1,7 @@
-const logger = require('../utils/logger');
 'use client'
 
 import Link from 'next/link'
+const logger = require('../utils/logger');
 import ThemeToggle from './ThemeToggle'
 import LanguageSwitcher from './LanguageSwitcher'
 import MobileSidebar from './MobileSidebar'

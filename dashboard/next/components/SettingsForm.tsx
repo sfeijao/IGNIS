@@ -1,7 +1,7 @@
-const logger = require('../utils/logger');
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+const logger = require('../utils/logger');
 import type React from 'react'
 import { api } from '@/lib/apiClient'
 import { useGuildId } from '@/lib/guild'

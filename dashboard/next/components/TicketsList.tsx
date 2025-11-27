@@ -1,7 +1,7 @@
-const logger = require('../utils/logger');
 "use client"
 
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
+const logger = require('../utils/logger');
 import Skeleton from '@/components/Skeleton'
 import { api } from '@/lib/apiClient'
 import { useGuildId } from '@/lib/guild'

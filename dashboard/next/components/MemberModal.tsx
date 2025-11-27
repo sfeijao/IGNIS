@@ -1,7 +1,7 @@
-const logger = require('../utils/logger');
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
+const logger = require('../utils/logger');
 import { api } from '@/lib/apiClient'
 import { useToast } from './Toaster'
 

@@ -1,7 +1,7 @@
-const logger = require('../utils/logger');
 'use client'
 
 import { useEffect, useState } from 'react'
+const logger = require('../utils/logger');
 
 type User = { id: string; username: string; discriminator: string; avatar: string | null }
 
