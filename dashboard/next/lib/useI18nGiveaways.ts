@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 "use client"
 
 import { giveawaysI18n } from './i18n-giveaways'
@@ -8,7 +9,7 @@ export function useGiveawaysI18n(){
     try {
       const stored = localStorage.getItem('locale') || localStorage.getItem('lang')
       if (stored) locale = stored
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
   const dict = (giveawaysI18n as any)[locale] || (giveawaysI18n as any).pt || {}
   return function t(key: string, fallback?: string){

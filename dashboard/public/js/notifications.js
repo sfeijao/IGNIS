@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 (function(){
   // Ensure guild context
   try{
@@ -16,9 +17,9 @@
         return;
       }
     } else {
-      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch{}
+      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch(e) { logger.debug('Caught error:', e?.message || e); }
     }
-  }catch{}
+  }catch(e) { logger.debug('Caught error:', e?.message || e); }
 })();
 
 (function(){

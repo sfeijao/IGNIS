@@ -98,7 +98,7 @@ class WebhookManager {
                             }
                         }
                         if (typeMap.size > 0) this.webhooks.set(guild.id, typeMap);
-                    } catch {}
+                    } catch (e) { logger.debug('Caught error:', e?.message || e); }
                 }
                 if (count > 0) logger.info(`🔁 WebhookManager: hidratado ${count} webhook(s) do SQLite`);
                 return;
@@ -239,7 +239,7 @@ class WebhookManager {
                     logger.info(`WebhookManager: configuração externa detetada para ${guild.name}; ignorando criação local de webhook`);
                     return true;
                 }
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
             // Verifica se já existe um webhook válido (tipo 'logs')
             const existingTypeMap = this.webhooks.get(guild.id);
             const existingInfo = existingTypeMap?.get?.('logs');
@@ -279,7 +279,7 @@ class WebhookManager {
             try {
                 const meta = await (new WebhookClient({ url: webhook.url })).fetch().catch(()=>null);
                 if (meta && meta.guildId && meta.guildId !== guild.id) externalFlag = true;
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
             typeMap.set('logs', { name: guild.name, webhook: new WebhookClient({ url: webhook.url }), external: externalFlag });
             this.webhooks.set(guild.id, typeMap);
 
@@ -287,7 +287,7 @@ class WebhookManager {
             // Persistir em DB para durabilidade entre deploys
             try {
                 await this.persistToDB(guild.id, { type: 'logs', name: guild.name, url: webhook.url, channel_id: channel?.id || null, channel_name: channel?.name || null, enabled: true });
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
             logger.info(`Webhook configurado com sucesso para ${guild.name}`);
             return true;
         } catch (error) {
@@ -317,11 +317,11 @@ class WebhookManager {
                         if (all && typeof all === 'object') {
                             // Selecionar entradas cujo key combine com o guild de origem (por id ou slug do nome)
                             const candidates = new Set();
-                            try { candidates.add(String(guildId)); } catch {}
+                            try { candidates.add(String(guildId)); } catch (e) { logger.debug('Caught error:', e?.message || e); }
                             try {
                                 const name = data?.guild?.name || '';
                                 const s = this._slug(String(name)); if (s) candidates.add(s);
-                            } catch {}
+                            } catch (e) { logger.debug('Caught error:', e?.message || e); }
                             const subset = {};
                             for (const [k,v] of Object.entries(all)) {
                                 if (!v) continue;
@@ -331,7 +331,7 @@ class WebhookManager {
                             if (Object.keys(subset).length > 0) ext = subset;
                         }
                     }
-                } catch {}
+                } catch (e) { logger.debug('Caught error:', e?.message || e); }
             }
             // Se ainda não houver externos, usar webhooks externos adicionados manualmente em runtime
             if (!ext || (typeof ext === 'object' && Object.keys(ext).length === 0)) {
@@ -348,7 +348,7 @@ class WebhookManager {
                             ext = manual;
                         }
                     }
-                } catch {}
+                } catch (e) { logger.debug('Caught error:', e?.message || e); }
             }
             data.__externalLogs = ext;
             // Preferir externos automaticamente quando existirem (pode forçar local com PREFER_EXTERNAL_LOGS=false)
@@ -358,9 +358,9 @@ class WebhookManager {
             if (process.env.WEBHOOK_DEBUG_EXTERNAL === 'true') {
                 try {
                     logger.debug(`WebhookManager: extCandidates=${Object.keys(ext||{}).join(',')||'none'} preferExternal=${data.__preferExternal}`);
-                } catch {}
+                } catch (e) { logger.debug('Caught error:', e?.message || e); }
             }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
         if (!preferredType) {
             // Defaults: claim/release/update -> 'updates', create/close -> 'tickets', otherwise 'logs'
             preferredType = (event === 'update' || event === 'claim' || event === 'release')
@@ -373,7 +373,7 @@ class WebhookManager {
         const webhookInfo = typeMap?.get?.(preferredType) || typeMap?.get?.('logs');
         if (!webhookInfo || !webhookInfo.webhook?.url) {
             // Attempt one on-demand hydration (in case runtime started before DB ready)
-            try { await this.hydrateFromStorage(); } catch {}
+            try { await this.hydrateFromStorage(); } catch (e) { logger.debug('Caught error:', e?.message || e); }
             const refreshed = this.webhooks.get(guildId);
             const w2 = refreshed?.get?.(preferredType) || refreshed?.get?.('logs');
             if (!w2 || !w2.webhook?.url) {
@@ -493,12 +493,12 @@ class WebhookManager {
             if (process.env.WEBHOOK_DEBUG_EXTERNAL === 'true') {
                 try {
                     logger.debug(`WebhookManager: envio externo=${externalSent} preferExternal=${data.__preferExternal} guild=${guildId} tiposCarregados=${Array.from(this.webhooks.get(guildId)?.keys()||[]).join(',')}`);
-                } catch {}
+                } catch (e) { logger.debug('Caught error:', e?.message || e); }
             }
             if (!data.__preferExternal || !externalSent) {
                 await webhookInfo.webhook.send(payload);
             } else if (process.env.WEBHOOK_DEBUG_EXTERNAL === 'true') {
-                try { logger.debug(`WebhookManager: skip envio local para evitar duplicação (guild ${guildId})`); } catch {}
+                try { logger.debug(`WebhookManager: skip envio local para evitar duplicação (guild ${guildId})`); } catch (e) { logger.debug('Caught error:', e?.message || e); }
             }
         } catch (error) {
             // Se for webhook desconhecido (apagado no Discord), limpar e persistir remoção para evitar erros repetidos
@@ -516,7 +516,7 @@ class WebhookManager {
                                 logger.warn(`WebhookManager: removendo webhook inválido (${t}) para guild ${guildId}`);
                                 if (typeMap.size === 0) this.webhooks.delete(guildId);
                                 await this.saveConfig().catch(()=>{});
-                                try { await this.persistToDB(guildId, { type: t, enabled: false }); } catch {}
+                                try { await this.persistToDB(guildId, { type: t, enabled: false }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
                                 break;
                             }
                         }
@@ -581,7 +581,7 @@ class WebhookManager {
             try {
                 const fetched = await webhook.fetch().catch(() => null);
                 if (fetched && fetched.guildId && fetched.guildId !== guildId) externalFlag = true;
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
             const typeMap = this.webhooks.get(guildId) || new Map();
             typeMap.set(type, { name, webhook, external: externalFlag });
             this.webhooks.set(guildId, typeMap);
@@ -612,7 +612,7 @@ class WebhookManager {
                 this.webhooks.delete(guildId);
                 await this.saveConfig();
                 for (const t of types) {
-                    try { await this.persistToDB(guildId, { type: t, enabled: false }); } catch {}
+                    try { await this.persistToDB(guildId, { type: t, enabled: false }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
                 }
             }
             return true;
@@ -652,7 +652,7 @@ class WebhookManager {
                     logger.info(`WebhookManager: configuração externa detetada para ${guild.name}; saltando criação local`);
                     return true;
                 }
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
             // Verificar se já existe um webhook válido (logs)
             const existingTypeMap = this.webhooks.get(guild.id);
@@ -731,7 +731,7 @@ class WebhookManager {
             try {
                 const meta = await (new WebhookClient({ url: webhook.url })).fetch().catch(()=>null);
                 if (meta && meta.guildId && meta.guildId !== guild.id) externalFlag = true;
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
             typeMap.set('logs', { name: guild.name, webhook: new WebhookClient({ url: webhook.url }), external: externalFlag });
             this.webhooks.set(guild.id, typeMap);
 
@@ -739,7 +739,7 @@ class WebhookManager {
             // Persistir em DB para durabilidade
             try {
                 await this.persistToDB(guild.id, { type: 'logs', name: guild.name, url: webhook.url, channel_id: channel?.id || null, channel_name: channel?.name || null, enabled: true });
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
             // Enviar mensagem de confirmação
             await webhook.send({
@@ -830,7 +830,7 @@ class WebhookManager {
                 preferredType = String(routing[event]);
                 steps.push(`routing override for event ${event} => type ${preferredType}`);
             }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
         if (!preferredType) {
             preferredType = (event === 'update' || event === 'claim' || event === 'release')
                 ? 'updates'

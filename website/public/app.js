@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 // IGNIS Website Dashboard Controller
 // Handles navigation (#/servers, #/home), loads user & guilds, updates stats, and binds ticket actions
 
@@ -53,7 +54,7 @@
         const sortSel = qs('#server-sort'); if (sortSel) sortSel.value = savedSort;
         applyFilterAndSort();
         window.scrollTo({ top: serverScrollY, behavior: 'instant' });
-      } catch{}
+      } catch(e) { logger.debug('Caught error:', e?.message || e); }
     } else if (hash.startsWith('#/tickets-config')){
       showView('ticketsConfig');
       // ensure a guild is selected
@@ -77,7 +78,7 @@
       if (data?.success){
         setText('#userName', data.user?.username ?? 'Utilizador');
       }
-    }catch{}
+    }catch(e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   function renderServers(list){
@@ -169,7 +170,7 @@
       el.textContent = 'A mostrar dados em cache temporariamente (Discord limitou pedidos).';
       document.body.appendChild(el);
       setTimeout(()=> el.remove(), 4000);
-    }catch{}
+    }catch(e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   function setupServerSearch(){
@@ -179,8 +180,8 @@
     if (!input) return;
     const sortSel = qs('#server-sort');
     const doApply = () => renderServers(applyFilterAndSort());
-    input.addEventListener('input', () => { try{ localStorage.setItem(SEARCH_KEY, input.value); }catch{} doApply(); });
-    if (sortSel){ sortSel.addEventListener('change', () => { try{ localStorage.setItem(SORT_KEY, sortSel.value);}catch{} doApply(); }); }
+    input.addEventListener('input', () => { try{ localStorage.setItem(SEARCH_KEY, input.value); }catch(e) { logger.debug('Caught error:', e?.message || e); } doApply(); });
+    if (sortSel){ sortSel.addEventListener('change', () => { try{ localStorage.setItem(SORT_KEY, sortSel.value);}catch(e) { logger.debug('Caught error:', e?.message || e); } doApply(); }); }
   }
 
   function applyFilterAndSort(){
@@ -245,8 +246,8 @@
     currentGuild = g;
     setText('[data-guild-name]', g.name);
     location.hash = '#/home';
-    try{ document.title = `Central • ${g.name} – IGNIS`; }catch{}
-    try{ localStorage.setItem(SELECTED_GUILD_KEY, String(g.id)); }catch{}
+    try{ document.title = `Central • ${g.name} – IGNIS`; }catch(e) { logger.debug('Caught error:', e?.message || e); }
+    try{ localStorage.setItem(SELECTED_GUILD_KEY, String(g.id)); }catch(e) { logger.debug('Caught error:', e?.message || e); }
     const pills = qs('.pills'); if (pills) pills.setAttribute('aria-busy','true');
     // Start pill skeletons
     window.IGNISPills?.setSkeleton(true);
@@ -268,7 +269,7 @@
         url.searchParams.set('guildId', String(g.id));
         a.setAttribute('href', url.toString());
       });
-    }catch{}
+    }catch(e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   // ================= Tickets Config (SPA) =================
@@ -448,7 +449,7 @@
         setText('[data-staff-online]', data.stats?.onlineCount ?? 0);
         setText('[data-total-members]', data.stats?.memberCount ?? '—');
       }
-    }catch{}
+    }catch(e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   async function updateTicketsStatus(){
@@ -474,7 +475,7 @@
           labelEl.textContent = 'OFFLINE';
         }
       }
-    }catch{}
+    }catch(e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   function setupButtons(){

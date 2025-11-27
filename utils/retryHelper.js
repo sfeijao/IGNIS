@@ -101,7 +101,7 @@ class KeyedRateLimiter {
         this.refillRate = refillRate;
 
         // Cleanup de limiters inativos
-        setInterval(() => {
+        this.cleanupInterval = setInterval(() => {
             const now = Date.now();
             for (const [key, limiter] of this.limiters.entries()) {
                 if (now - limiter.lastRefill > cleanupInterval) {
@@ -133,6 +133,16 @@ class KeyedRateLimiter {
             tokens: Math.floor(currentTokens),
             waitTime: currentTokens < 1 ? ((1 - currentTokens) / limiter.refillRate) * 1000 : 0
         };
+    }
+
+    /**
+     * Cleanup method to stop timers
+     */
+    shutdown() {
+        if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+            this.cleanupInterval = null;
+        }
     }
 }
 

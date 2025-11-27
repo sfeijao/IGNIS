@@ -6,7 +6,7 @@ let MongoStore = null;
 try {
     MongoStore = require('connect-mongo');
 } catch (e) {
-    console.warn('[Dashboard] connect-mongo não disponível:', e.message);
+    logger.warn('[Dashboard] connect-mongo não disponível:', e.message);
 }
 const passport = require('passport');
 const DiscordStrategy = require('passport-discord').Strategy;
@@ -65,11 +65,11 @@ if (process.env.DASHBOARD_TEST_MODE === 'true') {
         };
         global.discordClient = { guilds: { cache: new Map([['test', fakeGuild]]) } };
     } catch (e) {
-        console.warn('[Dashboard] Test mode setup failed:', e.message);
+        logger.warn('[Dashboard] Test mode setup failed:', e.message);
     }
 }
 // When running behind a reverse proxy (Railway/Heroku), trust the proxy so secure cookies work
-try { app.set('trust proxy', 1); } catch {}
+try { app.set('trust proxy', 1); } catch (e) { logger.warn('Failed to set trust proxy:', e?.message || e); }
 const isSqlite = (process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite';
 const BYPASS_AUTH = (process.env.DASHBOARD_BYPASS_AUTH || '').toLowerCase() === 'true';
 const IS_LOCAL = (process.env.NODE_ENV || 'development') !== 'production';
@@ -82,7 +82,7 @@ if ((process.env.NODE_ENV || 'production') === 'production') {
     process.on('warning', (w) => {
         // Keep a single-line summary for visibility in logs
         if (/punycode/i.test(String(w && w.name))) return; // ignore punycode deprecation
-        try { console.warn('Warning:', w.name || 'Warning', '-', w.message || String(w)); } catch {}
+        try { logger.warn('Warning:', w.name || 'Warning', '-', w.message || String(w)); } catch (e) { logger.debug('Failed to log warning:', e?.message || e); }
     });
 }
 // Prefer SQLite if explicitly selected or when Mongo isn't configured
@@ -158,7 +158,9 @@ try {
             next();
         });
     }
-} catch {}
+} catch (e) {
+    logger.warn('CORS configuration error:', e?.message || e);
+}
 
 // Basic Cache-Control for static assets and html-like files
 app.use((req, res, next) => {
@@ -171,7 +173,9 @@ app.use((req, res, next) => {
                 res.setHeader('Cache-Control', 'public, max-age=60');
             }
         }
-    } catch {}
+    } catch (e) {
+        logger.debug('Cache-Control header failed:', e?.message || e);
+    }
     next();
 });
 
@@ -200,7 +204,7 @@ app.use((req, res, next) => {
             while (rest.startsWith('next/')) rest = rest.slice('next/'.length);
             req.url = '/next/' + rest;
         }
-    } catch {}
+    } catch (e) { logger.debug('Path normalization error:', e?.message || e); }
     next();
 });
 // Paths for classic dashboard (rich features) and the revamped website UI
@@ -217,7 +221,7 @@ function requireAuth(req, res, next){
         }
         return next();
     }
-    try { if (req.isAuthenticated && req.isAuthenticated()) return next(); } catch {}
+    try { if (req.isAuthenticated && req.isAuthenticated()) return next(); } catch (e) { logger.debug('Auth check failed:', e?.message || e); }
     return res.redirect('/login');
 }
 // Serve classic dashboard assets under /dashboard (no index to avoid bypassing auth on HTML routes)
@@ -241,7 +245,7 @@ try {
         });
         try {
             const child = spawn(process.execPath, ['server.js'], { cwd: NEXT_STANDALONE_DIR, env: nextEnv, stdio: 'inherit' });
-            process.on('exit', () => { try { child.kill('SIGTERM'); } catch {} });
+            process.on('exit', () => { try { child.kill('SIGTERM'); } catch (e) { logger.debug('Failed to kill Next server on exit:', e?.message || e); } });
         } catch (e) {
             logger.warn('Failed to start Next standalone server:', e?.message || String(e));
         }
@@ -249,7 +253,7 @@ try {
         // Serve Next static build artifacts directly from .next/static to avoid 404s
         const NEXT_STATIC_DIR = path.join(__dirname, 'next', '.next', 'static');
         if (fs.existsSync(NEXT_STATIC_DIR)) {
-            app.use('/next/_next/static', (req, res, next) => { try { res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); } catch {} next(); });
+            app.use('/next/_next/static', (req, res, next) => { try { res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); } catch (e) { logger.debug('Cache-Control header error:', e?.message || e); } next(); });
             app.use('/next/_next/static', express.static(NEXT_STATIC_DIR, { index: false, redirect: false }));
         }
         // Redirect bare /_next/* to /next/_next/* to honor basePath in all environments
@@ -270,8 +274,8 @@ try {
                 // ensures the forwarded request includes '/next'.
                 const rawPath = (req.originalUrl && typeof req.originalUrl === 'string') ? req.originalUrl : ('/next' + (req.url.startsWith('/') ? req.url : ('/' + req.url)));
                 // Debug header to help diagnose hydration inconsistencies (variant of requested path)
-                try { res.setHeader('X-Debug-Next-Path', rawPath); } catch {}
-                try { res.setHeader('X-Debug-Next-UA-Hash', Buffer.from(String(req.headers['user-agent']||'ua')).toString('base64').slice(0,16)); } catch {}
+                try { res.setHeader('X-Debug-Next-Path', rawPath); } catch (e) { logger.debug('Debug header error:', e?.message || e); }
+                try { res.setHeader('X-Debug-Next-UA-Hash', Buffer.from(String(req.headers['user-agent']||'ua')).toString('base64').slice(0,16)); } catch (e) { logger.debug('UA hash header error:', e?.message || e); }
                 const targetUrl = new URL(rawPath, NEXT_TARGET);
                 const opts = {
                     method: req.method,
@@ -279,12 +283,12 @@ try {
                 };
                 const proxyReq = http.request(targetUrl, opts, (proxyRes) => {
                     // Pass through status and headers
-                    try { res.writeHead(proxyRes.statusCode || 502, proxyRes.headers); } catch {}
+                    try { res.writeHead(proxyRes.statusCode || 502, proxyRes.headers); } catch (e) { logger.debug('Proxy writeHead error:', e?.message || e); }
                     proxyRes.pipe(res);
                 });
                 req.pipe(proxyReq);
                 proxyReq.on('error', (err) => {
-                    try { logger.warn('Proxy to Next failed:', err?.message || String(err)); } catch {}
+                    try { logger.warn('Proxy to Next failed:', err?.message || String(err)); } catch (e) { logger.error('Logger failed in proxy error:', e); }
                     if (!res.headersSent) res.status(502);
                     res.end('Next server unavailable');
                 });
@@ -316,11 +320,11 @@ try {
                 if (rel === 'next') rel = '';
                 const filePath = path.join(NEXT_EXPORT_DIR, rel, 'index.txt');
                 if (fs.existsSync(filePath)) return res.sendFile(filePath);
-            } catch {}
+            } catch (e) { logger.debug('RSC index.txt serve error:', e?.message || e); }
             return next();
         });
     }
-} catch {}
+} catch (e) { logger.warn('Next dashboard setup error:', e?.message || e); }
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -358,7 +362,7 @@ async function oauthFetchWithSessionCache(req, url, opts={}){
     if (!response.ok) {
         if (response.status === 429) {
             let retryAfterMs = 2000;
-            try { const parsed = JSON.parse(text); if (parsed && parsed.retry_after != null) retryAfterMs = Math.max(100, Math.ceil(Number(parsed.retry_after)*1000)); } catch {}
+            try { const parsed = JSON.parse(text); if (parsed && parsed.retry_after != null) retryAfterMs = Math.max(100, Math.ceil(Number(parsed.retry_after)*1000)); } catch (e) { logger.debug('Retry-after parsing error:', e?.message || e); }
             req.session[backoffKey] = Date.now() + retryAfterMs;
             const cache = req.session[cacheKey];
             if (cache && cache.data) {
@@ -371,8 +375,8 @@ async function oauthFetchWithSessionCache(req, url, opts={}){
         return { ok:false, status:401, error:'discord_oauth_failed' };
     }
     let json = null;
-    try { json = text ? JSON.parse(text) : null; } catch { json = null; }
-    try { req.session[cacheKey] = { at: Date.now(), data: json, stale: false }; } catch {}
+    try { json = text ? JSON.parse(text) : null; } catch (e) { logger.debug('OAuth response parse error:', e?.message || e); json = null; }
+    try { req.session[cacheKey] = { at: Date.now(), data: json, stale: false }; } catch (e) { logger.debug('Session cache save error:', e?.message || e); }
     return { ok:true, status:200, json, headers: {} };
 }
 
@@ -450,7 +454,7 @@ app.use((req, res, next) => {
             // Monkey-patch isAuthenticated so API guards succeed
             req.isAuthenticated = () => true;
         }
-    } catch {}
+    } catch (e) { logger.debug('Dev bypass middleware error:', e?.message || e); }
     next();
 });
 
@@ -459,7 +463,7 @@ try {
     const giveawayRoutes = require('./routes/giveawayRoutes');
     app.use('/api', giveawayRoutes);
 } catch (e) {
-    try { console.warn('Giveaway routes not mounted:', e.message); } catch {}
+    try { logger.warn('Giveaway routes not mounted:', e.message); } catch (logErr) { logger.debug('Route mount logging failed:', logErr?.message || logErr); }
 }
 
 try {
@@ -467,7 +471,7 @@ try {
     app.use('/api', ticketCategoryRoutes);
     logger.info('✅ Ticket Category routes mounted successfully');
 } catch (e) {
-    try { console.warn('Ticket Category routes not mounted:', e.message); } catch {}
+    try { logger.warn('Ticket Category routes not mounted:', e.message); } catch (logErr) { logger.debug('Route mount logging failed:', logErr?.message || logErr); }
 }
 
 try {
@@ -475,7 +479,7 @@ try {
     app.use('/api', welcomeRoutes);
     logger.info('✅ Welcome/Goodbye routes mounted successfully');
 } catch (e) {
-    try { console.warn('Welcome routes not mounted:', e.message); } catch {}
+    try { logger.warn('Welcome routes not mounted:', e.message); } catch (logErr) { logger.debug('Route mount logging failed:', logErr?.message || logErr); }
 }
 
 try {
@@ -483,14 +487,14 @@ try {
     app.use('/api', serverStatsRoutes);
     logger.info('✅ Server Stats routes mounted successfully');
 } catch (e) {
-    try { console.warn('Server Stats routes not mounted:', e.message); } catch {}
+    try { logger.warn('Server Stats routes not mounted:', e.message); } catch (logErr) { logger.debug('Route mount logging failed:', logErr?.message || logErr); }
 }
 
 // Start giveaway background worker (Mongo dependent)
 try {
     const { initGiveawayWorker } = require('../utils/giveaways/worker');
     initGiveawayWorker();
-} catch (e) { try { console.warn('Giveaway worker not started:', e.message); } catch {} }
+} catch (e) { try { logger.warn('Giveaway worker not started:', e.message); } catch (logErr) { logger.debug('Giveaway worker logging failed:', logErr?.message || logErr); } }
 
 // Discord OAuth Strategy
 passport.use(new DiscordStrategy({
@@ -532,7 +536,7 @@ try {
     if (baseHost && cbHost && baseHost !== cbHost) {
         logger.warn(`OAuth Callback host (${cbHost}) differs from BASE_URL host (${baseHost}). Ensure they match to avoid login issues.`);
     }
-} catch {}
+} catch (e) { logger.debug('OAuth URL validation error:', e?.message || e); }
 
 passport.serializeUser((user, done) => {
     if (OAUTH_VERBOSE) logger.info(`Serializing user: ${user.username} (${user.id})`);
@@ -541,7 +545,7 @@ passport.serializeUser((user, done) => {
 });
 
 // Export app for tests (Jest / Supertest)
-try { module.exports = app; } catch {}
+try { module.exports = app; } catch (e) { logger.debug('Module export error:', e?.message || e); }
 
 passport.deserializeUser((user, done) => {
     if (OAUTH_VERBOSE) logger.info(`Deserializing user: ${user.username} (${user.id})`);
@@ -580,7 +584,7 @@ app.get('/dashboard', requireAuth, (req, res) => {
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         return res.send(html);
     } catch (e) {
-        try { return res.sendFile(path.join(CLASSIC_PUBLIC_DIR, 'dashboard.html')); } catch {}
+        try { return res.sendFile(path.join(CLASSIC_PUBLIC_DIR, 'dashboard.html')); } catch (e) { logger.debug('Caught error:', e?.message || e); }
         return res.status(500).send('Dashboard unavailable');
     }
 });
@@ -596,7 +600,7 @@ app.get('/dashboard/', requireAuth, (req, res) => {
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         return res.send(html);
     } catch (e) {
-        try { return res.sendFile(path.join(CLASSIC_PUBLIC_DIR, 'dashboard.html')); } catch {}
+        try { return res.sendFile(path.join(CLASSIC_PUBLIC_DIR, 'dashboard.html')); } catch (fallbackErr) { logger.warn('Dashboard fallback error:', fallbackErr?.message || fallbackErr); }
         return res.status(500).send('Dashboard unavailable');
     }
 });
@@ -612,7 +616,7 @@ app.get(['/dashboard-new','/dashboard-new/'], requireAuth, (req, res) => {
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         return res.send(html);
     } catch (e) {
-        try { return res.sendFile(path.join(WEBSITE_PUBLIC_DIR, 'dashboard.html')); } catch {}
+        try { return res.sendFile(path.join(WEBSITE_PUBLIC_DIR, 'dashboard.html')); } catch (fallbackErr) { logger.warn('Dashboard-new fallback error:', fallbackErr?.message || fallbackErr); }
         return res.status(500).send('Dashboard (new UI) unavailable');
     }
 });
@@ -629,7 +633,7 @@ app.get(['/dashboard/ticket.html','/dashboard/ticket'], requireAuth, (req, res) 
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         return res.send(html);
     } catch (e) {
-        try { return res.sendFile(path.join(__dirname, 'public', 'ticket.html')); } catch {}
+        try { return res.sendFile(path.join(__dirname, 'public', 'ticket.html')); } catch (fallbackErr) { logger.warn('Ticket page fallback error:', fallbackErr?.message || fallbackErr); }
         return res.status(500).send('Ticket page unavailable');
     }
 });
@@ -688,7 +692,7 @@ app.get('/api/health', (req, res) => {
     try {
         const client = global.discordClient;
         let discord = false;
-        try { discord = !!(client && typeof client.isReady === 'function' ? client.isReady() : client?.readyAt); } catch {}
+        try { discord = !!(client && typeof client.isReady === 'function' ? client.isReady() : client?.readyAt); } catch (e) { logger.debug('Discord ready check error:', e?.message || e); }
         let mongoState = 'disabled';
         let mongoLastError = null;
         try {
@@ -699,14 +703,14 @@ app.get('/api/health', (req, res) => {
                 const st = getStatus && getStatus();
                 mongoLastError = st && st.lastError || null;
             }
-        } catch { mongoState = 'unknown'; }
+        } catch (e) { mongoState = 'unknown'; logger.debug('Mongo status check error:', e?.message || e); }
         // Determine active storage backend from storage module state
         let storageBackend = 'json';
         try {
             const storage = require('../utils/storage');
             // cheap heuristic: useMongo flag set by storage
             storageBackend = storage && storage.__backend ? storage.__backend : (mongoState === 'connected' ? 'mongo' : ((process.env.STORAGE_BACKEND||'').toLowerCase()==='sqlite' ? 'sqlite' : 'json'));
-        } catch {}
+        } catch (e) { logger.debug('Storage backend detection error:', e?.message || e); }
         return res.json({
             success: true,
             dashboard: true,
@@ -740,7 +744,7 @@ try {
             return res.status(500).json({ success:false, error:'dev_guilds_failed' });
         }
     });
-} catch {}
+} catch (e) { logger.debug('Dev guilds route registration error:', e?.message || e); }
 
 // API Routes
 app.get('/api/user', (req, res) => {
@@ -800,7 +804,7 @@ app.get('/api/guilds', async (req, res) => {
                     const hasManageGuild = (perms & BigInt(PermissionFlagsBits.ManageGuild)) !== BigInt(0);
                     const hasAdmin = (perms & BigInt(PermissionFlagsBits.Administrator)) !== BigInt(0);
                     canManage = hasManageGuild || hasAdmin || owner;
-                } catch {}
+                } catch (e) { logger.debug('Permission bitfield parse error:', e?.message || e); }
             } else {
                 // Fallback: fetch member (could be heavier; guarded with try/catch)
                 try {
@@ -812,7 +816,7 @@ app.get('/api/guilds', async (req, res) => {
                         canManage = hasManageGuild || hasAdmin || owner;
                         permissionsBitfield = String(member.permissions.bitfield || '0');
                     }
-                } catch {}
+                } catch (e) { logger.debug('Member fetch fallback error:', e?.message || e); }
             }
             // Icon URL (CDN) if present
             const iconUrl = g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.${String(g.icon).startsWith('a_') ? 'gif' : 'png'}?size=128` : null;
@@ -879,7 +883,7 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
                         }
                         items.forEach(it => { if (!it.preferredTarget) it.preferredTarget = { mode: diag.mode, reason: diag.reason, urlMasked }; });
                     }
-                } catch {}
+                } catch (e) { logger.debug('Caught error:', e?.message || e); }
                 return res.json({ success: true, items, webhooks: items });
             } catch (e) {
                 logger.error('Webhook list sqlite fallback error:', e);
@@ -929,7 +933,7 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
                 }
                 items.forEach(it => { if (!it.preferredTarget) it.preferredTarget = { mode: diag.mode, reason: diag.reason, urlMasked }; });
             }
-        } catch {}
+        } catch (e) { logger.debug('Webhook diagnostic assignment error:', e?.message || e); }
         return res.json({ success: true, items, webhooks: items });
     } catch (e) {
         logger.error('Webhook list error unified route:', e);
@@ -1035,7 +1039,7 @@ app.get('/api/guild/:guildId/stats', async (req, res) => {
             const cpu = 0; // Placeholder (no OS read); could integrate os.loadavg()[0]
             const memMB = Math.round(process.memoryUsage().rss / 1024 / 1024);
             pushPerfSample(guildId, { cpu, memMB, ticketsOpen: 0, activeUsers: stats.onlineCount });
-        } catch {}
+        } catch (e) { logger.debug('Performance sample push error:', e?.message || e); }
 
         res.json({ success: true, stats });
 
@@ -1187,7 +1191,7 @@ app.post('/api/guild/:guildId/roles', async (req,res)=>{
         const role = await guild.roles.create({ name, color, hoist, mentionable, reason:'Dashboard create role' });
         if(role.position >= myHighest){
             // Immediately lower it if above bot (rare, but safety)
-            try { await role.setPosition(Math.max(0, myHighest-1)); } catch {}
+            try { await role.setPosition(Math.max(0, myHighest-1)); } catch (e) { logger.warn('Role position adjustment failed:', e?.message || e); }
         }
         return res.json({ success:true, role:{ id:role.id, name:role.name, color:role.hexColor, position:role.position, managed:role.managed, hoist:role.hoist, mentionable:role.mentionable } });
     } catch(e){ logger.error('role create error', e); return res.status(500).json({ success:false, error:'role_create_failed' }); }
@@ -1338,7 +1342,7 @@ app.patch('/api/guild/:guildId/roles/:roleId', ensureGuildAdmin, async (req,res)
                 }
             } else {
                 const str = String(value.permissions);
-                try { bit = BigInt(str); } catch {}
+                try { bit = BigInt(str); } catch (e) { logger.debug('BigInt permission parse error:', e?.message || e); }
             }
             patch.permissions = bit;
         }
@@ -1430,7 +1434,7 @@ app.get('/api/guild/:guildId/members', async (req, res) => {
         const roleId = memQ.role || '';
         let limit = memQ.limit;
         const refresh = !!memQ.refresh;
-        if (refresh) { try { await guild.members.fetch(); } catch {}
+        if (refresh) { try { await guild.members.fetch(); } catch (e) { logger.debug('Guild members fetch error:', e?.message || e); }
         }
         let members = guild.members.cache;
         if (roleId) {
@@ -1475,7 +1479,7 @@ app.post('/api/guild/:guildId/members/:userId/roles', async (req, res) => {
         const guild = client.guilds.cache.get(guildId);
         if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
         let member = guild.members.cache.get(userId);
-        if (!member) { try { member = await guild.members.fetch(userId); } catch {}
+        if (!member) { try { member = await guild.members.fetch(userId); } catch (e) { logger.debug('Member fetch error:', e?.message || e); }
         }
         if (!member) return res.status(404).json({ success: false, error: 'Member not found' });
         // Permission checks: the bot must be higher than target roles AND member's highest
@@ -1655,7 +1659,7 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
         if (staffOnly && roleId) {
             try {
                 if (deepRoleFetch) {
-                    try { await guild.members.fetch(); } catch {}
+                    try { await guild.members.fetch(); } catch (e) { logger.debug('Deep role fetch error (Mongo):', e?.message || e); }
                 }
                 const role = guild.roles.cache.get(roleId);
                 if (role) {
@@ -1665,7 +1669,7 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
                     // If role not found, result should be empty when staffOnly requested
                     filtered = [];
                 }
-            } catch {}
+            } catch (e) { logger.debug('Staff-only role filtering error:', e?.message || e); }
         }
         if (q) {
             filtered = filtered.filter(t => {
@@ -1784,7 +1788,7 @@ app.get('/api/guild/:guildId/tickets/export', async (req, res) => {
         if (staffOnly && roleId) {
             try {
                 if (deepRoleFetch) {
-                    try { await guild.members.fetch(); } catch {}
+                    try { await guild.members.fetch(); } catch (e) { logger.debug('Deep role fetch error (SQLite):', e?.message || e); }
                 }
                 const role = guild.roles.cache.get(roleId);
                 if (role) {
@@ -1793,7 +1797,7 @@ app.get('/api/guild/:guildId/tickets/export', async (req, res) => {
                 } else {
                     filtered = [];
                 }
-            } catch {}
+            } catch (e) { logger.debug('SQLite staff-only filter error:', e?.message || e); }
         }
         if (q) {
             filtered = filtered.filter(t => {
@@ -1880,7 +1884,7 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                         messageExists = !!msg;
                     }
                 }
-            } catch {}
+            } catch (e) { logger.debug('Panel channel validation error:', e?.message || e); }
             return { ...p, channelName, channelExists, messageExists };
         }));
 
@@ -1921,7 +1925,7 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                     });
                     if (detected.length >= 50) break; // limitar deteções
                 }
-            } catch {}
+            } catch (e) { logger.debug('Panel detection scan error:', e?.message || e); }
             if (detected.length >= 50) break;
         }
 
@@ -1986,7 +1990,7 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                     remainingDetected = detected.filter(d => !savedKeys.has(`${d.channel_id}`));
                 }
             }
-        } catch {}
+        } catch (e) { logger.debug('Panel persistence attempt error:', e?.message || e); }
 
         const finalList = [...enrichedCombined, ...remainingDetected];
         res.json({ success: true, panels: finalList });
@@ -2251,7 +2255,7 @@ app.post('/api/guild/:guildId/panels/scan', async (req, res) => {
                     });
                     if (detected.length >= 200) break; // limite global
                 }
-            } catch {}
+            } catch (e) { logger.debug('Panel scan iteration error:', e?.message || e); }
             if (detected.length >= 200) break;
         }
 
@@ -2287,7 +2291,7 @@ app.post('/api/guild/:guildId/panels/scan', async (req, res) => {
                         }
                     }
                 }
-            } catch {}
+            } catch (e) { logger.debug('Panel persistence error:', e?.message || e); }
         }
 
         return res.json({ success: true, detected: detected.length, persisted });
@@ -2488,13 +2492,13 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                     const cfg = await storage.getGuildConfig(req.params.guildId) || {};
                     const bu = (cfg.botSettings && typeof cfg.botSettings.bannerUrl === 'string') ? cfg.botSettings.bannerUrl.trim() : '';
                     if (bu) brandedBanner = bu;
-                } catch {}
+                } catch (e) { logger.debug('Branded banner fetch error:', e?.message || e); }
                 let brandedIcon = null; try {
                     const storage = require('../utils/storage');
                     const cfg = await storage.getGuildConfig(req.params.guildId) || {};
                     const iu = (cfg.botSettings && typeof cfg.botSettings.iconUrl === 'string') ? cfg.botSettings.iconUrl.trim() : '';
                     if (iu) brandedIcon = iu;
-                } catch {}
+                } catch (e) { logger.debug('Branded icon fetch error:', e?.message || e); }
                 const embed = new EmbedBuilder()
                     .setColor((panel.theme || 'dark') === 'light' ? 0x60A5FA : 0x7C3AED)
                     .setThumbnail(brandedIcon || visualAssets.realImages.supportIcon)
@@ -2938,7 +2942,7 @@ app.post('/api/guild/:guildId/webhooks/test', async (req, res) => {
                         if (isDiscord && !hasMessage) {
                             body = { content: `🔔 Teste de Webhook (${r.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${r.type}` };
                         }
-                    } catch {}
+                    } catch (e) { logger.debug('Caught error:', e?.message || e); }
                     try {
                         const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal });
                         status = resp.status; ok = resp.ok;
@@ -2979,7 +2983,7 @@ app.post('/api/guild/:guildId/webhooks/test', async (req, res) => {
                         if (isDiscord && !hasMessage) {
                             body = { content: `🔔 Teste de Webhook (${r.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${r.type}` };
                         }
-                    } catch {}
+                    } catch (e) { logger.debug('Caught error:', e?.message || e); }
                     try { const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body), signal: controller.signal }); status = resp.status; ok = resp.ok; } catch(e){ errMsg = e?.message || 'network error'; } finally { clearTimeout(timeout); }
                     const last_ok = ok ? true : false;
                     const last_status = status || 0;
@@ -3043,7 +3047,7 @@ app.post('/api/guild/:guildId/webhooks/test-all', async (req, res) => {
                         if (isDiscord && !hasMessage) {
                             body = { content: `🔔 Teste de Webhook (${r.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${r.type}` };
                         }
-                    } catch {}
+                    } catch (e) { logger.debug('Caught error:', e?.message || e); }
                     try {
                         const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body), signal: controller.signal });
                         status = resp.status; ok = resp.ok;
@@ -3083,7 +3087,7 @@ app.post('/api/guild/:guildId/webhooks/test-all', async (req, res) => {
                         if (isDiscord && !hasMessage) {
                             body = { content: `🔔 Teste de Webhook (${r.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${r.type}` };
                         }
-                    } catch {}
+                    } catch (e) { logger.debug('Caught error:', e?.message || e); }
                     try { const resp = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body), signal: controller.signal }); status = resp.status; ok = resp.ok; } catch(e){ errMsg = e?.message || 'network error'; } finally { clearTimeout(timeout); }
                     const last_ok = ok ? true : false;
                     const last_status = status || 0;
@@ -3143,7 +3147,7 @@ app.post('/api/guild/:guildId/webhooks/:id/test-activate', async (req, res) => {
                         if (isDiscord && !hasMessage) {
                             body = { content: `🔔 Teste de Webhook (${row.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${row.type}` };
                         }
-                    } catch {}
+                    } catch (e) { logger.debug('Discord payload validation error (4):', e?.message || e); }
                     const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal });
                     status = resp.status; ok = resp.ok;
                 } catch (e) { errMsg = e?.message || 'network error'; } finally { clearTimeout(timeout); }
@@ -3838,7 +3842,7 @@ app.get('/api/guild/:guildId/members/search', async (req, res) => {
             } else if (roleId) {
                 members = members.filter(m => m.roles.cache.has(roleId));
             }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
         const list = (members || []).slice(0, limit).map(m => ({
             id: m.id,
             username: m.user.username,
@@ -4790,7 +4794,7 @@ app.post('/api/guild/:guildId/mod/cases', async (req, res) => {
         const { error, value } = schema.validate(req.body||{}); if (error) return res.status(400).json({ success:false, error:'validation_failed', details: error.details.map(d=>d.message) });
         const { ModerationCaseModel, NotificationModel } = require('../utils/db/models');
         const doc = await ModerationCaseModel.create({ guild_id: req.params.guildId, user_id: value.userId, staff_id: req.user.id, type: value.type, reason: value.reason, duration_ms: value.durationMs || 0, status: 'open', occurred_at: new Date() });
-        try { await NotificationModel.create({ guild_id: req.params.guildId, type: 'mod_action', message: `${req.user.username||'Staff'} aplicou ${value.type} a ${value.userId}`, data: { caseId: String(doc._id), type: value.type, userId: value.userId } }); } catch {}
+        try { await NotificationModel.create({ guild_id: req.params.guildId, type: 'mod_action', message: `${req.user.username||'Staff'} aplicou ${value.type} a ${value.userId}`, data: { caseId: String(doc._id), type: value.type, userId: value.userId } }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
         return res.json({ success: true, case: doc });
     } catch (e) {
         logger.error('Error creating moderation case:', e);
@@ -5039,7 +5043,7 @@ app.post('/api/internal/modlog', express.json(), async (req, res) => {
             await AutomodEventModel.create({ guild_id: b.guild_id, user_id: b.user_id||null, type: b.type||'other', message_id: b.message_id||null, channel_id: b.channel_id||null, content: b.content||'', action: b.action||'flag' });
         } else {
             const doc = await ModerationCaseModel.create({ guild_id: b.guild_id, user_id: b.user_id||null, staff_id: b.staff_id||null, type: b.type, reason: b.reason||'', duration_ms: b.duration_ms||0, status: 'open', occurred_at: b.occurred_at ? new Date(b.occurred_at) : new Date() });
-            try { await NotificationModel.create({ guild_id: b.guild_id, type: 'mod_action', message: `${b.type} aplicado em ${b.user_id||'N/A'}`, data: { caseId: String(doc._id), type: b.type, userId: b.user_id||null } }); } catch {}
+            try { await NotificationModel.create({ guild_id: b.guild_id, type: 'mod_action', message: `${b.type} aplicado em ${b.user_id||'N/A'}`, data: { caseId: String(doc._id), type: b.type, userId: b.user_id||null } }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
         }
         return res.json({ success: true });
     } catch (e) {
@@ -5137,7 +5141,7 @@ app.post('/api/guild/:guildId/bot-settings', async (req, res) => {
                 const status = value.presenceStatus || 'online';
                 try {
                     client.user.setPresence({ activities: name ? [{ name, type }] : [], status });
-                } catch {}
+                } catch (e) { logger.debug('Caught error:', e?.message || e); }
             }
         } catch (e) { logger.warn('Live apply bot settings failed:', e?.message || e); }
 
@@ -5283,7 +5287,7 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
                         let m = guild.members.cache.get(userId);
                         if (!m) m = await guild.members.fetch(userId).catch(()=>null);
                         if (m && m.user) out.resolved.user = { id: m.id, username: m.user.username, nick: m.nickname||null, avatar: m.user.avatar };
-                    } catch {}
+                    } catch (e) { logger.debug('Caught error:', e?.message || e); }
                 }
                 // Resolve executor: prefer data.executorId, else actor_id from log
                 const execId = d.executorId || l.actor_id || null;
@@ -5292,7 +5296,7 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
                         let m = guild.members.cache.get(execId);
                         if (!m) m = await guild.members.fetch(execId).catch(()=>null);
                         if (m && m.user) out.resolved.executor = { id: m.id, username: m.user.username, nick: m.nickname||null, avatar: m.user.avatar };
-                    } catch {}
+                    } catch (e) { logger.debug('Caught error:', e?.message || e); }
                 }
                 // Resolve channel
                 if (d.channelId) {
@@ -5300,7 +5304,7 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
                         let c = guild.channels.cache.get(d.channelId);
                         if (!c) c = await guild.channels.fetch(d.channelId).catch(()=>null);
                         if (c) out.resolved.channel = { id: c.id, name: c.name };
-                    } catch {}
+                    } catch (e) { logger.debug('Caught error:', e?.message || e); }
                 }
                 // Voice move: from/to channels
                 if (d.fromChannelId) {
@@ -5308,14 +5312,14 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
                         let fc = guild.channels.cache.get(d.fromChannelId);
                         if (!fc) fc = await guild.channels.fetch(d.fromChannelId).catch(()=>null);
                         if (fc) out.resolved.fromChannel = { id: fc.id, name: fc.name };
-                    } catch {}
+                    } catch (e) { logger.debug('Caught error:', e?.message || e); }
                 }
                 if (d.toChannelId) {
                     try {
                         let tc = guild.channels.cache.get(d.toChannelId);
                         if (!tc) tc = await guild.channels.fetch(d.toChannelId).catch(()=>null);
                         if (tc) out.resolved.toChannel = { id: tc.id, name: tc.name };
-                    } catch {}
+                    } catch (e) { logger.debug('Caught error:', e?.message || e); }
                 }
                 // Member role updates: resolve role names for added/removed
                 try {
@@ -5325,7 +5329,7 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
                     if (idsAdded.length) roles.added = idsAdded.map(id => ({ id, name: guild.roles.cache.get(id)?.name || id }));
                     if (idsRemoved.length) roles.removed = idsRemoved.map(id => ({ id, name: guild.roles.cache.get(id)?.name || id }));
                     if (roles.added.length || roles.removed.length) out.resolved.roles = roles;
-                } catch {}
+                } catch (e) { logger.debug('Caught error:', e?.message || e); }
                 return out;
             }));
             return res.json({ success: true, logs: withResolved });
@@ -5592,10 +5596,15 @@ app.get('/api/guild/:guildId/logs/stream', async (req, res) => {
                     // heartbeat
                     res.write(': keep-alive\n\n');
                 }
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
         }, 10000);
+        
+        req.on('close', () => {
+            alive = false;
+            clearInterval(timer);
+        });
     } catch {
-        try { res.end(); } catch {}
+        try { res.end(); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     }
 });
 
@@ -5616,12 +5625,12 @@ app.get('/api/guild/:guildId/moderation/event/:logId', async (req, res) => {
         const data = log.data || {};
         const out = { ...log, resolved: {} };
         // Best-effort resolve names
-        try { if (data.userId) { const m = await guild.members.fetch(data.userId).catch(()=>null); out.resolved.user = m ? { id: m.id, username: m.user.username, nick: m.nickname||null, avatar: m.user.avatar } : { id: data.userId }; } } catch {}
-        try { if (data.executorId) { const m = await guild.members.fetch(data.executorId).catch(()=>null); out.resolved.executor = m ? { id: m.id, username: m.user.username, nick: m.nickname||null, avatar: m.user.avatar } : { id: data.executorId }; } } catch {}
-        try { if (data.channelId) { const c = guild.channels.cache.get(data.channelId) || await guild.channels.fetch(data.channelId).catch(()=>null); if (c) out.resolved.channel = { id:c.id, name:c.name }; } } catch {}
+        try { if (data.userId) { const m = await guild.members.fetch(data.userId).catch(()=>null); out.resolved.user = m ? { id: m.id, username: m.user.username, nick: m.nickname||null, avatar: m.user.avatar } : { id: data.userId }; } } catch (e) { logger.debug('Caught error:', e?.message || e); }
+        try { if (data.executorId) { const m = await guild.members.fetch(data.executorId).catch(()=>null); out.resolved.executor = m ? { id: m.id, username: m.user.username, nick: m.nickname||null, avatar: m.user.avatar } : { id: data.executorId }; } } catch (e) { logger.debug('Caught error:', e?.message || e); }
+        try { if (data.channelId) { const c = guild.channels.cache.get(data.channelId) || await guild.channels.fetch(data.channelId).catch(()=>null); if (c) out.resolved.channel = { id:c.id, name:c.name }; } } catch (e) { logger.debug('Caught error:', e?.message || e); }
         // Voice move: from/to channels
-        try { if (data.fromChannelId) { const fc = guild.channels.cache.get(data.fromChannelId) || await guild.channels.fetch(data.fromChannelId).catch(()=>null); if (fc) out.resolved.fromChannel = { id: fc.id, name: fc.name }; } } catch {}
-        try { if (data.toChannelId) { const tc = guild.channels.cache.get(data.toChannelId) || await guild.channels.fetch(data.toChannelId).catch(()=>null); if (tc) out.resolved.toChannel = { id: tc.id, name: tc.name }; } } catch {}
+        try { if (data.fromChannelId) { const fc = guild.channels.cache.get(data.fromChannelId) || await guild.channels.fetch(data.fromChannelId).catch(()=>null); if (fc) out.resolved.fromChannel = { id: fc.id, name: fc.name }; } } catch (e) { logger.debug('Caught error:', e?.message || e); }
+        try { if (data.toChannelId) { const tc = guild.channels.cache.get(data.toChannelId) || await guild.channels.fetch(data.toChannelId).catch(()=>null); if (tc) out.resolved.toChannel = { id: tc.id, name: tc.name }; } } catch (e) { logger.debug('Caught error:', e?.message || e); }
         // Member role updates
         try {
             const roles = { added: [], removed: [] };
@@ -5630,7 +5639,7 @@ app.get('/api/guild/:guildId/moderation/event/:logId', async (req, res) => {
             if (idsAdded.length) roles.added = idsAdded.map(id => ({ id, name: guild.roles.cache.get(id)?.name || id }));
             if (idsRemoved.length) roles.removed = idsRemoved.map(id => ({ id, name: guild.roles.cache.get(id)?.name || id }));
             if (roles.added.length || roles.removed.length) out.resolved.roles = roles;
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
         return res.json({ success:true, event: out });
     } catch (e) { logger.error('Error moderation event detail:', e); return res.status(500).json({ success:false, error:'Failed to fetch event' }); }
 });
@@ -5683,7 +5692,7 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
         const log = logId ? await storage.getLogById(req.params.guildId, logId).catch(()=>null) : null;
         // Helper to log dashboard actions
         const logAction = async (type, message, extra) => {
-            try { await storage.addLog({ guild_id: guild.id, type, message, actor_id: req.user.id, data: { via:'dashboard', ...(extra||{}) } }); } catch {}
+            try { await storage.addLog({ guild_id: guild.id, type, message, actor_id: req.user.id, data: { via:'dashboard', ...(extra||{}) } }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
         };
         // Helpers
         const briefUser = (m) => (m && m.user) ? { id:m.id, username:m.user.username, nick:m.nickname||null } : (m ? { id:m.id } : null);
@@ -5919,7 +5928,7 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
                                 try {
                                     const m = await guild.members.fetch(uid).catch(()=>null);
                                     if (m) await m.roles.add(created, 'Dashboard restore role membership');
-                                } catch {}
+                                } catch (e) { logger.debug('Caught error:', e?.message || e); }
                             }
                         }
                     }
@@ -6402,7 +6411,7 @@ app.post('/api/guild/:guildId/tags', async (req, res) => {
                 if (typeof body.tag.icon !== 'undefined' && body.tag.icon !== null) {
                     body.tag.icon = String(body.tag.icon).trim();
                 }
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
             const { error, value } = tagSchema.validate(body.tag, { abortEarly: false, stripUnknown: true });
             if (error) return res.status(400).json({ success: false, error: 'validation_error', details: error.details.map(d=>d.message) });
@@ -6509,7 +6518,7 @@ app.post('/api/guild/:guildId/tags/remove', async (req, res) => {
         const gcfg = await storage.getGuildConfig(req.params.guildId) || {};
         const tags = Array.isArray(gcfg.tags) ? gcfg.tags : [];
     let confRoleIds = [];
-    try { const tag = tags.find(t => String(t.id) === String(value.tagId)); confRoleIds = (Array.isArray(tag?.roleIds) ? tag.roleIds : []).map(x=> String(x)).filter(Boolean); } catch {}
+    try { const tag = tags.find(t => String(t.id) === String(value.tagId)); confRoleIds = (Array.isArray(tag?.roleIds) ? tag.roleIds : []).map(x=> String(x)).filter(Boolean); } catch (e) { logger.debug('Caught error:', e?.message || e); }
         for (const uid of value.userIds) {
             try {
                 const member = await guild.members.fetch(uid);
@@ -6664,11 +6673,11 @@ app.get('/api/guild/:guildId/performance', async (req, res) => {
                     const s = m.presence?.status; return s==='online'||s==='idle'||s==='dnd';
                 }).size;
             }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
         const memMB = Math.round((processMem.rss || 0)/1024/1024);
         // Sample into history
-        try { pushPerfSample(guildId, { cpu: 0, memMB, activeUsers, ticketsOpen: 0 }); } catch {}
+        try { pushPerfSample(guildId, { cpu: 0, memMB, activeUsers, ticketsOpen: 0 }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
         // Build history + trend
         const history = perfHistory[guildId] || [];
@@ -6716,7 +6725,7 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
                 const t = (req.query && req.query.type) ? String(req.query.type) : 'logs';
                 await client.webhooks.removeWebhook(req.params.guildId, t);
             }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
         return res.json({ success: true, deleted: 1 });
     } else {
         if (!hasMongoEnv) return res.status(503).json({ success: false, error: 'Mongo not available' });
@@ -6731,7 +6740,7 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
                 const t = (req.query && req.query.type) ? String(req.query.type) : 'logs';
                 await client.webhooks.removeWebhook(req.params.guildId, t);
             }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
         return res.json({ success: true, deleted: result.deletedCount });
     }
     } catch (e) {
@@ -6763,7 +6772,7 @@ app.post('/api/guild/:guildId/webhooks/auto-setup', async (req, res) => {
                     || guild.systemChannel
                     || guild.channels.cache.find(c => c.type === 0);
                 if (candidate) { channel_id = candidate.id; channel_name = candidate.name || null; }
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
             if (url) {
                 if (preferSqlite) {
                     const storage = require('../utils/storage-sqlite');
@@ -6824,7 +6833,7 @@ app.post('/api/guild/:guildId/webhooks/create-in-channel', async (req, res) => {
             if (client?.webhooks?.addWebhook) {
                 await client.webhooks.addWebhook(req.params.guildId, type, name || `IGNIS ${type}`, wh.url);
             }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
         return res.json({ success: true, webhook: { type, name: name || `IGNIS ${type}`, url: wh.url, channel_id, channel_name: channel.name } });
     } catch (e) {
         logger.error('Error creating webhook in channel:', e);
@@ -6928,7 +6937,7 @@ app.post('/api/guild/:guildId/uploads', express.json({ limit: '60mb' }), async (
         const safeName = safeNameRaw.replace(/[^a-z0-9_\-\. ]/gi, '_').slice(0, 64) || 'upload';
         const fname = `${Date.now()}_${safeName}${safeExt}`;
         const outDir = path.join(__dirname, 'public', 'uploads', 'guilds', String(req.params.guildId));
-        try { fs.mkdirSync(outDir, { recursive: true }); } catch {}
+        try { fs.mkdirSync(outDir, { recursive: true }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
         const outPath = path.join(outDir, fname);
         try { fs.writeFileSync(outPath, buf); } catch (e) {
             logger.error('Upload write failed:', e);
@@ -7024,7 +7033,7 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
                 const title = (typeof effOptions.title === 'string' && effOptions.title.trim()) ? effOptions.title.trim().slice(0,100) : defaultTitle;
                 const description = (typeof effOptions.description === 'string' && effOptions.description.trim()) ? effOptions.description.trim().slice(0,2000) : defaultDesc;
                 // Thumbnail: prefer per-guild icon override
-                let thumbUrl = null; try { const iu = (cfg?.botSettings && typeof cfg.botSettings.iconUrl === 'string') ? cfg.botSettings.iconUrl.trim() : '' ; if (iu) thumbUrl = iu; } catch {}
+                let thumbUrl = null; try { const iu = (cfg?.botSettings && typeof cfg.botSettings.iconUrl === 'string') ? cfg.botSettings.iconUrl.trim() : '' ; if (iu) thumbUrl = iu; } catch (e) { logger.debug('Caught error:', e?.message || e); }
                 embed.setTitle(title).setDescription(description).setThumbnail(thumbUrl || guild.iconURL({ size: 256 })).setFooter({ text: 'IGNIS COMMUNITY™ • Sistema de verificação' }).setTimestamp();
                 if (effOptions.template === 'rich') {
                     embed.addFields({ name: '⚠️ Importante', value: 'Segue as regras do servidor e mantém um perfil adequado.' });
@@ -7042,7 +7051,7 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
             try {
                 const bu = (cfg?.botSettings && typeof cfg.botSettings.bannerUrl === 'string') ? cfg.botSettings.bannerUrl.trim() : '';
                 if (bu) embed.setImage(bu);
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
             const payload = { embeds: [embed], components: rows };
             const user = await (client && client.users && client.users.fetch ? client.users.fetch(req.user.id).catch(() => null) : null);
             if (!user) return res.status(400).json({ success: false, error: 'cannot_dm_user' });
@@ -7209,7 +7218,7 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
         try {
             const bu = (cfg?.botSettings && typeof cfg.botSettings.bannerUrl === 'string') ? cfg.botSettings.bannerUrl.trim() : '';
             if (bu) embed.setImage(bu);
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
         const payload = { embeds: [embed], components: rows };
         const msg = await channel.send(payload);
         // If method=reaction, add the ✅ reaction to guide users
@@ -7220,7 +7229,7 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
                     await msg.react('✅').catch(() => {});
                 }
             }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
         // Persist panel to active storage backend
         try {
             if (preferSqlite) {
@@ -7234,7 +7243,7 @@ app.post('/api/guild/:guildId/panels/create', async (req, res) => {
                     { upsert: true }
                 );
             }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
     res.json({ success: true, message: 'Panel created', panel: { channel_id, message_id: msg.id, theme, template, type } });
     } catch (e) {
         logger.error('Error creating panel:', e);
@@ -7371,7 +7380,7 @@ app.get('/api/guild/:guildId/tickets/:ticketId/logs', async (req, res) => {
                         actorAvatar = u.displayAvatarURL({ size: 32 });
                     }
                 }
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
             return { ...l, actorTag, actorAvatar };
         }));
         return res.json({ success: true, logs: enriched });
@@ -7717,7 +7726,7 @@ app.post('/api/guild/:guildId/tickets/:ticketId/feedback', async (req, res) => {
             if (Array.isArray(staffRoles) && staffRoles.length) {
                 isStaff = member.roles.cache.some(r => staffRoles.includes(r.id));
             }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
         if (`${req.user.id}` !== `${ticket.user_id}` && !isStaff) {
             return res.status(403).json({ success: false, error: 'Only owner or staff can submit feedback' });
         }
@@ -7735,7 +7744,7 @@ app.post('/api/guild/:guildId/tickets/:ticketId/feedback', async (req, res) => {
         const updates = { meta: { ...currentMeta, feedback: fb } };
         await storage.updateTicket(ticketId, updates);
         // best-effort log
-        try { await storage.addTicketLog({ ticket_id: ticketId, guild_id: guildId, actor_id: req.user.id, action: 'feedback', message: `rating:${r}`, data: fb }); } catch {}
+        try { await storage.addTicketLog({ ticket_id: ticketId, guild_id: guildId, actor_id: req.user.id, action: 'feedback', message: `rating:${r}`, data: fb }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
         return res.json({ success: true, feedback: fb });
     } catch (e) {
         logger.error('Error ingesting ticket feedback:', e);
@@ -7940,7 +7949,7 @@ app.post('/api/guild/:guildId/tickets/:ticketId/transcript/regenerate', async (r
             if (Array.isArray(staffRoles) && staffRoles.length) {
                 isStaff = member.roles.cache.some(r => staffRoles.includes(r.id));
             }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
         if (`${req.user.id}` !== `${ticket.user_id}` && !isStaff) {
             return res.status(403).json({ success: false, error: 'Only owner or staff can regenerate transcript' });
         }
@@ -7984,7 +7993,7 @@ app.post('/api/guild/:guildId/tickets/:ticketId/transcript/regenerate', async (r
         const currentMeta = ticket.meta && typeof ticket.meta === 'object' ? ticket.meta : {};
         const updates = { meta: { ...currentMeta, transcript } };
         await storage.updateTicket(ticketId, updates);
-        try { await storage.addTicketLog({ ticket_id: ticketId, guild_id: guildId, actor_id: req.user.id, action: 'transcript_regenerate', message: `messages:${rows.length}`, data: { count: rows.length } }); } catch {}
+        try { await storage.addTicketLog({ ticket_id: ticketId, guild_id: guildId, actor_id: req.user.id, action: 'transcript_regenerate', message: `messages:${rows.length}`, data: { count: rows.length } }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
         return res.json({ success: true, transcript });
     } catch (e) {
         logger.error('Error regenerating ticket transcript:', e);
@@ -8022,7 +8031,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
             try {
                 const req = socket.request;
                 if (typeof req.isAuthenticated === 'function' && req.isAuthenticated()) return next();
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
             next(new Error('unauthorized'));
         });
         io.on('connection', (socket) => {
@@ -8031,14 +8040,14 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
                     const req = socket.request;
                     if (!(typeof req.isAuthenticated === 'function' && req.isAuthenticated())) return;
                     if (guildId) socket.join(`g:${guildId}`);
-                } catch {}
+                } catch (e) { logger.debug('Caught error:', e?.message || e); }
             });
         });
         // Expose a simple broadcaster for bot events
         global.socketManager = {
             // Legacy moderation feed
             broadcastModeration: (guildId, payload) => {
-                try { io && io.to(`g:${guildId}`).emit('moderation_event', payload); } catch {}
+                try { io && io.to(`g:${guildId}`).emit('moderation_event', payload); } catch (e) { logger.debug('Caught error:', e?.message || e); }
             },
             // Generic event broadcast used by interaction handlers
             // Usage: broadcast(eventName, payload[, guildId])
@@ -8051,7 +8060,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
                         // If no guild provided, emit globally
                         io && io.emit('dashboard_event', data);
                     }
-                } catch {}
+                } catch (e) { logger.debug('Caught error:', e?.message || e); }
             }
         };
     } catch (e) { logger.warn('socket.io init failed:', e?.message||e); }

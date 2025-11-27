@@ -37,7 +37,7 @@ try {
             }
             const key = process.env.MONGO_URI ? 'MONGO_URI' : (process.env.MONGODB_URI ? 'MONGODB_URI' : 'none');
             logger.info(`🧩 Mongo env: present=${!!uri} key=${key} uri=${masked}`);
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
     })();
     if (MONGO_URI) {
         const { connect } = require('./utils/db/mongoose');
@@ -104,7 +104,7 @@ client.socketManager = {
             if (global.socketManager && typeof global.socketManager.broadcastModeration === 'function') {
                 global.socketManager.broadcastModeration(guildId, { event: eventName, data });
             }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
     }
 };
 
@@ -119,7 +119,7 @@ try {
             commandFiles.push(path.join('dist','commands', f));
         }
     }
-} catch {}
+} catch (e) { logger.debug('Caught error:', e?.message || e); }
 
 for (const file of commandFiles) {
     const filePath = file.includes('dist') ? path.join(__dirname, file) : path.join(commandsPath, file);
@@ -144,7 +144,7 @@ try {
             eventFiles.push(path.join('dist','events', f));
         }
     }
-} catch {}
+} catch (e) { logger.debug('Caught error:', e?.message || e); }
 
 for (const file of eventFiles) {
     const filePath = file.includes('dist') ? path.join(__dirname, file) : path.join(eventsPath, file);
@@ -260,7 +260,7 @@ client.once('ready', () => {
         logger.info('✅ Server Stats Processor initialized');
     } catch (statsProcessorErr) {
         logger.warn('⚠️ Server Stats Processor not started:', statsProcessorErr.message || statsProcessorErr);
-        console.error('Stats Processor Error Details:', statsProcessorErr);
+        logger.error('Stats Processor Error Details:', statsProcessorErr);
     }
 
     // ============================================================================
@@ -275,12 +275,12 @@ client.once('ready', () => {
     try {
         if (client.webhooks?.setClient) client.webhooks.setClient(client);
         if (client.webhooks?.hydrateFromStorage) client.webhooks.hydrateFromStorage();
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
     // Cleanup job: liberar giveaways presos em 'processing' a cada 10 minutos
     try {
         const { cleanupStaleLocks } = require('./utils/giveaways/service');
-        setInterval(async () => {
+        client.giveawayCleanupInterval = setInterval(async () => {
             try {
                 await cleanupStaleLocks();
             } catch (e) {
@@ -288,7 +288,7 @@ client.once('ready', () => {
             }
         }, 10 * 60 * 1000); // 10 minutos
         logger.info('🧹 Job de cleanup de giveaways iniciado (10 min)');
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
     // Restaurar painéis de tickets e verificação do storage (Mongo/SQLite)
     // Agora DESATIVADO por padrão. Só ativa se:
@@ -312,7 +312,7 @@ client.once('ready', () => {
                         const tickets = await storage.getPanels(guild.id);
                         const verifs = (storage.getPanelsByType ? await storage.getPanelsByType(guild.id, 'verification') : []);
                         panels.push(...tickets, ...verifs);
-                    } catch {}
+                    } catch (e) { logger.debug('Caught error:', e?.message || e); }
                 }
             } else {
                 if (!mongoReady) return;
@@ -344,7 +344,7 @@ client.once('ready', () => {
                             // Novo sinal canónico: apenas esta chave ativa a restauração por-guild
                             if (cfg && cfg.autoRestorePanels === true) guildRestore = true;
                         }
-                    } catch {}
+                    } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
                     if (!guildRestore) {
                         // Skip silencioso por padrão; log leve por guild uma vez
@@ -387,7 +387,7 @@ client.once('ready', () => {
                                     if (method === 'reaction') {
                                         await msg.react('✅').catch(() => {});
                                     }
-                                } catch {}
+                                } catch (e) { logger.debug('Caught error:', e?.message || e); }
                             } else {
                                 const embed = new EmbedBuilder().setTitle('🎫 Centro de Suporte').setDescription('Escolhe um departamento para abrir um ticket.').setColor(0x7C3AED);
                                 const row1 = new ActionRowBuilder().addComponents(
@@ -425,27 +425,68 @@ client.once('ready', () => {
     })();
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    logger.info('🛑 SIGTERM received, shutting down bot gracefully');
+process.on('SIGINT', () => {
+    logger.info('🛑 SIGINT received, shutting down bot gracefully');
+    
+    // Stop all job processors
     if (client.giveawayClaimJob) {
         client.giveawayClaimJob.stop();
     }
     if (client.serverStatsProcessor) {
         client.serverStatsProcessor.stop();
     }
+    
+    // Clear all intervals from ready.js
+    if (client.eventReminderInterval) clearInterval(client.eventReminderInterval);
+    if (client.announcementInterval) clearInterval(client.announcementInterval);
+    if (client.statusUpdateInterval) clearInterval(client.statusUpdateInterval);
+    
+    // Clear giveaway cleanup interval from index.js
+    if (client.giveawayCleanupInterval) clearInterval(client.giveawayCleanupInterval);
+    
+    // Clear global cache cleanup
+    if (global.__verifyPressCacheCleanup) clearInterval(global.__verifyPressCacheCleanup);
+    
+    // Shutdown storage and other singletons
+    const storage = require('./utils/storage');
+    if (storage && storage.shutdown) storage.shutdown();
+    
+    const rateLimit = require('./utils/rateLimit');
+    if (rateLimit && rateLimit.shutdown) rateLimit.shutdown();
+    
     client.destroy();
     process.exit(0);
 });
 
-process.on('SIGINT', () => {
-    logger.info('🛑 SIGINT received, shutting down bot gracefully');
+process.on('SIGTERM', () => {
+    logger.info('🛑 SIGTERM received, shutting down bot gracefully');
+    
+    // Stop all job processors
     if (client.giveawayClaimJob) {
         client.giveawayClaimJob.stop();
     }
     if (client.serverStatsProcessor) {
         client.serverStatsProcessor.stop();
     }
+    
+    // Clear all intervals from ready.js
+    if (client.eventReminderInterval) clearInterval(client.eventReminderInterval);
+    if (client.announcementInterval) clearInterval(client.announcementInterval);
+    if (client.statusUpdateInterval) clearInterval(client.statusUpdateInterval);
+    
+    // Clear giveaway cleanup interval from index.js
+    if (client.giveawayCleanupInterval) clearInterval(client.giveawayCleanupInterval);
+    
+    // Clear global cache cleanup
+    if (global.__verifyPressCacheCleanup) clearInterval(global.__verifyPressCacheCleanup);
+    
+    // Shutdown storage and other singletons
+    const storage = require('./utils/storage');
+    if (storage && storage.shutdown) storage.shutdown();
+    
+    const rateLimit = require('./utils/rateLimit');
+    if (rateLimit && rateLimit.shutdown) rateLimit.shutdown();
+    
     client.destroy();
     process.exit(0);
 });

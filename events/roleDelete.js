@@ -23,8 +23,8 @@ module.exports = {
                 if (role && role.members && role.members.size >= 0) {
                     members = [...role.members.keys()];
                 }
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
             await storage.addLog({ guild_id: guildId, type: 'mod_role_delete', message: role.name, data: { ...snap(role), members } });
-        } catch (e) { try { require('../utils/logger').warn('roleDelete log failed:', e?.message||e); } catch {} }
+        } catch (e) { try { require('../utils/logger').warn('roleDelete log failed:', e?.message||e); } catch (e) { logger.debug('Caught error:', e?.message || e); } }
     }
 };

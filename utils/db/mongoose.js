@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const logger = require('../utils/logger');
 const dns = require('dns');
 
 let isConnected = false;
@@ -15,7 +16,7 @@ function maskMongoUri(uri) {
       const afterAt = uri.substring(atIndex + 1);
       return `${scheme}***@${afterAt}`;
     }
-  } catch {}
+  } catch (e) { logger.debug('Caught error:', e?.message || e); }
   return '***';
 }
 
@@ -58,7 +59,7 @@ async function connect(uri) {
       const servers = dnsServers.split(',').map(s => s.trim()).filter(Boolean);
       if (servers.length) dns.setServers(servers);
     }
-  } catch {}
+  } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
   const validation = validateMongoUri(uri);
   if (!validation.ok) {
@@ -76,7 +77,7 @@ async function connect(uri) {
       const dbName = process.env.MONGO_DB_NAME || 'IGNIS';
       connOpts.dbName = dbName;
     }
-  } catch {}
+  } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
   mongoose.set('strictQuery', true);
   try {
@@ -119,8 +120,8 @@ async function connect(uri) {
 try {
   mongoose.connection.on('connected', () => { isConnected = true; lastError = null; });
   mongoose.connection.on('disconnected', () => { isConnected = false; });
-  mongoose.connection.on('error', (e) => { try { lastError = { code: e && e.code || 'MONGO_ERROR', message: (e && e.message) || String(e) }; } catch {} });
-} catch {}
+  mongoose.connection.on('error', (e) => { try { lastError = { code: e && e.code || 'MONGO_ERROR', message: (e && e.message) || String(e) }; } catch (logErr) { logger.debug('Mongoose error event logging failed:', logErr?.message || logErr); } });
+} catch (e) { logger.debug('Mongoose event listener setup error:', e?.message || e); }
 
 function isReady() {
   return isConnected && mongoose.connection.readyState === 1;

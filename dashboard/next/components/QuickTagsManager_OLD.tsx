@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
@@ -125,7 +126,7 @@ export default function QuickTagsManager() {
         const ok = results.filter((r:any)=> r?.ok).length
         const rolesAdded = results.reduce((acc:number, r:any)=> acc + (Array.isArray(r?.addedRoles) ? r.addedRoles.length : (r?.roleAdded ? 1 : 0)), 0)
         toast({ type: 'success', title: t('tags.apply.done') || 'Tag applied', description: `${ok} ${t('guild.members') || 'members'}; ${rolesAdded} ${t('guild.roles') || 'roles'}` })
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
       setApplyOpen(false)
       setSelectedUserIds(new Set())
     } catch (e: any) {

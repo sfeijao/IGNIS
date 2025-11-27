@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { GiveawayModel, GiveawayEntryModel, GiveawayWinnerModel, GiveawayLogModel } = require('../../utils/db/giveawayModels');
 const { pickWinners, generateSeed } = require('../../utils/giveaways/rng');
 const Joi = require('joi');
@@ -100,7 +101,7 @@ async function createGiveaway(req, res){
     });
 
   // Analytics (non-blocking)
-  try { const { recordAnalytics } = require('../../utils/analytics'); recordAnalytics('giveaway_create', { guild_id: guildId, giveaway_id: doc._id }); } catch {}
+  try { const { recordAnalytics } = require('../../utils/analytics'); recordAnalytics('giveaway_create', { guild_id: guildId, giveaway_id: doc._id }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
   // Attempt Discord publish if active immediately and channel provided
     try {
@@ -110,7 +111,7 @@ async function createGiveaway(req, res){
           if (!r.ok) console.warn('Discord publish failed:', r.error);
         }).catch(e=>console.warn('Discord publish error', e && e.message || e));
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
     return res.json({ ok: true, giveaway: doc });
   } catch (e) {
@@ -213,7 +214,7 @@ async function endNow(req, res){
       if (global.socketManager) {
         global.socketManager.broadcast('giveaway_end', { giveawayId: gid, winners: (result.winners||[]).map(w=>w.user_id), seed: result.seedUsed }, guildId);
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
     // Discord announce
     try {
       const giveaway = await GiveawayModel.findById(gid).lean();
@@ -221,7 +222,7 @@ async function endNow(req, res){
         const { announceWinners } = require('../../utils/giveaways/discord');
         announceWinners(giveaway, result.winners).catch(()=>{});
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
     return res.json(result);
   } catch (e) {
     console.error('endNow error', e);
@@ -241,7 +242,7 @@ async function reroll(req, res){
       if (global.socketManager) {
         global.socketManager.broadcast('giveaway_reroll', { giveawayId: gid, winners: (result.winners||[]).map(w=>w.user_id) }, guildId);
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
     return res.json(result);
   } catch (e) {
     console.error('reroll error', e);
@@ -269,7 +270,7 @@ async function enter(req, res){
       if (global.socketManager && result.entry && !result.duplicate) {
         global.socketManager.broadcast('giveaway_enter', { giveawayId: gid, userId: user_id }, guildId);
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
     return res.json(result);
   } catch (e) {
     console.error('enter error', e);
@@ -369,7 +370,7 @@ async function deleteGiveaway(req, res){
       if (global.socketManager) {
         global.socketManager.broadcast('giveaway_delete', { giveawayId: gid }, guildId);
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
     return res.json({ ok: true });
   } catch (e) {

@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 export function getGuildId(): string | null {
   if (typeof window === 'undefined') return null
   const url = new URL(window.location.href)
@@ -21,7 +22,7 @@ export function setGuildId(id: string, updateUrl: boolean = true) {
       if (trimmed) url.searchParams.set('guildId', trimmed)
       else url.searchParams.delete('guildId')
       window.history.replaceState({}, '', url.toString())
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 }
 
@@ -43,12 +44,12 @@ export function useGuildId(): string | null {
 export function useGuildIdWithLoading(): { guildId: string | null; loading: boolean } {
   const [guildId, setGuildId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  
+
   useEffect(() => {
     const id = getGuildId()
     setGuildId(id)
     setLoading(false)
   }, [])
-  
+
   return { guildId, loading }
 }

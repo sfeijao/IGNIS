@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 'use client'
 
 import Link from 'next/link'
@@ -29,7 +30,7 @@ export default function Topbar() {
       const url = new URL(window.location.href)
       const gid = url.searchParams.get('guildId')
       if (gid) setGuildId(gid, false)
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }, [])
 
   const toggleCompact = () => {

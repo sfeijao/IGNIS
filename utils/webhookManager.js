@@ -14,7 +14,7 @@ class WebhookManager {
             const data = await fs.readFile(this.webhooksPath, 'utf8');
             this.webhooks = JSON.parse(data);
         } catch (error) {
-            console.error('Error loading webhooks:', error);
+            logger.error('Error loading webhooks:', error);
             this.webhooks = {};
             await this.saveWebhooks();
         }
@@ -24,7 +24,7 @@ class WebhookManager {
         try {
             await fs.writeFile(this.webhooksPath, JSON.stringify(this.webhooks, null, 2));
         } catch (error) {
-            console.error('Error saving webhooks:', error);
+            logger.error('Error saving webhooks:', error);
         }
     }
 
@@ -55,7 +55,7 @@ class WebhookManager {
             await this.retryWebhook(webhook, payload);
             return true;
         } catch (error) {
-            console.error(`Error sending webhook for guild ${guildId}, event ${eventType}:`, error);
+            logger.error(`Error sending webhook for guild ${guildId}, event ${eventType}:`, error);
             return false;
         }
     }
@@ -85,7 +85,7 @@ class WebhookManager {
             });
             return true;
         } catch (error) {
-            console.error('Webhook validation failed:', error);
+            logger.error('Webhook validation failed:', error);
             return false;
         }
     }

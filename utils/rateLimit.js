@@ -2,7 +2,7 @@ class RateLimit {
     constructor() {
         this.limits = new Map();
         // Limpar limites expirados a cada 15 minutos
-        setInterval(() => this.cleanup(), 15 * 60 * 1000);
+        this.cleanupInterval = setInterval(() => this.cleanup(), 15 * 60 * 1000);
     }
 
     check(key, limit = 3, window = 3600000) { // window em ms (1 hora default)
@@ -42,6 +42,16 @@ class RateLimit {
             } else {
                 this.limits.set(key, validTimestamps);
             }
+        }
+    }
+
+    /**
+     * Cleanup method to stop timers
+     */
+    shutdown() {
+        if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+            this.cleanupInterval = null;
         }
     }
 }

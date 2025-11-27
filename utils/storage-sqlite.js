@@ -7,7 +7,7 @@ const dataDir = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const dbPath = process.env.SQLITE_DB_FILE || path.join(dataDir, 'ignis.db');
 
 // Ensure data directory exists
-try { fs.mkdirSync(dataDir, { recursive: true }); } catch {}
+try { fs.mkdirSync(dataDir, { recursive: true }); } catch (e) { logger.warn('SQLite data directory creation failed:', e?.message || e); }
 
 const db = new sqlite3.Database(dbPath);
 db.serialize(() => {

@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { GiveawayModel } = require('../db/giveawayModels');
 const { endGiveaway } = require('./service');
 const { isReady } = require('../db/mongoose');
@@ -17,11 +18,11 @@ function initGiveawayWorker(){
         errorStrikes++;
         if (errorStrikes >= MAX_STRIKES && !disabledByAuth) {
           disabledByAuth = true;
-          try { console.warn('[GiveawayWorker] disabling due to repeated Mongo auth/permission errors'); } catch {}
-          try { global.giveawayWorkerDisabledByAuth = true; } catch {}
+          try { logger.warn('[GiveawayWorker] disabling due to repeated Mongo auth/permission errors'); } catch (e) { logger.debug('Caught error:', e?.message || e); }
+          try { global.giveawayWorkerDisabledByAuth = true; } catch (e) { logger.debug('Caught error:', e?.message || e); }
         }
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   async function tickPromoteScheduled(){
@@ -34,7 +35,7 @@ function initGiveawayWorker(){
         { $set: { status: 'active', starts_at: now } }
       );
     } catch (e) {
-      try { console.warn('[GiveawayWorker] promote error:', e && e.message || e); } catch {}
+      try { logger.warn('[GiveawayWorker] promote error:', e && e.message || e); } catch (e) { logger.debug('Caught error:', e?.message || e); }
       checkDisable(e);
     }
   }
@@ -70,29 +71,29 @@ function initGiveawayWorker(){
                             giveaway: fresh,
                             client
                           });
-                          console.log(`[GiveawayWorker] Created ticket for winner ${winner.user_id} in giveaway ${fresh._id}`);
+                          logger.info(`[GiveawayWorker] Created ticket for winner ${winner.user_id} in giveaway ${fresh._id}`);
                         } catch (ticketErr) {
-                          console.warn(`[GiveawayWorker] Failed to create ticket for ${winner.user_id}:`, ticketErr.message);
+                          logger.warn(`[GiveawayWorker] Failed to create ticket for ${winner.user_id}:`, ticketErr.message);
                         }
                       }
                     }
                   }
 
                 } else {
-                  console.warn(`[GiveawayWorker] Failed to announce winners for ${g._id}: ${announceResult.error || 'unknown'}`);
+                  logger.warn(`[GiveawayWorker] Failed to announce winners for ${g._id}: ${announceResult.error || 'unknown'}`);
                   // Retry announcement on next tick (don't mark as announced)
                 }
               }
             } catch (announceErr) {
-              console.warn('[GiveawayWorker] announcement error:', announceErr && announceErr.message || announceErr);
+              logger.warn('[GiveawayWorker] announcement error:', announceErr && announceErr.message || announceErr);
             }
           }
         } catch (endErr) {
-          console.warn('[GiveawayWorker] end giveaway error:', endErr && endErr.message || endErr);
+          logger.warn('[GiveawayWorker] end giveaway error:', endErr && endErr.message || endErr);
         }
       }
     } catch (e) {
-      try { console.warn('[GiveawayWorker] tick error:', e && e.message || e); } catch {}
+      try { logger.warn('[GiveawayWorker] tick error:', e && e.message || e); } catch (e) { logger.debug('Caught error:', e?.message || e); }
       checkDisable(e);
     }
   }
@@ -127,10 +128,10 @@ function initGiveawayWorker(){
               }
             }
           }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
       }
     } catch (e) {
-      try { console.warn('[GiveawayWorker] live update error:', e && e.message || e); } catch {}
+      try { logger.warn('[GiveawayWorker] tick error:', e && e.message || e); } catch (e) { logger.debug('Caught error:', e?.message || e); }
       checkDisable(e);
     }
   }
@@ -149,7 +150,7 @@ function initGiveawayWorker(){
         await checkExpiredGiveawayTickets(client);
       }
     } catch (e) {
-      try { console.warn('[GiveawayWorker] expired tickets check error:', e && e.message || e); } catch {}
+      try { logger.warn('[GiveawayWorker] expired tickets check error:', e && e.message || e); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     }
   }
 

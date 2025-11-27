@@ -48,7 +48,7 @@ module.exports = {
                         content: message.content || null
                     }
                 });
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
         } catch (error) {
             const logger = require('../utils/logger');
             logger.error('Erro ao processar mensagem deletada:', { error });

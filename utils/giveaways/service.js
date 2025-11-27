@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { GiveawayModel, GiveawayEntryModel, GiveawayWinnerModel, GiveawayLogModel } = require('../db/giveawayModels');
 const { recordAnalytics } = (()=>{ try { return require('../analytics'); } catch { return { recordAnalytics: ()=>{} }; } })();
 const { pickWinners, generateSeed } = require('./rng');
@@ -30,7 +31,7 @@ async function endGiveaway(giveawayId, guildId, opts={}){
     }
     await GiveawayModel.updateOne({ _id: giveawayId }, { $set: { status: 'ended', processing: false, winners_announced: false, fair_rng_seed: seedUsed } });
     await GiveawayLogModel.create({ giveaway_id: giveawayId, guild_id: guildId, actor_id: opts.actorId || null, action: 'end', payload: { seedUsed, totalEligible, shortfall, winners: winnersSaved.map(x => x.user_id) } });
-    try { recordAnalytics('giveaway_end', { guild_id: guildId, giveaway_id: giveawayId, winners: winnersSaved.length }); } catch {}
+    try { recordAnalytics('giveaway_end', { guild_id: guildId, giveaway_id: giveawayId, winners: winnersSaved.length }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     return { ok: true, winners: winnersSaved, seedUsed, totalEligible, shortfall };
   } catch (e) {
     await GiveawayModel.updateOne({ _id: giveawayId }, { $set: { processing: false } });
@@ -61,7 +62,7 @@ async function rerollGiveaway(giveawayId, guildId, count, opts={}){
     winnersSaved.push(doc.toObject());
   }
   await GiveawayLogModel.create({ giveaway_id: giveawayId, guild_id: guildId, actor_id: opts.actorId || null, action: 'reroll', payload: { count, winners: winnersSaved.map(x => x.user_id) } });
-  try { recordAnalytics('giveaway_reroll', { guild_id: guildId, giveaway_id: giveawayId, count: winnersSaved.length }); } catch {}
+  try { recordAnalytics('giveaway_reroll', { guild_id: guildId, giveaway_id: giveawayId, count: winnersSaved.length }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
   return { ok: true, winners: winnersSaved, seedUsed, totalEligible, shortfall };
 }
 
@@ -85,7 +86,7 @@ async function enterGiveaway(giveawayId, guildId, entry){
     });
     await GiveawayModel.updateOne({ _id: giveawayId }, { $inc: { entries_count: 1 } });
     await GiveawayLogModel.create({ giveaway_id: giveawayId, guild_id: guildId, actor_id: entry.user_id, action: 'enter', payload: { method: entry.method || 'reaction' } });
-  try { recordAnalytics('giveaway_enter', { guild_id: guildId, giveaway_id: giveawayId }); } catch {}
+  try { recordAnalytics('giveaway_enter', { guild_id: guildId, giveaway_id: giveawayId }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     return { ok: true, entry: doc.toObject() };
   } catch (e) {
     if (e && e.code === 11000) {
@@ -110,7 +111,7 @@ async function cleanupStaleLocks() {
   );
 
   if (result.modifiedCount > 0) {
-    console.log(`[GiveawayService] Released ${result.modifiedCount} stale processing locks`);
+    logger.info(`[GiveawayService] Released ${result.modifiedCount} stale processing locks`);
   }
 
   return result.modifiedCount;

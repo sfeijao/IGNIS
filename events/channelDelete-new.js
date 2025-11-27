@@ -32,7 +32,7 @@ module.exports = {
                     };
                     await storage.addLog({ guild_id: guildId, type: 'mod_channel_delete', message: channel.name, data });
                 }
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
             // Log detalhado para debug
             logger.debug('🔍 Channel deletado:', {
                 channelId: channel.id,

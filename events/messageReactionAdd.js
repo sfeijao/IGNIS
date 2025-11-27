@@ -37,7 +37,7 @@ module.exports = {
           panel = await s.findPanelByMessage(message.guild.id, message.id);
           if (panel && panel.type !== 'verification') panel = null;
         }
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
       if (panel) isVerificationPanel = true;
       // Fallback heuristic: title check when panel not in DB (rare)
       if (!isVerificationPanel && message.embeds?.length) {
@@ -55,7 +55,7 @@ module.exports = {
       const unverifiedRoleId = vcfg.unverifiedRoleId || null;
       const verifyRole = verifiedRoleId ? message.guild.roles.cache.get(verifiedRoleId) : null;
       if (!verifyRole) {
-        try { await storage.addLog({ guild_id: message.guild.id, user_id: user.id, type: 'verification_fail', message: 'role_not_found' }); } catch {}
+        try { await storage.addLog({ guild_id: message.guild.id, user_id: user.id, type: 'verification_fail', message: 'role_not_found' }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
         return;
       }
 
@@ -65,7 +65,7 @@ module.exports = {
       let addOk = true;
       await member.roles.add(verifyRole).catch(() => { addOk = false; });
       if (!addOk) {
-        try { await storage.addLog({ guild_id: message.guild.id, user_id: user.id, type: 'verification_fail', message: 'role_add_failed', role_id: verifyRole.id }); } catch {}
+        try { await storage.addLog({ guild_id: message.guild.id, user_id: user.id, type: 'verification_fail', message: 'role_add_failed', role_id: verifyRole.id }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
         return;
       }
       if (unverifiedRoleId && member.roles.cache.has(unverifiedRoleId)) {
@@ -76,7 +76,7 @@ module.exports = {
       try {
         const userReactions = message.reactions.cache.get(accept);
         if (userReactions) await userReactions.users.remove(user.id).catch(() => {});
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
       // Retention pruning for failure logs if configured
       try {
@@ -85,10 +85,10 @@ module.exports = {
         if (logFails && keepDays && keepDays > 0) {
           await storage.pruneLogsByTypeOlderThan(message.guild.id, 'verification_fail', keepDays * 24 * 60 * 60 * 1000);
         }
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
       // Success log with method for metrics
-      try { await storage.addLog({ guild_id: message.guild.id, user_id: user.id, type: 'verification_success', message: 'reaction' }); } catch {}
+      try { await storage.addLog({ guild_id: message.guild.id, user_id: user.id, type: 'verification_success', message: 'reaction' }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
       // No direct reply in reaction flow; optional dashboard event
       if (global.socketManager) {

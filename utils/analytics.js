@@ -12,12 +12,13 @@ function recordAnalytics(event, payload){
   try {
     if ((process.env.GIVEAWAYS_ANALYTICS_PERSIST || '').toLowerCase() === 'mongo') {
       const mongoose = require('mongoose');
+const logger = require('../utils/logger');
       if (mongoose.connection && mongoose.connection.readyState === 1) {
         const model = getModel();
         model.create(row).catch(()=>{});
       }
     }
-  } catch {}
+  } catch (e) { logger.debug('Caught error:', e?.message || e); }
 }
 
 let AnalyticsModel = null;
@@ -34,7 +35,7 @@ function getModel(){
       count: Number
     }, { versionKey: false, collection: 'giveaway_analytics' });
     AnalyticsModel = mongoose.model('GiveawayAnalytics', schema);
-  } catch {}
+  } catch (e) { logger.debug('Caught error:', e?.message || e); }
   return AnalyticsModel;
 }
 

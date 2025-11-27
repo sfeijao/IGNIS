@@ -17,23 +17,24 @@ try {
         // Expose backend marker for health endpoint
         this.__backend = useMongo ? 'mongo' : ((process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite' ? 'sqlite' : 'json');
     if (useMongo) {
-        console.log('✅ Mongo pronto (storage)');
+        const logger = require('./logger'); logger.info('✅ Mongo pronto (storage)');
     }
     // Acompanhar eventos de ligação para alternar entre Mongo e JSON
     try {
+        const logger = require('./logger');
         mongoose.connection.on('connected', () => {
             useMongo = true;
                 this.__backend = 'mongo';
-            console.log('✅ Mongo conectado (storage)');
+            logger.info('✅ Mongo conectado (storage)');
         });
         mongoose.connection.on('disconnected', () => {
             useMongo = false;
                 this.__backend = ((process.env.STORAGE_BACKEND || '').toLowerCase() === 'sqlite' ? 'sqlite' : 'json');
-            console.warn('⚠️ Mongo desconectado, a usar JSON fallback (storage)');
+            logger.warn('⚠️ Mongo desconectado, a usar JSON fallback (storage)');
         });
-    } catch {}
+    } catch (e) { const logger = require('./logger'); logger.warn('Storage mongoose event listener setup failed:', e?.message || e); }
 } catch (e) {
-    console.warn('MongoDB não disponível, a usar JSON storage. Motivo:', e && e.message ? e.message : e);
+    const logger = require('./logger'); logger.warn('MongoDB não disponível, a usar JSON storage. Motivo:', e && e.message ? e.message : e);
 }
 
 class SimpleStorage {
@@ -49,7 +50,7 @@ class SimpleStorage {
         this.CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
         // Cleanup automático do cache a cada 10 minutos
-        setInterval(() => {
+        this.cacheCleanupInterval = setInterval(() => {
             const now = Date.now();
             for (const [key, value] of this.configCache.entries()) {
                 if (now - value.timestamp > this.CACHE_TTL) {
@@ -71,7 +72,7 @@ class SimpleStorage {
             await this.ensureFileExists(this.tagsFile, {});
             await this.ensureFileExists(this.logsFile, []);
         } catch (error) {
-            console.error('Storage initialization error:', error);
+            const logger = require('./logger'); logger.error('Storage initialization error:', error);
         }
     }
 
@@ -104,7 +105,7 @@ class SimpleStorage {
             await fs.writeFile(filePath, jsonString, 'utf8');
             return true;
         } catch (error) {
-            console.error('Error writing to file:', error);
+            const logger = require('./logger'); logger.error('Error writing to file:', error);
             throw new Error(`Failed to write to file: ${error.message}`);
         }
     }
@@ -364,7 +365,7 @@ class SimpleStorage {
             }
             return { pruned: logs.length - filtered.length };
         } catch (e) {
-            console.warn('pruneLogsByTypeOlderThan failed:', e?.message || e);
+            const logger = require('./logger'); logger.warn('pruneLogsByTypeOlderThan failed:', e?.message || e);
             return { pruned: 0, error: e?.message || String(e) };
         }
     }
@@ -496,7 +497,7 @@ class SimpleStorage {
 
             return true;
         } catch (error) {
-            console.error('[Storage] Erro ao salvar painel de tickets:', error);
+            const logger = require('./logger'); logger.error('[Storage] Erro ao salvar painel de tickets:', error);
             return false;
         }
     }
@@ -509,8 +510,18 @@ class SimpleStorage {
             const config = await this.getGuildConfig(guildId);
             return config.ticketPanels || [];
         } catch (error) {
-            console.error('[Storage] Erro ao obter painéis de tickets:', error);
+            logger.error('[Storage] Erro ao obter painéis de tickets:', error);
             return [];
+        }
+    }
+
+    /**
+     * Cleanup method to stop timers and prevent memory leaks
+     */
+    shutdown() {
+        if (this.cacheCleanupInterval) {
+            clearInterval(this.cacheCleanupInterval);
+            this.cacheCleanupInterval = null;
         }
     }
 }

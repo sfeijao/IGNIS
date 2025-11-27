@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
@@ -34,7 +35,7 @@ module.exports = {
                     const lines = Object.entries(all).map(([gid, types]) => `• ${gid}${gid === interaction.guild.id ? ' (este servidor)' : ''}: ${types.join(', ') || '—'}`);
                     webhookInfo = lines.length ? `\n🔗 Webhooks carregados:\n${lines.join('\n')}` : '';
                 }
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
             // Roteamento efetivo (config)
             let routingInfo = '';
@@ -43,7 +44,7 @@ module.exports = {
                 const cfg = await storage.getGuildConfig(interaction.guild.id);
                 const routing = cfg?.webhookRouting || { create: 'tickets', close: 'tickets', update: 'updates', claim: 'updates' };
                 routingInfo = `\n🧭 Routing: create→${routing.create}, close→${routing.close}, update→${routing.update}, claim→${routing.claim}`;
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
             await interaction.editReply(`✅ **Diagnóstico Completo:**\n\`\`\`${info}\`\`\`${webhookInfo}${routingInfo}`);
             console.log('✅ Diagnóstico concluído');

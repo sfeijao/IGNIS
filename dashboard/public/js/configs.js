@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 (function(){
   // Ensure guild context
   try{
@@ -16,9 +17,9 @@
         return;
       }
     } else {
-      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch{}
+      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch(e) { logger.debug('Caught error:', e?.message || e); }
     }
-  }catch{}
+  }catch(e) { logger.debug('Caught error:', e?.message || e); }
 })();
 
 (function(){
@@ -60,11 +61,11 @@
     try {
       if (document.getElementById('stale-banner')) return;
       const el=document.createElement('div'); el.id='stale-banner'; el.style.position='fixed'; el.style.bottom='16px'; el.style.left='50%'; el.style.transform='translateX(-50%)'; el.style.background='rgba(124,58,237,0.95)'; el.style.color='#fff'; el.style.padding='10px 14px'; el.style.borderRadius='8px'; el.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)'; el.style.zIndex='9999'; el.style.fontSize='14px'; el.textContent='Mostrando dados em cache temporariamente (a API do Discord limitou pedidos).'; document.body.appendChild(el); setTimeout(()=>{ el.remove(); }, 4000);
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   async function loadChannels() {
-    try { const d = await api(`/api/guild/${guildId}/channels`); logsSel.innerHTML = `<option value="">—</option>` + d.channels.map(c => `<option value="${c.id}">${c.name}</option>`).join(''); } catch {}
+    try { const d = await api(`/api/guild/${guildId}/channels`); logsSel.innerHTML = `<option value="">—</option>` + d.channels.map(c => `<option value="${c.id}">${c.name}</option>`).join(''); } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
   async function loadRoles() {
     try {
@@ -72,7 +73,7 @@
       const options = `<option value="">—</option>` + d.roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
       roleSel.innerHTML = options;
       if (giveawayRoleSel) giveawayRoleSel.innerHTML = options;
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
   async function loadConfig() {
     try {
@@ -87,7 +88,7 @@
       if (routeClose) routeClose.value = routing.close || 'tickets';
       if (routeUpdate) routeUpdate.value = routing.update || 'updates';
   if (routeClaim) routeClaim.value = routing.claim || 'updates';
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   if (btn) btn.addEventListener('click', async () => {
@@ -106,7 +107,7 @@
         if (missing.length) {
           notify(`Atenção: mapeamento aponta para tipos não configurados: ${missing.join(', ')}`, 'error');
         }
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
       const updates = {
         logs_channel_id: logsSel.value || null,
         staff_role_id: roleSel.value || null,

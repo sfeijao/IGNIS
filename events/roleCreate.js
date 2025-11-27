@@ -19,6 +19,6 @@ module.exports = {
             const storage = require('../utils/storage');
             const guildId = role?.guild?.id; if (!guildId) return;
             await storage.addLog({ guild_id: guildId, type: 'mod_role_create', message: role.name, data: roleSnap(role) });
-        } catch (e) { try { require('../utils/logger').warn('roleCreate log failed:', e?.message||e); } catch {} }
+        } catch (e) { try { require('../utils/logger').warn('roleCreate log failed:', e?.message||e); } catch (e) { logger.debug('Caught error:', e?.message || e); } }
     }
 };

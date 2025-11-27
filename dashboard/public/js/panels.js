@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 // Panels management page logic
 (function(){
   // Ensure guild context
@@ -17,9 +18,9 @@
         return;
       }
     } else {
-      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch{}
+      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch(e) { logger.debug('Caught error:', e?.message || e); }
     }
-  }catch{}
+  }catch(e) { logger.debug('Caught error:', e?.message || e); }
 })();
 
 (function() {
@@ -87,7 +88,7 @@
       el.textContent = 'Mostrando dados em cache temporariamente (a API do Discord limitou pedidos).';
       document.body.appendChild(el);
       setTimeout(() => { el.remove(); }, 4000);
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   function renderList(panels) {
@@ -212,7 +213,7 @@
     try {
       const d = await api(`/api/guild/${guildId}/channels`);
       if (chanSel) chanSel.innerHTML = `<option value="">—</option>` + (d.channels || []).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   if (btnCreate) btnCreate.addEventListener('click', async () => {
@@ -367,6 +368,6 @@
       if (r.ok && d.success && d.isAdmin) {
         if (scanBox) scanBox.style.display = '';
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   })();
 })();

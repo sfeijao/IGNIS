@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { GiveawayModel } = require('../utils/db/giveawayModels');
 const { publishGiveaway } = require('../utils/giveaways/discord');
@@ -78,7 +79,7 @@ module.exports = {
         await interaction.reply({ content: 'Giveaway cancelado', flags: 64 });
       }
     } catch (e) {
-      try { await interaction.reply({ content: `Erro: ${e && e.message || e}`, flags: 64 }); } catch {}
+      try { await interaction.reply({ content: `Erro: ${e && e.message || e}`, flags: 64 }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     }
   }
 };

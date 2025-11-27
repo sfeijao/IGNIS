@@ -12,8 +12,8 @@ module.exports = {
             if ((newMessage?.author && newMessage.author.bot) || (oldMessage?.author && oldMessage.author.bot)) return;
 
             // Ensure contents are available
-            try { if (oldMessage && oldMessage.partial) await oldMessage.fetch(); } catch {}
-            try { if (newMessage && newMessage.partial) await newMessage.fetch(); } catch {}
+            try { if (oldMessage && oldMessage.partial) await oldMessage.fetch(); } catch (e) { logger.debug('Caught error:', e?.message || e); }
+            try { if (newMessage && newMessage.partial) await newMessage.fetch(); } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
             const before = oldMessage?.content || '';
             const after = newMessage?.content || '';
@@ -48,7 +48,7 @@ module.exports = {
                         after,
                     }
                 });
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
         } catch (err) {
             const logger = require('../utils/logger');
             logger.warn('messageUpdate handler error:', err?.message || err);

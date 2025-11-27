@@ -213,7 +213,7 @@ class TicketEnhancedService {
                     // ticket.transcript.url = await uploadTranscript(messages);
                 }
             } catch (e) {
-                console.error('Erro ao gerar transcrição:', e);
+                logger.error('Erro ao gerar transcrição:', e);
             }
         }
 
@@ -238,11 +238,9 @@ class TicketEnhancedService {
             ]);
 
             await channel.send({ embeds: [ratingEmbed], components: [ratingButtons] });
-        } catch (e) {
-            console.error('Erro ao enviar pedido de avaliação:', e);
-        }
-
-        return ticket;
+            } catch (e) {
+                logger.error('Erro ao enviar pedido de avaliação:', e);
+            }        return ticket;
     }
 
     async rateTicket(ticketId, score, feedback = null) {

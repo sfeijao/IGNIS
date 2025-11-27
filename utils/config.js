@@ -1,5 +1,6 @@
 // utils/config.js - Sistema de configuração seguro com validação
 require('dotenv').config();
+const logger = require('../utils/logger');
 
 const assert = (condition, message) => {
     if (!condition) throw new Error(`[CONFIG ERROR] ${message}`);
@@ -161,21 +162,22 @@ assert(config.DISCORD.GUILD_ID, 'GUILD_ID é obrigatório');
 if (config.WEBSITE.SESSION_SECRET) {
     // Se SESSION_SECRET estiver presente, validar comprimento
     if (isProd && config.WEBSITE.SESSION_SECRET.length < 32) {
-        console.warn('[CONFIG WARNING] SESSION_SECRET deve ter pelo menos 32 caracteres em produção');
+        const logger = require('./logger'); logger.warn('[CONFIG WARNING] SESSION_SECRET deve ter pelo menos 32 caracteres em produção');
     }
 } else {
     // Gerar SESSION_SECRET temporário se não estiver definido
-    console.warn('[CONFIG WARNING] SESSION_SECRET não definido, gerando temporário...');
+    const logger = require('./logger'); logger.warn('[CONFIG WARNING] SESSION_SECRET não definido, gerando temporário...');
     config.WEBSITE.SESSION_SECRET = require('crypto').randomBytes(32).toString('hex');
 }
 
 // CLIENT_SECRET é obrigatório apenas se o website for usado
 if (!config.DISCORD.CLIENT_SECRET) {
-    console.warn('[CONFIG WARNING] CLIENT_SECRET não encontrado - funcionalidade do dashboard será limitada');
-    console.warn('[CONFIG WARNING] Defina DISCORD_CLIENT_SECRET ou CLIENT_SECRET para funcionalidade completa');
+    const logger = require('./logger');
+    logger.warn('[CONFIG WARNING] CLIENT_SECRET não encontrado - funcionalidade do dashboard será limitada');
+    logger.warn('[CONFIG WARNING] Defina DISCORD_CLIENT_SECRET ou CLIENT_SECRET para funcionalidade completa');
     // Para Railway, permitir operação sem CLIENT_SECRET inicialmente
     if (isProd) {
-    console.warn('[CONFIG WARNING] Modo bot-only ativado - dashboard desabilitado');
+    logger.warn('[CONFIG WARNING] Modo bot-only ativado - dashboard desabilitado');
     config.DISCORD.CLIENT_SECRET = 'bot_only';
     }
 } else {
@@ -201,7 +203,7 @@ if (isProd) {
             railwayPublicDomain: process.env.RAILWAY_PUBLIC_DOMAIN || null
         };
     debugLog('[CONFIG] Domain selection details:', details);
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
 }
 debugLog(`[CONFIG] Porta: ${config.WEBSITE.PORT}`);
 debugLog(`[CONFIG] Guild ID: ${config.DISCORD.GUILD_ID}`);

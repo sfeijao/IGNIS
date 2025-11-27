@@ -206,7 +206,7 @@ async function sendOrUpdatePanel({ client, guildId, channelId, panel, ticketCate
             return await message.edit(messagePayload);
         } catch (error) {
             // Se falhar ao atualizar, enviar nova mensagem
-            console.log('Failed to update panel message, sending new one:', error.message);
+            logger.info('Failed to update panel message, sending new one:', error.message);
         }
     }
 

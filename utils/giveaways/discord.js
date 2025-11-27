@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
 const { GiveawayModel, GiveawayWinnerModel } = require('../db/giveawayModels');
 const { getClient } = require('../discordClient');
@@ -80,7 +81,7 @@ async function publishGiveaway(giveaway){
 
     const msg = await channel.send({ embeds: [embed], components });
     if (giveaway.method === 'reaction'){
-      try { await msg.react(giveaway.icon_emoji || '🎉'); } catch {}
+      try { await msg.react(giveaway.icon_emoji || '🎉'); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     }
     await GiveawayModel.updateOne({ _id: giveaway._id }, { $set: { message_id: msg.id, channel_id: msg.channelId } });
     return { ok:true, messageId: msg.id };
@@ -141,7 +142,7 @@ async function announceWinners(giveaway, winners){
 
         await msg.edit({ embeds: [endedEmbed], components: [] });
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
     return { ok:true };
   } catch (e) {

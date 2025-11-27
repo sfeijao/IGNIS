@@ -51,7 +51,7 @@ class WebhookManager {
               try {
                 const text = await response.text();
                 if (!text) {
-                  console.error(`Webhook ${webhook.name} retornou resposta vazia - provavelmente foi deletado`);
+                  logger.error(`Webhook ${webhook.name} retornou resposta vazia - provavelmente foi deletado`);
                   results.push({ success: false, webhook: webhook.name, error: 'Webhook inválido ou deletado' });
                   continue;
                 }
@@ -70,7 +70,7 @@ class WebhookManager {
                 await log.addEvent(event, data);
                 results.push({ success: true, webhook: webhook.name, action: 'created' });
               } catch (parseError) {
-                console.error(`Erro ao processar resposta do webhook ${webhook.name}:`, parseError);
+                logger.error(`Erro ao processar resposta do webhook ${webhook.name}:`, parseError);
                 results.push({ success: false, webhook: webhook.name, error: 'Resposta inválida do Discord' });
               }
             } else {
@@ -92,7 +92,7 @@ class WebhookManager {
             }
           }
         } catch (webhookError) {
-          console.error(`Erro no webhook ${webhook.name}:`, webhookError);
+          logger.error(`Erro no webhook ${webhook.name}:`, webhookError);
           results.push({
             success: false,
             webhook: webhook.name,
@@ -103,7 +103,7 @@ class WebhookManager {
 
       return results;
     } catch (error) {
-      console.error('Erro geral em sendOrUpdateTicketWebhook:', error);
+      logger.error('Erro geral em sendOrUpdateTicketWebhook:', error);
       return null;
     }
   }
@@ -147,11 +147,11 @@ class WebhookManager {
           await log.addEvent('transcript', { url: transcriptUrl });
 
         } catch (err) {
-          console.error('Erro ao anexar transcrição:', err);
+          logger.error('Erro ao anexar transcrição:', err);
         }
       }
     } catch (error) {
-      console.error('Erro geral em attachTranscript:', error);
+      logger.error('Erro geral em attachTranscript:', error);
     }
   }
 
@@ -262,7 +262,7 @@ class WebhookManager {
 
       // Se webhook foi deletado (404) ou não autorizado (401), não retry
       if (response.status === 404 || response.status === 401) {
-        console.error(`Webhook inválido (${response.status}): Provavelmente foi deletado ou URL está incorreta`);
+        logger.error(`Webhook inválido (${response.status}): Provavelmente foi deletado ou URL está incorreta`);
         return response;
       }
 
@@ -273,7 +273,7 @@ class WebhookManager {
 
       return response;
     } catch (error) {
-      console.error('Erro ao enviar webhook:', error);
+      logger.error('Erro ao enviar webhook:', error);
       if (retries < this.MAX_RETRIES) {
         await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
         return this.sendWebhook(url, payload, retries + 1);
@@ -302,13 +302,13 @@ class WebhookManager {
 
       // Se webhook foi deletado, retornar false sem erro
       if (response.status === 404 || response.status === 401) {
-        console.error(`Webhook ou mensagem não encontrada (${response.status}): Pode ter sido deletado`);
+        logger.error(`Webhook ou mensagem não encontrada (${response.status}): Pode ter sido deletado`);
         return false;
       }
 
       return response.ok;
     } catch (error) {
-      console.error('Erro ao atualizar mensagem webhook:', error);
+      logger.error('Erro ao atualizar mensagem webhook:', error);
       return false;
     }
   }
@@ -333,7 +333,7 @@ class WebhookManager {
       const response = await this.sendWebhook(url, payload);
       return response.ok;
     } catch (error) {
-      console.error('Erro ao testar webhook:', error);
+      logger.error('Erro ao testar webhook:', error);
       return false;
     }
   }

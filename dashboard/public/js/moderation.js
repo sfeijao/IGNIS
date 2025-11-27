@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 (function(){
   // Ensure guild context
   try{
@@ -16,9 +17,9 @@
         return;
       }
     } else {
-      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch{}
+      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch(e) { logger.debug('Caught error:', e?.message || e); }
     }
-  }catch{}
+  }catch(e) { logger.debug('Caught error:', e?.message || e); }
 })();
 
 (function(){
@@ -169,7 +170,7 @@
           }
         }
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   // Modal helpers and polished confirmation UI
@@ -185,7 +186,7 @@
   function closeModal(){
     if (!els.modal) return;
     // clean any transient confirm blocks
-    try { els.modalBody?.querySelectorAll?.('.confirm-block')?.forEach(n=> n.remove()); } catch {}
+    try { els.modalBody?.querySelectorAll?.('.confirm-block')?.forEach(n=> n.remove()); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     els.modal.classList.add('modal-hidden');
     els.modal.classList.remove('modal-visible');
     els.modal.setAttribute('aria-hidden','true');
@@ -203,7 +204,7 @@
       const addHtml = Array.isArray(add) && add.length ? mk(add,'add','fa-plus') : '';
       const remHtml = Array.isArray(rem) && rem.length ? mk(rem,'rem','fa-minus') : '';
       if (addHtml || remHtml) roleDiffHtml = `<div class=\"plan-diff\" style=\"margin-top:8px\">${addHtml}${remHtml}</div>`;
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
     return `
       <div class="confirm-block" style="margin-top:10px">
         <div class="kv"><b>Pré-visualização</b> <small>(dry-run)</small></div>
@@ -342,7 +343,7 @@
           const finalLabel = btn.getAttribute('data-base-label');
           btn.innerHTML = `${info.emoji} ${finalLabel} <span class="badge-soft" style="margin-left:4px">${info.count}</span>`;
         });
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
       // Update simple 7-day chart (approximation using current window metrics)
       try {
         const canvas = document.getElementById('mod7Chart');
@@ -360,7 +361,7 @@
             window.__modChart.data = data; window.__modChart.update();
           }
         }
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
     } catch(e){ console.error(e); }
     finally { setUpdating(false); }
   }
@@ -384,14 +385,14 @@
   localStorage.setItem('mod-focused-group', focusedGroup||'');
   localStorage.setItem('mod-group-search', groupSearchTerm||'');
   localStorage.setItem('mod-show-group-share', showGroupShare?'true':'false');
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
   (function restorePrefs(){
     try {
       const fam = localStorage.getItem('mod-feed-filter'); if(fam) currentFamily = fam;
       const lim = parseInt(localStorage.getItem('mod-limit')||'200',10); if(!isNaN(lim)) currentLimit = lim;
       const auto = localStorage.getItem('mod-auto')==='true';
-      try { const mf = JSON.parse(localStorage.getItem('mod-feed-multi')||'[]'); multiFamilies = new Set(mf); } catch {}
+      try { const mf = JSON.parse(localStorage.getItem('mod-feed-multi')||'[]'); multiFamilies = new Set(mf); } catch (e) { logger.debug('Caught error:', e?.message || e); }
       streamMode = localStorage.getItem('mod-stream')==='true';
       showLatency = localStorage.getItem('mod-latency')==='true';
       page = parseInt(localStorage.getItem('mod-page')||'1',10)||1;
@@ -399,9 +400,9 @@
   orderDesc = localStorage.getItem('mod-order-desc') !== 'false';
   groupByMod = localStorage.getItem('mod-group-mod') === 'true';
   groupSortByVolume = localStorage.getItem('mod-group-sort-volume') === 'true';
-  try { const pins = JSON.parse(localStorage.getItem('mod-group-pins')||'[]'); pinnedGroups = new Set(pins); } catch {}
-  try { const ord = JSON.parse(localStorage.getItem('mod-group-pin-order')||'[]'); if(Array.isArray(ord)) pinCustomOrder = ord; } catch {}
-  try { const pa = JSON.parse(localStorage.getItem('mod-pill-added-fams')||'[]'); pillAddedFamilies = new Set(pa); } catch {}
+  try { const pins = JSON.parse(localStorage.getItem('mod-group-pins')||'[]'); pinnedGroups = new Set(pins); } catch (e) { logger.debug('Caught error:', e?.message || e); }
+  try { const ord = JSON.parse(localStorage.getItem('mod-group-pin-order')||'[]'); if(Array.isArray(ord)) pinCustomOrder = ord; } catch (e) { logger.debug('Caught error:', e?.message || e); }
+  try { const pa = JSON.parse(localStorage.getItem('mod-pill-added-fams')||'[]'); pillAddedFamilies = new Set(pa); } catch (e) { logger.debug('Caught error:', e?.message || e); }
       // update UI for family
       els.filterButtons?.forEach(btn=>{ btn.classList.toggle('active', btn.getAttribute('data-filter')===currentFamily); });
       if(auto){ els.btnAuto.setAttribute('aria-pressed','true'); els.btnAuto.innerHTML = `<i class="fas fa-pause"></i> Auto`; }
@@ -411,7 +412,7 @@
       const pp = document.getElementById('perPage'); if(pp) pp.value = String(perPage);
   const btnOrder = document.getElementById('btnOrder'); if(btnOrder) btnOrder.setAttribute('aria-pressed', orderDesc?'true':'false');
   const btnGroup = document.getElementById('btnGroupMod'); if(btnGroup) btnGroup.setAttribute('aria-pressed', groupByMod?'true':'false');
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   })();
   function renderActiveFilters(){
     const row = document.getElementById('activeFilters'); if (!row) return;
@@ -484,7 +485,7 @@
     try { return JSON.parse(localStorage.getItem(PRESETS_KEY)||'{}'); } catch { return {}; }
   }
   function savePresets(obj){
-    try { localStorage.setItem(PRESETS_KEY, JSON.stringify(obj)); } catch {}
+    try { localStorage.setItem(PRESETS_KEY, JSON.stringify(obj)); } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
   function refreshPresetSelect(){
     const sel = document.getElementById('presetSelect'); if(!sel) return;
@@ -524,7 +525,7 @@
       persistPrefs();
       renderActiveFilters();
       loadFeed();
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
   function restorePrefs(){
     try {
@@ -549,11 +550,11 @@
         const btn = els.filterButtons.find(b=> (b.getAttribute('data-filter')||'all') === currentFamily);
         btn?.classList.add('active');
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
-    try { const fg = localStorage.getItem('mod-focused-group'); if(fg) focusedGroup = fg||null; } catch {}
-    try { const gs = localStorage.getItem('mod-group-search'); if(gs) groupSearchTerm = gs; } catch {}
-    try { showGroupShare = localStorage.getItem('mod-show-group-share') !== 'false'; } catch {}
+    try { const fg = localStorage.getItem('mod-focused-group'); if(fg) focusedGroup = fg||null; } catch (e) { logger.debug('Caught error:', e?.message || e); }
+    try { const gs = localStorage.getItem('mod-group-search'); if(gs) groupSearchTerm = gs; } catch (e) { logger.debug('Caught error:', e?.message || e); }
+    try { showGroupShare = localStorage.getItem('mod-show-group-share') !== 'false'; } catch (e) { logger.debug('Caught error:', e?.message || e); }
   async function loadFeed(){
     if (!guildId) return notify('guildId em falta','error');
     els.feed.innerHTML = `<div class="loading"><span class="loading-spinner"></span> A carregar...</div>`;
@@ -566,7 +567,7 @@
       const r = await fetch(u, { credentials: 'same-origin' });
       const d = await r.json();
       if (!r.ok || !d.success) throw new Error(d.error || `HTTP ${r.status}`);
-      try { window.__lastLogs = Array.isArray(d.logs)? d.logs.slice(): []; } catch {}
+      try { window.__lastLogs = Array.isArray(d.logs)? d.logs.slice(): []; } catch (e) { logger.debug('Caught error:', e?.message || e); }
       renderFeed(d.logs||[]);
       renderActiveFilters();
       // Track head for live-append
@@ -800,7 +801,7 @@
         const rem = (r.roles.removed||[]).slice(0,4).map(function(ro){ return '<span class="role-chip rem"><i class="fas fa-minus"></i>@' + escapeHtml(ro.name||ro.id) + '</span>'; }).join('');
         if (add || rem) roleChips = '<div class="plan-diff" style="margin-top:6px">' + add + rem + '</div>';
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
     const expandBlock = (quick.length || roleChips) ? ('<div class="expand" data-collapsed="true">' + quick.join('') + roleChips + '</div>') : '';
     return '<div class="feed-item ' + familyClass(l.type||'') + '" role="button" data-log-id="' + l.id + '" aria-expanded="false" aria-label="' + escapeHtml(typeLabel(l.type||'')) + ' em ' + dt + '">' +
       '<div class="feed-content">' +
@@ -966,7 +967,7 @@
   const id = e.currentTarget.getAttribute('data-filter-' + kind);
         if (!id) return;
         if (e.shiftKey) {
-          try { if (navigator.clipboard?.writeText) navigator.clipboard.writeText(id); notify('ID copiado','success'); } catch {}
+          try { if (navigator.clipboard?.writeText) navigator.clipboard.writeText(id); notify('ID copiado','success'); } catch (e) { logger.debug('Caught error:', e?.message || e); }
           return;
         }
         if (kind==='user') els.userId.value = id;
@@ -1007,7 +1008,7 @@
           }
         }
       });
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   function renderGroupedByModerator(items){
@@ -1445,7 +1446,7 @@
       if(!btn) return;
       const show = streamMode && (window.__lastLogs?.length || 0) > 0;
       btn.style.display = show ? 'inline-flex':'none';
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
   function clearStream(){
     if(!streamMode){ return; }
@@ -1474,9 +1475,9 @@
           if(channelIds.size) await batchFetchChannels([...channelIds].slice(0,50));
           // Re-render only labels needing update
           hydrateLabelsFromCache();
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
       }, 250);
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   async function batchFetchMembers(ids){
@@ -1489,7 +1490,7 @@
   const label = m.nick ? (m.username + ' (' + m.nick + ')') : (m.username + '');
         __nameCache.member.set(String(m.id), label);
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
   async function batchFetchChannels(ids){
     try {
@@ -1501,7 +1502,7 @@
   const label = '#' + (c.name||c.id);
         __nameCache.channel.set(String(c.id), label);
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
   function hydrateLabelsFromCache(){
     try {
@@ -1517,7 +1518,7 @@
           if(id && __nameCache.channel.has(id)) el.innerHTML = '<i class="fas fa-hashtag"></i> ' + escapeHtml(__nameCache.channel.get(id));
         }
       });
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   // Recency progress bar logic: shows how old an event is within a chosen window (default 24h)
@@ -1794,7 +1795,7 @@
             const from2 = rsv.channel ? ('#' + escapeHtml(rsv.channel.name)) : 'desconhecido';
             body.push('<div class="kv"><b>Saiu de:</b> ' + from2 + '</div>');
           }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
       }
 
       // Member update diffs (nickname, roles)
@@ -1812,7 +1813,7 @@
             if (added) body.push('<div class="kv"><b>Cargos adicionados:</b> ' + added + '</div>');
             if (removed) body.push('<div class="kv"><b>Cargos removidos:</b> ' + removed + '</div>');
           }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
       }
 
       // Channel update diffs (best-effort)
@@ -1831,7 +1832,7 @@
           showDiff(data.position, 'Posição');
           showDiff(data.nsfw, 'NSFW');
           showDiff(data.rateLimitPerUser, 'Slowmode');
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
       }
 
       // Role update diffs (best-effort)
@@ -1854,7 +1855,7 @@
             if (add.length) body.push('<div class="kv"><b>Permissões adicionadas:</b> ' + add.map(function(p){return '<code>' + escapeHtml(String(p)) + '</code>';}).join(', ') + '</div>');
             if (rem.length) body.push('<div class="kv"><b>Permissões removidas:</b> ' + rem.map(function(p){return '<code>' + escapeHtml(String(p)) + '</code>';}).join(', ') + '</div>');
           }
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
       }
 
       if (actions.length) {
@@ -1898,7 +1899,7 @@
             setTimeout(()=> URL.revokeObjectURL(url), 5000);
           } catch { notify('Falha ao exportar JSON','error'); }
         });
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
       // Wire copy buttons
       els.modalBody.querySelectorAll('[data-copy-id]')?.forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -2074,7 +2075,7 @@
 
   // ===== Export Config Panel Logic =====
   function persistExportConfig(){
-    try { localStorage.setItem('mod-focused-export-config', JSON.stringify(focusedExportConfig)); } catch {}
+    try { localStorage.setItem('mod-focused-export-config', JSON.stringify(focusedExportConfig)); } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
   function parseLines(el){
     return (el.value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
@@ -2209,7 +2210,7 @@
   function loadExportPresets(){
     try { return JSON.parse(localStorage.getItem(EXPORT_PRESETS_KEY)||'{}')||{}; } catch { return {}; }
   }
-  function saveExportPresets(p){ try { localStorage.setItem(EXPORT_PRESETS_KEY, JSON.stringify(p)); } catch {} }
+  function saveExportPresets(p){ try { localStorage.setItem(EXPORT_PRESETS_KEY, JSON.stringify(p)); } catch (e) { logger.debug('Caught error:', e?.message || e); } }
   function populatePresetSelect(){
     const sel = document.getElementById('cfgPresetSelect');
     const selQuick = document.getElementById('cfgPresetSelectQuick');
@@ -2504,7 +2505,7 @@
       localStorage.setItem('mod-long-pause-minutes', String(val));
       LONG_PAUSE_MS = val * 60 * 1000;
     });
-  } catch {}
+  } catch (e) { logger.debug('Caught error:', e?.message || e); }
   els.filterButtons.forEach(btn=> btn.addEventListener('click', ()=>{
     els.filterButtons.forEach(b=> b.classList.remove('active'));
     btn.classList.add('active');
@@ -2616,7 +2617,7 @@
           const newNodes = [...els.feed.querySelectorAll('[data-log-id]')].slice(0, inserted);
           newNodes.forEach(n => n.classList.add('feed-flash'));
           setTimeout(()=> newNodes.forEach(n => n.classList.remove('feed-flash')), 1100);
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
         // Resolve chips to human-readable labels for newly inserted nodes
         try {
           const chips = [...els.feed.querySelectorAll('[data-filter-user],[data-filter-mod],[data-filter-channel]')].slice(0, inserted*3);
@@ -2639,9 +2640,9 @@
               }
             }
           });
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
         // Subtle in-page toast for new events (click to jump to newest area)
-  try { showFeedToast(inserted + ' novo(s) evento(s)', function(){ try { if(els.feed && els.feed.scrollIntoView) els.feed.scrollIntoView({ behavior:'smooth', block:'start' }); } catch {} }); } catch {}
+  try { showFeedToast(inserted + ' novo(s) evento(s)', function(){ try { if(els.feed && els.feed.scrollIntoView) els.feed.scrollIntoView({ behavior:'smooth', block:'start' }); } catch (e) { logger.debug('Caught error:', e?.message || e); } }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
         // Update head trackers
         lastTopId = list[0].id; lastTopTs = list[0].timestamp;
         return true;
@@ -2694,7 +2695,7 @@
         toast.style.opacity = '0.0'; toast.style.transition = 'opacity .4s ease';
         setTimeout(()=> toast.remove(), 450);
       }, 2200);
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
   // UX: Close modal on ESC and overlay background click
   try {
@@ -2704,7 +2705,7 @@
     els.modal?.addEventListener('click', (e) => {
       if (e.target === els.modal) closeModal();
     });
-  } catch {}
+  } catch (e) { logger.debug('Caught error:', e?.message || e); }
   // Hierarchy quick tools (legacy UI removed) - keep postAction helpers for quick actions/modals
   async function postAction(body){
   const r = await fetch('/api/guild/' + guildId + '/moderation/action', { method:'POST', headers:{ 'Content-Type':'application/json' }, credentials:'same-origin', body: JSON.stringify(body) });

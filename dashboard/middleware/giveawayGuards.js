@@ -7,6 +7,7 @@
 //    or a role in ALLOWED_MANAGER_ROLE_IDS env (comma separated) or admin override.
 
 const { GiveawayModel } = require('../../utils/db/giveawayModels');
+const logger = require('../utils/logger');
 
 const MAX_ACTIVE_DEFAULT = parseInt(process.env.GIVEAWAYS_MAX_ACTIVE || '5');
 const CREATE_COOLDOWN_MS = parseInt(process.env.GIVEAWAYS_CREATE_COOLDOWN_MS || (60_000).toString());
@@ -36,7 +37,7 @@ async function hasManagerPermission(req, guildId){
           }
         }
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
     // Check for giveaway manager role from guild config
     try {
@@ -47,13 +48,13 @@ async function hasManagerPermission(req, guildId){
       if (giveawayRoleId && userRoles && userRoles.includes(giveawayRoleId)) {
         return true;
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
     // Fallback to env-based role check
     const allowedEnv = (process.env.GIVEAWAYS_MANAGER_ROLES || '').split(',').map(s=>s.trim()).filter(Boolean);
     const roles = req.user.guildRoles && req.user.guildRoles[guildId];
     if (roles && allowedEnv.length && roles.some(r => allowedEnv.includes(r))) return true;
-  } catch {}
+  } catch (e) { logger.debug('Caught error:', e?.message || e); }
   return false;
 }
 

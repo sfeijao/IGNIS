@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, GuildMember, TextChannel, ModalBuilder, TextInputBuilder, TextInputStyle, UserSelectMenuBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder, PermissionsBitField } from 'discord.js';
 import { TicketModel } from '../models/ticket';
 import { TicketLogModel } from '../models/ticketLog';
@@ -69,7 +70,7 @@ export async function syncTicketPanel(client: Client, ticket: any): Promise<{ up
     }
     // We need a guild member for avatar (fallback: guild owner or first member cached)
     let member: GuildMember | null = null;
-    try { member = await guild.members.fetch(ticket.ownerId).catch(()=>null); } catch {}
+    try { member = await guild.members.fetch(ticket.ownerId).catch(()=>null); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     if (!member) {
       const ownerId = guild.ownerId || guild.members.cache.first()?.id;
       if (ownerId) member = await guild.members.fetch(ownerId).catch(()=>null);
@@ -84,7 +85,7 @@ export async function syncTicketPanel(client: Client, ticket: any): Promise<{ up
       const sent = await channel.send({ embeds, components });
       if (!ticket.messageId) {
         ticket.messageId = sent.id;
-        try { await ticket.save(); } catch {}
+        try { await ticket.save(); } catch (e) { logger.debug('Caught error:', e?.message || e); }
       }
       return { updated: true, reason: existing ? 'replaced' : 'created' };
     }
@@ -135,7 +136,7 @@ export function buildPanelComponentsNoPriority() {
       // @ts-ignore accessing runtime data
       rows[2].components = rows[2].components.filter((c: any)=> (c?.data?.custom_id || c?.customId) !== 'ticket:priority');
     }
-  } catch {}
+  } catch (e) { logger.debug('Caught error:', e?.message || e); }
   return rows;
 }
 
@@ -218,7 +219,7 @@ export async function openTicketTS(channel: TextChannel, owner: GuildMember, cat
       ticket.messageId = sent.id;
       await ticket.save();
     }
-  } catch {}
+  } catch (e) { logger.debug('Caught error:', e?.message || e); }
   return ticket;
 }
 
@@ -241,11 +242,11 @@ export async function handleCancel(ctx: ActionContext): Promise<ActionResult> {
     await ctx.ticket.save();
     await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'cancel');
     // Atualizar painel com novo estado
-    try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch {}
+    try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     // Adicionar botões de export/feedback após cancelamento
     try {
       await ctx.channel.send({ content: 'Ticket cancelado. Ações pós-fecho:', components: buildPostCloseRow() });
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
     return '✅ Ticket cancelado.';
   });
 }
@@ -260,7 +261,7 @@ export async function handleClaim(ctx: ActionContext): Promise<ActionResult> {
     await ctx.ticket.save();
     await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'claim');
     // Atualizar painel com responsável
-    try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch {}
+    try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     return '📌 Atendimento assumido.';
   });
 }
@@ -317,7 +318,7 @@ export async function handleClose(ctx: ActionContext): Promise<ActionResult> {
       const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]!));
       const rows = lines.map(l => `<div class="line">${esc(l)}</div>`).join('');
       transcriptHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Transcript Ticket ${ctx.ticket.id}</title><style>body{font-family:Segoe UI,Arial,sans-serif;background:#0f1113;color:#eee;padding:16px}h1{font-size:18px;margin:0 0 12px}div.line{font-size:13px;white-space:pre-wrap;font-family:Consolas,monospace;padding:2px 0;border-bottom:1px solid #222}div.line:nth-child(even){background:#14171a}</style></head><body><h1>Transcript Ticket ${ctx.ticket.id}</h1>${rows}</body></html>`;
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
     ctx.ticket.status = 'closed';
     ctx.ticket.meta = ctx.ticket.meta || {};
@@ -329,7 +330,7 @@ export async function handleClose(ctx: ActionContext): Promise<ActionResult> {
     };
     await ctx.ticket.save();
     await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'close', { transcriptStored: !!transcriptText });
-  try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch {}
+  try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     // Disparar webhooks configurados (transcript e vlog) após gerar transcript
     try {
       const webhookSvc = require('./webhookService');
@@ -371,7 +372,7 @@ export async function handleClose(ctx: ActionContext): Promise<ActionResult> {
       if (transcriptText && transcriptText.length < 190000) {
         await ctx.channel.send({ content: 'Ações pós-fecho:', components: buildPostCloseRow() }).catch(()=>{});
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
     return '✅ Ticket fechado (transcript gerado).';
   });
 }
@@ -385,7 +386,7 @@ export async function handleRelease(ctx: ActionContext): Promise<ActionResult> {
     ctx.ticket.staffAssigned = null;
     await ctx.ticket.save();
     await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'release', { previous: prev });
-    try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch {}
+    try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     return '👐 Ticket libertado.';
   });
 }
@@ -398,7 +399,7 @@ export async function handleLockToggle(ctx: ActionContext): Promise<ActionResult
     ctx.ticket.meta.locked = !locked;
     await ctx.ticket.save();
     await log(ctx.ticket.id, ctx.guildId, ctx.userId, locked ? 'unlock' : 'lock');
-    try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch {}
+    try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     return locked ? '🔓 Ticket desbloqueado.' : '🔐 Ticket bloqueado.';
   });
 }
@@ -433,12 +434,12 @@ export async function handleTranscript(ctx: ActionContext): Promise<ActionResult
         lines.push(`[${when}] ${authorTag}: ${content}`);
       }
       transcriptText = lines.join('\n');
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
     await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'transcript', { size: transcriptText.length });
     if (!transcriptText) return '❌ Não foi possível gerar transcript.';
     if (transcriptText.length < 180000) {
       const buf = Buffer.from(transcriptText, 'utf8');
-      try { await ctx.channel.send({ files: [{ attachment: buf, name: `ticket_${ctx.ticket.id}_transcript.txt` }] }); } catch {}
+      try { await ctx.channel.send({ files: [{ attachment: buf, name: `ticket_${ctx.ticket.id}_transcript.txt` }] }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
       return '📄 Transcript gerado.';
     }
     return '📄 Transcript demasiado grande (armazenado internamente).';
@@ -494,7 +495,7 @@ export async function handleAddMember(ctx: ActionContext): Promise<ActionResult>
     .setRequired(true)
     .setMaxLength(400);
   modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
-  try { await (ctx as any).interaction?.showModal?.(modal); } catch {}
+  try { await (ctx as any).interaction?.showModal?.(modal); } catch (e) { logger.debug('Caught error:', e?.message || e); }
   return '➕ Introduza os IDs/menções no modal.';
 }
 
@@ -510,7 +511,7 @@ export async function handleRemoveMember(ctx: ActionContext): Promise<ActionResu
     .setRequired(true)
     .setMaxLength(400);
   modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
-  try { await (ctx as any).interaction?.showModal?.(modal); } catch {}
+  try { await (ctx as any).interaction?.showModal?.(modal); } catch (e) { logger.debug('Caught error:', e?.message || e); }
   return '❌ Introduza os IDs/menções a remover.';
 }
 
@@ -591,7 +592,7 @@ export async function handlePrioritySet(ctx: ActionContext, chosenRaw: string): 
     (ctx.ticket.meta as any).priority = chosen; // Persistido dentro de meta para evitar alterar schema
     await ctx.ticket.save();
     await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'priority', { value: chosen });
-    try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch {}
+    try { await updateTicketStatusEmbeds((ctx.channel.client as any), ctx.ticket); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     const labelMap: Record<string,string> = { low: 'BAIXA', normal: 'NORMAL', high: 'ALTA', urgent: 'URGENTE' };
     return `⚡ Prioridade alterada para ${labelMap[chosen] || chosen.toUpperCase()}`;
   });
@@ -613,7 +614,7 @@ async function getStaffRoles(guildId: string): Promise<string[]> {
     const storage = require('../../utils/storage');
     const cfg = await storage.getGuildConfig(guildId, 'staffRoles');
     if (Array.isArray(cfg)) roles = cfg.filter(r => typeof r === 'string');
-  } catch {}
+  } catch (e) { logger.debug('Caught error:', e?.message || e); }
   staffCache.set(guildId, { roles, ts: now });
   return roles;
 }
@@ -648,7 +649,7 @@ export async function handleExport(ctx: ActionContext): Promise<ActionResult> {
     }
     // Send as attachment via calling channel send then ephemeral note
     const buf = Buffer.from(text, 'utf8');
-    try { await ctx.channel.send({ files: [{ attachment: buf, name: `ticket_${ctx.ticket.id}_logs.txt` }] }); } catch {}
+    try { await ctx.channel.send({ files: [{ attachment: buf, name: `ticket_${ctx.ticket.id}_logs.txt` }] }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     await log(ctx.ticket.id, ctx.guildId, ctx.userId, 'export', { count: entries.length, mode: 'file' });
     return '📄 Logs exportados (ficheiro enviado no canal).';
   } catch {

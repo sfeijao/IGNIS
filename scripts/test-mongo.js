@@ -8,6 +8,7 @@
 */
 
 const dns = require('dns');
+const logger = require('../utils/logger');
 const { MongoClient } = require('mongodb');
 const mongoose = require('mongoose');
 require('dotenv').config();
@@ -21,7 +22,7 @@ function maskMongoUri(uri) {
       const afterAt = uri.substring(atIndex + 1);
       return `${scheme}***@${afterAt}`;
     }
-  } catch {}
+  } catch (e) { logger.debug('Caught error:', e?.message || e); }
   return '***';
 }
 
@@ -66,7 +67,7 @@ async function testWithMongoDriver(uri, dbName){
   } catch (e) {
     return { ok: false, error: e.message || String(e) };
   } finally {
-    try { await client?.close(); } catch {}
+    try { await client?.close(); } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 }
 
@@ -80,7 +81,7 @@ async function testWithMongoose(uri, dbName){
     await mongoose.disconnect();
     return { ok: true };
   } catch (e) {
-    try { await mongoose.disconnect(); } catch {}
+    try { await mongoose.disconnect(); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     return { ok: false, error: e.message || String(e) };
   }
 }

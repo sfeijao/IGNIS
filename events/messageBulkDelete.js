@@ -18,7 +18,7 @@ module.exports = {
                 if (entry && entry.createdTimestamp > Date.now() - 15_000) {
                     executorId = entry.executor?.id || null;
                 }
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
             if (sample.client.socketManager) {
                 sample.client.socketManager.onDiscordEvent('messageBulkDelete', guildId, {
@@ -38,7 +38,7 @@ module.exports = {
                     message: `${messages.size}`,
                     data: { channelId: channel.id, executorId }
                 });
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
         } catch (err) {
             const logger = require('../utils/logger');
             logger.warn('messageBulkDelete handler error:', err?.message || err);

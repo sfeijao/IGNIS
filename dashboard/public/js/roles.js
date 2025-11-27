@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 (function(){
   // Ensure guild context
   try{
@@ -16,9 +17,9 @@
         return;
       }
     } else {
-      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch{}
+      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch(e) { logger.debug('Caught error:', e?.message || e); }
     }
-  }catch{}
+  }catch(e) { logger.debug('Caught error:', e?.message || e); }
 })();
 
 (function(){
@@ -27,7 +28,7 @@
 	let allRoles=[]; let members=[]; let selectedMember=null; let selectedRoles=new Set(); let multiSel=new Set();
 	function notify(m,t='info'){ const n=document.createElement('div'); n.className=`notification notification-${t} slide-up`; n.innerHTML=`<i class="fas ${t==='error'?'fa-exclamation-circle': t==='success'?'fa-check-circle':'fa-info-circle'}"></i><span>${m}</span>`; document.body.appendChild(n); setTimeout(()=>{n.style.animation='slideDown 0.3s ease-in'; setTimeout(()=>n.remove(),300);},2500); }
 	function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c)); }
-  function showStaleBanner(){ try{ if(document.getElementById('stale-banner')) return; const el=document.createElement('div'); el.id='stale-banner'; el.style.position='fixed'; el.style.bottom='16px'; el.style.left='50%'; el.style.transform='translateX(-50%)'; el.style.background='rgba(124,58,237,0.95)'; el.style.color='#fff'; el.style.padding='10px 14px'; el.style.borderRadius='8px'; el.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)'; el.style.zIndex='9999'; el.style.fontSize='14px'; el.textContent='Mostrando dados em cache temporariamente (a API do Discord limitou pedidos).'; document.body.appendChild(el); setTimeout(()=>{ el.remove(); }, 4000);}catch{}}
+  function showStaleBanner(){ try{ if(document.getElementById('stale-banner')) return; const el=document.createElement('div'); el.id='stale-banner'; el.style.position='fixed'; el.style.bottom='16px'; el.style.left='50%'; el.style.transform='translateX(-50%)'; el.style.background='rgba(124,58,237,0.95)'; el.style.color='#fff'; el.style.padding='10px 14px'; el.style.borderRadius='8px'; el.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)'; el.style.zIndex='9999'; el.style.fontSize='14px'; el.textContent='Mostrando dados em cache temporariamente (a API do Discord limitou pedidos).'; document.body.appendChild(el); setTimeout(()=>{ el.remove(); }, 4000);}catch(e) { logger.debug('Caught error:', e?.message || e); }}
   async function loadRoles(){
     // Use shared cached GET to avoid bursts
     if(window.IGNISFetch && window.IGNISFetch.fetchJsonCached){
@@ -158,7 +159,7 @@
   const moveSel=document.getElementById('rmMoveRoleSelect');
   const delSel=document.getElementById('rmDeleteRoleSelect');
   function enhanceDeleteSelect(){
-    try{ if(window.IGNISMultiselect && delSel) window.IGNISMultiselect.enhance(delSel, { searchPlaceholder:'Pesquisar cargos…' }); }catch{}
+    try{ if(window.IGNISMultiselect && delSel) window.IGNISMultiselect.enhance(delSel, { searchPlaceholder:'Pesquisar cargos…' }); }catch(e) { logger.debug('Caught error:', e?.message || e); }
   }
   // Attempt to hook into existing roles loading by monkey patching loadRoles if present later
   function populateDropdowns(){
@@ -235,7 +236,7 @@
       try{ await apiJson(`/api/guild/${getGuildId()}/roles/${encodeURIComponent(it.id)}`, { method:'DELETE' }); ok++; }
       catch(e){ fail++; errors.push({ id: it.id, name: it.name, err: e && e.message || 'erro' }); }
     }
-    if(delSel){ for(const o of delSel.options){ o.selected = false; } try{ if(window.IGNISMultiselect) window.IGNISMultiselect.refresh(delSel); }catch{} }
+    if(delSel){ for(const o of delSel.options){ o.selected = false; } try{ if(window.IGNISMultiselect) window.IGNISMultiselect.refresh(delSel); }catch(e) { logger.debug('Caught error:', e?.message || e); } }
     if(ok) toast(`Apagado(s): ${ok}`);
     if(fail){ toastError(`${fail} falha(s)`); console.warn('Falhas ao apagar cargos:', errors); }
     triggerSoftReload();
@@ -318,7 +319,7 @@
         const data = await cloned.json();
         if(data && data.roles){ lastRoles = data.roles; setTimeout(applyPositions, 50); window.refreshRoleDropdownHelpers && window.refreshRoleDropdownHelpers(lastRoles); }
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
     return res;
   };
   function applyPositions(){
@@ -390,7 +391,7 @@
     const res=await fetch(`/api/guild/${guildId}/roles/${roleId}`,{method:'DELETE'});
     // Treat 404 (already deleted) as success and just return silently
     if(res.status===404) return;
-    let data=null; try{ data=await res.json(); }catch{};
+    let data=null; try{ data=await res.json(); }catch(e) { logger.debug('Caught error:', e?.message || e); };
     if(!res.ok || (data && data.success===false)) throw new Error((data&&data.error)||`HTTP ${res.status}`);
   }
   function guildId(){ const p=new URLSearchParams(window.location.search); return p.get('guildId')||window.guildId||window.currentGuildId||''; }

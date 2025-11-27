@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 "use client"
 
 import { useEffect, useState } from 'react'
@@ -15,7 +16,7 @@ export default function DiagnosticsPanel() {
     let aborted = false
     setLoading(true)
     ;(async () => {
-      try { const res = await fetch(`/api/guild/${guildId}/diagnostics`, { credentials: 'include' }); const json = await res.json(); if (!aborted) setData(json) } catch {}
+      try { const res = await fetch(`/api/guild/${guildId}/diagnostics`, { credentials: 'include' }); const json = await res.json(); if (!aborted) setData(json) } catch (e) { logger.debug('Caught error:', e?.message || e); }
       finally { if (!aborted) setLoading(false) }
     })()
     return () => { aborted = true }

@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
@@ -63,7 +64,7 @@ export default function CommandsManager() {
         try { 
           const ch = await api.getChannels(guildId); 
           setChannels(ch.channels || ch || []) 
-        } catch {} 
+        } catch (e) { logger.debug('Caught error:', e?.message || e); } 
       })() 
     } 
   }, [guildId])

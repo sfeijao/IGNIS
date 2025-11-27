@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
@@ -116,7 +117,7 @@ export default function DashboardStats() {
       if (fromParam) initial = parseDur(fromParam)
       else if (ls) initial = Math.max(0, parseFloat(ls))
       setRefreshMinutes(initial)
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
     fetchStats()
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,7 +131,7 @@ export default function DashboardStats() {
     if (refreshMinutes > 0) {
       intervalRef.current = setInterval(fetchStats, refreshMinutes * 60 * 1000)
     }
-    try { localStorage.setItem('dash-refresh-mins', String(refreshMinutes)) } catch {}
+    try { localStorage.setItem('dash-refresh-mins', String(refreshMinutes)) } catch (e) { logger.debug('Caught error:', e?.message || e); }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }

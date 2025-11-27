@@ -186,15 +186,25 @@ class ErrorHandler {
     }
 
     /**
-     * Limpar estatísticas antigas (executar periodicamente)
+     * Iniciar limpeza periódica de estatísticas
      */
-    cleanupStats() {
-        setInterval(() => {
+    startStatsCleanup() {
+        this.statsCleanupInterval = setInterval(() => {
             // Em produção, implementar lógica mais sofisticada
             if (this.errorCounts.size > 1000) {
                 this.errorCounts.clear();
             }
         }, 60 * 60 * 1000); // 1 hora
+    }
+
+    /**
+     * Parar limpeza e limpar timers
+     */
+    shutdown() {
+        if (this.statsCleanupInterval) {
+            clearInterval(this.statsCleanupInterval);
+            this.statsCleanupInterval = null;
+        }
     }
 }
 

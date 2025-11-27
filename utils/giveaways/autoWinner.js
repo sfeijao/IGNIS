@@ -47,7 +47,7 @@ async function createGiveawayWinnerTicket({ guildId, userId, giveaway, client })
 
     // Obter configuração do servidor
     let cfg;
-    try { cfg = await storage.getGuildConfig(guildId); } catch {}
+    try { cfg = await storage.getGuildConfig(guildId); } catch (e) { logger.debug('Caught error:', e?.message || e); }
     let parentCategoryId = cfg?.tickets?.ticketsCategoryId || null;
 
     // Encontrar ou criar categoria de tickets
@@ -265,7 +265,7 @@ async function checkExpiredGiveawayTickets(client) {
             try {
               await channel.delete('Ticket giveaway expirado sem resposta');
               logger.info(`[GiveawayTicket] Deleted expired ticket channel ${ticket.channel_id}`);
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
           }, 10000);
         }
 

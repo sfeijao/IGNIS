@@ -84,10 +84,10 @@ class CSRFProtection {
     }
 
     /**
-     * Limpa tokens expirados a cada 5 minutos
+     * Iniciar limpeza periódica de tokens expirados
      */
-    cleanup() {
-        setInterval(() => {
+    startCleanup() {
+        this.cleanupInterval = setInterval(() => {
             const now = Date.now();
             for (const [token, data] of this.tokens.entries()) {
                 if (now > data.expires) {
@@ -95,6 +95,16 @@ class CSRFProtection {
                 }
             }
         }, 5 * 60 * 1000);
+    }
+
+    /**
+     * Parar cleanup e limpar timers
+     */
+    shutdown() {
+        if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+            this.cleanupInterval = null;
+        }
     }
 }
 

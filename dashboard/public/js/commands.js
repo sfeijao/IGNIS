@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 (function(){
 	// Ensure guild context
 	try{
@@ -6,8 +7,8 @@
 			const last=localStorage.getItem('IGNIS_LAST_GUILD');
 			if(last){ const q=new URLSearchParams(window.location.search); q.set('guildId', last); const next=`${window.location.pathname}?${q.toString()}${window.location.hash||''}`; window.location.replace(next); return; }
 			else { window.location.href='/dashboard'; return; }
-		} else { try{ localStorage.setItem('IGNIS_LAST_GUILD', gid0); }catch{} }
-	}catch{}
+		} else { try{ localStorage.setItem('IGNIS_LAST_GUILD', gid0); }catch(e) { logger.debug('Caught error:', e?.message || e); } }
+	}catch(e) { logger.debug('Caught error:', e?.message || e); }
 })();
 
 (function(){

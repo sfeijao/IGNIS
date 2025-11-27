@@ -1,4 +1,5 @@
 const sqlite3 = require('sqlite3').verbose();
+const logger = require('../utils/logger');
 const path = require('path');
 const dbPath = path.join(__dirname, '..', 'website', 'database', 'ignis_dashboard.db');
 const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
@@ -72,7 +73,7 @@ async function run() {
       });
     } catch (e) {
       console.error('Unexpected error', e);
-      try { db.run('ROLLBACK'); } catch(_){}
+      try { db.run('ROLLBACK'); } catch(_){ logger.debug('Caught error:', _?.message || _); }
       db.close();
       process.exit(99);
     }

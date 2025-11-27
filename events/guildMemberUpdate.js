@@ -31,7 +31,7 @@ module.exports = {
             try {
                 const storage = require('../utils/storage');
                 await storage.addLog({ guild_id: guildId, type: 'mod_member_update', message: 'member_updated', data: { userId: newMember.id, ...changes } });
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
         } catch (err) {
             const logger = require('../utils/logger');
             logger.warn('guildMemberUpdate handler error:', err?.message || err);

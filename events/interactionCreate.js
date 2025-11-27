@@ -295,7 +295,7 @@ module.exports = {
                         if (!global.__verifyPressCache) {
                             global.__verifyPressCache = new Map();
                             // Cleanup old entries every 5 minutes to prevent memory leak
-                            setInterval(() => {
+                            global.__verifyPressCacheCleanup = setInterval(() => {
                                 const now = Date.now();
                                 const MAX_AGE_MS = 60 * 60 * 1000; // 1 hora
                                 for (const [k, timestamp] of global.__verifyPressCache.entries()) {
@@ -308,7 +308,7 @@ module.exports = {
                         const last = global.__verifyPressCache.get(key) || 0;
                         // Optional configurable cooldown from dashboard (overrides default)
                         let vcfg = {};
-                        try { const storage = require('../utils/storage'); const cfg = await storage.getGuildConfig(interaction.guild.id); vcfg = cfg?.verification || {}; } catch {}
+                        try { const storage = require('../utils/storage'); const cfg = await storage.getGuildConfig(interaction.guild.id); vcfg = cfg?.verification || {}; } catch (e) { logger.debug('Caught error:', e?.message || e); }
                         const configuredCooldownMs = Math.max(0, Number(vcfg.cooldownSeconds || 0)) * 1000;
                         const minCooldown = configuredCooldownMs || 3000;
                         if (Date.now() - last < minCooldown) {
@@ -327,7 +327,7 @@ module.exports = {
                             try {
                                 const img = await renderCaptchaImage(data.code);
                                 if (img) files = [{ name: 'captcha.png', attachment: img }];
-                            } catch {}
+                            } catch (e) { logger.debug('Caught error:', e?.message || e); }
                             const row = new ActionRowBuilder().addComponents(
                                 new ButtonBuilder().setCustomId(BUTTON_IDS.VERIFY_OPEN_CAPTCHA).setLabel('Inserir Código').setEmoji('⌨️').setStyle(ButtonStyle.Primary),
                                 new ButtonBuilder().setCustomId(BUTTON_IDS.VERIFY_REFRESH_CAPTCHA).setLabel('Atualizar').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
@@ -379,7 +379,7 @@ module.exports = {
                                     type: 'verification_fail',
                                     message: 'role_not_found'
                                 });
-                            } catch {}
+                            } catch (e) { logger.debug('Caught error:', e?.message || e); }
                             await errorHandler.handleInteractionError(interaction, new Error('VERIFY_ROLE_NOT_FOUND'));
                             return;
                         }
@@ -387,7 +387,7 @@ module.exports = {
                         // Ensure we have a GuildMember instance (interaction.member can be null in some edge cases)
                         let member = interaction.member;
                         if (!member) {
-                            try { member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null); } catch {}
+                            try { member = await interaction.guild.members.fetch(interaction.user.id).catch(()=>null); } catch (e) { logger.debug('Caught error:', e?.message || e); }
                         }
                         if (member?.roles?.cache?.has(verifyRole.id)) {
                             return await interaction.reply({
@@ -413,7 +413,7 @@ module.exports = {
                                     message: 'role_add_failed',
                                     role_id: verifyRole.id
                                 });
-                            } catch {}
+                            } catch (e) { logger.debug('Caught error:', e?.message || e); }
                             // Still respond gracefully
                         }
                         if (unverifiedRole && member?.roles?.cache?.has(unverifiedRole.id)) {
@@ -428,7 +428,7 @@ module.exports = {
                         try {
                             const storage = require('../utils/storage');
                             await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_success', message: (vcfg.method || 'button') });
-                        } catch {}
+                        } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
                         // Structured diagnostic log
                         logger.database('verification', {
@@ -447,7 +447,7 @@ module.exports = {
                             if (logFails && keepDays && keepDays > 0) {
                                 await storage.pruneLogsByTypeOlderThan(interaction.guild.id, 'verification_fail', keepDays * 24 * 60 * 60 * 1000);
                             }
-                        } catch {}
+                        } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
                         // Analytics para dashboard
                         if (global.socketManager) {
@@ -478,13 +478,13 @@ module.exports = {
                 if (customId === BUTTON_IDS.VERIFY_REFRESH_CAPTCHA) {
                     try {
                         let vcfg = {};
-                        try { const storage = require('../utils/storage'); const cfg = await storage.getGuildConfig(interaction.guild.id); vcfg = cfg?.verification || {}; } catch {}
+                        try { const storage = require('../utils/storage'); const cfg = await storage.getGuildConfig(interaction.guild.id); vcfg = cfg?.verification || {}; } catch (e) { logger.debug('Caught error:', e?.message || e); }
                         const mode = vcfg.mode || 'easy';
                         const cm = require('../utils/captchaManager');
                         const { renderCaptchaImage } = require('../utils/captchaImage');
                         const data = cm.refresh(interaction.guild.id, interaction.user.id, mode);
                         let files = [];
-                        try { const img = await renderCaptchaImage(data.code); if (img) files = [{ name: 'captcha.png', attachment: img }]; } catch {}
+                        try { const img = await renderCaptchaImage(data.code); if (img) files = [{ name: 'captcha.png', attachment: img }]; } catch (e) { logger.debug('Caught error:', e?.message || e); }
                         const desc = files.length
                             ? `${EMOJIS.INFO} Novo captcha gerado. Introduz o código da imagem abaixo.`
                             : `${EMOJIS.WARNING} Não foi possível gerar a imagem. Código: ${data.code}`;
@@ -1051,9 +1051,9 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                         await interaction.member.roles.add(verifyRole).catch(()=>{});
                         if (unverifiedRole && interaction.member.roles.cache.has(unverifiedRole.id)) await interaction.member.roles.remove(unverifiedRole).catch(()=>{});
                         // store a lightweight log entry
-                        try { await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_form', data: { answersCount: answers.length } }); } catch {}
+                        try { await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_form', data: { answersCount: answers.length } }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
                         // metrics success
-                        try { await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_success', message: 'form' }); } catch {}
+                        try { await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_success', message: 'form' }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
                         await interaction.reply({ content: `${EMOJIS.SUCCESS} Verificação completa! Bem-vindo(a) ao servidor!`, flags: MessageFlags.Ephemeral });
                     } catch (error) { await errorHandler.handleInteractionError(interaction, error); }
                     return;
@@ -1069,7 +1069,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                             try {
                                 const storage = require('../utils/storage');
                                 await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_fail', message: `captcha_${res.reason||'mismatch'}` });
-                            } catch {}
+                            } catch (e) { logger.debug('Caught error:', e?.message || e); }
                             return await interaction.reply({ content: `${EMOJIS.ERROR} ${reason}`, flags: MessageFlags.Ephemeral });
                         }
 
@@ -1083,7 +1083,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                             const unverifiedRoleId = vcfg.unverifiedRoleId || null;
                             if (verifiedRoleId) verifyRole = interaction.guild.roles.cache.get(verifiedRoleId) || null;
                             if (unverifiedRoleId) unverifiedRole = interaction.guild.roles.cache.get(unverifiedRoleId) || null;
-                        } catch {}
+                        } catch (e) { logger.debug('Caught error:', e?.message || e); }
                         if (!verifyRole) return await interaction.reply({ content: `${EMOJIS.ERROR} Cargo de verificado não encontrado.`, flags: MessageFlags.Ephemeral });
                         if (interaction.member.roles.cache.has(verifyRole.id)) return await interaction.reply({ content: `${EMOJIS.SUCCESS} Já estás verificado!`, flags: MessageFlags.Ephemeral });
                         await interaction.member.roles.add(verifyRole).catch(()=>{});
@@ -1092,7 +1092,7 @@ Data de fechamento: ${new Date().toLocaleString('pt-PT')}
                         }
                         await interaction.reply({ content: `${EMOJIS.SUCCESS} Verificação completa! Bem-vindo(a) ao servidor!`, flags: MessageFlags.Ephemeral });
                         // metrics success
-                        try { const storage = require('../utils/storage'); await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_success', message: 'image' }); } catch {}
+                        try { const storage = require('../utils/storage'); await storage.addLog({ guild_id: interaction.guild.id, user_id: interaction.user.id, type: 'verification_success', message: 'image' }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
                     } catch (error) { await errorHandler.handleInteractionError(interaction, error); }
                     return;
                 }

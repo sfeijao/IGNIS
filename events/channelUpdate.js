@@ -33,6 +33,6 @@ module.exports = {
             const after = snap(newCh);
             if (JSON.stringify(before) === JSON.stringify(after)) return;
             await storage.addLog({ guild_id: guildId, type: 'mod_channel_update', message: newCh.name, data: { before, after } });
-        } catch (e) { try { require('../utils/logger').warn('channelUpdate log failed:', e?.message||e); } catch {} }
+        } catch (e) { try { require('../utils/logger').warn('channelUpdate log failed:', e?.message||e); } catch (e) { logger.debug('Caught error:', e?.message || e); } }
     }
 };

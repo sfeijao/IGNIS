@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // scripts/check-env.js - Quick environment sanity check
 require('dotenv').config();
+const logger = require('../utils/logger');
 const url = require('url');
 const config = require('../utils/config');
 
@@ -19,7 +20,7 @@ out.push(['MONGO_URI|MONGODB_URI', ok(mongoUri)]);
 const baseUrl = process.env.BASE_URL || config.WEBSITE.BASE_URL;
 const callback = process.env.CALLBACK_URL || config.WEBSITE.CALLBACK_URL;
 let hostMatch = 'unknown';
-try { hostMatch = new url.URL(baseUrl).host === new url.URL(callback, baseUrl).host ? 'match' : 'MISMATCH'; } catch {}
+try { hostMatch = new url.URL(baseUrl).host === new url.URL(callback, baseUrl).host ? 'match' : 'MISMATCH'; } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
 const internalToken = process.env.INTERNAL_API_TOKEN || '';
 out.push(['INTERNAL_API_TOKEN (bot→dashboard webhook)', ok(internalToken)]);

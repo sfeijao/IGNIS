@@ -1,5 +1,6 @@
 // Sistema de Tickets - Handler Comunitário Simples
 const { MessageFlags } = require('discord.js');
+const logger = require('../utils/logger');
 const communityTickets = require('../utils/communityTickets');
 
 module.exports = {
@@ -23,9 +24,9 @@ module.exports = {
                                 // Se o handler TS não respondeu (canal legado), continuar para o comunitário
                                 if (interaction.replied || interaction.deferred) return;
                             }
-                        } catch {}
+                        } catch (e) { logger.debug('Caught error:', e?.message || e); }
                     }
-                } catch {}
+                } catch (e) { logger.debug('Caught error:', e?.message || e); }
                 await communityTickets.handleButton(interaction);
                 return;
             }

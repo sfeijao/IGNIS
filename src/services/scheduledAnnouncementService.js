@@ -34,7 +34,7 @@ class ScheduledAnnouncementService {
                 announcement.status = 'failed';
                 announcement.errorMessage = error.message;
                 await announcement.save();
-                console.error('Erro ao enviar anúncio:', error);
+                logger.error('Erro ao enviar anúncio:', error);
             }
         }
     }

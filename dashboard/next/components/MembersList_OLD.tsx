@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
@@ -24,7 +25,7 @@ export default function MembersList() {
 
   useEffect(() => {
     if (!guildId) return
-    ;(async () => { try { const res = await api.getRoles(guildId); setRoles(res.roles || []) } catch {} })()
+    ;(async () => { try { const res = await api.getRoles(guildId); setRoles(res.roles || []) } catch (e) { logger.debug('Caught error:', e?.message || e); } })()
   }, [guildId])
 
   useEffect(() => {

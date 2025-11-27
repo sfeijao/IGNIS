@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
@@ -93,15 +94,15 @@ export default function VerificationConfig() {
             })
           }
         }
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
       try {
         const list = await api.getChannels(guildId)
         if (!aborted) setChannels(list.channels || list || [])
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
       try {
         const rs = await api.getRoles(guildId)
         if (!aborted) setRoles(rs.roles || rs || [])
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
     })()
     return () => { aborted = true }
   }, [guildId])
@@ -508,7 +509,7 @@ function exportQuestions(questions: any[]) {
     a.click()
     a.remove()
     URL.revokeObjectURL(url)
-  } catch {}
+  } catch (e) { logger.debug('Caught error:', e?.message || e); }
 }
 
 function importQuestions(e: any, setQuestions: (q:any[])=>void, setErr: (s:string|null)=>void) {

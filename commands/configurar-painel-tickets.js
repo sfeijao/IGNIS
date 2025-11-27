@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const { EMBED_COLORS, EMOJIS } = require('../constants/ui');
 const TicketPermissionManager = require('../utils/TicketPermissionManager');
@@ -98,7 +99,7 @@ module.exports = {
                     { $set: { message_id: message.id, theme, payload } },
                     { upsert: true }
                 );
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
             // Embed de confirmação profissional
             const confirmEmbed = new EmbedBuilder()

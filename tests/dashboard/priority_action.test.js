@@ -1,4 +1,5 @@
 const supertest = require('supertest')
+const logger = require('../utils/logger');
 
 let app, request
 let memoryTickets
@@ -62,9 +63,9 @@ describe('dashboard: ticket priority action', () => {
       // Clear captured intervals
       // @ts-ignore
       for (const id of global.__capturedIntervals || []) clearInterval(id)
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
     // Best-effort: close any server listener if returned
-    try { if (app && app.close) app.close() } catch {}
+    try { if (app && app.close) app.close() } catch (e) { logger.debug('Caught error:', e?.message || e); }
   })
 
   it('updates priority via ticket action', async () => {

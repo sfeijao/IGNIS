@@ -115,7 +115,7 @@ async function postToType(guildId, type, payload){
         if (isDiscord && !hasMessage) {
           body = { content: `🔔 Teste de Webhook (${target.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${target.type}` };
         }
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
       const start = Date.now();
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
@@ -202,7 +202,7 @@ async function postToAll(guildId, payload){
         if (isDiscord && !hasMessage) {
           body = { content: `🔔 Teste de Webhook (${target.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${target.type}` };
         }
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
       const start = Date.now();
       const controller = new AbortController();
       const timeout = setTimeout(()=> controller.abort(), 10000);
@@ -261,7 +261,7 @@ async function testAndActivate(id, guildId, payload){
     if (isDiscord && !hasMessage) {
       body = { content: `🔔 Teste de Webhook (${doc.type}) • ${new Date().toISOString()}`, username: `IGNIS • ${doc.type}` };
     }
-  } catch {}
+  } catch (e) { logger.debug('Caught error:', e?.message || e); }
   let ok = false; let status = 0; let lastErr = null;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);

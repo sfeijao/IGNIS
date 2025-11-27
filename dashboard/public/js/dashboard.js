@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 // IGNIS Dashboard - Modern JavaScript
 class IGNISDashboard {
     constructor() {
@@ -42,8 +43,8 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             if (!exists) return;
             const card = document.querySelector(`.server-card[data-guild-id="${wanted}"]`);
             this.selectGuild(wanted, card || null);
-            try { localStorage.setItem('IGNIS_LAST_GUILD', wanted); } catch {}
-        } catch {}
+            try { localStorage.setItem('IGNIS_LAST_GUILD', wanted); } catch (e) { logger.debug('Caught error:', e?.message || e); }
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
     }
 
     async loadUser() {
@@ -107,7 +108,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                 if (data?.success && Array.isArray(data.guilds)) {
                     window.__ignis.guildsCache = { at: Date.now(), data: data.guilds };
                 }
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
             if (!response.ok) {
                 if (response.status === 401) {
@@ -163,7 +164,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
             el.textContent = 'Mostrando dados em cache temporariamente (a API do Discord limitou pedidos).';
             document.body.appendChild(el);
             setTimeout(() => { el.remove(); }, 4000);
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
     }
 
     updateUserDisplay() {
@@ -263,7 +264,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
         serverCards.forEach(card => {
             card.addEventListener('click', () => {
                 const guildId = card.dataset.guildId;
-                try { localStorage.setItem('IGNIS_LAST_GUILD', guildId); } catch {}
+                try { localStorage.setItem('IGNIS_LAST_GUILD', guildId); } catch (e) { logger.debug('Caught error:', e?.message || e); }
                 this.selectGuild(guildId, card);
             });
             // Create Panel shortcut (stop click bubbling)
@@ -273,7 +274,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
                     e.stopPropagation();
                     const guildId = card.dataset.guildId;
                     this.currentGuild = guildId;
-                    try { localStorage.setItem('IGNIS_LAST_GUILD', guildId); } catch {}
+                    try { localStorage.setItem('IGNIS_LAST_GUILD', guildId); } catch (e) { logger.debug('Caught error:', e?.message || e); }
                     window.location.href = `/panels.html?guildId=${encodeURIComponent(guildId)}#create`;
                 });
             }
@@ -293,7 +294,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
 
             this.currentGuild = guildId;
             // Persist selection para uso em outras páginas
-            try { localStorage.setItem('IGNIS_LAST_GUILD', guildId); } catch {}
+            try { localStorage.setItem('IGNIS_LAST_GUILD', guildId); } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
             // Hide server selection and show dashboard
             const serverSelection = document.getElementById('serverSelection');
@@ -1349,7 +1350,7 @@ console.log('🚀 Inicializando IGNIS Dashboard...');
     function requireGuild(){
         const gid = dash?.currentGuild;
         if (!gid) {
-            try { alert('Selecione um servidor primeiro'); } catch {}
+            try { alert('Selecione um servidor primeiro'); } catch (e) { logger.debug('Caught error:', e?.message || e); }
             return null;
         }
         return gid;

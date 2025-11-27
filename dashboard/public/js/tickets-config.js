@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 (function(){
   // Ensure guild context
   try{
@@ -16,9 +17,9 @@
         return;
       }
     } else {
-      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch{}
+      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch(e) { logger.debug('Caught error:', e?.message || e); }
     }
-  }catch{}
+  }catch(e) { logger.debug('Caught error:', e?.message || e); }
 })();
 
 (function(){
@@ -82,7 +83,7 @@
         if (els.userName) els.userName.textContent = d.user.username || 'Utilizador';
         if (els.userAvatar && d.user.avatar) els.userAvatar.src = d.user.avatar;
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   async function load() {
@@ -304,7 +305,7 @@
           els.ticketsCategory.innerHTML = `<option value="">— Sem categoria —</option>` + (cats.categories||[]).map(c=>`<option value="${c.id}">${(c.name||c.id)}</option>`).join('');
           els.ticketsCategory.value = cat?.id || '';
         }
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
       notify('Categoria criada', 'success');
     } catch (e) { console.error(e); notify(e.message||'Falha ao criar categoria', 'error'); }
   });

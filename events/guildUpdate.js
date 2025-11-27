@@ -26,7 +26,7 @@ module.exports = {
         if (cfg && Object.prototype.hasOwnProperty.call(cfg, 'autoRefreshPanels')) {
           enabled = !!cfg.autoRefreshPanels;
         }
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
       if (!enabled) return;
 
       // Resolve panels from storage (Mongo preferred, fallback to SQLite if configured)
@@ -54,7 +54,7 @@ module.exports = {
           const t = await sqlite.getPanelsByType(guildId, 'tickets');
           const v = await sqlite.getPanelsByType(guildId, 'verification');
           panels = [...(Array.isArray(t)?t:[]), ...(Array.isArray(v)?v:[])];
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
       }
       if (!Array.isArray(panels) || panels.length === 0) return;
 
@@ -160,7 +160,7 @@ module.exports = {
         }
       }
 
-      try { require('../utils/logger').info(`🔁 Painéis de ${newGuild.name} atualizados após mudança de ${iconChanged?'ícone':''}${iconChanged&&nameChanged?' e ':''}${nameChanged?'nome':''}.`); } catch {}
-    } catch {}
+      try { require('../utils/logger').info(`🔁 Painéis de ${newGuild.name} atualizados após mudança de ${iconChanged?'ícone':''}${iconChanged&&nameChanged?' e ':''}${nameChanged?'nome':''}.`); } catch (e) { logger.debug('Caught error:', e?.message || e); }
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 };

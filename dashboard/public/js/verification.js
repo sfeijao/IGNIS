@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 (function(){
 	// Ensure guild context
 	try{
@@ -16,9 +17,9 @@
 				return;
 			}
 		} else {
-			try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch{}
+			try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch(e) { logger.debug('Caught error:', e?.message || e); }
 		}
-	}catch{}
+	}catch(e) { logger.debug('Caught error:', e?.message || e); }
 })();
 
 (function(){
@@ -235,14 +236,14 @@
 		try{ const r=await fetch(`/api/guild/${guildId}/roles`, {credentials:'same-origin'}); const d=await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`);
 			const list = d.roles||[]; const opts = ['<option value="">—</option>'].concat(list.map(r=>`<option value="${r.id}">${r.name}</option>`)).join('');
 			if(els.verifiedRole) els.verifiedRole.innerHTML = opts; if(els.unverifiedRole) els.unverifiedRole.innerHTML = opts;
-		}catch{}
+		}catch(e) { logger.debug('Caught error:', e?.message || e); }
 	}
 
 	async function loadChannels(){
 		try{ const r=await fetch(`/api/guild/${guildId}/channels`, {credentials:'same-origin'}); const d=await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`);
 			const list = d.channels||[]; const opts = ['<option value="">—</option>'].concat(list.map(c=>`<option value="${c.id}">${c.name}</option>`)).join('');
 			if(els.panelChannel) els.panelChannel.innerHTML = opts;
-		}catch{}
+		}catch(e) { logger.debug('Caught error:', e?.message || e); }
 	}
 
 	async function save(){
@@ -347,7 +348,7 @@
 			document.getElementById('useSavedDefaults')?.addEventListener('change', (e)=>{
 				useSavedDefaults = !!e.target.checked;
 			});
-		}catch{}
+		}catch(e) { logger.debug('Caught error:', e?.message || e); }
 	})();
 
 	els.newQuestionType?.addEventListener('change', ()=>{ toggleOptionsEditor(); });

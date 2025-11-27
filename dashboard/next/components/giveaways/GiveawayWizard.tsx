@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 "use client"
 
 import { useEffect, useRef, useState } from 'react'
@@ -84,13 +85,13 @@ export default function GiveawayWizard(){
   useEffect(() => {
     if (open && guildId) {
       // Focus first field
-      setTimeout(() => { try { firstFieldRef.current?.focus() } catch {} }, 0)
+      setTimeout(() => { try { firstFieldRef.current?.focus() } catch (e: any) { logger.debug('Caught error:', e?.message || e); } }, 0)
 
       // Fetch active giveaway count
       fetch(`/api/guilds/${guildId}/giveaways?status=active`, { credentials: 'include' })
         .then(r => r.json().then(j => ({ ok: r.ok, data: j })))
         .then(({ ok, data }) => { if (ok && data && Array.isArray(data.giveaways)) setActiveCount(data.giveaways.length) })
-        .catch(()=>{})
+        .catch(e => { console.error('[GiveawayWizard] Failed to fetch active count:', e) })
 
       // Fetch text channels
       fetch(`/api/guild/${guildId}/channels`, { credentials: 'include' })
@@ -106,7 +107,7 @@ export default function GiveawayWizard(){
             }
           }
         })
-        .catch(()=>{})
+        .catch(e => { console.error('[GiveawayWizard] Failed to fetch channels:', e) })
     }
   }, [open, guildId])
 
@@ -116,7 +117,7 @@ export default function GiveawayWizard(){
   }
   function closeModal(){
     setOpen(false)
-    setTimeout(()=>{ try { triggerRef.current?.focus() } catch {} }, 0)
+    setTimeout(()=>{ try { triggerRef.current?.focus() } catch (e: any) { logger.debug('Caught error:', e?.message || e); } }, 0)
   }
 
   return (

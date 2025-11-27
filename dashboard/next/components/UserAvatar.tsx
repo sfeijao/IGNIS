@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -15,7 +16,7 @@ export default function UserAvatar() {
         if (!r.ok) return
         const d = await r.json()
         if (!aborted && d && d.success && d.user) setUser(d.user)
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
     })()
     return () => { aborted = true }
   }, [])

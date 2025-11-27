@@ -16,7 +16,7 @@ module.exports = {
                     executorId = entry.executor?.id || null;
                     reason = entry.reason || null;
                 }
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
             if (guild.client.socketManager) {
                 guild.client.socketManager.onDiscordEvent('guildBanAdd', guild.id, {
@@ -31,7 +31,7 @@ module.exports = {
             try {
                 const storage = require('../utils/storage');
                 await storage.addLog({ guild_id: guild.id, type: 'mod_ban_add', message: reason || '', data: { userId: user.id, executorId } });
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
         } catch (err) {
             const logger = require('../utils/logger');
             logger.warn('guildBanAdd handler error:', err?.message || err);

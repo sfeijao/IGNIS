@@ -9,15 +9,24 @@ export default function ModerationSummary() {
   const [cases, setCases] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [enabled, setEnabled] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = async () => {
     if (!guildId) return
     setLoading(true)
+    setError(null)
     try {
-      const s = await fetch(`/api/guild/${guildId}/mod/stats`, { credentials: 'include' }).then(r=>r.json()).catch(()=> null)
-      const c = await fetch(`/api/guild/${guildId}/mod/cases?limit=20`, { credentials: 'include' }).then(r=>r.json()).catch(()=> null)
+      const s = await fetch(`/api/guild/${guildId}/mod/stats`, { credentials: 'include' })
+        .then(r => r.json())
+        .catch(e => { console.error('[ModerationSummary] Failed to load stats:', e); return null })
+      const c = await fetch(`/api/guild/${guildId}/mod/cases?limit=20`, { credentials: 'include' })
+        .then(r => r.json())
+        .catch(e => { console.error('[ModerationSummary] Failed to load cases:', e); return null })
       setStats(s)
       setCases(c?.cases || c || [])
+    } catch (e: any) {
+      console.error('[ModerationSummary] Load failed:', e)
+      setError(e?.message || 'Failed to load moderation data')
     } finally { setLoading(false) }
   }
 

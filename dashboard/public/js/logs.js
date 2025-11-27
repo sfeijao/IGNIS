@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 (function(){
   // Ensure guild context
   try{
@@ -16,9 +17,9 @@
         return;
       }
     } else {
-      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid0); }catch{}
+      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid0); }catch(e) { logger.debug('Caught error:', e?.message || e); }
     }
-  }catch{}
+  }catch(e) { logger.debug('Caught error:', e?.message || e); }
 })();
 
 (function(){
@@ -102,7 +103,7 @@
       prev.addEventListener('click', ()=>{ if(page>1){ page--; fetchLogs(); }});
       next.addEventListener('click', ()=>{ if(page<totalPages){ page++; fetchLogs(); }});
       bar.appendChild(prev); bar.appendChild(next); bar.appendChild(info);
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]||c)); }
@@ -124,9 +125,9 @@
   els.exportTxt?.addEventListener('click', () => exportAs('txt'));
 
   // Navbar user avatar/name
-  (async()=>{ try{ const r = await fetch('/api/user'); const d = await r.json(); if(d?.success){ const a=document.getElementById('userAvatar'); const n=document.getElementById('userName'); if(a&&d.user.avatar) a.src=d.user.avatar; if(n) n.textContent=d.user.username; } }catch{} })();
+  (async()=>{ try{ const r = await fetch('/api/user'); const d = await r.json(); if(d?.success){ const a=document.getElementById('userAvatar'); const n=document.getElementById('userName'); if(a&&d.user.avatar) a.src=d.user.avatar; if(n) n.textContent=d.user.username; } }catch(e) { logger.debug('Caught error:', e?.message || e); } })();
   // Health badge
-  (async()=>{ const setTip=(t)=>{const hb=document.getElementById('healthBadge'); if(hb) hb.title=t;}; const dot=(el, st)=>{ if(!el) return; el.classList.remove('dot-green','dot-red','dot-gray'); el.classList.add(st==='ok'?'dot-green': st==='bad'?'dot-red':'dot-gray');}; try{ const r=await fetch('/api/health',{credentials:'same-origin'}); const h=await r.json(); dot(document.getElementById('health-mongo'), h.mongo==='connected'?'ok': (h.mongo==='disabled'?'gray':'bad')); dot(document.getElementById('health-discord'), h.discord?'ok':'bad'); setTip(`${h.mongo==='connected'?'DB: ligado': h.mongo==='disabled'?'DB: desativado':'DB: desligado'} • ${h.discord?'Discord: online':'Discord: offline'}`);}catch{}})();
+  (async()=>{ const setTip=(t)=>{const hb=document.getElementById('healthBadge'); if(hb) hb.title=t;}; const dot=(el, st)=>{ if(!el) return; el.classList.remove('dot-green','dot-red','dot-gray'); el.classList.add(st==='ok'?'dot-green': st==='bad'?'dot-red':'dot-gray');}; try{ const r=await fetch('/api/health',{credentials:'same-origin'}); const h=await r.json(); dot(document.getElementById('health-mongo'), h.mongo==='connected'?'ok': (h.mongo==='disabled'?'gray':'bad')); dot(document.getElementById('health-discord'), h.discord?'ok':'bad'); setTip(`${h.mongo==='connected'?'DB: ligado': h.mongo==='disabled'?'DB: desativado':'DB: desligado'} • ${h.discord?'Discord: online':'Discord: offline'}`);}catch(e) { logger.debug('Caught error:', e?.message || e); }})();
 
   fetchLogs();
 })();

@@ -50,7 +50,7 @@ module.exports = {
         const eventService = require('../src/services/eventService');
         const scheduledAnnouncementService = require('../src/services/scheduledAnnouncementService');
 
-        setInterval(async () => {
+        client.eventReminderInterval = setInterval(async () => {
             try {
                 await eventService.checkReminders(client);
             } catch (e) {
@@ -58,7 +58,7 @@ module.exports = {
             }
         }, 60000); // Check every minute
 
-        setInterval(async () => {
+        client.announcementInterval = setInterval(async () => {
             try {
                 await scheduledAnnouncementService.checkPendingAnnouncements(client);
             } catch (e) {
@@ -73,7 +73,7 @@ module.exports = {
         client.user.setActivity('IGNIS COMMUNITY', { type: ActivityType.Watching });
 
         // Sistema de atualização automática do status a cada 2 minutos
-        setInterval(async () => {
+        client.statusUpdateInterval = setInterval(async () => {
             await updateStatusPanels(client);
         }, 2 * 60 * 1000); // 2 minutos
 

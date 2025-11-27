@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { Events } = require('discord.js');
 
 module.exports = {
@@ -24,7 +25,7 @@ module.exports = {
                 try {
                     const storage = require('../utils/storage');
                     await storage.addLog({ guild_id: guildId, type: 'mod_voice_join', message: userId, data: { channelId: newState.channelId } });
-                } catch {}
+                } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
                 // Analytics
                 if (newState.client.database) {
@@ -55,7 +56,7 @@ module.exports = {
                 try {
                     const storage = require('../utils/storage');
                     await storage.addLog({ guild_id: guildId, type: 'mod_voice_leave', message: userId, data: { channelId: oldState.channelId } });
-                } catch {}
+                } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
                 // Analytics
                 if (oldState.client.database) {
@@ -88,7 +89,7 @@ module.exports = {
                 try {
                     const storage = require('../utils/storage');
                     await storage.addLog({ guild_id: guildId, type: 'mod_voice_move', message: userId, data: { fromChannelId: oldState.channelId, toChannelId: newState.channelId } });
-                } catch {}
+                } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
                 // Analytics
                 if (newState.client.database) {

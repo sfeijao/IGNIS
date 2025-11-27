@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 (function() {
   const params = new URLSearchParams(window.location.search);
   const guildId = params.get('guildId');
@@ -16,9 +17,9 @@
         return;
       }
     } else {
-      try{ localStorage.setItem('IGNIS_LAST_GUILD', guildId); }catch{}
+      try{ localStorage.setItem('IGNIS_LAST_GUILD', guildId); }catch(e) { logger.debug('Caught error:', e?.message || e); }
     }
-  }catch{}
+  }catch(e) { logger.debug('Caught error:', e?.message || e); }
   const listEl = document.getElementById('webhooksList');
   const typeEl = document.getElementById('whType');
   const nameEl = document.getElementById('whName');
@@ -63,7 +64,7 @@
     try {
       if (document.getElementById('stale-banner')) return;
       const el=document.createElement('div'); el.id='stale-banner'; el.style.position='fixed'; el.style.bottom='16px'; el.style.left='50%'; el.style.transform='translateX(-50%)'; el.style.background='rgba(124,58,237,0.95)'; el.style.color='#fff'; el.style.padding='10px 14px'; el.style.borderRadius='8px'; el.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)'; el.style.zIndex='9999'; el.style.fontSize='14px'; el.textContent='Mostrando dados em cache temporariamente (a API do Discord limitou pedidos).'; document.body.appendChild(el); setTimeout(()=>{ el.remove(); }, 4000);
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   function render(list, config) {
@@ -94,7 +95,7 @@
           `).join('');
         }
       }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
     listEl.innerHTML = routingNotice + list.map(w => `
       <div class="server-card glass-card">
@@ -156,7 +157,7 @@
       const data = await api(`/api/guild/${guildId}/channels`);
       cachedChannels = data.channels || [];
       channelEl.innerHTML = `<option value="">—</option>` + (cachedChannels).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   async function load() {

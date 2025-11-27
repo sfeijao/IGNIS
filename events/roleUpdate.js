@@ -21,6 +21,6 @@ module.exports = {
             const before = snap(oldRole); const after = snap(newRole);
             if (JSON.stringify(before) === JSON.stringify(after)) return;
             await storage.addLog({ guild_id: guildId, type: 'mod_role_update', message: newRole.name, data: { before, after } });
-        } catch (e) { try { require('../utils/logger').warn('roleUpdate log failed:', e?.message||e); } catch {} }
+        } catch (e) { try { require('../utils/logger').warn('roleUpdate log failed:', e?.message||e); } catch (e) { logger.debug('Caught error:', e?.message || e); } }
     }
 };

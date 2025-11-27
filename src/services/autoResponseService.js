@@ -62,7 +62,7 @@ class AutoResponseService {
                         try {
                             matched = new RegExp(trig, autoResp.caseSensitive ? '' : 'i').test(content);
                         } catch (e) {
-                            console.error('Regex inválido:', e);
+                            logger.error('Regex inválido:', e);
                         }
                         break;
                 }

@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 // Tags management with selection, bulk actions, and drag-and-drop reordering
 (function(){
 	// Ensure guild context
@@ -17,9 +18,9 @@
 				return;
 			}
 		} else {
-			try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch{}
+			try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch(e) { logger.debug('Caught error:', e?.message || e); }
 		}
-	}catch{}
+	}catch(e) { logger.debug('Caught error:', e?.message || e); }
 })();
 
 (function(){
@@ -40,7 +41,7 @@
 	let dragState = { fromIndex: null };
 
 	function notify(m,t='info'){ const n=document.createElement('div'); n.className=`notification notification-${t} slide-up`; n.innerHTML=`<i class="fas ${t==='error'?'fa-exclamation-circle': t==='success'?'fa-check-circle':'fa-info-circle'}"></i><span>${m}</span>`; document.body.appendChild(n); setTimeout(()=>{n.style.animation='slideDown 0.3s ease-in'; setTimeout(()=>n.remove(),300);},2500); announce(m); }
-	function announce(msg){ try{ if(els.live){ els.live.textContent=''; setTimeout(()=>{ els.live.textContent = msg; }, 50);} }catch{}
+	function announce(msg){ try{ if(els.live){ els.live.textContent=''; setTimeout(()=>{ els.live.textContent = msg; }, 50);} }catch(e) { logger.debug('Caught error:', e?.message || e); }
 	}
 
 	async function load(){ try{ const r=await fetch(`/api/guild/${guildId}/quick-tags`, {credentials:'same-origin'}); const d=await r.json(); if(!r.ok||!d.success) throw new Error(d.error||`HTTP ${r.status}`); _allTags=Array.isArray(d.tags)?d.tags:[]; renderFilters(); render(); renderCategoryColumns(); }catch(e){console.error(e); notify(e.message,'error');} }
@@ -100,7 +101,7 @@
 				const i = parseInt(row.getAttribute('data-i'),10);
 				dragState.fromIndex = Number.isNaN(i)? null : i;
 				ev.dataTransfer.effectAllowed = 'move';
-				try{ ev.dataTransfer.setData('text/plain', String(i)); }catch{}
+				try{ ev.dataTransfer.setData('text/plain', String(i)); }catch(e) { logger.debug('Caught error:', e?.message || e); }
 			});
 			row.addEventListener('dragenter', ()=>{ row.classList.add('drag-over'); });
 			row.addEventListener('dragleave', ()=>{ row.classList.remove('drag-over'); });

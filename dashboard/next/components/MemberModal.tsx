@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
@@ -16,7 +17,7 @@ export default function MemberModal({ guildId, member, onClose, onChanged }: Pro
   const [timeoutMins, setTimeoutMins] = useState<number>(0)
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => { (async () => { try { const r = await api.getRoles(guildId); setRoles(r.roles || []) } catch {} })() }, [guildId])
+  useEffect(() => { (async () => { try { const r = await api.getRoles(guildId); setRoles(r.roles || []) } catch (e) { logger.debug('Caught error:', e?.message || e); } })() }, [guildId])
 
   const toggleRole = (id: string) => {
     setSelectedRoles(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })

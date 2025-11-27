@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 "use client"
 
 import { useEffect, useState } from 'react'
@@ -60,7 +61,7 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
       try {
         const d = await api.getTicketDetails(guildId, ticketId)
         const l = await api.getTicketLogs(guildId, ticketId, { limit, offset: 0 })
-        const ch = await api.getChannels(guildId).catch(() => ({ channels: [] }))
+        const ch = await api.getChannels(guildId).catch(e => { console.error('[TicketModal] Failed to load channels:', e); return { channels: [] } })
         if (!aborted) {
           setDetails(d)
           try {
@@ -69,7 +70,7 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
               setRating(fb.rating)
               setComment(String(fb.comment||''))
             }
-          } catch {}
+          } catch (e) { logger.debug('Caught error:', e?.message || e); }
           setLogs(l)
           setOffset(l?.logs?.length || 0)
           setChannels(((ch as any).channels || ch || []).filter((c: any) => c && c.id && c.name))
@@ -77,7 +78,7 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
           try {
             const m = await api.getTicketMessages(guildId, ticketId, { limit: 100 })
             if (!aborted) { setMessages(m.messages || []); setNextBefore(m.nextBefore || null) }
-          } catch {}
+          } catch (e) { logger.debug('Caught error:', e?.message || e); }
         }
       } catch (e: any) {
         if (!aborted) setError(e?.message || 'Failed to load ticket')
@@ -96,7 +97,7 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
       const next = await api.getTicketLogs(guildId, ticketId, { limit, offset })
   setLogs((prev: TicketLogs | null) => prev ? { ...prev, logs: [...prev.logs, ...next.logs] } : next)
       setOffset(offset + (next?.logs?.length || 0))
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
     finally { setBusyMore(false) }
   }
 
@@ -106,7 +107,7 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
       const m = await api.getTicketMessages(guildId, ticketId, { limit: 100, before: nextBefore })
   setMessages((prev: any[]) => [...(m.messages || []), ...prev])
       setNextBefore(m.nextBefore || null)
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   return (

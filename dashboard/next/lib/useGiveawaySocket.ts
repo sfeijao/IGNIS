@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 "use client"
 
 import { useEffect, useRef } from 'react'
@@ -25,16 +26,16 @@ export default function useGiveawaySocket(guildId: string | null | undefined, on
         const io = mod.io || (mod as any).default
         socket = io({ withCredentials: true })
         socket.on('connect', () => {
-          try { socket.emit('joinGuild', guildId) } catch {}
+          try { socket.emit('joinGuild', guildId) } catch (e) { logger.debug('Caught error:', e?.message || e); }
         })
         socket.on('dashboard_event', (payload: DashboardEvent) => {
-          try { handlerRef.current && handlerRef.current(payload) } catch {}
+          try { handlerRef.current && handlerRef.current(payload) } catch (e) { logger.debug('Caught error:', e?.message || e); }
         })
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
     })()
     return () => {
       disposed = true
-      try { socket && socket.disconnect && socket.disconnect() } catch {}
+      try { socket && socket.disconnect && socket.disconnect() } catch (e) { logger.debug('Caught error:', e?.message || e); }
     }
   }, [guildId])
 }

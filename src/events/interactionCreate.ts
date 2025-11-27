@@ -1,3 +1,4 @@
+import logger from '../utils/logger';
 import { Interaction, ButtonInteraction, TextChannel, ModalSubmitInteraction, UserSelectMenuInteraction, RoleSelectMenuInteraction, ChannelSelectMenuInteraction, StringSelectMenuInteraction, MessageFlags, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
 import { resolveTicket, handleCancel, handleHowDM, handleClaim, handleClose, handleRename, handleMove, handleAddMember, handleRemoveMember, handleCallMember, handleGreet, handleNote, handleExport, handleFeedbackButton, handleFeedbackSubmit, handleRelease, handleLockToggle, handleTranscript, handlePrioritySet } from '../services/ticketService';
 
@@ -54,7 +55,7 @@ module.exports = {
           const r: any = response;
           await btn.reply({ content: r.content || 'Ok', components: r.components as any, flags: MessageFlags.Ephemeral });
         }
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
       return;
     }
     if (interaction.isModalSubmit()) {
@@ -125,7 +126,7 @@ module.exports = {
         const value = sel.values?.[0];
         const ctx: any = { guildId: sel.guildId!, channel, userId: sel.user.id, member: sel.member as any, ticket, interaction: sel };
         const result = await handlePrioritySet(ctx, value);
-        try { await sel.reply({ content: typeof result === 'string' ? result : (result as any).content || 'Atualizado', flags: MessageFlags.Ephemeral }); } catch {}
+        try { await sel.reply({ content: typeof result === 'string' ? result : (result as any).content || 'Atualizado', flags: MessageFlags.Ephemeral }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
         return;
       }
     }

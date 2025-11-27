@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
@@ -57,7 +58,7 @@ export default function CommandsManager() {
     }
   }
 
-  useEffect(() => { if (guildId) { load(guildId); (async()=>{ try { const ch = await api.getChannels(guildId); setChannels(ch.channels || ch || []) } catch {} })() } }, [guildId])
+  useEffect(() => { if (guildId) { load(guildId); (async()=>{ try { const ch = await api.getChannels(guildId); setChannels(ch.channels || ch || []) } catch (e) { logger.debug('Caught error:', e?.message || e); } })() } }, [guildId])
 
   const action = async (payload: Record<string, any>) => {
     if (!guildId) return

@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 (function(){
   // Ensure guild context
   try{
@@ -16,9 +17,9 @@
         return;
       }
     } else {
-      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch{}
+      try{ localStorage.setItem('IGNIS_LAST_GUILD', gid); }catch(e) { logger.debug('Caught error:', e?.message || e); }
     }
-  }catch{}
+  }catch(e) { logger.debug('Caught error:', e?.message || e); }
 })();
 
 (function(){
@@ -27,7 +28,7 @@
   const appealsEl = document.getElementById('appeals');
 
   function notify(msg, type='info'){
-    try{ const div=document.createElement('div'); div.className=`notification notification-${type} slide-up`; div.innerHTML=`<i class=\"fas ${type==='error'?'fa-exclamation-circle': type==='success'? 'fa-check-circle':'fa-info-circle'}\"></i><span>${msg}</span>`; document.body.appendChild(div); setTimeout(()=>{div.style.animation='slideDown 0.3s ease-in'; setTimeout(()=>div.remove(),300);},3000);}catch{}
+    try{ const div=document.createElement('div'); div.className=`notification notification-${type} slide-up`; div.innerHTML=`<i class=\"fas ${type==='error'?'fa-exclamation-circle': type==='success'? 'fa-check-circle':'fa-info-circle'}\"></i><span>${msg}</span>`; document.body.appendChild(div); setTimeout(()=>{div.style.animation='slideDown 0.3s ease-in'; setTimeout(()=>div.remove(),300);},3000);}catch(e) { logger.debug('Caught error:', e?.message || e); }
   }
 
   async function api(path){

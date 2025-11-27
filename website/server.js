@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require('../utils/logger');
 const path = require('path');
 
 const app = express();
@@ -15,7 +16,7 @@ app.use((req, _res, next) => {
             while (rest.startsWith('next/')) rest = rest.slice('next/'.length);
             req.url = '/next/' + rest;
         }
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
     next();
 });
 
@@ -25,7 +26,7 @@ try {
     const NEXT_EXPORT_DIR = path.join(__dirname, '..', 'dashboard', 'public', 'next-export');
     app.use('/next', express.static(NEXT_EXPORT_DIR, { index: 'index.html', redirect: false }));
     console.log(`📦 /next servido a partir de: ${NEXT_EXPORT_DIR}`);
-} catch {}
+} catch (e) { logger.debug('Caught error:', e?.message || e); }
 
 // Rota principal - serve o dashboard.html como index
 app.get('/', (req, res) => {

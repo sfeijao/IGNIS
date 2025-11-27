@@ -14,7 +14,7 @@ module.exports = {
                 if (entry && entry.target?.id === user.id && entry.createdTimestamp > Date.now() - 15_000) {
                     executorId = entry.executor?.id || null;
                 }
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
             if (guild.client.socketManager) {
                 guild.client.socketManager.onDiscordEvent('guildBanRemove', guild.id, {
@@ -28,7 +28,7 @@ module.exports = {
             try {
                 const storage = require('../utils/storage');
                 await storage.addLog({ guild_id: guild.id, type: 'mod_ban_remove', message: '', data: { userId: user.id, executorId } });
-            } catch {}
+            } catch (e) { logger.debug('Caught error:', e?.message || e); }
         } catch (err) {
             const logger = require('../utils/logger');
             logger.warn('guildBanRemove handler error:', err?.message || err);

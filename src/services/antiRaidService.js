@@ -12,7 +12,7 @@ class AntiRaidService {
         // Cache de raids ativos: guildId -> raidEventId
         this.activeRaids = new Map();
         // Limpar cache a cada 10 minutos
-        setInterval(() => this.cleanupCache(), 10 * 60 * 1000);
+        this.cleanupInterval = setInterval(() => this.cleanupCache(), 10 * 60 * 1000);
     }
 
     /**
@@ -365,6 +365,13 @@ class AntiRaidService {
             } else {
                 this.recentJoins.set(guildId, recentJoins);
             }
+        }
+    }
+    
+    shutdown() {
+        if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+            this.cleanupInterval = null;
         }
     }
 }

@@ -151,7 +151,7 @@ TicketSystem.prototype._safeReply = async function(interaction, data) {
     } catch (e) {
         try {
             if (interaction.deferred) return await interaction.editReply(data);
-        } catch {}
+        } catch (e) { logger.debug('Caught error:', e?.message || e); }
         throw e;
     }
 };

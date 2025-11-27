@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 "use client"
 
 import { useEffect, useState } from 'react'
@@ -46,7 +47,7 @@ export default function ModerationCenterTools() {
         const ch = await api.getChannels(guildId)
         const list = ch.channels || ch || []
         setChannels(list)
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
     })()
   }, [guildId])
 

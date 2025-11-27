@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
@@ -107,7 +108,7 @@ export default function SettingsForm() {
             modlogChannelId: data.modlogChannelId ?? defaults.modlogChannelId,
           })
         }
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
       try {
         const b = await api.getBotSettings?.(guildId)
         const s = (b && b.settings) || b || {}
@@ -124,11 +125,11 @@ export default function SettingsForm() {
           unverifiedRoleId: typeof s.unverifiedRoleId === 'string' ? s.unverifiedRoleId : (s.verification?.unverifiedRoleId || ''),
           giveawayManagerRoleId: typeof s.giveawayManagerRoleId === 'string' ? s.giveawayManagerRoleId : (s.giveaway_manager_role_id || '')
         }))
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
       try {
         const ch = await api.getChannels(guildId)
         setChannels(ch.channels || ch || [])
-      } catch {}
+      } catch (e) { logger.debug('Caught error:', e?.message || e); }
       try {
         setRolesLoading(true)
         setRolesError(null)
@@ -166,7 +167,7 @@ export default function SettingsForm() {
       const key = `ignis:bannerCropToFill:${guildId}`
       const raw = window.localStorage.getItem(key)
       if (raw != null) setBannerCropToFill(raw === '1')
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }, [guildId])
 
   // Persist banner crop preference when toggled
@@ -175,7 +176,7 @@ export default function SettingsForm() {
     try {
       const key = `ignis:bannerCropToFill:${guildId}`
       window.localStorage.setItem(key, bannerCropToFill ? '1' : '0')
-    } catch {}
+    } catch (e) { logger.debug('Caught error:', e?.message || e); }
   }, [guildId, bannerCropToFill])
 
   const save = async () => {
