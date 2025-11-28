@@ -1,7 +1,7 @@
-const logger = require('../utils/logger');
 "use client"
 
 import { giveawaysI18n } from './i18n-giveaways'
+const logger = require('../utils/logger');
 
 export function useGiveawaysI18n(){
   let locale = 'pt'
