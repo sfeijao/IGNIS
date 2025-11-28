@@ -1,4 +1,4 @@
-const logger = require('../utils/logger');
+const logger = require('../logger');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
 const { GiveawayModel, GiveawayWinnerModel } = require('../db/giveawayModels');
 const { getClient } = require('../discordClient');

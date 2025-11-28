@@ -1,4 +1,4 @@
-const logger = require('../utils/logger');
+const logger = require('../logger');
 const { GiveawayModel, GiveawayEntryModel, GiveawayWinnerModel, GiveawayLogModel } = require('../db/giveawayModels');
 const { recordAnalytics } = (()=>{ try { return require('../analytics'); } catch { return { recordAnalytics: ()=>{} }; } })();
 const { pickWinners, generateSeed } = require('./rng');

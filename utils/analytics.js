@@ -12,7 +12,7 @@ function recordAnalytics(event, payload){
   try {
     if ((process.env.GIVEAWAYS_ANALYTICS_PERSIST || '').toLowerCase() === 'mongo') {
       const mongoose = require('mongoose');
-const logger = require('../utils/logger');
+const logger = require('./logger');
       if (mongoose.connection && mongoose.connection.readyState === 1) {
         const model = getModel();
         model.create(row).catch(()=>{});

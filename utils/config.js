@@ -1,6 +1,6 @@
 // utils/config.js - Sistema de configuração seguro com validação
 require('dotenv').config();
-const logger = require('../utils/logger');
+const logger = require('./logger');
 
 const assert = (condition, message) => {
     if (!condition) throw new Error(`[CONFIG ERROR] ${message}`);
