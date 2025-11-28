@@ -367,7 +367,7 @@ class AntiRaidService {
             }
         }
     }
-    
+
     shutdown() {
         if (this.cleanupInterval) {
             clearInterval(this.cleanupInterval);

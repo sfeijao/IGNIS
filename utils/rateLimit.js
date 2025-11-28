@@ -8,10 +8,10 @@ class RateLimit {
     check(key, limit = 3, window = 3600000) { // window em ms (1 hora default)
         const now = Date.now();
         const userLimits = this.limits.get(key) || [];
-        
+
         // Remover tentativas antigas
         const validAttempts = userLimits.filter(timestamp => now - timestamp < window);
-        
+
         // Verificar se excedeu o limite
         if (validAttempts.length >= limit) {
             return {
@@ -20,11 +20,11 @@ class RateLimit {
                 remaining: 0
             };
         }
-        
+
         // Adicionar nova tentativa
         validAttempts.push(now);
         this.limits.set(key, validAttempts);
-        
+
         return {
             allowed: true,
             resetTime: now + window,

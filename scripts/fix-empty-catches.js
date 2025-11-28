@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * Script automático para corrigir TODOS os empty catch blocks no projeto IGNIS
- * 
+ *
  * Execução: node scripts/fix-empty-catches.js
- * 
+ *
  * O que faz:
  * - Escaneia todos os ficheiros .js, .ts, .tsx
  * - Deteta padrões: } catch (e) { logger.debug('Caught error:', e?.message || e); }, } catch (e) { logger.debug('Caught error:', e?.message || e); }, } catch(err){ logger.debug('Caught error:', err?.message || err); }
@@ -68,11 +68,11 @@ const PATTERNS = [
  */
 async function scanDirectory(dir) {
   const entries = await readdir(dir);
-  
+
   for (const entry of entries) {
     const fullPath = path.join(dir, entry);
     const fileStat = await stat(fullPath);
-    
+
     if (fileStat.isDirectory()) {
       if (!EXCLUDE_DIRS.includes(entry)) {
         await scanDirectory(fullPath);
@@ -91,33 +91,33 @@ async function scanDirectory(dir) {
  */
 async function processFile(filePath) {
   stats.filesScanned++;
-  
+
   try {
     let content = await readFile(filePath, 'utf8');
     const originalContent = content;
     let modified = false;
     let catchesInFile = 0;
-    
+
     // Verificar se já tem logger importado
     const hasLogger = /require\(['"]\.*\/?\.*utils\/logger['"]\)|from\s+['"]\.*\/?\.*utils\/logger['"]|const\s+logger\s*=/.test(content);
-    
+
     // Aplicar cada padrão
     for (const pattern of PATTERNS) {
       const matches = content.match(pattern.regex);
       if (matches && matches.length > 0) {
         const count = matches.length;
         catchesInFile += count;
-        
+
         if (typeof pattern.replacement === 'function') {
           content = content.replace(pattern.regex, pattern.replacement);
         } else {
           content = content.replace(pattern.regex, pattern.replacement);
         }
-        
+
         modified = true;
       }
     }
-    
+
     if (modified) {
       // Adicionar logger import se necessário
       if (!hasLogger) {
@@ -145,23 +145,23 @@ async function processFile(filePath) {
           }
         }
       }
-      
+
       // Criar backup
       const backupPath = filePath.replace(ROOT_DIR, BACKUP_DIR);
       const backupDir = path.dirname(backupPath);
       fs.mkdirSync(backupDir, { recursive: true });
       await writeFile(backupPath, originalContent, 'utf8');
-      
+
       // Escrever ficheiro modificado
       await writeFile(filePath, content, 'utf8');
-      
+
       stats.filesModified++;
       stats.catchesFixed += catchesInFile;
       stats.details.push({
         file: path.relative(ROOT_DIR, filePath),
         catchesFixed: catchesInFile
       });
-      
+
       console.log(`✅ ${path.relative(ROOT_DIR, filePath)}: ${catchesInFile} catch blocks fixed`);
     }
   } catch (err) {
@@ -210,9 +210,9 @@ ${stats.errors.map(e => `  • ${e.file}: ${e.error}`).join('\n')}
 
 ═══════════════════════════════════════════════════════════════
 `;
-  
+
   console.log(report);
-  
+
   // Salvar relatório em ficheiro
   const reportPath = path.join(ROOT_DIR, 'EMPTY_CATCH_FIX_REPORT.md');
   fs.writeFileSync(reportPath, report, 'utf8');
@@ -226,13 +226,13 @@ async function main() {
   console.log('🚀 Iniciando correção automática de empty catch blocks...\n');
   console.log(`📂 Diretório raiz: ${ROOT_DIR}`);
   console.log(`💾 Backup em: ${BACKUP_DIR}\n`);
-  
+
   // Criar diretório de backup
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
-  
+
   // Escanear e processar
   await scanDirectory(ROOT_DIR);
-  
+
   // Gerar relatório
   generateReport();
 }

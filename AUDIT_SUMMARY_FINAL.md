@@ -56,7 +56,7 @@
    ```javascript
    // ✅ CORRIGIDO
    this.cacheCleanupInterval = setInterval(() => { /* cleanup */ }, 10 * 60 * 1000);
-   
+
    shutdown() {
        if (this.cacheCleanupInterval) {
            clearInterval(this.cacheCleanupInterval);
@@ -67,7 +67,7 @@
 2. **`utils/rateLimit.js`** ✅
    ```javascript
    this.cleanupInterval = setInterval(() => this.cleanup(), 15 * 60 * 1000);
-   
+
    shutdown() {
        if (this.cleanupInterval) clearInterval(this.cleanupInterval);
    }
@@ -76,7 +76,7 @@
 3. **`utils/retryHelper.js`** ✅
    ```javascript
    this.cleanupInterval = setInterval(() => { /* cleanup */ }, cleanupInterval);
-   
+
    shutdown() {
        if (this.cleanupInterval) clearInterval(this.cleanupInterval);
    }
@@ -87,7 +87,7 @@
    startStatsCleanup() {
        this.statsCleanupInterval = setInterval(() => { /* cleanup */ }, 60 * 60 * 1000);
    }
-   
+
    shutdown() {
        if (this.statsCleanupInterval) clearInterval(this.statsCleanupInterval);
    }
@@ -98,7 +98,7 @@
    startCleanup() {
        this.cleanupInterval = setInterval(() => { /* cleanup */ }, 5 * 60 * 1000);
    }
-   
+
    shutdown() {
        if (this.cleanupInterval) clearInterval(this.cleanupInterval);
    }
@@ -134,26 +134,26 @@
 // ✅ SIGINT Handler (Ctrl+C)
 process.on('SIGINT', () => {
     logger.info('🛑 SIGINT received, shutting down bot gracefully');
-    
+
     // Stop all job processors
     if (client.giveawayClaimJob) client.giveawayClaimJob.stop();
     if (client.serverStatsProcessor) client.serverStatsProcessor.stop();
-    
+
     // Clear all intervals from ready.js
     if (client.eventReminderInterval) clearInterval(client.eventReminderInterval);
     if (client.announcementInterval) clearInterval(client.announcementInterval);
     if (client.statusUpdateInterval) clearInterval(client.statusUpdateInterval);
-    
+
     // Clear global cache cleanup
     if (global.__verifyPressCacheCleanup) clearInterval(global.__verifyPressCacheCleanup);
-    
+
     // Shutdown storage and other singletons
     const storage = require('./utils/storage');
     if (storage && storage.shutdown) storage.shutdown();
-    
+
     const rateLimit = require('./utils/rateLimit');
     if (rateLimit && rateLimit.shutdown) rateLimit.shutdown();
-    
+
     client.destroy();
     process.exit(0);
 });
@@ -207,7 +207,7 @@ process.on('SIGTERM', () => {
    // ❌ ANTES
    const s = await fetch(...).then(r=>r.json()).catch(()=> null)
    const c = await fetch(...).then(r=>r.json()).catch(()=> null)
-   
+
    // ✅ DEPOIS
    const s = await fetch(...)
        .then(r => r.json())
@@ -215,7 +215,7 @@ process.on('SIGTERM', () => {
    const c = await fetch(...)
        .then(r => r.json())
        .catch(e => { console.error('[ModerationSummary] Failed to load cases:', e); return null })
-   
+
    // ✅ Adicionado estado de erro
    const [error, setError] = useState<string | null>(null)
    ```
@@ -224,7 +224,7 @@ process.on('SIGTERM', () => {
    ```typescript
    // ❌ ANTES
    .catch(()=>{})
-   
+
    // ✅ DEPOIS
    .catch(e => { console.error('[GiveawayWizard] Failed to fetch active count:', e) })
    .catch(e => { console.error('[GiveawayWizard] Failed to fetch channels:', e) })
@@ -234,7 +234,7 @@ process.on('SIGTERM', () => {
    ```typescript
    // ❌ ANTES
    const ch = await api.getChannels(guildId).catch(() => ({ channels: [] }))
-   
+
    // ✅ DEPOIS
    const ch = await api.getChannels(guildId)
        .catch(e => { console.error('[TicketModal] Failed to load channels:', e); return { channels: [] } })
@@ -251,7 +251,7 @@ process.on('SIGTERM', () => {
    ```typescript
    // ❌ ANTES
    catch (e) { logger.debug('Caught error:', e?.message || e); }
-   
+
    // ✅ DEPOIS
    catch (e: any) { logger.debug('Caught error:', e?.message || e); }
    ```
@@ -353,7 +353,7 @@ class Service {
     constructor() {
         this.intervalId = setInterval(() => this.cleanup(), 60000);
     }
-    
+
     shutdown() {
         if (this.intervalId) {
             clearInterval(this.intervalId);
@@ -380,13 +380,13 @@ const data = await fetch(url)
 // ✅ PADRÃO RECOMENDADO
 process.on('SIGTERM', async () => {
     logger.info('Shutting down gracefully...');
-    
+
     // 1. Stop accepting new requests
     // 2. Finish pending requests
     // 3. Clear all timers
     // 4. Close database connections
     // 5. Cleanup resources
-    
+
     process.exit(0);
 });
 ```
@@ -451,6 +451,6 @@ O código está agora **robusto, manutenível e production-ready**! 🎉
 
 ---
 
-**Gerado por:** GitHub Copilot  
-**Modelo:** Claude Sonnet 4.5  
+**Gerado por:** GitHub Copilot
+**Modelo:** Claude Sonnet 4.5
 **Data:** $(Get-Date)

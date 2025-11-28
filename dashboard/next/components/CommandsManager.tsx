@@ -57,16 +57,16 @@ export default function CommandsManager() {
     }
   }
 
-  useEffect(() => { 
-    if (guildId) { 
-      load(guildId); 
-      (async()=>{ 
-        try { 
-          const ch = await api.getChannels(guildId); 
-          setChannels(ch.channels || ch || []) 
-        } catch (e) { logger.debug('Caught error:', e?.message || e); } 
-      })() 
-    } 
+  useEffect(() => {
+    if (guildId) {
+      load(guildId);
+      (async()=>{
+        try {
+          const ch = await api.getChannels(guildId);
+          setChannels(ch.channels || ch || [])
+        } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
+      })()
+    }
   }, [guildId])
 
   const action = async (payload: Record<string, any>) => {
@@ -78,10 +78,10 @@ export default function CommandsManager() {
       const res = await api.postCommand(guildId, payload)
       setResult(JSON.stringify(res))
       await load(guildId)
-    } catch (e: any) { 
-      setError(e?.message || t('commands.actionFailed')) 
-    } finally { 
-      setLoading(false) 
+    } catch (e: any) {
+      setError(e?.message || t('commands.actionFailed'))
+    } finally {
+      setLoading(false)
     }
   }
 

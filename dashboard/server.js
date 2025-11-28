@@ -5598,7 +5598,7 @@ app.get('/api/guild/:guildId/logs/stream', async (req, res) => {
                 }
             } catch (e) { logger.debug('Caught error:', e?.message || e); }
         }, 10000);
-        
+
         req.on('close', () => {
             alive = false;
             clearInterval(timer);

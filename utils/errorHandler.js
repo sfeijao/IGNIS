@@ -15,7 +15,7 @@ class ErrorHandler {
      */
     async handleInteractionError(interaction, error, context = 'Comando') {
         const errorId = this.generateErrorId();
-        
+
         // Log estruturado do erro
         const logger = require('./logger');
         logger.error(`[ERROR ${errorId}] ${context}:`, {
@@ -62,7 +62,7 @@ class ErrorHandler {
      */
     handleBotError(error, context = 'Bot', metadata = {}) {
         const errorId = this.generateErrorId();
-        
+
         const logger = require('./logger');
         logger.error(`[ERROR ${errorId}] ${context}:`, {
             error: error.message,
@@ -84,7 +84,7 @@ class ErrorHandler {
      */
     handleWebError(error, req, res, next) {
         const errorId = this.generateErrorId();
-        
+
         const logger = require('./logger');
         logger.error(`[WEB ERROR ${errorId}]:`, {
             error: error.message,

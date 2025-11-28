@@ -1,8 +1,8 @@
 # 🔍 IGNIS Bot - Comprehensive Codebase Audit Report
 
-**Data:** 2024  
-**Solicitado por:** Simão  
-**Executor:** GitHub Copilot AI Assistant  
+**Data:** 2024
+**Solicitado por:** Simão
+**Executor:** GitHub Copilot AI Assistant
 **Objetivo:** Examinar linha a linha todo o código, encontrar e corrigir todos os erros possíveis
 
 ---
@@ -22,8 +22,8 @@
   - Frontend Next.js completo
 
 ### Status Atual
-✅ **Análise:** 100% completa  
-🔧 **Correções aplicadas:** ~30% (ficheiros críticos)  
+✅ **Análise:** 100% completa
+🔧 **Correções aplicadas:** ~30% (ficheiros críticos)
 📝 **Correções pendentes:** ~70% (automatizável via script)
 
 ---
@@ -64,7 +64,7 @@ try {
 }
 ```
 
-**Status:** 
+**Status:**
 - ✅ Corrigidos em `dashboard/server.js` (43/43)
 - ✅ Corrigidos em `utils/db/mongoose.js` (2/2)
 - ✅ Corrigidos em `utils/storage.js` (1/1)
@@ -91,8 +91,8 @@ try {
 try { console.warn('Giveaway routes not mounted:', e.message); } catch {}
 
 // ✅ DEPOIS
-try { logger.warn('Giveaway routes not mounted:', e.message); } catch (logErr) { 
-    logger.debug('Route mount logging failed:', logErr?.message || logErr); 
+try { logger.warn('Giveaway routes not mounted:', e.message); } catch (logErr) {
+    logger.debug('Route mount logging failed:', logErr?.message || logErr);
 }
 ```
 
@@ -197,12 +197,12 @@ if (statsError) {
 
 ```javascript
 // ✅ CORRIGIDO
-mongoose.connection.on('error', (e) => { 
-    try { 
-        lastError = { code: e && e.code || 'MONGO_ERROR', message: (e && e.message) || String(e) }; 
-    } catch (logErr) { 
-        logger.debug('Mongoose error event logging failed:', logErr?.message || logErr); 
-    } 
+mongoose.connection.on('error', (e) => {
+    try {
+        lastError = { code: e && e.code || 'MONGO_ERROR', message: (e && e.message) || String(e) };
+    } catch (logErr) {
+        logger.debug('Mongoose error event logging failed:', logErr?.message || logErr);
+    }
 });
 ```
 
@@ -517,8 +517,8 @@ useEffect(() => {
 
 ---
 
-**Relatório gerado por:** GitHub Copilot  
-**Data:** 2024  
-**Status:** SCRIPT PRONTO PARA EXECUÇÃO  
+**Relatório gerado por:** GitHub Copilot
+**Data:** 2024
+**Status:** SCRIPT PRONTO PARA EXECUÇÃO
 
 🚀 **Comando:** `node scripts/fix-empty-catches.js`

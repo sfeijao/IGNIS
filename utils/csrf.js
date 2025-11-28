@@ -15,12 +15,12 @@ class CSRFProtection {
     generateToken(sessionId) {
         const token = crypto.randomBytes(32).toString('hex');
         const expires = Date.now() + (30 * 60 * 1000); // 30 minutos
-        
+
         this.tokens.set(token, {
             sessionId,
             expires
         });
-        
+
         return token;
     }
 
@@ -32,19 +32,19 @@ class CSRFProtection {
      */
     validateToken(token, sessionId) {
         if (!token || !sessionId) return false;
-        
+
         const tokenData = this.tokens.get(token);
         if (!tokenData) return false;
-        
+
         // Verificar se expirou
         if (Date.now() > tokenData.expires) {
             this.tokens.delete(token);
             return false;
         }
-        
+
         // Verificar se pertence à sessão
         if (tokenData.sessionId !== sessionId) return false;
-        
+
         // Token válido - remover para uso único
         this.tokens.delete(token);
         return true;
@@ -68,8 +68,8 @@ class CSRFProtection {
             }
 
             // Para métodos que modificam, validar token
-            const token = req.headers['x-csrf-token'] || 
-                         req.body._csrf || 
+            const token = req.headers['x-csrf-token'] ||
+                         req.body._csrf ||
                          req.query._csrf;
 
             if (!this.validateToken(token, req.sessionID)) {

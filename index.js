@@ -427,7 +427,7 @@ client.once('ready', () => {
 
 process.on('SIGINT', () => {
     logger.info('🛑 SIGINT received, shutting down bot gracefully');
-    
+
     // Stop all job processors
     if (client.giveawayClaimJob) {
         client.giveawayClaimJob.stop();
@@ -435,32 +435,32 @@ process.on('SIGINT', () => {
     if (client.serverStatsProcessor) {
         client.serverStatsProcessor.stop();
     }
-    
+
     // Clear all intervals from ready.js
     if (client.eventReminderInterval) clearInterval(client.eventReminderInterval);
     if (client.announcementInterval) clearInterval(client.announcementInterval);
     if (client.statusUpdateInterval) clearInterval(client.statusUpdateInterval);
-    
+
     // Clear giveaway cleanup interval from index.js
     if (client.giveawayCleanupInterval) clearInterval(client.giveawayCleanupInterval);
-    
+
     // Clear global cache cleanup
     if (global.__verifyPressCacheCleanup) clearInterval(global.__verifyPressCacheCleanup);
-    
+
     // Shutdown storage and other singletons
     const storage = require('./utils/storage');
     if (storage && storage.shutdown) storage.shutdown();
-    
+
     const rateLimit = require('./utils/rateLimit');
     if (rateLimit && rateLimit.shutdown) rateLimit.shutdown();
-    
+
     client.destroy();
     process.exit(0);
 });
 
 process.on('SIGTERM', () => {
     logger.info('🛑 SIGTERM received, shutting down bot gracefully');
-    
+
     // Stop all job processors
     if (client.giveawayClaimJob) {
         client.giveawayClaimJob.stop();
@@ -468,25 +468,25 @@ process.on('SIGTERM', () => {
     if (client.serverStatsProcessor) {
         client.serverStatsProcessor.stop();
     }
-    
+
     // Clear all intervals from ready.js
     if (client.eventReminderInterval) clearInterval(client.eventReminderInterval);
     if (client.announcementInterval) clearInterval(client.announcementInterval);
     if (client.statusUpdateInterval) clearInterval(client.statusUpdateInterval);
-    
+
     // Clear giveaway cleanup interval from index.js
     if (client.giveawayCleanupInterval) clearInterval(client.giveawayCleanupInterval);
-    
+
     // Clear global cache cleanup
     if (global.__verifyPressCacheCleanup) clearInterval(global.__verifyPressCacheCleanup);
-    
+
     // Shutdown storage and other singletons
     const storage = require('./utils/storage');
     if (storage && storage.shutdown) storage.shutdown();
-    
+
     const rateLimit = require('./utils/rateLimit');
     if (rateLimit && rateLimit.shutdown) rateLimit.shutdown();
-    
+
     client.destroy();
     process.exit(0);
 });
