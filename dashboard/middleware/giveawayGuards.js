@@ -28,7 +28,7 @@ async function hasManagerPermission(req, guildId){
     // Check via Discord client (additional verification)
     try {
       const client = global.discordClient;
-      if (client) {
+      if (client && client.guilds && client.guilds.cache) {
         const guild = client.guilds.cache.get(guildId);
         if (guild) {
           const member = guild.members.cache.get(req.user.id);

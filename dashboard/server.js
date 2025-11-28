@@ -5601,8 +5601,8 @@ app.get('/api/guild/:guildId/logs/stats', async (req, res) => {
 app.get('/api/guild/:guildId/logs/stream', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).end();
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).end();
+        const { client, ready, error: clientError } = getDiscordClient();
+        if (!ready) return res.status(503).end();
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).end();
 

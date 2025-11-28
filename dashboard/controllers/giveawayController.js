@@ -45,7 +45,7 @@ async function createGiveaway(req, res){
     // Verify channel exists and is accessible
     try {
       const client = global.discordClient;
-      if (client) {
+      if (client && client.guilds && client.guilds.cache) {
         const guild = client.guilds.cache.get(guildId);
         if (guild) {
           const channel = guild.channels.cache.get(value.channel_id);
