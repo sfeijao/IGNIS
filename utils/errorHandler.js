@@ -212,6 +212,6 @@ class ErrorHandler {
 const errorHandler = new ErrorHandler();
 
 // Configurar limpeza automática
-errorHandler.cleanupStats();
+errorHandler.startStatsCleanup();
 
 module.exports = errorHandler;
