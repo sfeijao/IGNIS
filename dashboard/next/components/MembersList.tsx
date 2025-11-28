@@ -27,7 +27,7 @@ export default function MembersList() {
 
   useEffect(() => {
     if (!guildId) return
-    ;(async () => { try { const res = await api.getRoles(guildId); setRoles(res.roles || []) } catch (e) { logger.debug('Caught error:', e?.message || e); } })()
+    ;(async () => { try { const res = await api.getRoles(guildId); setRoles(res.roles || []) } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); } })()
   }, [guildId])
 
   useEffect(() => {

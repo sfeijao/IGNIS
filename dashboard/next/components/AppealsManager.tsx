@@ -27,7 +27,7 @@ export default function AppealsManager() {
       if (statusFilter && statusFilter !== 'all') params.status = statusFilter
       const res = await api.getAppeals(gid, params)
       setAppeals(res?.appeals || res || [])
-    } catch (e: any) { setError(e?.message || t('appeals.loadFailed')) }
+    } catch (e: any) { setError((e instanceof Error ? e.message : String(e)) || t('appeals.loadFailed')) }
     finally { setLoading(false) }
   }
 

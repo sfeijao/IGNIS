@@ -17,7 +17,7 @@ export default function MemberModal({ guildId, member, onClose, onChanged }: Pro
   const [timeoutMins, setTimeoutMins] = useState<number>(0)
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => { (async () => { try { const r = await api.getRoles(guildId); setRoles(r.roles || []) } catch (e) { logger.debug('Caught error:', e?.message || e); } })() }, [guildId])
+  useEffect(() => { (async () => { try { const r = await api.getRoles(guildId); setRoles(r.roles || []) } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); } })() }, [guildId])
 
   const toggleRole = (id: string) => {
     setSelectedRoles(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })
@@ -25,7 +25,7 @@ export default function MemberModal({ guildId, member, onClose, onChanged }: Pro
 
   const saveNickname = async () => {
     setLoading(true)
-    try { await api.setMemberNickname(guildId, member.id, nick); toast({ type:'success', title:'Nickname atualizado' }); onChanged() } catch (e:any) { toast({ type:'error', title:'Falha ao atualizar nickname', description:e?.message }) } finally { setLoading(false) }
+    try { await api.setMemberNickname(guildId, member.id, nick); toast({ type:'success', title:'Nickname atualizado' }); onChanged() } catch (e:any) { toast({ type:'error', title:'Falha ao atualizar nickname', description:(e instanceof Error ? e.message : String(e)) }) } finally { setLoading(false) }
   }
   const saveRoles = async () => {
     setLoading(true)
@@ -51,24 +51,24 @@ export default function MemberModal({ guildId, member, onClose, onChanged }: Pro
 
       toast({ type:'success', title:'Cargos atualizados' })
       onChanged()
-    } catch (e:any) { toast({ type:'error', title:'Falha ao atualizar cargos', description:e?.message }) }
+    } catch (e:any) { toast({ type:'error', title:'Falha ao atualizar cargos', description:(e instanceof Error ? e.message : String(e)) }) }
     finally { setLoading(false) }
   }
   const applyTimeout = async () => {
     if (!(timeoutMins > 0)) { toast({ type:'info', title:'Tempo inválido' }); return }
     if (!confirm(`Aplicar timeout de ${timeoutMins} minutos?`)) return
     setLoading(true)
-    try { await api.timeoutMember(guildId, member.id, Math.round(timeoutMins*60)); toast({ type:'success', title:'Timeout aplicado' }); onChanged() } catch (e:any) { toast({ type:'error', title:'Falha ao aplicar timeout', description:e?.message }) } finally { setLoading(false) }
+    try { await api.timeoutMember(guildId, member.id, Math.round(timeoutMins*60)); toast({ type:'success', title:'Timeout aplicado' }); onChanged() } catch (e:any) { toast({ type:'error', title:'Falha ao aplicar timeout', description:(e instanceof Error ? e.message : String(e)) }) } finally { setLoading(false) }
   }
   const kick = async () => {
     if (!confirm('Expulsar este membro?')) return
     setLoading(true)
-    try { await api.kickMember(guildId, member.id); toast({ type:'success', title:'Membro expulso' }); onChanged() } catch (e:any) { toast({ type:'error', title:'Falha ao expulsar', description:e?.message }) } finally { setLoading(false) }
+    try { await api.kickMember(guildId, member.id); toast({ type:'success', title:'Membro expulso' }); onChanged() } catch (e:any) { toast({ type:'error', title:'Falha ao expulsar', description:(e instanceof Error ? e.message : String(e)) }) } finally { setLoading(false) }
   }
   const ban = async () => {
     if (!confirm('Banir este membro?')) return
     setLoading(true)
-    try { await api.banMember(guildId, member.id, { deleteMessageSeconds: 3600 }); toast({ type:'success', title:'Membro banido' }); onChanged() } catch (e:any) { toast({ type:'error', title:'Falha ao banir', description:e?.message }) } finally { setLoading(false) }
+    try { await api.banMember(guildId, member.id, { deleteMessageSeconds: 3600 }); toast({ type:'success', title:'Membro banido' }); onChanged() } catch (e:any) { toast({ type:'error', title:'Falha ao banir', description:(e instanceof Error ? e.message : String(e)) }) } finally { setLoading(false) }
   }
 
   const roleList = useMemo(() => roles.sort((a,b)=> a.name.localeCompare(b.name)), [roles])

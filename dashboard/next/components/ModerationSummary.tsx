@@ -26,7 +26,7 @@ export default function ModerationSummary() {
       setCases(c?.cases || c || [])
     } catch (e: any) {
       console.error('[ModerationSummary] Load failed:', e)
-      setError(e?.message || 'Failed to load moderation data')
+      setError((e instanceof Error ? e.message : String(e)) || 'Failed to load moderation data')
     } finally { setLoading(false) }
   }
 

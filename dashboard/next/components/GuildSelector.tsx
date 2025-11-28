@@ -31,7 +31,7 @@ export default function GuildSelector() {
         const data = await res.json()
         if (!aborted) setGuilds(Array.isArray(data?.guilds) ? data.guilds : [])
       } catch (e: any) {
-        if (!aborted) setError(e?.message || 'Falha ao carregar guilds')
+        if (!aborted) setError((e instanceof Error ? e.message : String(e)) || 'Falha ao carregar guilds')
       } finally {
         if (!aborted) setLoading(false)
       }

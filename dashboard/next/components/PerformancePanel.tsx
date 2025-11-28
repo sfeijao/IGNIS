@@ -28,7 +28,7 @@ export default function PerformancePanel() {
           setSeries(prev => [...prev.slice(-99), mem])
         }
       } catch (e: any) {
-        if (!aborted) toast({ type: 'error', title: 'Erro de performance', description: e?.message })
+        if (!aborted) toast({ type: 'error', title: 'Erro de performance', description: (e instanceof Error ? e.message : String(e)) })
       }
     }
     setLoading(true)

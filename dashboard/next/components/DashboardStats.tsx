@@ -117,7 +117,7 @@ export default function DashboardStats() {
       if (fromParam) initial = parseDur(fromParam)
       else if (ls) initial = Math.max(0, parseFloat(ls))
       setRefreshMinutes(initial)
-    } catch (e) { logger.debug('Caught error:', e?.message || e); }
+    } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
 
     fetchStats()
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -131,7 +131,7 @@ export default function DashboardStats() {
     if (refreshMinutes > 0) {
       intervalRef.current = setInterval(fetchStats, refreshMinutes * 60 * 1000)
     }
-    try { localStorage.setItem('dash-refresh-mins', String(refreshMinutes)) } catch (e) { logger.debug('Caught error:', e?.message || e); }
+    try { localStorage.setItem('dash-refresh-mins', String(refreshMinutes)) } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }

@@ -39,7 +39,7 @@ export default function QuickTagsManager() {
       await load()
       setEditingId(null)
     } catch (e: any) {
-      toast({ type: 'error', title: 'Erro ao guardar', description: e?.message })
+      toast({ type: 'error', title: 'Erro ao guardar', description: (e instanceof Error ? e.message : String(e)) })
     } finally {
       setLoading(false)
     }

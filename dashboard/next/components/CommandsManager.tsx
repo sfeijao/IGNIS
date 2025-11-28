@@ -51,7 +51,7 @@ export default function CommandsManager() {
       const list = res?.commands || res || []
       setCommands(list)
     } catch (e: any) {
-      setError(e?.message || t('commands.loadFailed'))
+      setError((e instanceof Error ? e.message : String(e)) || t('commands.loadFailed'))
     } finally {
       setLoading(false)
     }
@@ -79,7 +79,7 @@ export default function CommandsManager() {
       setResult(JSON.stringify(res))
       await load(guildId)
     } catch (e: any) {
-      setError(e?.message || t('commands.actionFailed'))
+      setError((e instanceof Error ? e.message : String(e)) || t('commands.actionFailed'))
     } finally {
       setLoading(false)
     }

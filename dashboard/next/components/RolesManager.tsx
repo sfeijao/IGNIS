@@ -34,7 +34,7 @@ export default function RolesManager() {
     try {
       const res = await api.getRoles(guildId)
       setRoles(res.roles || [])
-    } catch (e: any) { setError(e?.message || t('roles.load.failed')) } finally { setLoading(false) }
+    } catch (e: any) { setError((e instanceof Error ? e.message : String(e)) || t('roles.load.failed')) } finally { setLoading(false) }
   }
 
   useEffect(() => { load() }, [guildId])
@@ -64,7 +64,7 @@ export default function RolesManager() {
           setPermSet(new Set())
         }
       } catch (e:any) {
-        toast({ type:'error', title: t('roles.role.load.failed'), description: e?.message })
+        toast({ type:'error', title: t('roles.role.load.failed'), description: (e instanceof Error ? e.message : String(e)) })
       }
     })()
     return () => { cancelled = true }
@@ -128,7 +128,7 @@ export default function RolesManager() {
     const direction = (to < from) ? 'up' : 'down'
     const delta = Math.abs(to - from)
     setLoading(true)
-    try { await api.moveRole(guildId, dragId, { direction, delta }); await load(); } catch (e:any) { toast({ type:'error', title: t('roles.move.failed'), description:e?.message }) } finally { setLoading(false); onDragEnd() }
+    try { await api.moveRole(guildId, dragId, { direction, delta }); await load(); } catch (e:any) { toast({ type:'error', title: t('roles.move.failed'), description:(e instanceof Error ? e.message : String(e)) }) } finally { setLoading(false); onDragEnd() }
   }
 
   const togglePerm = (key:string) => {
@@ -144,7 +144,7 @@ export default function RolesManager() {
       await api.updateRole(guildId, selectedId, payload)
       toast({ type:'success', title:'Cargo atualizado' })
       await load()
-    } catch(e:any){ toast({ type:'error', title:'Falha ao atualizar cargo', description:e?.message }) }
+    } catch(e:any){ toast({ type:'error', title:'Falha ao atualizar cargo', description:(e instanceof Error ? e.message : String(e)) }) }
     finally { setLoading(false) }
   }
 

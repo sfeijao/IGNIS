@@ -88,7 +88,7 @@ export default function ModerationCenterTools() {
           }
           r.push({ userId, ok: true })
         } catch (e: any) {
-          r.push({ userId, ok: false, error: e?.message || 'error' })
+          r.push({ userId, ok: false, error: (e instanceof Error ? e.message : String(e)) || 'error' })
         }
       }
       setResults(r)

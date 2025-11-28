@@ -23,7 +23,7 @@ export default function AutomodEvents() {
     try {
       const res = await api.getAutomodEvents(gid, { resolved: false })
       setEvents(res?.events || res || [])
-    } catch (e: any) { setError(e?.message || t('automod.loadFailed')) }
+    } catch (e: any) { setError((e instanceof Error ? e.message : String(e)) || t('automod.loadFailed')) }
     finally { setLoading(false) }
   }
 
