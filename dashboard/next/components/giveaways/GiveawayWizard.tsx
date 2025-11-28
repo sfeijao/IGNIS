@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from 'react'
-const logger = require('../utils/logger');
+const logger = require('../../utils/logger');
 import { useGuildId } from '@/lib/guild'
 import { useGiveawaysI18n } from '@/lib/useI18nGiveaways'
 
