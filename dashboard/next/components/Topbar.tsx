@@ -30,7 +30,7 @@ export default function Topbar() {
       const url = new URL(window.location.href)
       const gid = url.searchParams.get('guildId')
       if (gid) setGuildId(gid, false)
-    } catch (e) { logger.debug('Caught error:', e?.message || e); }
+    } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
   }, [])
 
   const toggleCompact = () => {

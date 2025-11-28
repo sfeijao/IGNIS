@@ -55,7 +55,7 @@ export default function ServerStatsConfig() {
         }
         setChannels((channelsRes.channels || []).filter((c: any) => c.type === 2 || c.type === '2'))
       } catch (e: any) {
-        toast({ type: 'error', title: 'Erro ao carregar', description: e?.message })
+        toast({ type: 'error', title: 'Erro ao carregar', description: (e instanceof Error ? e.message : String(e)) })
       } finally {
         setLoading(false)
       }
@@ -70,7 +70,7 @@ export default function ServerStatsConfig() {
       await api.saveStatsConfig(guildId, { config })
       toast({ type: 'success', title: '✅ Configuração guardada' })
     } catch (e: any) {
-      toast({ type: 'error', title: 'Erro ao guardar', description: e?.message })
+      toast({ type: 'error', title: 'Erro ao guardar', description: (e instanceof Error ? e.message : String(e)) })
     } finally {
       setSaving(false)
     }
@@ -103,7 +103,7 @@ export default function ServerStatsConfig() {
         throw new Error(data.error || 'Falha ao criar canais')
       }
     } catch (e: any) {
-      toast({ type: 'error', title: 'Erro', description: e?.message })
+      toast({ type: 'error', title: 'Erro', description: (e instanceof Error ? e.message : String(e)) })
     } finally {
       setCreating(false)
     }

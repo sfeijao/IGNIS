@@ -21,7 +21,7 @@ export default function DiagnosticsPanel() {
         const res = await fetch(`/api/guild/${guildId}/diagnostics`, { credentials: 'include' })
         const json = await res.json()
         if (!aborted) setData(json)
-      } catch (e) { logger.debug('Caught error:', e?.message || e); }
+      } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
       finally { if (!aborted) setLoading(false) }
     })()
     return () => { aborted = true }

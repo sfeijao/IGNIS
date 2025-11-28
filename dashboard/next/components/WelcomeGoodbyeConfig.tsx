@@ -75,7 +75,7 @@ export default function WelcomeGoodbyeConfig() {
         }
         setChannels((channelsRes.channels || []).filter((c: any) => c.type === 0 || c.type === '0'))
       } catch (e: any) {
-        toast({ type: 'error', title: 'Erro ao carregar', description: e?.message })
+        toast({ type: 'error', title: 'Erro ao carregar', description: (e instanceof Error ? e.message : String(e)) })
       } finally {
         setLoading(false)
       }
@@ -90,7 +90,7 @@ export default function WelcomeGoodbyeConfig() {
       await api.saveWelcomeConfig(guildId, { welcome, goodbye })
       toast({ type: 'success', title: '✅ Configuração guardada' })
     } catch (e: any) {
-      toast({ type: 'error', title: 'Erro ao guardar', description: e?.message })
+      toast({ type: 'error', title: 'Erro ao guardar', description: (e instanceof Error ? e.message : String(e)) })
     } finally {
       setSaving(false)
     }

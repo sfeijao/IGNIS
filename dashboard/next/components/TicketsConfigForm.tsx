@@ -65,7 +65,7 @@ export default function TicketsConfigForm() {
         if (channelsRes.status === 'fulfilled') setChannels((channelsRes.value.channels || channelsRes.value || []).filter((x: any) => x && x.id && x.name))
         if (categoriesRes.status === 'fulfilled') setCategories(categoriesRes.value.categories || categoriesRes.value || [])
       } catch (e: any) {
-        setError(e?.message || t('common.saveFailed'))
+        setError((e instanceof Error ? e.message : String(e)) || t('common.saveFailed'))
       } finally {
         setLoading(false)
       }
@@ -88,9 +88,9 @@ export default function TicketsConfigForm() {
       toast({ type: 'success', title: t('tickets.saved') })
       setTimeout(() => setSaved(false), 3000)
     } catch (e: any) {
-      const msg = e?.message || t('common.saveFailed')
+      const msg = (e instanceof Error ? e.message : String(e)) || t('common.saveFailed')
       setError(msg)
-      toast({ type: 'error', title: t('common.saveFailed'), description: e?.message })
+      toast({ type: 'error', title: t('common.saveFailed'), description: (e instanceof Error ? e.message : String(e)) })
     } finally {
       setSaving(false)
     }

@@ -51,7 +51,7 @@ export default function VerificationConfig() {
       await api.saveVerificationConfig(guildId, config)
       toast({ type: 'success', title: 'Configuração guardada!' })
     } catch (e: any) {
-      toast({ type: 'error', title: 'Erro ao guardar', description: e?.message })
+      toast({ type: 'error', title: 'Erro ao guardar', description: (e instanceof Error ? e.message : String(e)) })
     } finally {
       setLoading(false)
     }

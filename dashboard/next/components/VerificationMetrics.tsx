@@ -26,7 +26,7 @@ export default function VerificationMetrics() {
       ])
       setMetrics(m?.metrics || m)
       setLogs(l?.logs || l || [])
-    } catch (e: any) { setError(e?.message || t('verification.metrics.error')) }
+    } catch (e: any) { setError((e instanceof Error ? e.message : String(e)) || t('verification.metrics.error')) }
     finally { setLoading(false) }
   }
 
@@ -35,7 +35,7 @@ export default function VerificationMetrics() {
   const purge = async () => {
     if (!guildId) return
     setLoading(true)
-    try { await api.purgeVerificationLogs(guildId); toast({ type: 'success', title: t('verification.metrics.clearLogs') }); await load(guildId) } catch (e:any) { toast({ type:'error', title: t('verification.metrics.error'), description: e?.message }) } finally { setLoading(false) }
+    try { await api.purgeVerificationLogs(guildId); toast({ type: 'success', title: t('verification.metrics.clearLogs') }); await load(guildId) } catch (e:any) { toast({ type:'error', title: t('verification.metrics.error'), description: (e instanceof Error ? e.message : String(e)) }) } finally { setLoading(false) }
   }
 
   const [logSearch, setLogSearch] = useState('')

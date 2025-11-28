@@ -70,8 +70,8 @@ export default function TicketPanels() {
       setCategories(c?.categories || c || [])
       setChannels((ch?.channels || ch || []).filter((x: Channel) => x && x.id && x.name))
     } catch (e: any) {
-      setError(e?.message || 'Erro ao carregar')
-      toast({ type: 'error', title: 'Erro ao carregar', description: e?.message })
+      setError((e instanceof Error ? e.message : String(e)) || 'Erro ao carregar')
+      toast({ type: 'error', title: 'Erro ao carregar', description: (e instanceof Error ? e.message : String(e)) })
     } finally {
       setLoading(false)
     }
@@ -89,7 +89,7 @@ export default function TicketPanels() {
       toast({ type: 'success', title: 'Varredura concluída' })
       await loadAll(guildId)
     } catch (e: any) {
-      toast({ type: 'error', title: 'Falha na varredura', description: e?.message })
+      toast({ type: 'error', title: 'Falha na varredura', description: (e instanceof Error ? e.message : String(e)) })
     } finally {
       setScanning(false)
     }
@@ -105,7 +105,7 @@ export default function TicketPanels() {
       setNewPanel({ name: '', channelId: '' })
       await loadAll(guildId)
     } catch (e: any) {
-      toast({ type: 'error', title: 'Falha ao criar painel', description: e?.message })
+      toast({ type: 'error', title: 'Falha ao criar painel', description: (e instanceof Error ? e.message : String(e)) })
     } finally {
       setLoading(false)
     }
@@ -121,7 +121,7 @@ export default function TicketPanels() {
       setNewCategory({ name: '' })
       await loadAll(guildId)
     } catch (e: any) {
-      toast({ type: 'error', title: 'Falha ao criar categoria', description: e?.message })
+      toast({ type: 'error', title: 'Falha ao criar categoria', description: (e instanceof Error ? e.message : String(e)) })
     } finally {
       setLoading(false)
     }
@@ -152,7 +152,7 @@ export default function TicketPanels() {
       toast({ type: 'success', title: 'Tema atualizado' })
       await loadAll(guildId)
     } catch (e: any) {
-      toast({ type: 'error', title: 'Falha na ação', description: e?.message })
+      toast({ type: 'error', title: 'Falha na ação', description: (e instanceof Error ? e.message : String(e)) })
     } finally {
       setActionLoading(null)
     }
@@ -166,7 +166,7 @@ export default function TicketPanels() {
       toast({ type: 'success', title: 'Template atualizado' })
       await loadAll(guildId)
     } catch (e: any) {
-      toast({ type: 'error', title: 'Falha na ação', description: e?.message })
+      toast({ type: 'error', title: 'Falha na ação', description: (e instanceof Error ? e.message : String(e)) })
     } finally {
       setActionLoading(null)
     }
@@ -186,7 +186,7 @@ export default function TicketPanels() {
       toast({ type: 'success', title: messages[action] || 'Ação concluída' })
       await loadAll(guildId)
     } catch (e: any) {
-      toast({ type: 'error', title: 'Falha na ação', description: e?.message })
+      toast({ type: 'error', title: 'Falha na ação', description: (e instanceof Error ? e.message : String(e)) })
     } finally {
       setActionLoading(null)
     }

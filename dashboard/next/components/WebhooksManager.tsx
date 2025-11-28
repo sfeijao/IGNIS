@@ -52,7 +52,7 @@ export default function WebhooksManager() {
         toast({ type: 'error', title: 'Erro ao testar webhook' })
       }
     } catch (e: any) {
-      toast({ type: 'error', title: 'Erro', description: e?.message })
+      toast({ type: 'error', title: 'Erro', description: (e instanceof Error ? e.message : String(e)) })
     } finally {
       setTesting(null)
     }

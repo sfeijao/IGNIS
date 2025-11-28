@@ -42,7 +42,7 @@ export default function TimeTrackingManager() {
         setEntries(res.entries || [])
         setSummaries(res.summaries || [])
       } catch (e: any) {
-        toast({ type: 'error', title: 'Erro ao carregar', description: e?.message })
+        toast({ type: 'error', title: 'Erro ao carregar', description: (e instanceof Error ? e.message : String(e)) })
       } finally {
         setLoading(false)
       }

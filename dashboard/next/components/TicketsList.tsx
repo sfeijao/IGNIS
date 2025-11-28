@@ -117,7 +117,7 @@ export default function TicketsList() {
     if (uRole) setStaffRole(uRole)
     setDeepRoleFetch(uDeep)
     // current user
-    ;(async () => { try { const me = await api.getCurrentUser(); setCurrentUserId(me?.user?.id || null) } catch (e) { logger.debug('Caught error:', e?.message || e); } })()
+    ;(async () => { try { const me = await api.getCurrentUser(); setCurrentUserId(me?.user?.id || null) } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); } })()
   }, [])
 
   // Persist state to URL for shareable views
@@ -143,7 +143,7 @@ export default function TicketsList() {
       try {
         const res = await api.getRoles(guildId)
         if (!aborted) setRoles((res.roles || []).map((r: any) => ({ id: String(r.id), name: String(r.name) })))
-      } catch (e) { logger.debug('Caught error:', e?.message || e); }
+      } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
     })()
     return () => { aborted = true }
   }, [guildId])
@@ -156,7 +156,7 @@ export default function TicketsList() {
       try {
         const res = await api.getChannels(guildId)
         if (!aborted) setChannels(((res.channels || res || []) as Channel[]).filter(c => c && c.id && c.name))
-      } catch (e) { logger.debug('Caught error:', e?.message || e); }
+      } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
     })()
     return () => { aborted = true }
   }, [guildId])
@@ -185,7 +185,7 @@ export default function TicketsList() {
         const res = await api.getTickets(guildId, params)
         if (!aborted) setData(res)
       } catch (e: any) {
-        if (!aborted) setError(e?.message || 'Failed to load tickets')
+        if (!aborted) setError((e instanceof Error ? e.message : String(e)) || 'Failed to load tickets')
       } finally {
         if (!aborted) setLoading(false)
       }
@@ -208,7 +208,7 @@ export default function TicketsList() {
       const res = await api.getTickets(guildId, params)
       setData(res)
     } catch (e: any) {
-      alert(e?.message || 'Failed to perform action')
+      alert((e instanceof Error ? e.message : String(e)) || 'Failed to perform action')
     }
   }
 
@@ -225,7 +225,7 @@ export default function TicketsList() {
     const confirmClose = confirm(`Close ${selectedIds.length} tickets?`)
     if (!confirmClose) return
     for (const id of selectedIds) {
-      try { await api.ticketAction(guildId, id, 'close') } catch (e) { logger.debug('Caught error:', e?.message || e); }
+      try { await api.ticketAction(guildId, id, 'close') } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
     }
     const res = await api.getTickets(guildId, params)
     setData(res)
@@ -237,7 +237,7 @@ export default function TicketsList() {
     const userId = assignee || ''
     if (!userId) { alert('Select a staff role and assignee.'); return }
     for (const id of selectedIds) {
-      try { await api.ticketAction(guildId, id, 'assign', { userId }) } catch (e) { logger.debug('Caught error:', e?.message || e); }
+      try { await api.ticketAction(guildId, id, 'assign', { userId }) } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
     }
     const res = await api.getTickets(guildId, params)
     setData(res)
@@ -249,7 +249,7 @@ export default function TicketsList() {
     const content = prompt('Add note to selected tickets:')
     if (!content) return
     for (const id of selectedIds) {
-      try { await api.ticketAction(guildId, id, 'addNote', { content }) } catch (e) { logger.debug('Caught error:', e?.message || e); }
+      try { await api.ticketAction(guildId, id, 'addNote', { content }) } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
     }
     const res = await api.getTickets(guildId, params)
     setData(res)

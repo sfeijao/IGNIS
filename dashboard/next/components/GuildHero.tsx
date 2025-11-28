@@ -55,7 +55,7 @@ export default function GuildHero() {
         if (!r.ok) return
         const d = await r.json()
         if (!aborted && d && d.success && d.stats) setStats({ onlineCount: d.stats.onlineCount, channelCount: d.stats.channelCount, roleCount: d.stats.roleCount })
-      } catch (e) { logger.debug('Caught error:', e?.message || e); }
+      } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
     }
     fetchStats()
     timer = setInterval(fetchStats, 20000)

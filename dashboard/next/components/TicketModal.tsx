@@ -70,7 +70,7 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
               setRating(fb.rating)
               setComment(String(fb.comment||''))
             }
-          } catch (e) { logger.debug('Caught error:', e?.message || e); }
+          } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
           setLogs(l)
           setOffset(l?.logs?.length || 0)
           setChannels(((ch as any).channels || ch || []).filter((c: any) => c && c.id && c.name))
@@ -78,10 +78,10 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
           try {
             const m = await api.getTicketMessages(guildId, ticketId, { limit: 100 })
             if (!aborted) { setMessages(m.messages || []); setNextBefore(m.nextBefore || null) }
-          } catch (e) { logger.debug('Caught error:', e?.message || e); }
+          } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
         }
       } catch (e: any) {
-        if (!aborted) setError(e?.message || 'Failed to load ticket')
+        if (!aborted) setError((e instanceof Error ? e.message : String(e)) || 'Failed to load ticket')
       } finally {
         if (!aborted) setLoading(false)
       }
@@ -97,7 +97,7 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
       const next = await api.getTicketLogs(guildId, ticketId, { limit, offset })
   setLogs((prev: TicketLogs | null) => prev ? { ...prev, logs: [...prev.logs, ...next.logs] } : next)
       setOffset(offset + (next?.logs?.length || 0))
-    } catch (e) { logger.debug('Caught error:', e?.message || e); }
+    } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
     finally { setBusyMore(false) }
   }
 
@@ -107,7 +107,7 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
       const m = await api.getTicketMessages(guildId, ticketId, { limit: 100, before: nextBefore })
   setMessages((prev: any[]) => [...(m.messages || []), ...prev])
       setNextBefore(m.nextBefore || null)
-    } catch (e) { logger.debug('Caught error:', e?.message || e); }
+    } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
   }
 
   return (
@@ -140,7 +140,7 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
                         const d = await api.getTicketDetails(guildId, ticketId)
                         setDetails(d)
                       } catch(e:any){
-                        toast({ type: 'error', title: 'Failed to regenerate', description: e?.message || 'Error' })
+                        toast({ type: 'error', title: 'Failed to regenerate', description: (e instanceof Error ? e.message : String(e)) || 'Error' })
                       }
                     }}
                     className="px-2.5 py-1.5 rounded bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-xs font-medium"
@@ -249,7 +249,7 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
                           setFeedbackError(r.error || 'Failed to submit')
                           toast({ type: 'error', title: t('common.error') || 'Erro', description: r.error || 'Failed to submit' })
                         }
-                      } catch(e:any){ setFeedbackError(e?.message || 'Failed to submit') }
+                      } catch(e:any){ setFeedbackError((e instanceof Error ? e.message : String(e)) || 'Failed to submit') }
                       finally { setSubmittingFb(false) }
                     }}
                     submitting={submittingFb}

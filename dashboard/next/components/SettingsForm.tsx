@@ -107,7 +107,7 @@ export default function SettingsForm() {
             modlogChannelId: data.modlogChannelId ?? defaults.modlogChannelId,
           })
         }
-      } catch (e) { logger.debug('Caught error:', e?.message || e); }
+      } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
       try {
         const b = await api.getBotSettings?.(guildId)
         const s = (b && b.settings) || b || {}
@@ -124,11 +124,11 @@ export default function SettingsForm() {
           unverifiedRoleId: typeof s.unverifiedRoleId === 'string' ? s.unverifiedRoleId : (s.verification?.unverifiedRoleId || ''),
           giveawayManagerRoleId: typeof s.giveawayManagerRoleId === 'string' ? s.giveawayManagerRoleId : (s.giveaway_manager_role_id || '')
         }))
-      } catch (e) { logger.debug('Caught error:', e?.message || e); }
+      } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
       try {
         const ch = await api.getChannels(guildId)
         setChannels(ch.channels || ch || [])
-      } catch (e) { logger.debug('Caught error:', e?.message || e); }
+      } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
       try {
         setRolesLoading(true)
         setRolesError(null)
@@ -136,7 +136,7 @@ export default function SettingsForm() {
         setRoles(rs.roles || rs || [])
       } catch (e:any) {
         setRoles([])
-        setRolesError(e?.message || 'roles_failed')
+        setRolesError((e instanceof Error ? e.message : String(e)))
       } finally {
         setRolesLoading(false)
       }
@@ -153,7 +153,7 @@ export default function SettingsForm() {
       setRoles(rs.roles || rs || [])
     } catch (e:any) {
       setRoles([])
-      setRolesError(e?.message || 'roles_failed')
+      setRolesError((e instanceof Error ? e.message : String(e)) || 'roles_failed')
     } finally {
       setRolesLoading(false)
     }
@@ -165,7 +165,7 @@ export default function SettingsForm() {
       const key = `ignis:bannerCropToFill:${guildId}`
       const raw = window.localStorage.getItem(key)
       if (raw != null) setBannerCropToFill(raw === '1')
-    } catch (e) { logger.debug('Caught error:', e?.message || e); }
+    } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
   }, [guildId])
 
   useEffect(() => {
@@ -173,7 +173,7 @@ export default function SettingsForm() {
     try {
       const key = `ignis:bannerCropToFill:${guildId}`
       window.localStorage.setItem(key, bannerCropToFill ? '1' : '0')
-    } catch (e) { logger.debug('Caught error:', e?.message || e); }
+    } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
   }, [guildId, bannerCropToFill])
 
   const save = async () => {
