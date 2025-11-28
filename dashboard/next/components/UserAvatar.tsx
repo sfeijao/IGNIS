@@ -16,7 +16,7 @@ export default function UserAvatar() {
         if (!r.ok) return
         const d = await r.json()
         if (!aborted && d && d.success && d.user) setUser(d.user)
-      } catch (e) { logger.debug('Caught error:', e?.message || e); }
+      } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
     })()
     return () => { aborted = true }
   }, [])

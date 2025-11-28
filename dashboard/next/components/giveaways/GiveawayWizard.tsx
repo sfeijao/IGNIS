@@ -85,7 +85,7 @@ export default function GiveawayWizard(){
   useEffect(() => {
     if (open && guildId) {
       // Focus first field
-      setTimeout(() => { try { firstFieldRef.current?.focus() } catch (e: any) { logger.debug('Caught error:', e?.message || e); } }, 0)
+      setTimeout(() => { try { firstFieldRef.current?.focus() } catch (e: any) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); } }, 0)
 
       // Fetch active giveaway count
       fetch(`/api/guilds/${guildId}/giveaways?status=active`, { credentials: 'include' })
@@ -117,7 +117,7 @@ export default function GiveawayWizard(){
   }
   function closeModal(){
     setOpen(false)
-    setTimeout(()=>{ try { triggerRef.current?.focus() } catch (e: any) { logger.debug('Caught error:', e?.message || e); } }, 0)
+    setTimeout(()=>{ try { triggerRef.current?.focus() } catch (e: any) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); } }, 0)
   }
 
   return (
