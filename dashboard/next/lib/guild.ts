@@ -22,7 +22,7 @@ export function setGuildId(id: string, updateUrl: boolean = true) {
       if (trimmed) url.searchParams.set('guildId', trimmed)
       else url.searchParams.delete('guildId')
       window.history.replaceState({}, '', url.toString())
-    } catch (e) { logger.debug('Caught error:', e?.message || e); }
+    } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
   }
 }
 

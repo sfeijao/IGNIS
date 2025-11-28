@@ -9,7 +9,7 @@ export function useGiveawaysI18n(){
     try {
       const stored = localStorage.getItem('locale') || localStorage.getItem('lang')
       if (stored) locale = stored
-    } catch (e) { logger.debug('Caught error:', e?.message || e); }
+    } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
   }
   const dict = (giveawaysI18n as any)[locale] || (giveawaysI18n as any).pt || {}
   return function t(key: string, fallback?: string){

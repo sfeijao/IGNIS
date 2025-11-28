@@ -14,7 +14,7 @@ export function useApi() {
       if (init?.parseJson === false) return (await res.text()) as any as T
       return (await res.json()) as T
     } catch (e: any) {
-      console.warn('API request error', { input, error: e?.message || e })
+      console.warn('API request error', { input, error: (e instanceof Error ? e.message : String(e)) })
       throw e
     }
   }, [])
