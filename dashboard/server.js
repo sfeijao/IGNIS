@@ -3192,7 +3192,9 @@ app.post('/api/guild/:guildId/webhooks/:id/test-activate', async (req, res) => {
 
 // Helper to ensure admin in guild
 async function ensureGuildAdmin(client, guildId, userId) {
-    if (!client) return { ok: false, code: 500, error: 'Bot not available' };
+    if (!client || !client.guilds || !client.guilds.cache) {
+        return { ok: false, code: 503, error: 'Bot not ready yet' };
+    }
     const guild = client.guilds.cache.get(guildId);
     if (!guild) return { ok: false, code: 404, error: 'Guild not found' };
     const member = await guild.members.fetch(userId).catch(() => null);
