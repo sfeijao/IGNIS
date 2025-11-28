@@ -55,6 +55,98 @@ try {
 const app = express();
 let io = null;
 const PORT = process.env.PORT || 4000;
+
+// ==================== DISCORD CLIENT HELPERS (ROBUST & SAFE) ====================
+/**
+ * Safely get Discord client with comprehensive validation
+ * @returns {{client: Object|null, ready: boolean, error: string|null}}
+ */
+function getDiscordClient() {
+    const client = global.discordClient;
+    
+    if (!client) {
+        return { client: null, ready: false, error: 'Bot not available - client is null' };
+    }
+    
+    if (!client.guilds || !client.guilds.cache) {
+        return { client: null, ready: false, error: 'Bot not ready - guilds cache not initialized' };
+    }
+    
+    if (typeof client.isReady === 'function' && !client.isReady()) {
+        return { client, ready: false, error: 'Bot not ready - client.isReady() returned false' };
+    }
+    
+    return { client, ready: true, error: null };
+}
+
+/**
+ * Express middleware to ensure Discord client is available and ready
+ * Use this on routes that require bot access
+ */
+function requireDiscordClient(req, res, next) {
+    const { client, ready, error } = getDiscordClient();
+    
+    if (!client || !ready) {
+        logger.warn(`[RequireClient] ${req.method} ${req.path} - ${error}`);
+        return res.status(503).json({ 
+            success: false, 
+            error: 'Bot service unavailable', 
+            details: error,
+            canManualInput: true,
+            instructions: 'The bot is starting up. Please wait a moment and try again.'
+        });
+    }
+    
+    req.discordClient = client;
+    next();
+}
+
+/**
+ * Safely fetch a guild from client with proper error handling
+ * @param {Object} client - Discord client
+ * @param {string} guildId - Guild ID to fetch
+ * @returns {{guild: Object|null, error: string|null}}
+ */
+function getGuild(client, guildId) {
+    if (!client || !client.guilds || !client.guilds.cache) {
+        return { guild: null, error: 'Client or guilds cache not available' };
+    }
+    
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) {
+        return { guild: null, error: 'Guild not found - bot may not be in this server' };
+    }
+    
+    return { guild, error: null };
+}
+
+/**
+ * Check if user is admin in guild
+ * @param {Object} guild - Discord guild object  
+ * @param {string} userId - User ID to check
+ * @returns {Promise<{isAdmin: boolean, member: Object|null, error: string|null}>}
+ */
+async function checkGuildAdmin(guild, userId) {
+    try {
+        const member = await guild.members.fetch(userId).catch(() => null);
+        
+        if (!member) {
+            return { isAdmin: false, member: null, error: 'User is not a member of this server' };
+        }
+        
+        const isAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
+        
+        if (!isAdmin) {
+            return { isAdmin: false, member, error: 'User does not have administrator permission' };
+        }
+        
+        return { isAdmin: true, member, error: null };
+    } catch (e) {
+        logger.error('[CheckGuildAdmin] Error fetching member:', e);
+        return { isAdmin: false, member: null, error: `Failed to verify permissions: ${e.message}` };
+    }
+}
+
 // Lightweight test-mode stub for discord client
 if (process.env.DASHBOARD_TEST_MODE === 'true') {
     try {
@@ -771,8 +863,7 @@ app.get('/api/guilds', async (req, res) => {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         // Fetch user guilds via OAuth (uses session cache & backoff). If it fails, fallback to intersection of bot guilds & user membership (best-effort).
         let userGuilds = [];
@@ -837,9 +928,9 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
     if (!req.isAuthenticated || !req.isAuthenticated()) return Errors.NOT_AUTHENTICATED(res);
     try {
         const guildId = req.params.guildId;
-        const client = global.discordClient;
-        if (!client) return Errors.BOT_UNAVAILABLE(res);
-        const guild = client.guilds.cache.get(guildId);
+        const { client, ready, error: clientError } = getDiscordClient();
+        if (!ready) return Errors.BOT_UNAVAILABLE(res);
+        const { guild, error: guildError } = getGuild(client, guildId);
         if (!guild) return Errors.GUILD_NOT_FOUND(res);
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return Errors.NOT_GUILD_MEMBER(res);
@@ -946,10 +1037,8 @@ app.get('/api/guild/:guildId/webhooks/diagnostics', async (req, res) => {
     if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
         const guildId = req.params.guildId;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const member = await guild.members.fetch(req.user.id).catch(()=>null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
         const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
@@ -978,10 +1067,12 @@ app.get('/api/guild/:guildId/info', async (req, res) => {
     }
     try {
         const guildId = req.params.guildId;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        // Use centralized helper
+        const { client, ready, error: clientError } = getDiscordClient();
+        if (!ready) return res.status(503).json({ success: false, error: clientError });
+        
+        const { guild, error: guildError } = getGuild(client, guildId);
+        if (!guild) return res.status(404).json({ success: false, error: guildError });
         // Build CDN URLs manually (works without privileged fetch)
         const iconUrl = guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.${String(guild.icon).startsWith('a_') ? 'gif' : 'png'}?size=256` : null;
         const bannerUrl = guild.banner ? `https://cdn.discordapp.com/banners/${guild.id}/${guild.banner}.${String(guild.banner).startsWith('a_') ? 'gif' : 'png'}?size=1024` : null;
@@ -1011,15 +1102,15 @@ app.get('/api/guild/:guildId/stats', async (req, res) => {
 
     try {
         const guildId = req.params.guildId;
-        const client = global.discordClient;
+        const { client, ready, error: clientError } = getDiscordClient();
 
-        if (!client) {
-            return res.status(500).json({ success: false, error: 'Bot not available' });
+        if (!ready) {
+            return res.status(503).json({ success: false, error: clientError });
         }
 
-        const guild = client.guilds.cache.get(guildId);
+        const { guild, error: guildError } = getGuild(client, guildId);
         if (!guild) {
-            return res.status(404).json({ success: false, error: 'Guild not found' });
+            return res.status(404).json({ success: false, error: guildError });
         }
 
         const stats = {
@@ -1056,14 +1147,12 @@ app.post('/api/guild/:guildId/stats/auto-create', async (req, res) => {
     }
     try {
         const { guildId } = req.params;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
 
         // Get current config or use defaults
         const storage = require('../utils/storage');
@@ -1123,8 +1212,7 @@ app.get('/api/guild/:guildId/roles', async (req, res) => {
     }
     try {
         const guildId = req.params.guildId;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
@@ -1170,8 +1258,8 @@ app.post('/api/guild/:guildId/roles', async (req,res)=>{
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
         const guildId = req.params.guildId;
-        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
-        const guild = client.guilds.cache.get(guildId); if(!guild) return res.status(404).json({ success:false, error:'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const me = guild.members.me || guild.members.cache.get(client.user.id);
         const myHighest = me?.roles?.highest?.position ?? 0;
         // Validate body
@@ -1202,8 +1290,8 @@ app.delete('/api/guild/:guildId/roles/:roleId', ensureGuildAdmin, async (req,res
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
         const guildId = req.params.guildId; const roleId = req.params.roleId;
-        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
-        const guild = client.guilds.cache.get(guildId); if(!guild) return res.status(404).json({ success:false, error:'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const role = guild.roles.cache.get(roleId); if(!role) return res.status(404).json({ success:false, error:'Role not found' });
         if(role.managed) return res.status(400).json({ success:false, error:'role_managed' });
         const me = guild.members.me || guild.members.cache.get(client.user.id);
@@ -1226,8 +1314,8 @@ app.post('/api/guild/:guildId/roles/:roleId/move', ensureGuildAdmin, async (req,
         );
         const { error: moveErr, value: moveBody } = moveSchema.validate(req.body || {}, { abortEarly: false });
         if (moveErr) return res.status(400).json({ success:false, error:'validation_failed', details: moveErr.details.map(d=>d.message) });
-        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
-        const guild = client.guilds.cache.get(guildId); if(!guild) return res.status(404).json({ success:false, error:'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const role = guild.roles.cache.get(roleId); if(!role) return res.status(404).json({ success:false, error:'Role not found' });
         if(role.managed) return res.status(400).json({ success:false, error:'role_managed' });
         const me = guild.members.me || guild.members.cache.get(client.user.id);
@@ -1259,11 +1347,9 @@ app.get('/api/guild/:guildId/roles/:roleId', ensureGuildAdmin, async (req,res)=>
             return res.status(400).json({ success:false, error:'Missing guildId or roleId' });
         }
 
-        const client = global.discordClient;
-        if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
-        const guild = client.guilds.cache.get(guildId);
-        if(!guild) return res.status(404).json({ success:false, error:'Guild not found' });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
 
         const role = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch((err)=>{
             logger.warn(`Failed to fetch role ${roleId}:`, err.message);
@@ -1299,8 +1385,8 @@ app.patch('/api/guild/:guildId/roles/:roleId', ensureGuildAdmin, async (req,res)
     try {
         const guildId = req.params.guildId; const roleId = req.params.roleId;
         logger.info(`PATCH role ${roleId} - Request body:`, JSON.stringify(req.body));
-        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
-        const guild = client.guilds.cache.get(guildId); if(!guild) return res.status(404).json({ success:false, error:'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const role = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(()=>null);
         if(!role) return res.status(404).json({ success:false, error:'Role not found' });
         if(role.managed) return res.status(400).json({ success:false, error:'role_managed' });
@@ -1357,7 +1443,7 @@ app.get('/api/guild/:guildId/mod-presets', (req,res)=>{
     try {
         const guildId = req.params.guildId;
         // Basic membership check (bot in guild) – deeper permission could be added later
-        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         if(!client.guilds.cache.get(guildId)) return res.status(404).json({ success:false, error:'Guild not found' });
         return res.json({ success:true, presets: loadModPresetsSafe() });
     } catch(e){ logger.error('mod-presets get error', e); return res.status(500).json({ success:false, error:'mod_presets_failed' }); }
@@ -1368,7 +1454,7 @@ app.post('/api/guild/:guildId/mod-presets', (req,res)=>{
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
         const guildId = req.params.guildId;
-        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         if(!client.guilds.cache.get(guildId)) return res.status(404).json({ success:false, error:'Guild not found' });
         const presetSchema = Joi.alternatives().try(
             Joi.object({ presets: Joi.object().unknown(true).required() }).unknown(false),
@@ -1399,7 +1485,7 @@ app.delete('/api/guild/:guildId/mod-presets/:name', (req,res)=>{
         // Validate name to avoid weird keys
         const { error: nameErr } = Joi.string().pattern(/^[A-Za-z0-9_.\-]{1,64}$/).validate(name);
         if (nameErr) return res.status(400).json({ success:false, error:'validation_failed', details:[nameErr.message] });
-        const client = global.discordClient; if(!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         if(!client.guilds.cache.get(guildId)) return res.status(404).json({ success:false, error:'Guild not found' });
         const presets = loadModPresetsSafe();
         if(!(name in presets)) return res.status(404).json({ success:false, error:'preset_not_found' });
@@ -1415,10 +1501,8 @@ app.get('/api/guild/:guildId/members', async (req, res) => {
     }
     try {
         const guildId = req.params.guildId;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-    const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+    const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
     const me = guild.members.me || guild.members.cache.get(client.user.id);
     const myHighest = me?.roles?.highest?.position ?? 0;
         // Validate query
@@ -1474,10 +1558,8 @@ app.post('/api/guild/:guildId/members/:userId/roles', async (req, res) => {
         if (mErr) return res.status(400).json({ success:false, error:'validation_failed', details: mErr.details.map(d=>d.message) });
         const toAdd = body.add || [];
         const toRemove = body.remove || [];
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         let member = guild.members.cache.get(userId);
         if (!member) { try { member = await guild.members.fetch(userId); } catch (e) { logger.debug('Member fetch error:', e?.message || e); }
         }
@@ -1527,7 +1609,7 @@ app.post('/api/guild/:guildId/members/:userId/roles', async (req, res) => {
 app.post('/api/guild/:guildId/members/:userId/nickname', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const guild = check.guild;
         const member = await guild.members.fetch(req.params.userId).catch(() => null);
@@ -1544,7 +1626,7 @@ app.post('/api/guild/:guildId/members/:userId/nickname', async (req, res) => {
 app.post('/api/guild/:guildId/members/:userId/timeout', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const guild = check.guild;
         const member = await guild.members.fetch(req.params.userId).catch(() => null);
@@ -1562,7 +1644,7 @@ app.post('/api/guild/:guildId/members/:userId/timeout', async (req, res) => {
 app.post('/api/guild/:guildId/members/:userId/kick', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const guild = check.guild;
         const member = await guild.members.fetch(req.params.userId).catch(() => null);
@@ -1579,7 +1661,7 @@ app.post('/api/guild/:guildId/members/:userId/kick', async (req, res) => {
 app.post('/api/guild/:guildId/members/:userId/ban', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const guild = check.guild;
         const schema = Joi.object({ reason: Joi.string().trim().max(200).allow('', null), deleteMessageSeconds: Joi.number().integer().min(0).max(7*24*3600).default(0) });
@@ -1597,16 +1679,16 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
 
     try {
         const guildId = req.params.guildId;
-        const client = global.discordClient;
+        const { client, ready, error: clientError } = getDiscordClient();
 
-        if (!client) {
-            return res.status(500).json({ success: false, error: 'Bot not available' });
+        if (!ready) {
+            return res.status(503).json({ success: false, error: clientError });
         }
 
         // Verificar se o usuário tem permissões no servidor
-        const guild = client.guilds.cache.get(guildId);
+        const { guild, error: guildError } = getGuild(client, guildId);
         if (!guild) {
-            return res.status(404).json({ success: false, error: 'Guild not found' });
+            return res.status(404).json({ success: false, error: guildError });
         }
 
         // Usar storage para obter tickets e aplicar filtros/paginação
@@ -1759,10 +1841,8 @@ app.get('/api/guild/:guildId/tickets/export', async (req, res) => {
     }
     try {
         const guildId = req.params.guildId;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
 
         const storage = require('../utils/storage');
         const allTickets = await storage.getTickets(guildId);
@@ -1843,11 +1923,9 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
 
     try {
         const guildId = req.params.guildId;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
 
         // Garantir membro no servidor
         const member = await guild.members.fetch(req.user.id).catch(() => null);
@@ -2011,8 +2089,7 @@ app.post('/api/guild/:guildId/panels', async (req, res) => {
 
     try {
         const guildId = req.params.guildId;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
@@ -2110,8 +2187,7 @@ app.patch('/api/guild/:guildId/panels/:panelId', async (req, res) => {
 
     try {
         const { guildId, panelId } = req.params;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
@@ -2203,10 +2279,8 @@ app.post('/api/guild/:guildId/panels/scan', async (req, res) => {
     try {
         const guildId = req.params.guildId;
         const { channelsLimit = 100, messagesPerChannel = 100, persist = true } = req.body || {};
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
 
         // Requer administrador para varreduras profundas
         const check = await ensureGuildAdmin(client, guildId, req.user.id);
@@ -2305,10 +2379,8 @@ app.post('/api/guild/:guildId/panels/scan', async (req, res) => {
 app.get('/api/guild/:guildId/is-admin', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(req.params.guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, req.params.guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
         const isAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
@@ -2323,10 +2395,8 @@ app.get('/api/guild/:guildId/is-admin', async (req, res) => {
 app.post('/api/guild/:guildId/tickets/sync', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(req.params.guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, req.params.guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
 
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
@@ -2359,11 +2429,9 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
     try {
         const { guildId, panelId } = req.params;
         const { action, data } = req.body || {};
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
 
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
@@ -2596,10 +2664,8 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
     if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
         const { guildId } = req.params;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
         const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
@@ -2651,10 +2717,8 @@ app.post('/api/guild/:guildId/webhooks', async (req, res) => {
     if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
         const { guildId } = req.params;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
         const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
@@ -2738,10 +2802,8 @@ app.patch('/api/guild/:guildId/webhooks/:id', async (req, res) => {
     if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
         const { guildId, id } = req.params;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
         const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
@@ -2865,10 +2927,8 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
     if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
         const { guildId, id } = req.params;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
         const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
@@ -2905,10 +2965,8 @@ app.post('/api/guild/:guildId/webhooks/test', async (req, res) => {
     try {
         const { guildId } = req.params;
         const { type, payload } = req.body || {};
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
         const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
@@ -3012,10 +3070,8 @@ app.post('/api/guild/:guildId/webhooks/test-all', async (req, res) => {
     try {
         const { guildId } = req.params;
         const { payload } = req.body || {};
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
         const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
@@ -3117,10 +3173,8 @@ app.post('/api/guild/:guildId/webhooks/:id/test-activate', async (req, res) => {
     try {
         const { guildId, id } = req.params;
         const { payload } = req.body || {};
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
         const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
@@ -3191,28 +3245,51 @@ app.post('/api/guild/:guildId/webhooks/:id/test-activate', async (req, res) => {
 });
 
 // Helper to ensure admin in guild
+// ==================== AUTHENTICATION & PERMISSION HELPERS ====================
 async function ensureGuildAdmin(client, guildId, userId) {
-    if (!client || !client.guilds || !client.guilds.cache) {
-        return { ok: false, code: 503, error: 'Bot not ready yet' };
+    // Use new centralized helper instead of manual checks
+    const { ready, error: clientError } = getDiscordClient();
+    if (!ready) {
+        return { ok: false, code: 503, error: clientError || 'Bot not ready yet' };
     }
-    const guild = client.guilds.cache.get(guildId);
-    if (!guild) return { ok: false, code: 404, error: 'Guild not found' };
-    const member = await guild.members.fetch(userId).catch(() => null);
-    if (!member) return { ok: false, code: 403, error: 'You are not a member of this server' };
-    const isAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
-    if (!isAdmin) return { ok: false, code: 403, error: 'Administrator permission required' };
+    
+    // Use new guild getter
+    const { guild, error: guildError } = getGuild(client, guildId);
+    if (!guild) {
+        return { ok: false, code: 404, error: guildError || 'Server not found' };
+    }
+    
+    // Use new admin checker
+    const { isAdmin, member, error: adminError } = await checkGuildAdmin(guild, userId);
+    if (!isAdmin) {
+        return { ok: false, code: 403, error: adminError || 'Unauthorized - Administrator permission required' };
+    }
+    
     return { ok: true, guild, member };
 }
 
-// Channels list (for UIs)
+// Channels list (for UIs) - REFACTORED WITH NEW HELPERS
 app.get('/api/guild/:guildId/channels', async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    if (!req.isAuthenticated()) {
+        return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    
     try {
-        const client = global.discordClient;
-        logger.info(`[Channels API] Request for guild ${req.params.guildId} - Client available: ${!!client}`);
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        // Use new centralized client getter
+        const { client, ready, error: clientError } = getDiscordClient();
+        logger.info(`[Channels API] Request for guild ${req.params.guildId} - Ready: ${ready}`);
         
-        logger.info(`[Channels API] Client ready: ${client.isReady()}, Guilds cache size: ${client.guilds?.cache?.size || 0}`);
+        if (!ready) {
+            logger.warn(`[Channels API] Client not ready: ${clientError}`);
+            return res.status(503).json({ 
+                success: false, 
+                error: clientError,
+                canManualInput: true,
+                instructions: 'The bot is starting up. Please wait a moment, or enter a channel ID manually.'
+            });
+        }
+        
+        // Use new ensureGuildAdmin helper (already uses getGuild internally)
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) {
             logger.warn(`[Channels API] Admin check failed: ${check.error} (code: ${check.code})`);
@@ -3341,8 +3418,7 @@ function getChannelTypeName(type) {
 app.post('/api/guild/:guildId/channels/verify', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -3415,8 +3491,7 @@ app.get('/api/guild/:guildId/stats/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
@@ -3458,8 +3533,7 @@ app.post('/api/guild/:guildId/stats/setup', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
@@ -3521,8 +3595,7 @@ app.post('/api/guild/:guildId/stats/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
@@ -3568,8 +3641,7 @@ app.delete('/api/guild/:guildId/stats', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
@@ -3599,8 +3671,7 @@ app.get('/api/guild/:guildId/stats/metrics', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
@@ -3636,8 +3707,7 @@ app.get('/api/guild/:guildId/timetracking/user/:userId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
@@ -3663,8 +3733,7 @@ app.get('/api/guild/:guildId/timetracking/report', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
@@ -3716,8 +3785,7 @@ app.get('/api/guild/:guildId/timetracking/active/:userId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
@@ -3751,8 +3819,7 @@ app.get('/api/guild/:guildId/timetracking/sessions', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
@@ -3791,8 +3858,7 @@ app.get('/api/guild/:guildId/timetracking/sessions', async (req, res) => {
 app.get('/api/guild/:guildId/categories', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const categories = check.guild.channels.cache
@@ -3810,7 +3876,7 @@ app.get('/api/guild/:guildId/categories', async (req, res) => {
 app.post('/api/guild/:guildId/categories/create', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const name = (req.body && req.body.name) ? String(req.body.name).slice(0, 96) : '';
         if (!name.trim()) return res.status(400).json({ success: false, error: 'missing_name' });
@@ -3827,8 +3893,7 @@ app.post('/api/guild/:guildId/categories/create', async (req, res) => {
 app.get('/api/guild/:guildId/members/search', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const guild = check.guild;
@@ -3872,8 +3937,7 @@ app.get('/api/guild/:guildId/members/search', async (req, res) => {
 app.get('/api/guild/:guildId/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
@@ -3889,8 +3953,7 @@ app.get('/api/guild/:guildId/config', async (req, res) => {
 app.get('/api/guild/:guildId/tickets/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
@@ -3905,8 +3968,7 @@ app.get('/api/guild/:guildId/tickets/config', async (req, res) => {
 app.post('/api/guild/:guildId/tickets/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const updates = req.body || {};
@@ -3925,8 +3987,7 @@ app.post('/api/guild/:guildId/tickets/config', async (req, res) => {
 app.post('/api/guild/:guildId/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const updates = req.body || {};
@@ -3943,8 +4004,7 @@ app.post('/api/guild/:guildId/config', async (req, res) => {
 app.get('/api/guild/:guildId/welcome', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -3983,8 +4043,7 @@ app.get('/api/guild/:guildId/welcome', async (req, res) => {
 app.post('/api/guild/:guildId/welcome', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4003,8 +4062,7 @@ app.post('/api/guild/:guildId/welcome', async (req, res) => {
 app.get('/api/guild/:guildId/stats/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4032,8 +4090,7 @@ app.get('/api/guild/:guildId/stats/config', async (req, res) => {
 app.post('/api/guild/:guildId/stats/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4052,8 +4109,7 @@ app.post('/api/guild/:guildId/stats/config', async (req, res) => {
 app.get('/api/guild/:guildId/time-tracking', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4168,8 +4224,7 @@ app.get('/api/guild/:guildId/time-tracking', async (req, res) => {
 app.get('/api/guild/:guildId/time-tracking/panels', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4190,8 +4245,7 @@ app.get('/api/guild/:guildId/time-tracking/panels', async (req, res) => {
 app.post('/api/guild/:guildId/time-tracking/panels', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4263,8 +4317,7 @@ app.post('/api/guild/:guildId/time-tracking/panels', async (req, res) => {
 app.patch('/api/guild/:guildId/time-tracking/panels/:panelId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4293,8 +4346,7 @@ app.patch('/api/guild/:guildId/time-tracking/panels/:panelId', async (req, res) 
 app.delete('/api/guild/:guildId/time-tracking/panels/:panelId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4338,8 +4390,7 @@ const webhookSystem = require('../utils/webhookSystem');
 app.get('/api/guild/:guildId/webhooks-config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4371,8 +4422,7 @@ app.get('/api/guild/:guildId/webhooks-config', async (req, res) => {
 app.post('/api/guild/:guildId/webhooks-config/add', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4428,8 +4478,7 @@ app.post('/api/guild/:guildId/webhooks-config/add', async (req, res) => {
 app.delete('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4457,8 +4506,7 @@ app.delete('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) =>
 app.put('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4496,8 +4544,7 @@ app.put('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) => {
 app.patch('/api/guild/:guildId/webhooks-config/logs-enabled', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4530,8 +4577,7 @@ app.get('/api/guild/:guildId/webhook-unified', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
         const { guildId } = req.params;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
@@ -4561,8 +4607,7 @@ app.post('/api/guild/:guildId/webhook-unified', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
         const { guildId } = req.params;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
@@ -4602,8 +4647,7 @@ app.post('/api/guild/:guildId/webhook-unified/test', async (req, res) => {
     try {
         const { guildId } = req.params;
         const { url } = req.body;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
@@ -4651,8 +4695,7 @@ app.post('/api/guild/:guildId/webhook-unified/test', async (req, res) => {
 app.patch('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4685,8 +4728,7 @@ app.patch('/api/guild/:guildId/webhooks-config/:webhookId', async (req, res) => 
 app.post('/api/guild/:guildId/webhooks-config/:webhookId/test', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4717,8 +4759,7 @@ app.post('/api/guild/:guildId/webhooks-config/:webhookId/test', async (req, res)
 app.get('/api/guild/:guildId/webhooks-logs', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -4751,7 +4792,7 @@ function ensureMongoAvailable() {
 app.get('/api/guild/:guildId/mod/cases', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.json({ success: true, cases: [], total: 0 });
         const { ModerationCaseModel } = require('../utils/db/models');
@@ -4793,7 +4834,7 @@ app.get('/api/guild/:guildId/mod/cases', async (req, res) => {
 app.post('/api/guild/:guildId/mod/cases', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.status(501).json({ success: false, error: 'MongoDB required' });
         const schema = Joi.object({
@@ -4817,7 +4858,7 @@ app.post('/api/guild/:guildId/mod/cases', async (req, res) => {
 app.post('/api/guild/:guildId/mod/cases/:id/archive', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.status(501).json({ success: false, error: 'MongoDB required' });
         const { ModerationCaseModel } = require('../utils/db/models');
@@ -4834,7 +4875,7 @@ app.post('/api/guild/:guildId/mod/cases/:id/archive', async (req, res) => {
 app.get('/api/guild/:guildId/mod/warns/:userId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.json({ success: true, total: 0, risk: 'low' });
         const { ModerationCaseModel } = require('../utils/db/models');
@@ -4851,7 +4892,7 @@ app.get('/api/guild/:guildId/mod/warns/:userId', async (req, res) => {
 app.get('/api/guild/:guildId/mod/stats', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.json({ success: true, charts: { ticketsPerDay: [], avgResolutionMs: 0, modActionsByType: [] } });
         const { ModerationCaseModel, TicketModel } = require('../utils/db/models');
@@ -4895,7 +4936,7 @@ app.get('/api/guild/:guildId/mod/stats', async (req, res) => {
 app.get('/api/guild/:guildId/mod/automod/events', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.json({ success: true, events: [] });
         const { AutomodEventModel } = require('../utils/db/models');
@@ -4919,7 +4960,7 @@ app.get('/api/guild/:guildId/mod/automod/events', async (req, res) => {
 app.post('/api/guild/:guildId/mod/automod/events/:id/review', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.status(501).json({ success: false, error: 'MongoDB required' });
         const { AutomodEventModel } = require('../utils/db/models');
@@ -4941,7 +4982,7 @@ app.post('/api/guild/:guildId/mod/automod/events/:id/review', async (req, res) =
 app.get('/api/guild/:guildId/mod/appeals', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.json({ success: true, appeals: [] });
         const { AppealModel } = require('../utils/db/models');
@@ -4961,7 +5002,7 @@ app.get('/api/guild/:guildId/mod/appeals', async (req, res) => {
 app.post('/api/guild/:guildId/mod/appeals/:id/decision', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.status(501).json({ success: false, error: 'MongoDB required' });
         const schema = Joi.object({ status: Joi.string().valid('accepted','rejected').required(), response: Joi.string().allow('').max(2000).default('') });
@@ -4980,7 +5021,7 @@ app.post('/api/guild/:guildId/mod/appeals/:id/decision', async (req, res) => {
 app.get('/api/guild/:guildId/mod/notifications', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.json({ success: true, notifications: [] });
         const { NotificationModel } = require('../utils/db/models');
@@ -4996,7 +5037,7 @@ app.get('/api/guild/:guildId/mod/notifications', async (req, res) => {
 app.get('/api/guild/:guildId/mod/export', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         if (!ensureMongoAvailable()) return res.status(501).json({ success: false, error: 'MongoDB required' });
         const { ModerationCaseModel } = require('../utils/db/models');
@@ -5067,8 +5108,7 @@ app.post('/api/internal/modlog', express.json(), async (req, res) => {
 app.get('/api/guild/:guildId/bot-settings', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
@@ -5088,8 +5128,7 @@ app.get('/api/guild/:guildId/bot-settings', async (req, res) => {
 app.post('/api/guild/:guildId/bot-settings', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -5167,8 +5206,7 @@ app.post('/api/guild/:guildId/bot-settings', async (req, res) => {
 app.get('/api/guild/:guildId/settings', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
@@ -5192,8 +5230,7 @@ app.get('/api/guild/:guildId/settings', async (req, res) => {
 app.post('/api/guild/:guildId/settings', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -5234,8 +5271,7 @@ app.post('/api/guild/:guildId/settings', async (req, res) => {
 app.get('/api/guild/:guildId/logs', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
@@ -5358,8 +5394,7 @@ app.get('/api/guild/:guildId/logs', async (req, res) => {
 app.get('/api/guild/:guildId/logs/count', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
@@ -5412,8 +5447,7 @@ app.get('/api/guild/:guildId/logs/count', async (req, res) => {
 app.get('/api/guild/:guildId/logs/export', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         // Reuse list logic
@@ -5497,8 +5531,7 @@ app.get('/api/guild/:guildId/logs/export', async (req, res) => {
 app.get('/api/guild/:guildId/logs/stats', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
@@ -5623,7 +5656,7 @@ app.get('/api/guild/:guildId/logs/stream', async (req, res) => {
 app.get('/api/guild/:guildId/moderation/event/:logId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
         let log = null;
@@ -5659,7 +5692,7 @@ app.get('/api/guild/:guildId/moderation/event/:logId', async (req, res) => {
 app.get('/api/guild/:guildId/search/members', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success:false, error: check.error });
         const q = (req.query.q || '').toString().toLowerCase();
         const guild = check.guild;
@@ -5675,7 +5708,7 @@ app.get('/api/guild/:guildId/search/members', async (req, res) => {
 app.get('/api/guild/:guildId/search/channels', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success:false, error: check.error });
         const q = (req.query.q || '').toString().toLowerCase();
         const guild = check.guild;
@@ -5692,7 +5725,7 @@ app.get('/api/guild/:guildId/search/channels', async (req, res) => {
 app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success:false, error:'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success:false, error: check.error });
         const guild = check.guild;
     const { action, userId, reason, durationSeconds, logId, dryRun } = req.body || {};
@@ -6042,8 +6075,7 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
 app.get('/api/guild/:guildId/webhooks', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const guildId = req.params.guildId;
@@ -6106,7 +6138,7 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
 app.get('/api/guild/:guildId/verification/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
     const cfg = await storage.getGuildConfig(req.params.guildId);
@@ -6118,7 +6150,7 @@ app.get('/api/guild/:guildId/verification/config', async (req, res) => {
 app.post('/api/guild/:guildId/verification/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
 
@@ -6234,7 +6266,7 @@ app.post('/api/guild/:guildId/verification/config', async (req, res) => {
 app.get('/api/guild/:guildId/verification/metrics', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
         const window = String(req.query.window || '24h');
@@ -6251,7 +6283,7 @@ app.get('/api/guild/:guildId/verification/metrics', async (req, res) => {
 app.get('/api/guild/:guildId/verification/logs', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
         const limit = Math.min(1000, Math.max(1, parseInt(String(req.query.limit || '200'), 10) || 200));
@@ -6264,7 +6296,7 @@ app.get('/api/guild/:guildId/verification/logs', async (req, res) => {
 app.delete('/api/guild/:guildId/verification/logs', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
         const olderThanDays = Math.max(1, Math.min(365, parseInt(String(req.query.olderThanDays || '30'), 10) || 30));
@@ -6277,7 +6309,7 @@ app.delete('/api/guild/:guildId/verification/logs', async (req, res) => {
 app.get('/api/guild/:guildId/moderation/summary', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
         const window = String(req.query.window || '24h');
@@ -6322,7 +6354,7 @@ app.get('/api/guild/:guildId/moderation/summary', async (req, res) => {
 app.get('/api/guild/:guildId/quick-tags', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
         const cfg = await storage.getGuildConfig(req.params.guildId);
@@ -6334,7 +6366,7 @@ app.get('/api/guild/:guildId/quick-tags', async (req, res) => {
 app.post('/api/guild/:guildId/quick-tags', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
         const current = await storage.getGuildConfig(req.params.guildId) || {};
@@ -6378,7 +6410,7 @@ const tagSchema = Joi.object({
 app.get('/api/guild/:guildId/tags', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
         const cfg = await storage.getGuildConfig(req.params.guildId) || {};
@@ -6390,7 +6422,7 @@ app.get('/api/guild/:guildId/tags', async (req, res) => {
 app.post('/api/guild/:guildId/tags', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
         const cfg = await storage.getGuildConfig(req.params.guildId) || {};
@@ -6442,7 +6474,7 @@ app.post('/api/guild/:guildId/tags', async (req, res) => {
 app.delete('/api/guild/:guildId/tags/:id', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
         const cfg = await storage.getGuildConfig(req.params.guildId) || {};
@@ -6464,7 +6496,7 @@ const applyTagsSchema = Joi.object({
 app.post('/api/guild/:guildId/tags/apply', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const { error, value } = applyTagsSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
         if (error) return res.status(400).json({ success: false, error: 'validation_error', details: error.details.map(d=>d.message) });
@@ -6513,7 +6545,7 @@ app.post('/api/guild/:guildId/tags/apply', async (req, res) => {
 app.post('/api/guild/:guildId/tags/remove', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const { error, value } = Joi.object({ tagId: Joi.string().required(), userIds: Joi.array().items(Joi.string().trim()).min(1).max(100).required(), reason: Joi.string().trim().allow('').max(200).default('') }).validate(req.body, { abortEarly: false, stripUnknown: true });
         if (error) return res.status(400).json({ success: false, error: 'validation_error', details: error.details.map(d=>d.message) });
@@ -6618,8 +6650,8 @@ app.post('/api/guild/:guildId/commands', async (req, res) => {
 app.get('/api/guild/:guildId/diagnostics', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(req.params.guildId); if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, req.params.guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const roles = Array.from(guild.roles.cache.values());
         const channels = Array.from(guild.channels.cache.values());
         const suggestions = [];
@@ -6647,7 +6679,7 @@ app.get('/api/guild/:guildId/diagnostics', async (req, res) => {
 app.get('/api/guild/:guildId/backup/export', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient; if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
         const [tickets, config, logs] = await Promise.all([
@@ -6667,8 +6699,7 @@ app.get('/api/guild/:guildId/performance', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
         const guildId = req.params.guildId;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         // Current metrics
         const processMem = process.memoryUsage();
@@ -6722,8 +6753,7 @@ app.get('/api/guild/:guildId/performance', async (req, res) => {
 app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
     if (preferSqlite) {
@@ -6764,8 +6794,7 @@ app.delete('/api/guild/:guildId/webhooks/:id', async (req, res) => {
 app.post('/api/guild/:guildId/webhooks/auto-setup', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const guild = check.guild;
@@ -6814,8 +6843,7 @@ app.post('/api/guild/:guildId/webhooks/auto-setup', async (req, res) => {
 app.post('/api/guild/:guildId/webhooks/create-in-channel', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const guild = check.guild;
@@ -6857,10 +6885,8 @@ app.post('/api/guild/:guildId/webhooks/add-external', async (req, res) => {
     if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
         const { guildId } = req.params;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
         const canManage = member.permissions.has(PermissionFlagsBits.ManageGuild) || member.permissions.has(PermissionFlagsBits.Administrator);
@@ -6916,8 +6942,7 @@ app.post('/api/guild/:guildId/webhooks/add-external', async (req, res) => {
 app.post('/api/guild/:guildId/uploads', express.json({ limit: '60mb' }), async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -6982,8 +7007,7 @@ function __lock(key, ttlMs = 5000) {
 app.post('/api/guild/:guildId/panels/create', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
     const storage = require('../utils/storage');
@@ -7270,10 +7294,7 @@ app.get('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
 
     try {
         const { guildId, ticketId } = req.params;
-        const client = global.discordClient;
-
-        if (!client) {
-            return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) { return res.status(503).json({ success: false, error: clientError });
         }
 
         const guild = client.guilds.cache.get(guildId);
@@ -7366,10 +7387,8 @@ app.get('/api/guild/:guildId/tickets/:ticketId/logs', async (req, res) => {
     }
     try {
         const { guildId, ticketId } = req.params;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
 
@@ -7408,10 +7427,8 @@ app.get('/api/guild/:guildId/tickets/:ticketId/logs/export', async (req, res) =>
     }
     try {
         const { guildId, ticketId } = req.params;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
 
@@ -7464,11 +7481,9 @@ app.get('/api/guild/:guildId/tickets/:ticketId/messages', async (req, res) => {
 
         logger.info(`Fetching messages for ticket ${ticketId} in guild ${guildId}`);
 
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
 
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
@@ -7539,10 +7554,7 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
     try {
         const { guildId, ticketId } = req.params;
         const { action, data } = req.body;
-        const client = global.discordClient;
-
-        if (!client) {
-            return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) { return res.status(503).json({ success: false, error: clientError });
         }
 
         const guild = client.guilds.cache.get(guildId);
@@ -7718,10 +7730,8 @@ app.post('/api/guild/:guildId/tickets/:ticketId/feedback', async (req, res) => {
     try {
         const { guildId, ticketId } = req.params;
         const { rating, comment } = req.body || {};
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
 
@@ -7771,10 +7781,7 @@ app.delete('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
 
     try {
         const { guildId, ticketId } = req.params;
-        const client = global.discordClient;
-
-        if (!client) {
-            return res.status(500).json({ success: false, error: 'Bot not available' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) { return res.status(503).json({ success: false, error: clientError });
         }
 
         const guild = client.guilds.cache.get(guildId);
@@ -7844,10 +7851,8 @@ app.get('/api/guild/:guildId/tickets/:ticketId/transcript', async (req, res) => 
         const { guildId, ticketId } = req.params;
         const format = (req.query.format || 'txt').toString().toLowerCase();
         const wantStream = String(req.query.stream || '0') === '1';
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
 
@@ -7941,10 +7946,8 @@ app.post('/api/guild/:guildId/tickets/:ticketId/transcript/regenerate', async (r
     }
     try {
         const { guildId, ticketId } = req.params;
-        const client = global.discordClient;
-        if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
-        const guild = client.guilds.cache.get(guildId);
-        if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
+        const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+        const { guild, error: guildError } = getGuild(client, guildId); if (!guild) return res.status(404).json({ success: false, error: guildError });
         const member = await guild.members.fetch(req.user.id).catch(() => null);
         if (!member) return res.status(403).json({ success: false, error: 'You are not a member of this server' });
 
@@ -8084,8 +8087,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/invites/stats', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8106,8 +8108,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/invites/top', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8129,8 +8130,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/invites/user/:userId', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8146,8 +8146,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.post('/api/guild/:guildId/invites/sync', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8168,8 +8167,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/antiraid/config', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8185,8 +8183,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.post('/api/guild/:guildId/antiraid/config', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8202,8 +8199,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/antiraid/stats', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8219,8 +8215,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/antiraid/raids', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8241,8 +8236,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.post('/api/guild/:guildId/antiraid/raids/:raidId/resolve', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8263,8 +8257,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/warns', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8284,8 +8277,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.post('/api/guild/:guildId/warns', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8303,8 +8295,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.delete('/api/guild/:guildId/warns/:warnId', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8326,8 +8317,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/suggestions', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8345,8 +8335,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.post('/api/guild/:guildId/suggestions/:messageId/status', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8368,8 +8357,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/autoresponses', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8390,8 +8378,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.post('/api/guild/:guildId/autoresponses', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8411,8 +8398,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.put('/api/guild/:guildId/autoresponses/:id', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8428,8 +8414,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.delete('/api/guild/:guildId/autoresponses/:id', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8449,8 +8434,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/events', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8471,8 +8455,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.post('/api/guild/:guildId/events', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8493,8 +8476,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.delete('/api/guild/:guildId/events/:eventId', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8514,8 +8496,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/staff/stats/:staffId', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8533,8 +8514,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/staff/leaderboard', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8552,8 +8532,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/staff/recent', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8575,8 +8554,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/announcements', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8594,8 +8572,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.post('/api/guild/:guildId/announcements', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8611,8 +8588,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.delete('/api/guild/:guildId/announcements/:id', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8633,8 +8609,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/ticket-categories', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8650,8 +8625,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.post('/api/guild/:guildId/ticket-categories', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8667,8 +8641,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.put('/api/guild/:guildId/ticket-categories/:categoryId', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8684,8 +8657,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.delete('/api/guild/:guildId/ticket-categories/:categoryId', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8702,8 +8674,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/tickets-enhanced', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8719,8 +8690,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.get('/api/guild/:guildId/tickets-enhanced/stats', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8737,8 +8707,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.post('/api/guild/:guildId/tickets-enhanced/:ticketId/notes', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8755,8 +8724,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
     app.post('/api/guild/:guildId/tickets-enhanced/:ticketId/close', async (req, res) => {
         if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
         try {
-            const client = global.discordClient;
-            if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
@@ -8783,3 +8751,5 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
 }
 
 module.exports = app;
+
+
