@@ -200,7 +200,7 @@ export default function AppealsManager() {
           <span className="text-2xl">📋</span>
           <h3 className="text-lg font-semibold text-white">{t('appeals.queue')}</h3>
         </div>
-        
+
         <div className="space-y-4">
           {loading && (
             <div className="text-center py-12">
@@ -208,14 +208,14 @@ export default function AppealsManager() {
               <div className="text-gray-400">Loading appeals...</div>
             </div>
           )}
-          
+
           {!loading && paged.length === 0 && (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">📭</div>
               <div className="text-gray-400">{t('appeals.empty')}</div>
             </div>
           )}
-          
+
           {!loading && paged.map(ap => (
             <div key={ap.id} className="bg-gray-900/50 border border-gray-700 hover:border-indigo-600/50 rounded-xl p-5 transition-all duration-200">
               <div className="space-y-4">
@@ -230,14 +230,14 @@ export default function AppealsManager() {
                     </time>
                   ) : '—'}
                 </div>
-                
+
                 <div>
                   <div className="text-sm font-medium text-gray-300 mb-1">{t('appeals.reason')}:</div>
                   <div className="text-white bg-gray-800/50 rounded-lg p-3 border border-gray-700">
                     {ap.reason || t('appeals.reason.empty')}
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="md:col-span-2 space-y-2">
                     <label className="text-sm font-medium text-gray-300">{t('appeals.decision.justification')}</label>

@@ -45,7 +45,7 @@ export default function AutomodEvents() {
     if (!q) return base
     return base.filter(ev => [ev.type, ev.userId, ev.content].map(x => (x||'').toLowerCase()).join(' ').includes(q))
   }, [events, search])
-  
+
   const paged = useMemo(() => filtered.slice(page*pageSize, (page*pageSize)+pageSize), [filtered, page])
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
 
@@ -174,7 +174,7 @@ export default function AutomodEvents() {
           <span className="text-2xl">📋</span>
           <h3 className="text-lg font-semibold text-white">{t('automod.queue')}</h3>
         </div>
-        
+
         <div className="space-y-3">
           {loading && (
             <div className="text-center py-12">
@@ -182,14 +182,14 @@ export default function AutomodEvents() {
               <div className="text-gray-400">Loading events...</div>
             </div>
           )}
-          
+
           {!loading && paged.length === 0 && (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">✅</div>
               <div className="text-gray-400">{t('automod.empty')}</div>
             </div>
           )}
-          
+
           {!loading && paged.map(ev => (
             <div key={ev.id} className="bg-gray-900/50 border border-gray-700 hover:border-red-600/50 rounded-xl p-4 transition-all duration-200">
               <div className="flex items-start justify-between gap-4">

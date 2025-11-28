@@ -167,9 +167,9 @@ export default function RolesManager() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <select 
+            <select
               className="bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-pink-500"
-              value={lang} 
+              value={lang}
               onChange={e=> setLang(e.target.value as any)}
               aria-label="Language"
             >
@@ -317,7 +317,7 @@ export default function RolesManager() {
               >
                 {dragOverId===r.id && dragOverPos==='above' && <div className="absolute left-0 right-0 top-0 h-1 bg-pink-600 rounded-t-xl" />}
                 {dragOverId===r.id && dragOverPos==='below' && <div className="absolute left-0 right-0 bottom-0 h-1 bg-pink-600 rounded-b-xl" />}
-                
+
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
@@ -332,16 +332,16 @@ export default function RolesManager() {
                       <path d="M4 3h2v2H4V3zm6 0h2v2h-2V3zM4 7h2v2H4V7zm6 0h2v2h-2V7zM4 11h2v2H4v-2zm6 0h2v2h-2v-2z" fill="#aaa"/>
                     </svg>
                   </button>
-                  
+
                   <svg width="20" height="20" className="shrink-0">
                     <circle cx="10" cy="10" r="9" fill={r.color || '#888'} stroke="#444" strokeWidth="1" />
                   </svg>
-                  
+
                   <div className="flex-1 min-w-0">
                     <div className="text-white font-medium truncate">{r.name}</div>
                     <div className="text-xs text-gray-500 font-mono">{r.id}</div>
                   </div>
-                  
+
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -382,14 +382,14 @@ export default function RolesManager() {
             <span className="text-2xl">✏️</span>
             <h3 className="text-lg font-semibold text-white">Role Editor</h3>
           </div>
-          
+
           {!selectedId && (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">👈</div>
               <div className="text-gray-400">{t('roles.selectToEdit')}</div>
             </div>
           )}
-          
+
           {selectedId && details && (
             <div className="space-y-6">
               {/* Basic Properties */}
@@ -414,7 +414,7 @@ export default function RolesManager() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <label className="flex items-center gap-3 p-3 bg-gray-900/50 border border-gray-700 rounded-xl cursor-pointer hover:border-pink-600/50 transition-all">
                     <input
@@ -458,14 +458,14 @@ export default function RolesManager() {
                     </button>
                   </div>
                 </div>
-                
+
                 <input
                   className="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
                   placeholder={t('roles.permissions.search')}
                   value={permQuery}
                   onChange={e=> setPermQuery(e.target.value)}
                 />
-                
+
                 <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2">
                   {PERMISSION_KEYS.filter(p => {
                     if (!permQuery) return true
@@ -488,7 +488,7 @@ export default function RolesManager() {
                     </label>
                   ))}
                 </div>
-                
+
                 <div className="text-xs text-gray-500 italic">{t('roles.permissions.note')}</div>
               </div>
 

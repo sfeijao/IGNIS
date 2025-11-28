@@ -23,8 +23,8 @@ export default function QuickTagsManager() {
     try {
       const res = await api.getTags(guildId)
       setTags(res.tags || [])
-    } finally { 
-      setLoading(false) 
+    } finally {
+      setLoading(false)
     }
   }
 
