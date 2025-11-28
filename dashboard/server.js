@@ -3209,11 +3209,18 @@ app.get('/api/guild/:guildId/channels', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
         const client = global.discordClient;
+        logger.info(`[Channels API] Request for guild ${req.params.guildId} - Client available: ${!!client}`);
         if (!client) return res.status(500).json({ success: false, error: 'Bot not available' });
+        
+        logger.info(`[Channels API] Client ready: ${client.isReady()}, Guilds cache size: ${client.guilds?.cache?.size || 0}`);
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
-        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        if (!check.ok) {
+            logger.warn(`[Channels API] Admin check failed: ${check.error} (code: ${check.code})`);
+            return res.status(check.code).json({ success: false, error: check.error });
+        }
 
         const guild = check.guild;
+        logger.info(`[Channels API] Guild found: ${guild.name} (${guild.id}), Channels in cache: ${guild.channels.cache.size}`);
         let channels = [];
 
         // Try to fetch channels from cache first
@@ -3292,6 +3299,7 @@ app.get('/api/guild/:guildId/channels', async (req, res) => {
                 return a.name.localeCompare(b.name);
             });
 
+        logger.info(`[Channels API] Returning ${channels.length} channels for guild ${guild.name}`);
         res.json({
             success: true,
             channels,
@@ -3300,7 +3308,7 @@ app.get('/api/guild/:guildId/channels', async (req, res) => {
             canManualInput: true // Always allow manual input as fallback
         });
     } catch (e) {
-        logger.error('Error listing channels:', e);
+        logger.error('[Channels API] Error listing channels:', e);
         res.status(500).json({
             success: false,
             error: 'Failed to list channels',
