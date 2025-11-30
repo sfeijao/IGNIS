@@ -9,6 +9,7 @@ module.exports = {
         .setDMPermission(false),
 
     async execute(interaction) {
+        try {
         // Verificar se é owner ou tem permissão de Administrator
         const isOwner = interaction.user.id === '381762006329589760';
         const hasAdminPerm = interaction.member.permissions.has('Administrator');
@@ -236,5 +237,18 @@ module.exports = {
 
             interaction.editReply({ components: [disabledRow] }).catch(() => {});
         });
+        } catch (error) {
+            const logger = require('../utils/logger');
+            logger.error('[configurar-status] Erro:', error);
+            const errorReply = {
+                content: `❌ Erro ao configurar status: ${error.message}`,
+                flags: MessageFlags.Ephemeral
+            };
+            if (interaction.deferred || interaction.replied) {
+                await interaction.editReply(errorReply).catch(() => {});
+            } else {
+                await interaction.reply(errorReply).catch(() => {});
+            }
+        }
     },
 };

@@ -1,5 +1,6 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const storage = require('../utils/storage');
+const logger = require('../utils/logger');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -7,24 +8,38 @@ module.exports = {
         .setDescription('Mostra informações detalhadas do servidor'),
     
     async execute(interaction) {
+        try {
         const guild = interaction.guild;
+        
+        // Obter configuração do servidor
+        let config = {};
+        try {
+            config = await storage.getGuildConfig(guild.id) || {};
+        } catch (e) {
+            logger.debug('[info-servidor] Erro ao obter config:', e);
+        }
         
         // Contar membros por status
         const totalMembers = guild.memberCount;
-        const verifiedMembers = guild.members.cache.filter(member => 
-            member.roles.cache.has(config.roles.verified)).size;
-        const unverifiedMembers = guild.members.cache.filter(member => 
-            member.roles.cache.has(config.roles.unverified)).size;
+        const verifiedMembers = config.roles?.verified 
+            ? guild.members.cache.filter(member => member.roles.cache.has(config.roles.verified)).size 
+            : 0;
+        const unverifiedMembers = config.roles?.unverified 
+            ? guild.members.cache.filter(member => member.roles.cache.has(config.roles.unverified)).size 
+            : 0;
         const onlineMembers = guild.members.cache.filter(member => 
             member.presence?.status === 'online').size;
         
         // Contar cargos especiais
-        const staffMembers = guild.members.cache.filter(member => 
-            member.roles.cache.has(config.roles.staff)).size;
-        const adminMembers = guild.members.cache.filter(member => 
-            member.roles.cache.has(config.roles.admin)).size;
-        const vipMembers = guild.members.cache.filter(member => 
-            member.roles.cache.has(config.roles.vip)).size;
+        const staffMembers = config.roles?.staff 
+            ? guild.members.cache.filter(member => member.roles.cache.has(config.roles.staff)).size 
+            : 0;
+        const adminMembers = config.roles?.admin 
+            ? guild.members.cache.filter(member => member.roles.cache.has(config.roles.admin)).size 
+            : 0;
+        const vipMembers = config.roles?.vip 
+            ? guild.members.cache.filter(member => member.roles.cache.has(config.roles.vip)).size 
+            : 0;
 
         const embed = new EmbedBuilder()
             .setColor(0x5865f2)
@@ -49,5 +64,17 @@ module.exports = {
             .setFooter({ text: `IGNIS Community • Sistema de Informações` });
 
         await interaction.reply({ embeds: [embed] });
+        } catch (error) {
+            logger.error('[info-servidor] Erro:', error);
+            const errorReply = {
+                content: `❌ Erro ao obter informações do servidor: ${error.message}`,
+                flags: MessageFlags.Ephemeral
+            };
+            if (interaction.deferred || interaction.replied) {
+                await interaction.editReply(errorReply).catch(() => {});
+            } else {
+                await interaction.reply(errorReply).catch(() => {});
+            }
+        }
     },
 };

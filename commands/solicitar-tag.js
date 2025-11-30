@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, MessageFlags } = require('discord.js');
+const logger = require('../utils/logger');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -6,6 +7,7 @@ module.exports = {
         .setDescription('Solicitar uma tag/cargo especial (Nota: Use o painel configurado pelos admins)'),
 
     async execute(interaction) {
+        try {
         // Informar que este comando foi substituído pelo sistema de painéis
         const infoEmbed = new EmbedBuilder()
             .setColor('#9932CC')
@@ -26,5 +28,12 @@ module.exports = {
             embeds: [infoEmbed],
             flags: MessageFlags.Ephemeral
         });
+        } catch (error) {
+            logger.error('[solicitar-tag] Erro:', error);
+            await interaction.reply({
+                content: `❌ Erro: ${error.message}`,
+                flags: MessageFlags.Ephemeral
+            }).catch(() => {});
+        }
     },
 };

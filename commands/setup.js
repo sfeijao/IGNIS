@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require('discord.js');
 const storage = require('../utils/storage');
+const logger = require('../utils/logger');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -30,6 +31,7 @@ module.exports = {
                         .addRoleOption(opt => opt.setName('role').setDescription('Staff role').setRequired(true)))) ,
 
     async execute(interaction) {
+    try {
     const subcommand = interaction.options.getSubcommand(false);
     const subcommandGroup = interaction.options.getSubcommandGroup(false);
 
@@ -109,5 +111,17 @@ module.exports = {
 
             await interaction.editReply({ embeds: [embed] });
         }
+    } catch (error) {
+        logger.error('[setup] Erro:', error);
+        const errorReply = {
+            content: `❌ Erro ao configurar: ${error.message}`,
+            flags: MessageFlags.Ephemeral
+        };
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply(errorReply).catch(() => {});
+        } else {
+            await interaction.reply(errorReply).catch(() => {});
+        }
+    }
     },
 };
