@@ -554,8 +554,10 @@ app.use((req, res, next) => {
 try {
     const giveawayRoutes = require('./routes/giveawayRoutes');
     app.use('/api', giveawayRoutes);
+    logger.info('✅ Giveaway routes mounted successfully');
 } catch (e) {
-    try { logger.warn('Giveaway routes not mounted:', e.message); } catch (logErr) { logger.debug('Route mount logging failed:', logErr?.message || logErr); }
+    logger.error('❌ Giveaway routes failed to mount:', e);
+    console.error('Giveaway routes error stack:', e.stack);
 }
 
 try {

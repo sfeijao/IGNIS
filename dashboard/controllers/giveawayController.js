@@ -1,4 +1,4 @@
-const logger = require('../utils/logger');
+const logger = require('../../utils/logger');
 const { GiveawayModel, GiveawayEntryModel, GiveawayWinnerModel, GiveawayLogModel } = require('../../utils/db/giveawayModels');
 const { pickWinners, generateSeed } = require('../../utils/giveaways/rng');
 const Joi = require('joi');
