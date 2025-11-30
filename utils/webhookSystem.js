@@ -31,12 +31,13 @@ class WebhookManager {
         case 'created':
           return await ticketWebhooks.logCreate(guildId, ticket);
         case 'claimed':
-          return await ticketWebhooks.logClaim(guildId, ticket, data.claimer);
+          return await ticketWebhooks.logClaim(guildId, ticket, data.claimer || data.claimedBy);
         case 'closed':
           return await ticketWebhooks.logClose(guildId, ticket, data.closer, data.reason, data.transcript);
         case 'reopened':
+          return await ticketWebhooks.logUpdate(guildId, ticket, { status: { old: 'closed', new: 'open' } }, data.updater || data.reopenedBy);
         case 'renamed':
-          return await ticketWebhooks.logUpdate(guildId, ticket, data, data.updater);
+          return await ticketWebhooks.logUpdate(guildId, ticket, { name: { old: ticket.channel_name, new: data.newName } }, data.updater || data.renamedBy);
         default:
           logger.warn(`[WebhookSystem] Evento não mapeado: ${event}`);
           return null;

@@ -554,20 +554,10 @@ async function confirmClose(interaction) {
       if (ticketData) {
         const messageCount = interaction.channel.messages?.cache?.size || 0;
         await webhookSystem.sendOrUpdateTicketWebhook(ticketData, 'closed', {
-          closedBy: interaction.user,
+          closer: interaction.user,
           reason: 'Fechado pelo staff',
-          messageCount
+          transcript: text || null
         });
-
-        // Attach transcript if available
-        if (attachment && text) {
-          await webhookSystem.attachTranscript(
-            ticketData.id.toString(),
-            ticketData.guild_id,
-            attachment.name,
-            text
-          );
-        }
       }
     } catch (err) {
       logger.error('[Tickets] Failed to update webhook for ticket close:', err);
@@ -935,7 +925,7 @@ async function handleButton(interaction) {
       // Update webhook message
       try {
         await webhookSystem.sendOrUpdateTicketWebhook(updated || { ...t, status: 'closed' }, 'closed', {
-          closedBy: interaction.user,
+          closer: interaction.user,
           reason: 'Resolvido'
         });
       } catch (err) {
