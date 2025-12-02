@@ -50,11 +50,11 @@ module.exports = {
             console.log('✅ Diagnóstico concluído');
             
         } catch (error) {
-            console.error('❌ Erro no diagnóstico:', error);
+            logger.error('❌ Erro no diagnóstico:', error);
             try {
                 await interaction.reply('❌ Erro no diagnóstico!');
             } catch (e) {
-                console.error('❌ Erro crítico:', e);
+                logger.error('❌ Erro crítico:', e);
             }
         }
     },

@@ -115,7 +115,7 @@ module.exports = {
             await interaction.editReply({ embeds: [embed] });
 
         } catch (error) {
-            console.error('Erro na auto-configuração:', error);
+            logger.error('Erro na auto-configuração:', error);
             await interaction.editReply({
                 content: '❌ **Erro na Auto-configuração**\n\n' +
                         'Não foi possível configurar automaticamente os cargos de staff.\n' +

@@ -177,7 +177,7 @@ module.exports = {
                 await storage.addLog({ guild_id: member.guild.id, type: 'mod_member_join', message: member.user.id, data: { userId: member.user.id } });
             } catch (e) { logger.debug('Caught error:', e?.message || e); }
         } catch (error) {
-            console.error('Erro ao processar entrada de membro:', error);
+            logger.error('Erro ao processar entrada de membro:', error);
         }
 
         // Log de novo membro

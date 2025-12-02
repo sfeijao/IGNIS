@@ -119,8 +119,8 @@ module.exports = {
             await interaction.editReply({ embeds: [confirmEmbed] });
 
         } catch (error) {
-            console.error('Erro ao configurar painel de tickets:', error);
-            
+            logger.error('Erro ao configurar painel de tickets:', error);
+
             const errorEmbed = new EmbedBuilder()
                 .setColor('#FF6B6B')
                 .setTitle('❌ **ERRO NA CONFIGURAÇÃO**')

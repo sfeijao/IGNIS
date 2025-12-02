@@ -25,6 +25,9 @@ const webhookConfigSchema = new mongoose.Schema({
   lastAt: { type: Date }
 });
 
+// Compound index for efficient guild queries
+webhookConfigSchema.index({ guildId: 1, type: 1 });
+
 webhookConfigSchema.pre('save', function(next){
   this.updatedAt = new Date();
   next();

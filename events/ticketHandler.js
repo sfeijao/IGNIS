@@ -41,7 +41,7 @@ module.exports = {
                 return;
             }
         } catch (error) {
-            console.error('Erro no handler de tickets:', error);
+            logger.error('Erro no handler de tickets:', error);
             if (!interaction.replied && !interaction.deferred) {
                 await interaction.reply({ content: '❌ Erro interno. Contacta um administrador.', flags: MessageFlags.Ephemeral });
             }

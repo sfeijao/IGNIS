@@ -201,7 +201,7 @@ Uptime Sistema: ${Math.floor(os.uptime() / 3600)}h
             }
 
         } catch (error) {
-            console.error('Erro no comando performance:', error);
+            logger.error('Erro no comando performance:', error);
             await interaction.editReply({
                 content: '❌ Erro ao obter informações de performance: ' + error.message
             });

@@ -112,7 +112,7 @@ module.exports = {
             }
 
         } catch (error) {
-            console.error('Erro ao processar mudança de estado de voz:', error);
+            logger.error('Erro ao processar mudança de estado de voz:', error);
         }
-    }
+    },
 };

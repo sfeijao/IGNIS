@@ -1,4 +1,5 @@
 const { Events } = require('discord.js');
+const logger = require('../utils/logger');
 
 function snap(ch){
     return {
@@ -33,6 +34,6 @@ module.exports = {
             const after = snap(newCh);
             if (JSON.stringify(before) === JSON.stringify(after)) return;
             await storage.addLog({ guild_id: guildId, type: 'mod_channel_update', message: newCh.name, data: { before, after } });
-        } catch (e) { try { require('../utils/logger').warn('channelUpdate log failed:', e?.message||e); } catch (e) { logger.debug('Caught error:', e?.message || e); } }
+        } catch (e) { logger.warn('channelUpdate log failed:', e?.message||e); }
     }
 };

@@ -31,7 +31,7 @@ module.exports = {
       await svc.openTicketTS(channel, member, categoryName);
       await interaction.reply({ content: `✅ Ticket criado: ${channel}`, flags: MessageFlags.Ephemeral });
     } catch (e) {
-      console.error('abrir-ticket-ts error:', e);
+      logger.error('abrir-ticket-ts error:', e);
       await interaction.reply({ content: '❌ Falha ao criar ticket.', flags: MessageFlags.Ephemeral });
     }
   }

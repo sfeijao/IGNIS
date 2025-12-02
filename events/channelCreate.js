@@ -1,4 +1,5 @@
 const { Events } = require('discord.js');
+const logger = require('../utils/logger');
 
 module.exports = {
     name: Events.ChannelCreate,
@@ -28,6 +29,6 @@ module.exports = {
                 permissionOverwrites: (channel.permissionOverwrites?.cache ? [...channel.permissionOverwrites.cache.values()].map(po => ({ id: po.id, type: po.type, allow: po.allow.bitfield?.toString() || po.allow?.toString?.() || '0', deny: po.deny.bitfield?.toString() || po.deny?.toString?.() || '0' })) : [])
             };
             await storage.addLog({ guild_id: guildId, type: 'mod_channel_create', message: channel.name, data });
-        } catch (e) { try { require('../utils/logger').warn('channelCreate log failed:', e?.message||e); } catch (e) { logger.debug('Caught error:', e?.message || e); } }
+        } catch (e) { logger.warn('channelCreate log failed:', e?.message||e); }
     }
 };

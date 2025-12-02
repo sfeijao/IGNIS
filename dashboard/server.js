@@ -18,6 +18,11 @@ require('dotenv').config();
 const config = require('../utils/config');
 const logger = require('../utils/logger');
 const { PermissionFlagsBits, ActivityType } = require('discord.js');
+const { KeyedRateLimiter } = require('../utils/retryHelper');
+
+// Rate limiters for resource-intensive operations
+const panelRateLimiter = new KeyedRateLimiter(3, 3 / 60); // 3 panels per minute per guild
+const tagRateLimiter = new KeyedRateLimiter(10, 10 / 60); // 10 tag operations per minute per guild
 
 // ==================== Services (Lazy Loading) ====================
 let inviteTrackerService, antiRaidService, warnService, suggestionService;
@@ -1452,12 +1457,12 @@ app.get('/api/guild/:guildId/mod-presets', (req,res)=>{
 });
 
 // Upsert multiple or single
-app.post('/api/guild/:guildId/mod-presets', (req,res)=>{
+app.post('/api/guild/:guildId/mod-presets', async (req,res)=>{
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
         const guildId = req.params.guildId;
         const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
-        if(!client.guilds.cache.get(guildId)) return res.status(404).json({ success:false, error:'Guild not found' });
+        const check = await ensureGuildAdmin(client, guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const presetSchema = Joi.alternatives().try(
             Joi.object({ presets: Joi.object().unknown(true).required() }).unknown(false),
             Joi.object({
@@ -1480,10 +1485,12 @@ app.post('/api/guild/:guildId/mod-presets', (req,res)=>{
     } catch(e){ logger.error('mod-presets post error', e); return res.status(500).json({ success:false, error:'mod_presets_failed' }); }
 });
 
-app.delete('/api/guild/:guildId/mod-presets/:name', (req,res)=>{
+app.delete('/api/guild/:guildId/mod-presets/:name', async (req,res)=>{
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
         const guildId = req.params.guildId; const name = req.params.name;
+        const check = await ensureGuildAdmin(client, guildId, req.user.id); 
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         // Validate name to avoid weird keys
         const { error: nameErr } = Joi.string().pattern(/^[A-Za-z0-9_.\-]{1,64}$/).validate(name);
         if (nameErr) return res.status(400).json({ success:false, error:'validation_failed', details:[nameErr.message] });
@@ -2091,6 +2098,17 @@ app.post('/api/guild/:guildId/panels', async (req, res) => {
 
     try {
         const guildId = req.params.guildId;
+        
+        // Rate limiting: 3 panels per minute per guild
+        const rateLimitCheck = panelRateLimiter.check(guildId);
+        if (!rateLimitCheck.allowed) {
+            return res.status(429).json({ 
+                success: false, 
+                error: 'Rate limit exceeded. Please wait before creating more panels.',
+                retryAfter: Math.ceil(rateLimitCheck.waitTime / 1000)
+            });
+        }
+        
         const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, guildId, req.user.id);
@@ -2117,6 +2135,11 @@ app.post('/api/guild/:guildId/panels', async (req, res) => {
         }
         if (!selected_categories || !Array.isArray(selected_categories) || selected_categories.length === 0) {
             return res.status(400).json({ success: false, error: 'At least one category must be selected' });
+        }
+        
+        // Discord button limit: max 5 rows × 5 buttons = 25 total
+        if (selected_categories.length > 25) {
+            return res.status(400).json({ success: false, error: 'Maximum 25 categories allowed per panel (Discord button limit)' });
         }
 
         // Verificar se canal existe
@@ -2166,6 +2189,9 @@ app.post('/api/guild/:guildId/panels', async (req, res) => {
             logger.error('Error sending panel to Discord:', error);
             // Não falhar a criação se não conseguir enviar
         }
+
+        // Consume rate limit token after successful creation
+        await panelRateLimiter.acquire(guildId);
 
         return res.status(201).json({
             success: true,
@@ -2410,7 +2436,7 @@ app.post('/api/guild/:guildId/tickets/sync', async (req, res) => {
         try { TicketModel = require('../src/models/ticket').TicketModel; } catch { TicketModel = null; }
         if (!TicketModel) return res.status(500).json({ success: false, error: 'Ticket model not available' });
         const svc = require('../src/services/ticketService');
-        const tickets = await TicketModel.find({ guildId: req.params.guildId, status: 'open' }).limit(500);
+        const tickets = await TicketModel.find({ guildId: req.params.guildId, status: 'open' }).limit(500).lean();
         const results = [];
         for (const t of tickets) {
             // eslint-disable-next-line no-await-in-loop
@@ -4121,23 +4147,31 @@ app.get('/api/guild/:guildId/time-tracking', async (req, res) => {
         const sessions = await TimeTrackingModel.find({
             guild_id: req.params.guildId,
             status: 'ended'
-        }).sort({ started_at: -1 });
+        }).sort({ started_at: -1 }).lean();
+
+        // Batch fetch user data to avoid N+1 queries
+        const uniqueUserIds = [...new Set(sessions.map(s => s.user_id))];
+        const guild = client.guilds.cache.get(req.params.guildId);
+        const userCache = new Map();
+
+        if (guild) {
+            try {
+                await guild.members.fetch({ user: uniqueUserIds }).catch(() => {});
+                uniqueUserIds.forEach(id => {
+                    const member = guild.members.cache.get(id);
+                    userCache.set(id, member?.user.username || 'Unknown User');
+                });
+            } catch (err) {
+                logger.debug('Error batch fetching members for time tracking:', err);
+            }
+        }
 
         // Create entries list
         const entries = [];
         const summaries = new Map();
 
         for (const session of sessions) {
-            const guild = client.guilds.cache.get(req.params.guildId);
-            let userName = 'Unknown User';
-            if (guild) {
-                try {
-                    const member = await guild.members.fetch(session.user_id);
-                    userName = member.user.username;
-                } catch (err) {
-                    // User might have left
-                }
-            }
+            const userName = userCache.get(session.user_id) || 'Unknown User';
 
             // Add start entry
             entries.push({
@@ -6424,6 +6458,18 @@ app.get('/api/guild/:guildId/tags', async (req, res) => {
 app.post('/api/guild/:guildId/tags', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
+        const guildId = req.params.guildId;
+        
+        // Rate limiting: 10 tag operations per minute per guild
+        const rateLimitCheck = tagRateLimiter.check(guildId);
+        if (!rateLimitCheck.allowed) {
+            return res.status(429).json({ 
+                success: false, 
+                error: 'Rate limit exceeded. Please wait before creating more tags.',
+                retryAfter: Math.ceil(rateLimitCheck.waitTime / 1000)
+            });
+        }
+        
         const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
@@ -6436,6 +6482,10 @@ app.post('/api/guild/:guildId/tags', async (req, res) => {
             for (const t of body.tags) { const { error, value } = tagSchema.validate(t, { abortEarly: false, stripUnknown: true }); if (!error) clean.push({ id: value.id || (Date.now().toString(36)+Math.random().toString(36).slice(2,6)), ...value }); }
             const next = { ...cfg, tags: clean };
             await storage.updateGuildConfig(req.params.guildId, next);
+            
+            // Consume rate limit token after successful operation
+            await tagRateLimiter.acquire(guildId);
+            
             return res.json({ success: true, tags: clean });
         }
         if (body.tag) {
@@ -6467,6 +6517,10 @@ app.post('/api/guild/:guildId/tags', async (req, res) => {
             if (idx >= 0) nextList[idx] = rec; else nextList.push(rec);
             const next = { ...cfg, tags: nextList };
             await storage.updateGuildConfig(req.params.guildId, next);
+            
+            // Consume rate limit token after successful operation
+            await tagRateLimiter.acquire(guildId);
+            
             return res.json({ success: true, tag: rec, tags: nextList });
         }
         return res.status(400).json({ success: false, error: 'invalid_payload' });

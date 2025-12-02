@@ -149,6 +149,9 @@ const TagSchema = new mongoose.Schema({
   tags: { type: [String], default: [] }
 }, { timestamps: true });
 
+// Compound index for efficient tag queries
+TagSchema.index({ guild_id: 1, user_id: 1 });
+
 const TagModel = mongoose.models.Tag || mongoose.model('Tag', TagSchema);
 // Ticket action logs (lightweight)
 const TicketLogSchema = new mongoose.Schema({
@@ -160,6 +163,10 @@ const TicketLogSchema = new mongoose.Schema({
   data: { type: Object, default: null },
   timestamp: { type: Date, default: Date.now }
 }, { timestamps: true });
+
+// Compound indexes for efficient log queries
+TicketLogSchema.index({ guild_id: 1, ticket_id: 1, timestamp: -1 });
+TicketLogSchema.index({ guild_id: 1, action: 1, timestamp: -1 });
 
 const TicketLogModel = mongoose.models.TicketLog || mongoose.model('TicketLog', TicketLogSchema);
 

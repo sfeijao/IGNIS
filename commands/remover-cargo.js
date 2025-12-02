@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
+const logger = require('../utils/logger');
 const storage = require('../utils/storage');
 
 module.exports = {
@@ -79,7 +80,7 @@ module.exports = {
             }
 
         } catch (error) {
-            console.error('Erro ao remover cargo:', error);
+            logger.error('Erro ao remover cargo:', error);
             await interaction.reply({
                 content: '❌ Erro ao remover o cargo. Verifica se o bot tem permissões adequadas.',
                 flags: MessageFlags.Ephemeral
