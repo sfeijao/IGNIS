@@ -2688,7 +2688,8 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
 });
 
 // WebhookConfig CRUD (Mongo only)
-app.get('/api/guild/:guildId/webhooks', async (req, res) => {
+// NOTA: Esta rota estava duplicada - usar a "Unified Webhooks list route" (linha ~934) em vez desta
+/* app.get('/api/guild/:guildId/webhooks', async (req, res) => {
     if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
         const { guildId } = req.params;
@@ -2739,7 +2740,7 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
         logger.error('Webhook list error:', e);
         return res.status(500).json({ success: false, error: 'Failed to list webhooks' });
     }
-});
+}); */
 
 app.post('/api/guild/:guildId/webhooks', async (req, res) => {
     if (!req.isAuthenticated || !req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
@@ -3511,10 +3512,10 @@ app.post('/api/guild/:guildId/channels/verify', async (req, res) => {
 });
 
 // ==============================================
-// SERVER STATS - Canais dinâmicos de estatísticas
+// SERVER STATS - Canais dinâmicos de estatísticas (Mongoose - DESATIVADO, usar SQLite storage na linha ~4179)
 // ==============================================
 
-// GET configuração de estatísticas
+/* // GET configuração de estatísticas (MONGOOSE - DUPLICADO COM LINHA ~4179)
 app.get('/api/guild/:guildId/stats/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
 
@@ -3662,7 +3663,7 @@ app.post('/api/guild/:guildId/stats/config', async (req, res) => {
         logger.error('Error updating stats config:', e);
         res.status(500).json({ success: false, error: 'Failed to update configuration' });
     }
-});
+}); */
 
 // DELETE desativar estatísticas
 app.delete('/api/guild/:guildId/stats', async (req, res) => {
@@ -3879,10 +3880,10 @@ app.get('/api/guild/:guildId/timetracking/sessions', async (req, res) => {
 });
 
 // ==============================================
-// TAGS SYSTEM - Respostas rápidas
+// TAGS SYSTEM - Respostas rápidas (DESATIVADO - Usar linha ~6536 com rate limiting)
 // ==============================================
 
-// GET all tags for a guild
+/* // GET all tags for a guild (DUPLICADO COM LINHA ~6536)
 app.get('/api/guild/:guildId/tags', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -3903,7 +3904,7 @@ app.get('/api/guild/:guildId/tags', async (req, res) => {
     }
 });
 
-// POST create/update a tag
+// POST create/update a tag (DUPLICADO COM LINHA ~6548)
 app.post('/api/guild/:guildId/tags', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -3941,7 +3942,7 @@ app.post('/api/guild/:guildId/tags', async (req, res) => {
     }
 });
 
-// DELETE a tag
+// DELETE a tag (DUPLICADO COM LINHA ~6XXX)
 app.delete('/api/guild/:guildId/tags/:tagId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -3964,7 +3965,7 @@ app.delete('/api/guild/:guildId/tags/:tagId', async (req, res) => {
         logger.error('Error deleting tag:', e);
         res.status(500).json({ success: false, error: 'Failed to delete tag' });
     }
-});
+}); */
 
 // ==============================================
 // GUILD ASSETS - Avatar/Banner customizados
@@ -4174,7 +4175,7 @@ app.post('/api/guild/:guildId/welcome', async (req, res) => {
     }
 });
 
-// ===================== Server Stats Counters =====================
+// ===================== Server Stats Counters (Storage SQLite) =====================
 app.get('/api/guild/:guildId/stats/config', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
@@ -6196,7 +6197,8 @@ app.post('/api/guild/:guildId/moderation/action', async (req, res) => {
 });
 
 // Webhooks API
-app.get('/api/guild/:guildId/webhooks', async (req, res) => {
+// NOTA: Rota duplicada - usar a "Unified Webhooks list route" (linha ~934)
+/* app.get('/api/guild/:guildId/webhooks', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
         const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
@@ -6256,7 +6258,7 @@ app.get('/api/guild/:guildId/webhooks', async (req, res) => {
         logger.error('Error listing webhooks:', e);
         res.status(500).json({ success: false, error: 'Failed to list webhooks' });
     }
-});
+}); */
 
 // Verification Config (stub)
 app.get('/api/guild/:guildId/verification/config', async (req, res) => {
