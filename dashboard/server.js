@@ -3879,6 +3879,94 @@ app.get('/api/guild/:guildId/timetracking/sessions', async (req, res) => {
 });
 
 // ==============================================
+// TAGS SYSTEM - Respostas rápidas
+// ==============================================
+
+// GET all tags for a guild
+app.get('/api/guild/:guildId/tags', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const { client, ready, error: clientError } = getDiscordClient(); 
+        if (!ready) return res.status(503).json({ success: false, error: clientError });
+        
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const storage = require('../utils/storage');
+        const config = await storage.getGuildConfig(req.params.guildId);
+        const tags = config?.tags || [];
+        
+        res.json({ success: true, tags });
+    } catch (e) {
+        logger.error('Error fetching tags:', e);
+        res.status(500).json({ success: false, error: 'Failed to fetch tags' });
+    }
+});
+
+// POST create/update a tag
+app.post('/api/guild/:guildId/tags', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const { client, ready, error: clientError } = getDiscordClient(); 
+        if (!ready) return res.status(503).json({ success: false, error: clientError });
+        
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const { id, name, prefix, color, icon, roleIds } = req.body;
+        if (!name || !prefix) {
+            return res.status(400).json({ success: false, error: 'Name and prefix are required' });
+        }
+        
+        const storage = require('../utils/storage');
+        const config = await storage.getGuildConfig(req.params.guildId);
+        let tags = config?.tags || [];
+        
+        const tagData = { id, name, prefix, color, icon, roleIds };
+        
+        // Check if tag exists
+        const existingIndex = tags.findIndex(t => t.id === id);
+        if (existingIndex >= 0) {
+            tags[existingIndex] = tagData;
+        } else {
+            tags.push(tagData);
+        }
+        
+        await storage.updateGuildConfig(req.params.guildId, { tags });
+        
+        res.json({ success: true, tag: tagData });
+    } catch (e) {
+        logger.error('Error saving tag:', e);
+        res.status(500).json({ success: false, error: 'Failed to save tag' });
+    }
+});
+
+// DELETE a tag
+app.delete('/api/guild/:guildId/tags/:tagId', async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+    try {
+        const { client, ready, error: clientError } = getDiscordClient(); 
+        if (!ready) return res.status(503).json({ success: false, error: clientError });
+        
+        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+        
+        const storage = require('../utils/storage');
+        const config = await storage.getGuildConfig(req.params.guildId);
+        let tags = config?.tags || [];
+        
+        tags = tags.filter(t => t.id !== req.params.tagId);
+        
+        await storage.updateGuildConfig(req.params.guildId, { tags });
+        
+        res.json({ success: true });
+    } catch (e) {
+        logger.error('Error deleting tag:', e);
+        res.status(500).json({ success: false, error: 'Failed to delete tag' });
+    }
+});
+
+// ==============================================
 // GUILD ASSETS - Avatar/Banner customizados
 // ==============================================
 

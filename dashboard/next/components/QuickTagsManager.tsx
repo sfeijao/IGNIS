@@ -16,6 +16,7 @@ export default function QuickTagsManager() {
   const [enabled, setEnabled] = useState(true)
   const [loading, setLoading] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [formData, setFormData] = useState<Partial<Tag>>({ name: '', prefix: '', color: '#5865F2', icon: '🏷️' })
 
   const load = async () => {
     if (!guildId) return
@@ -30,19 +31,47 @@ export default function QuickTagsManager() {
 
   useEffect(() => { load() }, [guildId])
 
-  const saveTag = async (tag: Tag) => {
+  const saveTag = async () => {
     if (!guildId) return
+    if (!formData.name || !formData.prefix) {
+      toast({ type: 'error', title: 'Nome e prefixo são obrigatórios' })
+      return
+    }
     setLoading(true)
     try {
+      const tag: Tag = {
+        id: editingId === 'new' ? `tag_${Date.now()}` : editingId!,
+        name: formData.name,
+        prefix: formData.prefix,
+        color: formData.color,
+        icon: formData.icon,
+        roleIds: formData.roleIds
+      }
       await api.upsertTag(guildId, tag)
       toast({ type: 'success', title: 'Tag guardada!' })
       await load()
       setEditingId(null)
+      setFormData({ name: '', prefix: '', color: '#5865F2', icon: '🏷️' })
     } catch (e: any) {
       toast({ type: 'error', title: 'Erro ao guardar', description: (e instanceof Error ? e.message : String(e)) })
     } finally {
       setLoading(false)
     }
+  }
+
+  const startEdit = (tag?: Tag) => {
+    if (tag) {
+      setFormData({ ...tag })
+      setEditingId(tag.id)
+    } else {
+      setFormData({ name: '', prefix: '', color: '#5865F2', icon: '🏷️' })
+      setEditingId('new')
+    }
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setFormData({ name: '', prefix: '', color: '#5865F2', icon: '🏷️' })
   }
 
   const deleteTag = async (id: string) => {
@@ -121,13 +150,86 @@ export default function QuickTagsManager() {
       </div>
 
       {/* Add New Tag Button */}
-      <button
-        onClick={() => setEditingId('new')}
-        className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2"
-      >
-        <span className="text-xl">➕</span>
-        <span>Criar Nova Tag</span>
-      </button>
+      {!editingId && (
+        <button
+          onClick={() => startEdit()}
+          className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2"
+        >
+          <span className="text-xl">➕</span>
+          <span>Criar Nova Tag</span>
+        </button>
+      )}
+
+      {/* Edit Form */}
+      {editingId && (
+        <div className="bg-gray-800/50 backdrop-blur-xl border border-purple-500/50 rounded-2xl p-6 space-y-4">
+          <h3 className="text-xl font-bold mb-4">
+            {editingId === 'new' ? '➕ Nova Tag' : '✏️ Editar Tag'}
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Nome da Tag</label>
+              <input
+                type="text"
+                value={formData.name || ''}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Ex: Regras do Servidor"
+                className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Prefixo (comando)</label>
+              <input
+                type="text"
+                value={formData.prefix || ''}
+                onChange={(e) => setFormData({ ...formData, prefix: e.target.value })}
+                placeholder="Ex: regras"
+                className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Emoji/Ícone</label>
+              <input
+                type="text"
+                value={formData.icon || ''}
+                onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                placeholder="🏷️"
+                className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Cor</label>
+              <input
+                type="color"
+                value={formData.color || '#5865F2'}
+                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                className="w-full h-11 bg-gray-700/50 border border-gray-600 rounded-lg cursor-pointer"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              onClick={saveTag}
+              disabled={loading}
+              className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-medium transition-all duration-200 disabled:opacity-50"
+            >
+              {loading ? '⏳ Guardando...' : '💾 Guardar Tag'}
+            </button>
+            <button
+              onClick={cancelEdit}
+              disabled={loading}
+              className="px-6 py-3 bg-gray-700/50 hover:bg-gray-700 border border-gray-600 rounded-xl transition-all"
+            >
+              ❌ Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tags List */}
       <div className="space-y-4">
@@ -160,14 +262,16 @@ export default function QuickTagsManager() {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setEditingId(tag.id)}
-                  className="px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 rounded-lg transition-all"
+                  onClick={() => startEdit(tag)}
+                  disabled={!!editingId}
+                  className="px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 rounded-lg transition-all disabled:opacity-50"
                 >
                   ✏️ Editar
                 </button>
                 <button
                   onClick={() => deleteTag(tag.id)}
-                  className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 rounded-lg transition-all"
+                  disabled={loading}
+                  className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 rounded-lg transition-all disabled:opacity-50"
                 >
                   🗑️
                 </button>
