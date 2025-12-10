@@ -49,11 +49,37 @@ class WebhookManager {
   }
 
   /**
-   * Teste de webhook
+   * Teste de webhook direto (via URL)
+   * Envia mensagem de teste diretamente para URL sem usar configuração da guild
    */
   async testWebhook(url) {
     try {
-      return await unifiedWebhookSystem.testWebhook(url);
+      const { WebhookClient, EmbedBuilder } = require('discord.js');
+      
+      // Validar URL
+      if (!url || !url.startsWith('https://discord.com/api/webhooks/')) {
+        logger.warn('[WebhookSystem] URL de webhook inválida:', url);
+        return false;
+      }
+
+      // Criar cliente temporário
+      const client = new WebhookClient({ url });
+
+      // Enviar mensagem de teste
+      const embed = new EmbedBuilder()
+        .setTitle('✅ Teste de Webhook')
+        .setDescription('Este é um teste de webhook do sistema IGNIS.')
+        .setColor(0x00FF00)
+        .setTimestamp()
+        .setFooter({ text: 'IGNIS Bot - Sistema de Webhooks' });
+
+      await client.send({ embeds: [embed] });
+      
+      // Destruir cliente após uso
+      client.destroy();
+      
+      logger.info('[WebhookSystem] Webhook testado com sucesso:', url.slice(0, 50) + '...');
+      return true;
     } catch (error) {
       logger.error('[WebhookSystem] Erro ao testar webhook:', error);
       return false;
