@@ -1,7 +1,7 @@
 # Explicit Nixpacks config to control build and caching
 
-# The plan: use npm install (not ci) to avoid removing node_modules and breaking the cache mount.
-# Also, do not cache node_modules/.cache to avoid EBUSY issues.
+# Fix: Force clean install to ensure all devDependencies are installed
+# Railway was caching old node_modules with only 46 packages instead of 167
 
 [phases.setup]
 # no-op: rely on default Node detection
@@ -10,12 +10,13 @@
 cmd = "npm ci"
 
 [phases.build]
-cmd = "npm install --no-audit --no-fund && npm --prefix dashboard/next install --no-audit --no-fund && npm --prefix dashboard/next run build"
+# Clean install dashboard/next dependencies with --legacy-peer-deps to avoid conflicts
+cmd = "npm install --no-audit --no-fund && cd dashboard/next && rm -rf node_modules && npm ci --legacy-peer-deps && npm run build"
 
 [phases.start]
 cmd = "npm start"
 
 [caches]
-# Disable caching the problematic path explicitly
+# Disable node_modules caching to force fresh install
 paths = []
 
