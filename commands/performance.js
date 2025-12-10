@@ -62,7 +62,7 @@ module.exports = {
             // 🔥 Performance Status
             const getPerformanceStatus = () => {
                 const issues = [];
-                
+
                 if (memoryUsed > 400) issues.push('🔴 Alto uso de memória');
                 else if (memoryUsed > 200) issues.push('🟡 Uso moderado de memória');
                 else issues.push('🟢 Uso normal de memória');
@@ -122,7 +122,7 @@ CPU Load: ${cpuLoad}
                         inline: false
                     }
                 )
-                .setFooter({ 
+                .setFooter({
                     text: `Monitoramento solicitado por ${interaction.user.tag}`,
                     iconURL: interaction.user.displayAvatarURL()
                 })

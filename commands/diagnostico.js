@@ -9,10 +9,10 @@ module.exports = {
     async execute(interaction) {
         try {
             console.log('🩺 Iniciando diagnóstico...');
-            
+
             // Resposta imediata
             await interaction.reply('🔄 Executando diagnóstico...');
-            
+
             // Informações detalhadas
             const info = [
                 `🤖 Bot: ${interaction.client.user.tag}`,
@@ -48,7 +48,7 @@ module.exports = {
 
             await interaction.editReply(`✅ **Diagnóstico Completo:**\n\`\`\`${info}\`\`\`${webhookInfo}${routingInfo}`);
             console.log('✅ Diagnóstico concluído');
-            
+
         } catch (error) {
             logger.error('❌ Erro no diagnóstico:', error);
             try {

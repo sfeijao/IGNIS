@@ -1,6 +1,6 @@
 # Security Audit Report: Dashboard API Routes
-**Date**: December 1, 2025  
-**File**: `dashboard/server.js` (8799 lines)  
+**Date**: December 1, 2025
+**File**: `dashboard/server.js` (8799 lines)
 **Total Routes Analyzed**: 170+ API endpoints
 
 ---
@@ -64,8 +64,8 @@ app.get('/api/guild/:guildId/tickets', async (req, res) => {
 });
 ```
 
-**Severity**: 🔴 **CRITICAL**  
-**Impact**: Any server member can access sensitive ticket data  
+**Severity**: 🔴 **CRITICAL**
+**Impact**: Any server member can access sensitive ticket data
 **Fix Priority**: **IMMEDIATE**
 
 #### 2. **Panels Action Route - Weak Permission**
@@ -76,7 +76,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
 });
 ```
 
-**Severity**: 🟡 **HIGH**  
+**Severity**: 🟡 **HIGH**
 **Fix Priority**: **HIGH**
 
 #### 3. **Stats Routes - Missing Admin Check**
@@ -92,7 +92,7 @@ app.post('/api/guild/:guildId/stats/auto-create', async (req, res) => {
 });
 ```
 
-**Severity**: 🔴 **CRITICAL**  
+**Severity**: 🔴 **CRITICAL**
 **Fix Priority**: **IMMEDIATE**
 
 ---
@@ -161,8 +161,8 @@ app.post('/api/guild/:guildId/tickets/config', async (req, res) => {
 });
 ```
 
-**Severity**: 🔴 **CRITICAL**  
-**Impact**: Arbitrary data injection into guild configs  
+**Severity**: 🔴 **CRITICAL**
+**Impact**: Arbitrary data injection into guild configs
 **Fix Priority**: **IMMEDIATE**
 
 #### 3. **Welcome/Goodbye Routes - Partial Validation**
@@ -197,8 +197,8 @@ app.post('/api/guild/:guildId/uploads', express.json({ limit: '60mb' }), async (
 });
 ```
 
-**Severity**: 🔴 **CRITICAL**  
-**Impact**: Potential DoS, malicious file upload  
+**Severity**: 🔴 **CRITICAL**
+**Impact**: Potential DoS, malicious file upload
 **Fix Priority**: **IMMEDIATE**
 
 ---
@@ -417,7 +417,7 @@ app.get('/auth/debug', (req, res) => {
     });
 });
 
-// Line 763: Session debug endpoint  
+// Line 763: Session debug endpoint
 app.get('/debug/session', (req, res) => {
     res.json({
         sessionID: req.sessionID,
@@ -428,7 +428,7 @@ app.get('/debug/session', (req, res) => {
 });
 ```
 
-**Severity**: 🟡 **MEDIUM**  
+**Severity**: 🟡 **MEDIUM**
 **Recommendation**: Gate behind `NODE_ENV !== 'production'` or remove entirely.
 
 ---
@@ -474,14 +474,14 @@ app.get('/debug/session', (req, res) => {
    // Fix: Line 1684
    app.get('/api/guild/:guildId/tickets', async (req, res) => {
        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
-       
+
        const { client, ready, error: clientError } = getDiscordClient();
        if (!ready) return res.status(503).json({ success: false, error: clientError });
-       
+
        // ADD THIS:
        const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
        if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-       
+
        // ... rest of route
    });
    ```
@@ -496,7 +496,7 @@ app.get('/debug/session', (req, res) => {
        statsCounters: Joi.object().unknown(true).optional(),
        // ... whitelist known config keys
    }).unknown(false); // Reject unknown keys
-   
+
    const { error, value } = configSchema.validate(req.body);
    if (error) return res.status(400).json({ success: false, error: 'validation_failed' });
    ```
@@ -506,7 +506,7 @@ app.get('/debug/session', (req, res) => {
    // At top of file:
    const destructiveRateLimiter = new KeyedRateLimiter(5, 5 / 60);
    const exportRateLimiter = new KeyedRateLimiter(2, 2 / 300);
-   
+
    // In routes:
    app.post('/api/guild/:guildId/members/:userId/ban', async (req, res) => {
        const check = destructiveRateLimiter.check(req.user.id);
@@ -579,7 +579,7 @@ app.get('/debug/session', (req, res) => {
 
 ### Authentication (4 routes)
 - ✅ `GET /auth/discord` - Secure
-- ✅ `GET /auth/discord/callback` - Secure  
+- ✅ `GET /auth/discord/callback` - Secure
 - ✅ `GET /logout` - Secure
 - ⚠️ `GET /auth/debug` - Remove in production
 
@@ -624,7 +624,7 @@ app.get('/debug/session', (req, res) => {
 The dashboard API has **solid foundational security** but requires **immediate attention** to:
 
 1. 🔴 Add admin checks to tickets and stats routes
-2. 🔴 Add input validation to config routes  
+2. 🔴 Add input validation to config routes
 3. 🔴 Add rate limiting to destructive/heavy operations
 4. 🟡 Enhance webhook validation
 5. 🟡 Remove debug endpoints from production

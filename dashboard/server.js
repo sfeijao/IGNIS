@@ -68,19 +68,19 @@ const PORT = process.env.PORT || 4000;
  */
 function getDiscordClient() {
     const client = global.discordClient;
-    
+
     if (!client) {
         return { client: null, ready: false, error: 'Bot not available - client is null' };
     }
-    
+
     if (!client.guilds || !client.guilds.cache) {
         return { client: null, ready: false, error: 'Bot not ready - guilds cache not initialized' };
     }
-    
+
     if (typeof client.isReady === 'function' && !client.isReady()) {
         return { client, ready: false, error: 'Bot not ready - client.isReady() returned false' };
     }
-    
+
     return { client, ready: true, error: null };
 }
 
@@ -90,18 +90,18 @@ function getDiscordClient() {
  */
 function requireDiscordClient(req, res, next) {
     const { client, ready, error } = getDiscordClient();
-    
+
     if (!client || !ready) {
         logger.warn(`[RequireClient] ${req.method} ${req.path} - ${error}`);
-        return res.status(503).json({ 
-            success: false, 
-            error: 'Bot service unavailable', 
+        return res.status(503).json({
+            success: false,
+            error: 'Bot service unavailable',
             details: error,
             canManualInput: true,
             instructions: 'The bot is starting up. Please wait a moment and try again.'
         });
     }
-    
+
     req.discordClient = client;
     next();
 }
@@ -116,35 +116,35 @@ function getGuild(client, guildId) {
     if (!client || !client.guilds || !client.guilds.cache) {
         return { guild: null, error: 'Client or guilds cache not available' };
     }
-    
+
     const guild = client.guilds.cache.get(guildId);
     if (!guild) {
         return { guild: null, error: 'Guild not found - bot may not be in this server' };
     }
-    
+
     return { guild, error: null };
 }
 
 /**
  * Check if user is admin in guild
- * @param {Object} guild - Discord guild object  
+ * @param {Object} guild - Discord guild object
  * @param {string} userId - User ID to check
  * @returns {Promise<{isAdmin: boolean, member: Object|null, error: string|null}>}
  */
 async function checkGuildAdmin(guild, userId) {
     try {
         const member = await guild.members.fetch(userId).catch(() => null);
-        
+
         if (!member) {
             return { isAdmin: false, member: null, error: 'User is not a member of this server' };
         }
-        
+
         const isAdmin = member.permissions.has(PermissionFlagsBits.Administrator);
-        
+
         if (!isAdmin) {
             return { isAdmin: false, member, error: 'User does not have administrator permission' };
         }
-        
+
         return { isAdmin: true, member, error: null };
     } catch (e) {
         logger.error('[CheckGuildAdmin] Error fetching member:', e);
@@ -1077,7 +1077,7 @@ app.get('/api/guild/:guildId/info', async (req, res) => {
         // Use centralized helper
         const { client, ready, error: clientError } = getDiscordClient();
         if (!ready) return res.status(503).json({ success: false, error: clientError });
-        
+
         const { guild, error: guildError } = getGuild(client, guildId);
         if (!guild) return res.status(404).json({ success: false, error: guildError });
         // Build CDN URLs manually (works without privileged fetch)
@@ -1489,7 +1489,7 @@ app.delete('/api/guild/:guildId/mod-presets/:name', async (req,res)=>{
     if(!req.isAuthenticated()) return res.status(401).json({ success:false, error:'Not authenticated' });
     try {
         const guildId = req.params.guildId; const name = req.params.name;
-        const check = await ensureGuildAdmin(client, guildId, req.user.id); 
+        const check = await ensureGuildAdmin(client, guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         // Validate name to avoid weird keys
         const { error: nameErr } = Joi.string().pattern(/^[A-Za-z0-9_.\-]{1,64}$/).validate(name);
@@ -2098,17 +2098,17 @@ app.post('/api/guild/:guildId/panels', async (req, res) => {
 
     try {
         const guildId = req.params.guildId;
-        
+
         // Rate limiting: 3 panels per minute per guild
         const rateLimitCheck = panelRateLimiter.check(guildId);
         if (!rateLimitCheck.allowed) {
-            return res.status(429).json({ 
-                success: false, 
+            return res.status(429).json({
+                success: false,
                 error: 'Rate limit exceeded. Please wait before creating more panels.',
                 retryAfter: Math.ceil(rateLimitCheck.waitTime / 1000)
             });
         }
-        
+
         const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
 
         const check = await ensureGuildAdmin(client, guildId, req.user.id);
@@ -2136,7 +2136,7 @@ app.post('/api/guild/:guildId/panels', async (req, res) => {
         if (!selected_categories || !Array.isArray(selected_categories) || selected_categories.length === 0) {
             return res.status(400).json({ success: false, error: 'At least one category must be selected' });
         }
-        
+
         // Discord button limit: max 5 rows × 5 buttons = 25 total
         if (selected_categories.length > 25) {
             return res.status(400).json({ success: false, error: 'Maximum 25 categories allowed per panel (Discord button limit)' });
@@ -3281,19 +3281,19 @@ async function ensureGuildAdmin(client, guildId, userId) {
     if (!ready) {
         return { ok: false, code: 503, error: clientError || 'Bot not ready yet' };
     }
-    
+
     // Use new guild getter
     const { guild, error: guildError } = getGuild(client, guildId);
     if (!guild) {
         return { ok: false, code: 404, error: guildError || 'Server not found' };
     }
-    
+
     // Use new admin checker
     const { isAdmin, member, error: adminError } = await checkGuildAdmin(guild, userId);
     if (!isAdmin) {
         return { ok: false, code: 403, error: adminError || 'Unauthorized - Administrator permission required' };
     }
-    
+
     return { ok: true, guild, member };
 }
 
@@ -3302,22 +3302,22 @@ app.get('/api/guild/:guildId/channels', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
-    
+
     try {
         // Use new centralized client getter
         const { client, ready, error: clientError } = getDiscordClient();
         logger.info(`[Channels API] Request for guild ${req.params.guildId} - Ready: ${ready}`);
-        
+
         if (!ready) {
             logger.warn(`[Channels API] Client not ready: ${clientError}`);
-            return res.status(503).json({ 
-                success: false, 
+            return res.status(503).json({
+                success: false,
                 error: clientError,
                 canManualInput: true,
                 instructions: 'The bot is starting up. Please wait a moment, or enter a channel ID manually.'
             });
         }
-        
+
         // Use new ensureGuildAdmin helper (already uses getGuild internally)
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) {
@@ -3887,16 +3887,16 @@ app.get('/api/guild/:guildId/timetracking/sessions', async (req, res) => {
 app.get('/api/guild/:guildId/tags', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const { client, ready, error: clientError } = getDiscordClient(); 
+        const { client, ready, error: clientError } = getDiscordClient();
         if (!ready) return res.status(503).json({ success: false, error: clientError });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const storage = require('../utils/storage');
         const config = await storage.getGuildConfig(req.params.guildId);
         const tags = config?.tags || [];
-        
+
         res.json({ success: true, tags });
     } catch (e) {
         logger.error('Error fetching tags:', e);
@@ -3908,23 +3908,23 @@ app.get('/api/guild/:guildId/tags', async (req, res) => {
 app.post('/api/guild/:guildId/tags', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const { client, ready, error: clientError } = getDiscordClient(); 
+        const { client, ready, error: clientError } = getDiscordClient();
         if (!ready) return res.status(503).json({ success: false, error: clientError });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const { id, name, prefix, color, icon, roleIds } = req.body;
         if (!name || !prefix) {
             return res.status(400).json({ success: false, error: 'Name and prefix are required' });
         }
-        
+
         const storage = require('../utils/storage');
         const config = await storage.getGuildConfig(req.params.guildId);
         let tags = config?.tags || [];
-        
+
         const tagData = { id, name, prefix, color, icon, roleIds };
-        
+
         // Check if tag exists
         const existingIndex = tags.findIndex(t => t.id === id);
         if (existingIndex >= 0) {
@@ -3932,9 +3932,9 @@ app.post('/api/guild/:guildId/tags', async (req, res) => {
         } else {
             tags.push(tagData);
         }
-        
+
         await storage.updateGuildConfig(req.params.guildId, { tags });
-        
+
         res.json({ success: true, tag: tagData });
     } catch (e) {
         logger.error('Error saving tag:', e);
@@ -3946,20 +3946,20 @@ app.post('/api/guild/:guildId/tags', async (req, res) => {
 app.delete('/api/guild/:guildId/tags/:tagId', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
-        const { client, ready, error: clientError } = getDiscordClient(); 
+        const { client, ready, error: clientError } = getDiscordClient();
         if (!ready) return res.status(503).json({ success: false, error: clientError });
-        
+
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
         if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
-        
+
         const storage = require('../utils/storage');
         const config = await storage.getGuildConfig(req.params.guildId);
         let tags = config?.tags || [];
-        
+
         tags = tags.filter(t => t.id !== req.params.tagId);
-        
+
         await storage.updateGuildConfig(req.params.guildId, { tags });
-        
+
         res.json({ success: true });
     } catch (e) {
         logger.error('Error deleting tag:', e);
@@ -6549,17 +6549,17 @@ app.post('/api/guild/:guildId/tags', async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
     try {
         const guildId = req.params.guildId;
-        
+
         // Rate limiting: 10 tag operations per minute per guild
         const rateLimitCheck = tagRateLimiter.check(guildId);
         if (!rateLimitCheck.allowed) {
-            return res.status(429).json({ 
-                success: false, 
+            return res.status(429).json({
+                success: false,
                 error: 'Rate limit exceeded. Please wait before creating more tags.',
                 retryAfter: Math.ceil(rateLimitCheck.waitTime / 1000)
             });
         }
-        
+
         const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
         const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id); if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
         const storage = require('../utils/storage');
@@ -6572,10 +6572,10 @@ app.post('/api/guild/:guildId/tags', async (req, res) => {
             for (const t of body.tags) { const { error, value } = tagSchema.validate(t, { abortEarly: false, stripUnknown: true }); if (!error) clean.push({ id: value.id || (Date.now().toString(36)+Math.random().toString(36).slice(2,6)), ...value }); }
             const next = { ...cfg, tags: clean };
             await storage.updateGuildConfig(req.params.guildId, next);
-            
+
             // Consume rate limit token after successful operation
             await tagRateLimiter.acquire(guildId);
-            
+
             return res.json({ success: true, tags: clean });
         }
         if (body.tag) {
@@ -6607,10 +6607,10 @@ app.post('/api/guild/:guildId/tags', async (req, res) => {
             if (idx >= 0) nextList[idx] = rec; else nextList.push(rec);
             const next = { ...cfg, tags: nextList };
             await storage.updateGuildConfig(req.params.guildId, next);
-            
+
             // Consume rate limit token after successful operation
             await tagRateLimiter.acquire(guildId);
-            
+
             return res.json({ success: true, tag: rec, tags: nextList });
         }
         return res.status(400).json({ success: false, error: 'invalid_payload' });

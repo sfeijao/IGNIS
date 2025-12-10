@@ -7,15 +7,15 @@
 # no-op: rely on default Node detection
 
 [phases.install]
-cmd = "npm install --no-audit --no-fund"
+cmd = "npm ci"
 
 [phases.build]
-# no build step required for this app (runtime Node app)
-cmd = "echo 'no build phase'"
+cmd = "npm install --no-audit --no-fund && npm --prefix dashboard/next install --no-audit --no-fund && npm --prefix dashboard/next run build"
 
 [phases.start]
-cmd = "node index.js"
+cmd = "npm start"
 
 [caches]
 # Disable caching the problematic path explicitly
 paths = []
+

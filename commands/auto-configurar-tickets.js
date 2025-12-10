@@ -17,13 +17,13 @@ module.exports = {
         try {
             const forcar = interaction.options.getBoolean('forcar') || false;
             const permissionManager = new TicketPermissionManager();
-            
+
             // Verificar configuração atual
             const currentConfig = permissionManager.getConfig();
-            
+
             if (currentConfig.staffRoles.length > 0 && !forcar) {
                 const suggestions = await permissionManager.suggestStaffRoles(interaction.guild);
-                
+
                 if (suggestions.suggestions.length === 0) {
                     return await interaction.editReply({
                         content: '✅ **Sistema já configurado!**\n\n' +
@@ -52,7 +52,7 @@ module.exports = {
                 if (permissionRoles.length > 0) {
                     embed.addFields({
                         name: '🛡️ Configurados por Permissões',
-                        value: permissionRoles.map(role => 
+                        value: permissionRoles.map(role =>
                             `• **${role.name}**\n  Permissões: ${role.permissions.join(', ')}`
                         ).join('\n'),
                         inline: false
@@ -62,7 +62,7 @@ module.exports = {
                 if (nameRoles.length > 0) {
                     embed.addFields({
                         name: '📝 Configurados por Nome',
-                        value: nameRoles.map(role => 
+                        value: nameRoles.map(role =>
                             `• **${role.name}** (padrão: ${role.matchedPattern})`
                         ).join('\n'),
                         inline: false
@@ -108,7 +108,7 @@ module.exports = {
                     });
             }
 
-            embed.setFooter({ 
+            embed.setFooter({
                 text: `Auto-configuração executada por ${interaction.user.tag}`
             });
 

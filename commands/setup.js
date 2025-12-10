@@ -40,13 +40,13 @@ module.exports = {
 
             // Initialize guild configuration with defaults
             const config = await storage.getGuildConfig(interaction.guild.id);
-            
+
             // Set some default values if not present
             if (!config.serverName) config.serverName = interaction.guild.name;
             if (!config.roles) config.roles = {};
             if (!config.channels) config.channels = {};
             if (!config.ticketSystem) config.ticketSystem = {};
-            
+
             await storage.updateGuildConfig(interaction.guild.id, config);
 
             const embed = new EmbedBuilder()
@@ -62,7 +62,7 @@ module.exports = {
                 .setFooter({ text: 'IGNIS Bot Configuration' });
 
             await interaction.editReply({ embeds: [embed] });
-        } 
+        }
         else if (subcommand === 'status') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 

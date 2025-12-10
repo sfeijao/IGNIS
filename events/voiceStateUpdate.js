@@ -7,7 +7,7 @@ module.exports = {
         try {
             const guildId = newState.guild.id;
             const userId = newState.id;
-            
+
             let eventData = null;
 
             // User joined voice channel
@@ -30,8 +30,8 @@ module.exports = {
                 // Analytics
                 if (newState.client.database) {
                     await newState.client.database.recordAnalytics(
-                        guildId, 
-                        'voice_channel_joined', 
+                        guildId,
+                        'voice_channel_joined',
                         1,
                         {
                             userId,
@@ -40,7 +40,7 @@ module.exports = {
                         }
                     );
                 }
-            } 
+            }
             // User left voice channel
             else if (oldState.channelId !== null && newState.channelId === null) {
                 eventData = {
@@ -61,8 +61,8 @@ module.exports = {
                 // Analytics
                 if (oldState.client.database) {
                     await oldState.client.database.recordAnalytics(
-                        guildId, 
-                        'voice_channel_left', 
+                        guildId,
+                        'voice_channel_left',
                         1,
                         {
                             userId,
@@ -94,8 +94,8 @@ module.exports = {
                 // Analytics
                 if (newState.client.database) {
                     await newState.client.database.recordAnalytics(
-                        guildId, 
-                        'voice_channel_moved', 
+                        guildId,
+                        'voice_channel_moved',
                         1,
                         {
                             userId,

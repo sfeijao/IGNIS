@@ -166,7 +166,7 @@ export default function QuickTagsManager() {
           <h3 className="text-xl font-bold mb-4">
             {editingId === 'new' ? '➕ Nova Tag' : '✏️ Editar Tag'}
           </h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Nome da Tag</label>
@@ -178,7 +178,7 @@ export default function QuickTagsManager() {
                 className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Prefixo (comando)</label>
               <input

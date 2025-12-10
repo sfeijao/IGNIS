@@ -1,7 +1,7 @@
 /**
  * Sistema de Webhooks - Gestão e Envio
  * Gerencia webhooks externos para logs de tickets, moderação, etc.
- * 
+ *
  * DEPRECATED: Este arquivo mantém compatibilidade com código legado.
  * Use o novo sistema em utils/webhooks/UnifiedWebhookSystem.js
  */
@@ -23,10 +23,10 @@ class WebhookManager {
   async sendOrUpdateTicketWebhook(ticket, event, data = {}) {
     try {
       const guildId = ticket.guild_id;
-      
+
       // Usar o novo sistema unificado
       const { ticketWebhooks } = require('./webhooks');
-      
+
       switch (event) {
         case 'created':
           return await ticketWebhooks.logCreate(guildId, ticket);

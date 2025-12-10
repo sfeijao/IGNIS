@@ -6,11 +6,11 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('info-servidor')
         .setDescription('Mostra informações detalhadas do servidor'),
-    
+
     async execute(interaction) {
         try {
         const guild = interaction.guild;
-        
+
         // Obter configuração do servidor
         let config = {};
         try {
@@ -18,27 +18,27 @@ module.exports = {
         } catch (e) {
             logger.debug('[info-servidor] Erro ao obter config:', e);
         }
-        
+
         // Contar membros por status
         const totalMembers = guild.memberCount;
-        const verifiedMembers = config.roles?.verified 
-            ? guild.members.cache.filter(member => member.roles.cache.has(config.roles.verified)).size 
+        const verifiedMembers = config.roles?.verified
+            ? guild.members.cache.filter(member => member.roles.cache.has(config.roles.verified)).size
             : 0;
-        const unverifiedMembers = config.roles?.unverified 
-            ? guild.members.cache.filter(member => member.roles.cache.has(config.roles.unverified)).size 
+        const unverifiedMembers = config.roles?.unverified
+            ? guild.members.cache.filter(member => member.roles.cache.has(config.roles.unverified)).size
             : 0;
-        const onlineMembers = guild.members.cache.filter(member => 
+        const onlineMembers = guild.members.cache.filter(member =>
             member.presence?.status === 'online').size;
-        
+
         // Contar cargos especiais
-        const staffMembers = config.roles?.staff 
-            ? guild.members.cache.filter(member => member.roles.cache.has(config.roles.staff)).size 
+        const staffMembers = config.roles?.staff
+            ? guild.members.cache.filter(member => member.roles.cache.has(config.roles.staff)).size
             : 0;
-        const adminMembers = config.roles?.admin 
-            ? guild.members.cache.filter(member => member.roles.cache.has(config.roles.admin)).size 
+        const adminMembers = config.roles?.admin
+            ? guild.members.cache.filter(member => member.roles.cache.has(config.roles.admin)).size
             : 0;
-        const vipMembers = config.roles?.vip 
-            ? guild.members.cache.filter(member => member.roles.cache.has(config.roles.vip)).size 
+        const vipMembers = config.roles?.vip
+            ? guild.members.cache.filter(member => member.roles.cache.has(config.roles.vip)).size
             : 0;
 
         const embed = new EmbedBuilder()
