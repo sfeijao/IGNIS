@@ -48,7 +48,6 @@ export default function ModerationCenterTools() {
         const list = response.channels || response || []
         setChannels(Array.isArray(list) ? list : [])
       } catch (err) {
-        console.error('[Moderation] Failed to load channels:', err)
         setChannels([])
       }
     })()

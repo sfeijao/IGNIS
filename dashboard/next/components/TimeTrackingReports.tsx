@@ -77,7 +77,6 @@ export default function TimeTrackingReports({ guildId }: TimeTrackingReportsProp
       }
 
     } catch (err) {
-      console.error('Failed to load data:', err);
       setError('Erro ao carregar dados');
     } finally {
       setLoading(false);

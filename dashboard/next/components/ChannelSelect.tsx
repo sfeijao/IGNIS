@@ -83,7 +83,6 @@ export default function ChannelSelect({
         }
       }
     } catch (err) {
-      console.error('Error loading channels:', err);
       setError('Failed to load channels. You can enter a channel ID manually.');
       setCanManualInput(true);
       setShowManualInput(true);
@@ -116,7 +115,6 @@ export default function ChannelSelect({
         setVerifiedChannel(null);
       }
     } catch (err) {
-      console.error('Error verifying channel:', err);
       setError('Failed to verify channel');
       setVerifiedChannel(null);
     } finally {

@@ -58,7 +58,7 @@ export default function WebhookConfigSimple() {
         setConfig(data.config)
       }
     } catch (e: any) {
-      console.error('Failed to load webhook config:', e)
+      // Silent error
     } finally {
       setLoading(false)
     }

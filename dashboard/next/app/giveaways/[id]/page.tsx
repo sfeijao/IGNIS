@@ -41,7 +41,7 @@ export default function GiveawayDetailPage(){
         setParticipants(json.entries || [])
       }
     } catch (e) {
-      console.error('Failed to load participants:', e)
+      // Silent error
     }
   }
 

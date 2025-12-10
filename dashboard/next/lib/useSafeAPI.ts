@@ -40,7 +40,6 @@ export function useSafeAPI<T = any>(
       options.onSuccess?.(result);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch data';
-      console.error('[useSafeAPI] Error:', errorMessage, err);
       setState({ data: null, loading: false, error: errorMessage });
       options.onError?.(errorMessage);
     }

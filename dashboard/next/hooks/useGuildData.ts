@@ -89,7 +89,6 @@ export function useChannels(guildId: string | null | undefined, options: UseChan
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
-        console.error('Error loading channels:', err)
         setError('Failed to load channels')
         setChannels([])
       }
@@ -172,7 +171,6 @@ export function useRoles(guildId: string | null | undefined, options: UseRolesOp
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
-        console.error('Error loading roles:', err)
         setError('Failed to load roles')
         setRoles([])
       }
@@ -247,7 +245,6 @@ export function useMembers(guildId: string | null | undefined) {
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
-        console.error('Error searching members:', err)
         setError('Failed to search members')
         setMembers([])
       }

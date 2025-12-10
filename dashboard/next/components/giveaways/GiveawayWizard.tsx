@@ -91,7 +91,7 @@ export default function GiveawayWizard(){
       fetch(`/api/guilds/${guildId}/giveaways?status=active`, { credentials: 'include' })
         .then(r => r.json().then(j => ({ ok: r.ok, data: j })))
         .then(({ ok, data }) => { if (ok && data && Array.isArray(data.giveaways)) setActiveCount(data.giveaways.length) })
-        .catch(e => { console.error('[GiveawayWizard] Failed to fetch active count:', e) })
+        .catch(() => {})
 
       // Fetch text channels
       fetch(`/api/guild/${guildId}/channels`, { credentials: 'include' })
@@ -107,7 +107,7 @@ export default function GiveawayWizard(){
             }
           }
         })
-        .catch(e => { console.error('[GiveawayWizard] Failed to fetch channels:', e) })
+        .catch(() => {})
     }
   }, [open, guildId])
 

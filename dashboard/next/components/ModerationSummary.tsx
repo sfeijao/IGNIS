@@ -18,14 +18,13 @@ export default function ModerationSummary() {
     try {
       const s = await fetch(`/api/guild/${guildId}/mod/stats`, { credentials: 'include' })
         .then(r => r.json())
-        .catch(e => { console.error('[ModerationSummary] Failed to load stats:', e); return null })
+        .catch(() => null)
       const c = await fetch(`/api/guild/${guildId}/mod/cases?limit=20`, { credentials: 'include' })
         .then(r => r.json())
-        .catch(e => { console.error('[ModerationSummary] Failed to load cases:', e); return null })
+        .catch(() => null)
       setStats(s)
       setCases(c?.cases || c || [])
     } catch (e: any) {
-      console.error('[ModerationSummary] Load failed:', e)
       setError((e instanceof Error ? e.message : String(e)) || 'Failed to load moderation data')
     } finally { setLoading(false) }
   }

@@ -134,7 +134,6 @@ export default function ServerStats({ guildId }: ServerStatsProps) {
       }
 
     } catch (err) {
-      console.error('Failed to load data:', err);
       setError('Failed to load server stats configuration');
     } finally {
       setLoading(false);
@@ -181,7 +180,6 @@ export default function ServerStats({ guildId }: ServerStatsProps) {
         setError(data.error || 'Failed to setup server stats');
       }
     } catch (err) {
-      console.error('Setup failed:', err);
       setError('Failed to setup server stats');
     } finally {
       setSaving(false);
@@ -213,7 +211,6 @@ export default function ServerStats({ guildId }: ServerStatsProps) {
         setError(data.error || 'Failed to update configuration');
       }
     } catch (err) {
-      console.error('Toggle failed:', err);
       setError('Failed to update configuration');
     } finally {
       setSaving(false);
@@ -247,7 +244,6 @@ export default function ServerStats({ guildId }: ServerStatsProps) {
         setError(data.error || 'Failed to disable server stats');
       }
     } catch (err) {
-      console.error('Disable failed:', err);
       setError('Failed to disable server stats');
     } finally {
       setSaving(false);

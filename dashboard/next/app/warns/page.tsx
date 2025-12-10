@@ -59,7 +59,6 @@ export default function WarnsPage() {
       refetch();
       alert('✅ Aviso adicionado com sucesso!');
     } catch (error) {
-      console.error('Error adding warn:', error);
       alert('❌ Erro ao adicionar: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };
@@ -77,7 +76,6 @@ export default function WarnsPage() {
       refetch();
       alert('✅ Aviso revogado!');
     } catch (error) {
-      console.error('Error revoking warn:', error);
       alert('❌ Erro ao revogar: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };

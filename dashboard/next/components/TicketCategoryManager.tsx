@@ -58,7 +58,6 @@ export default function TicketCategoryManager({ guildId }: Props) {
       setError(null);
     } catch (err: any) {
       setError(err.message);
-      console.error('[TicketCategories] Load error:', err);
     } finally {
       setLoading(false);
     }

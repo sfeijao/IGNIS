@@ -84,7 +84,6 @@ export default function AntiRaidPage() {
         alert('❌ Erro ao salvar configuração');
       }
     } catch (error) {
-      console.error('Error saving config:', error);
       alert('❌ Erro ao salvar: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     } finally {
       setSaving(false);
@@ -109,7 +108,6 @@ export default function AntiRaidPage() {
       alert('✅ Raid marcado como ' + status);
       refetch();
     } catch (error) {
-      console.error('Error resolving raid:', error);
       alert('❌ Erro ao resolver raid: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };

@@ -93,7 +93,6 @@ export default function PanelCreator({ onClose, existingPanel }: { onClose: () =
       }
 
     } catch (err) {
-      console.error('Failed to load data:', err);
       toast({ type: 'error', title: 'Erro ao carregar dados' });
     } finally {
       setLoading(false);
@@ -155,7 +154,6 @@ export default function PanelCreator({ onClose, existingPanel }: { onClose: () =
       }
 
     } catch (err) {
-      console.error('Failed to save panel:', err);
       toast({ type: 'error', title: 'Erro ao guardar painel' });
     } finally {
       setSaving(false);

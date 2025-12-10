@@ -44,7 +44,7 @@ export default function TimeTrackingPanelConfig() {
         setPanels(data.panels || [])
       }
     } catch (err) {
-      console.error('Failed to load panels:', err)
+      // Silent error
     } finally {
       setLoading(false)
     }

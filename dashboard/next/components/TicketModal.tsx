@@ -61,7 +61,7 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
       try {
         const d = await api.getTicketDetails(guildId, ticketId)
         const l = await api.getTicketLogs(guildId, ticketId, { limit, offset: 0 })
-        const ch = await api.getChannels(guildId).catch(e => { console.error('[TicketModal] Failed to load channels:', e); return { channels: [] } })
+        const ch = await api.getChannels(guildId).catch(() => ({ channels: [] }))
         if (!aborted) {
           setDetails(d)
           try {
