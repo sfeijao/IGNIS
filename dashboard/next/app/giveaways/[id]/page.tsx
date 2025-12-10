@@ -245,8 +245,7 @@ export default function GiveawayDetailPage(){
                     participants={participants}
                     winnersCount={data.giveaway?.winners_count || 1}
                     onComplete={(winners) => {
-                      console.log('Vencedores selecionados:', winners)
-                      // Aqui podes chamar API para salvar os vencedores
+                      // Winners selected, API call can be added here
                     }}
                   />
                 )}

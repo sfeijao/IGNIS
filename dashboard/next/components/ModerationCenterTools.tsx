@@ -45,7 +45,6 @@ export default function ModerationCenterTools() {
     ;(async () => {
       try {
         const response = await api.getChannels(guildId)
-        console.log('[Moderation] Channels response:', response)
         const list = response.channels || response || []
         setChannels(Array.isArray(list) ? list : [])
       } catch (err) {
