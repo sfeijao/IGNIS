@@ -3,14 +3,13 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Icon } from './icons'
 import { useI18n } from '../lib/i18n'
 
 const nav = [
-  { href: '/', key: 'nav.dashboard' },
-  { href: '/plugins', key: 'nav.plugins' },
-  { href: '/settings', key: 'nav.settings' },
-  { href: '/tickets', key: 'nav.tickets' },
+  { href: '/', key: 'nav.dashboard', emoji: '📊' },
+  { href: '/plugins', key: 'nav.plugins', emoji: '🧩' },
+  { href: '/settings', key: 'nav.settings', emoji: '⚙️' },
+  { href: '/tickets', key: 'nav.tickets', emoji: '🎫' },
 ]
 
 export default function MobileSidebar() {
@@ -48,18 +47,13 @@ export default function MobileSidebar() {
                 return (
                   <Link key={n.href} href={n.href} className={`relative rounded-lg px-3 py-2 hover:bg-neutral-800 transition-colors ${active ? 'bg-neutral-800 text-white' : ''}`} onClick={() => setOpen(false)}>
                     <span className={`absolute left-0 top-1 bottom-1 w-1 rounded-full bg-gradient-to-b from-brand-500 to-blue-500 ${active ? 'opacity-100 animate-pulseLine' : 'opacity-0'}`} />
-                    <span className="mr-2 inline-flex items-center">
-                      {n.key === 'nav.dashboard' && <Icon name="dashboard" />}
-                      {n.key === 'nav.plugins' && <Icon name="plugins" />}
-                      {n.key === 'nav.settings' && <Icon name="settings" />}
-                      {n.key === 'nav.tickets' && <Icon name="tickets" />}
-                    </span>
+                    <span className="mr-2 inline-flex items-center">{n.emoji}</span>
                     {t(n.key)}
                   </Link>
                 )
               })}
               <a href="/moderation-react.html" className="relative rounded-lg px-3 py-2 hover:bg-neutral-800 transition-colors" onClick={() => setOpen(false)}>
-                <span className="mr-2 inline-flex items-center"><Icon name="shield" /></span>
+                <span className="mr-2 inline-flex items-center">🛡️</span>
                 {t('nav.moderation.center')}
               </a>
             </nav>

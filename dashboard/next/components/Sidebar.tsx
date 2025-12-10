@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Icon } from './icons'
 import FeatureBadge from './FeatureBadge'
 import { useI18n } from '@/lib/i18n'
 import { useGuildId } from '@/lib/guild'

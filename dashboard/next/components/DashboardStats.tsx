@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 const logger = require('../utils/logger');
-import { Icon } from './icons'
 import Stat from './Stat'
 import { api } from '@/lib/apiClient'
 import { useGuildId } from '@/lib/guild'
@@ -161,7 +160,7 @@ export default function DashboardStats() {
             </div>
             <div className="flex items-center gap-2">
               <label className="text-xs text-neutral-400 hidden sm:flex items-center gap-1" title={t('dash.refreshFrequency')}>
-                <Icon name="clock" className="h-4 w-4" />
+                <span className="text-base">⏰</span>
                 <select
                   className="text-xs rounded-md bg-neutral-900 border border-neutral-700 px-2 py-1"
                   value={refreshMinutes}
@@ -183,7 +182,7 @@ export default function DashboardStats() {
                 disabled={loading}
                 title={t('dash.updateNow')}
               >
-                <Icon name="refresh" className="h-4 w-4" />
+                <span className="text-base">🔄</span>
                 {t('dash.updateNow')}
               </button>
             </div>
