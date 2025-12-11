@@ -52,7 +52,7 @@ export default function Topbar() {
             {compact ? '⇤' : '⇥'}
           </button>
           <Link href="/" className="font-bold">{t('nav.dashboard')}</Link>
-          <a href="/moderation-react.html" className="text-sm text-neutral-300 hover:text-white">{t('nav.moderation.center')}</a>
+          <Link href="/moderation" className="text-sm text-neutral-300 hover:text-white">{t('nav.moderation.center')}</Link>
         </div>
         <div className="flex items-center gap-3">
           <GuildSelector />

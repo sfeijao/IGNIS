@@ -52,10 +52,10 @@ export default function MobileSidebar() {
                   </Link>
                 )
               })}
-              <a href="/moderation-react.html" className="relative rounded-lg px-3 py-2 hover:bg-neutral-800 transition-colors" onClick={() => setOpen(false)}>
+              <Link href="/moderation" className="relative rounded-lg px-3 py-2 hover:bg-neutral-800 transition-colors" onClick={() => setOpen(false)}>
                 <span className="mr-2 inline-flex items-center">🛡️</span>
                 {t('nav.moderation.center')}
-              </a>
+              </Link>
             </nav>
           </aside>
         </div>
