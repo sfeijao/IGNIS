@@ -486,6 +486,21 @@ class SqliteStorage {
     };
   }
 
+  async findPanelByChannelId(guildId, channelId) {
+    const row = await get(`SELECT * FROM panels WHERE guild_id = ? AND channel_id = ? AND type = 'tickets'`, [guildId, channelId]);
+    if (!row) return null;
+    return {
+      _id: String(row.id),
+      guild_id: row.guild_id,
+      channel_id: row.channel_id,
+      message_id: row.message_id,
+      type: row.type || 'tickets',
+      theme: row.theme || 'dark',
+      template: row.template || 'classic',
+      payload: parseJSON(row.payload, null)
+    };
+  }
+
   async updatePanel(id, updates) {
     const cur = await get(`SELECT * FROM panels WHERE id = ?`, [id]);
     if (!cur) return null;

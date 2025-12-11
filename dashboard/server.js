@@ -2077,7 +2077,10 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                     remainingDetected = detected.filter(d => !savedKeys.has(`${d.channel_id}`));
                 }
             }
-        } catch (e) { logger.debug('Panel persistence attempt error:', e?.message || e); }
+        } catch (e) { 
+            logger.error('Panel persistence attempt error:', e?.message || e); 
+            if (e?.stack) logger.debug('Stack trace:', e.stack);
+        }
 
         const finalList = [...enrichedCombined, ...remainingDetected];
         res.json({ success: true, panels: finalList });
@@ -2484,46 +2487,65 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
             }
         }
 
-        // Suportar guardar painéis detetados (IDs sintéticos começados por 'detected:')
-        if (action === 'save' && panelId.startsWith('detected:')) {
-            try {
-                const parts = panelId.split(':');
-                // detected:guildId:channelId:messageId
-                const chId = parts[2];
-                const msgId = parts[3];
-                if (!chId || !msgId) return res.status(400).json({ success: false, error: 'Invalid detected panel id' });
-                if (preferSqlite) {
-                    const storage = require('../utils/storage-sqlite');
-                    const doc = await storage.upsertPanel({ guild_id: guildId, channel_id: chId, message_id: msgId, theme: (data?.theme || 'dark'), template: (data?.template || 'classic') });
-                    return res.json({ success: true, message: 'Panel saved', panel: doc });
-                } else {
-                    const doc = await PanelModel.findOneAndUpdate(
-                        { guild_id: guildId, channel_id: chId, type: 'tickets' },
-                        { $setOnInsert: { message_id: msgId, theme: (data?.theme || 'dark'), template: (data?.template || 'classic') }, $set: { message_id: msgId } },
-                        { upsert: true, new: true }
-                    ).lean();
-                    return res.json({ success: true, message: 'Panel saved', panel: doc });
+        // Suportar painéis detetados (IDs sintéticos começados por 'detected:')
+        // CRITICAL: IDs detected não são ObjectIds válidos, precisam tratamento especial
+        let panel = null;
+        const isDetected = panelId.startsWith('detected:');
+        
+        if (isDetected) {
+            const parts = panelId.split(':');
+            // detected:guildId:channelId:messageId
+            const chId = parts[2];
+            const msgId = parts[3];
+            if (!chId || !msgId) return res.status(400).json({ success: false, error: 'Invalid detected panel id' });
+            
+            // Para painéis detected, buscar ou criar no MongoDB/SQLite
+            if (action === 'save') {
+                try {
+                    if (preferSqlite) {
+                        const storage = require('../utils/storage-sqlite');
+                        const doc = await storage.upsertPanel({ guild_id: guildId, channel_id: chId, message_id: msgId, theme: (data?.theme || 'dark'), template: (data?.template || 'classic') });
+                        return res.json({ success: true, message: 'Panel saved', panel: doc });
+                    } else {
+                        const doc = await PanelModel.findOneAndUpdate(
+                            { guild_id: guildId, channel_id: chId, type: 'tickets' },
+                            { $setOnInsert: { message_id: msgId, theme: (data?.theme || 'dark'), template: (data?.template || 'classic') }, $set: { message_id: msgId } },
+                            { upsert: true, new: true }
+                        ).lean();
+                        return res.json({ success: true, message: 'Panel saved', panel: doc });
+                    }
+                } catch (e) {
+                    logger.error('Error saving detected panel:', e);
+                    return res.status(500).json({ success: false, error: 'Failed to save detected panel' });
                 }
-            } catch (e) {
-                logger.error('Error saving detected panel:', e);
-                return res.status(500).json({ success: false, error: 'Failed to save detected panel' });
             }
+            
+            // Para outros actions, buscar painel existente por channel_id
+            panel = useMongoPanels
+                ? await PanelModel.findOne({ guild_id: guildId, channel_id: chId, type: 'tickets' }).lean()
+                : await (async () => {
+                    const storage = require('../utils/storage-sqlite');
+                    return await storage.findPanelByChannelId(guildId, chId);
+                })();
+            
+            if (!panel) {
+                return res.status(404).json({ success: false, error: 'Detected panel not yet saved. Please save it first.' });
+            }
+        } else {
+            // IDs normais (ObjectIds ou integers) - busca direta por ID
+            panel = useMongoPanels
+                ? await PanelModel.findById(panelId).lean()
+                : await (async () => {
+                    const storage = require('../utils/storage-sqlite');
+                    return await storage.findPanelById(panelId);
+                })();
         }
-
-        const panel = useMongoPanels
-            ? await PanelModel.findById(panelId).lean()
-            : await (async () => {
-                const storage = require('../utils/storage-sqlite');
-                return await storage.findPanelById(panelId);
-            })();
         if (!panel || `${panel.guild_id}` !== `${guildId}`) {
-            logger.error(`Panel not found or guild mismatch: panel=${!!panel}, panelGuild=${panel?.guild_id}, requestGuild=${guildId}`);
             return res.status(404).json({ success: false, error: 'Panel not found' });
         }
 
-        const channel = guild.channels.cache.get(panel.channel_id) || await client.channels.fetch(panel.channel_id).catch(e => { logger.error('Channel fetch error:', e); return null; });
+        const channel = guild.channels.cache.get(panel.channel_id) || await client.channels.fetch(panel.channel_id).catch(() => null);
         if (!channel || !channel.send) {
-            logger.error(`Channel not found or not sendable: channelId=${panel.channel_id}, hasChannel=${!!channel}, hasSend=${!!channel?.send}`);
             return res.status(404).json({ success: false, error: 'Channel not found' });
         }
 
@@ -2685,8 +2707,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
         }
     } catch (error) {
         logger.error('Error performing panel action:', error);
-        logger.error('Panel action details:', { guildId: req.params.guildId, panelId: req.params.panelId, action: req.body?.action, stack: error.stack });
-        res.status(500).json({ success: false, error: 'Failed to perform panel action', details: error.message });
+        res.status(500).json({ success: false, error: 'Failed to perform panel action' });
     }
 });
 
