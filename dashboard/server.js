@@ -2517,11 +2517,13 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 return await storage.findPanelById(panelId);
             })();
         if (!panel || `${panel.guild_id}` !== `${guildId}`) {
+            logger.error(`Panel not found or guild mismatch: panel=${!!panel}, panelGuild=${panel?.guild_id}, requestGuild=${guildId}`);
             return res.status(404).json({ success: false, error: 'Panel not found' });
         }
 
-        const channel = guild.channels.cache.get(panel.channel_id) || await client.channels.fetch(panel.channel_id).catch(() => null);
+        const channel = guild.channels.cache.get(panel.channel_id) || await client.channels.fetch(panel.channel_id).catch(e => { logger.error('Channel fetch error:', e); return null; });
         if (!channel || !channel.send) {
+            logger.error(`Channel not found or not sendable: channelId=${panel.channel_id}, hasChannel=${!!channel}, hasSend=${!!channel?.send}`);
             return res.status(404).json({ success: false, error: 'Channel not found' });
         }
 
@@ -2683,7 +2685,8 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
         }
     } catch (error) {
         logger.error('Error performing panel action:', error);
-        res.status(500).json({ success: false, error: 'Failed to perform panel action' });
+        logger.error('Panel action details:', { guildId: req.params.guildId, panelId: req.params.panelId, action: req.body?.action, stack: error.stack });
+        res.status(500).json({ success: false, error: 'Failed to perform panel action', details: error.message });
     }
 });
 

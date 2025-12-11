@@ -290,7 +290,10 @@ export default function PanelCreator({ onClose, existingPanel }: { onClose: () =
                   className="w-full px-3 py-2 bg-gray-900/50 border border-gray-700/50 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
                   <option value="">Selecionar canal...</option>
-                  {channels.filter(ch => ch.type === 'GUILD_TEXT' || ch.type === '0').map(ch => (
+                  {channels.filter(ch => {
+                    const type = String(ch.type || '0');
+                    return type === '0' || type === 'Text' || type === 'GUILD_TEXT' || type === '5' || type === 'Announcement';
+                  }).map(ch => (
                     <option key={ch.id} value={ch.id}>#{ch.name}</option>
                   ))}
                 </select>

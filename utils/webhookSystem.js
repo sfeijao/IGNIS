@@ -55,7 +55,7 @@ class WebhookManager {
   async testWebhook(url) {
     try {
       const { WebhookClient, EmbedBuilder } = require('discord.js');
-      
+
       // Validar URL
       if (!url || !url.startsWith('https://discord.com/api/webhooks/')) {
         logger.warn('[WebhookSystem] URL de webhook inválida:', url);
@@ -74,10 +74,10 @@ class WebhookManager {
         .setFooter({ text: 'IGNIS Bot - Sistema de Webhooks' });
 
       await client.send({ embeds: [embed] });
-      
+
       // Destruir cliente após uso
       client.destroy();
-      
+
       logger.info('[WebhookSystem] Webhook testado com sucesso:', url.slice(0, 50) + '...');
       return true;
     } catch (error) {
