@@ -15,7 +15,7 @@ interface TicketCategory {
 interface Channel {
   id: string;
   name: string;
-  type?: number;
+  type: number;
 }
 
 interface Category {
