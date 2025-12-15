@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { useGuildId } from '@/lib/guild'
+import { useGuildIdWithLoading } from '@/lib/guild'
 import useGiveawaySocket from '@/lib/useGiveawaySocket'
 import { useGiveawaysI18n } from '@/lib/useI18nGiveaways'
 import GiveawayRoulette from '@/components/GiveawayRoulette'
@@ -13,7 +13,7 @@ import GiveawayStats from '@/components/GiveawayStats'
 export default function GiveawayDetailPage(){
   const params = useParams() as any
   const id = params?.id as string
-  const guildId = useGuildId()
+  const { guildId, loading: guildLoading } = useGuildIdWithLoading()
   const [data, setData] = useState<any>(null)
   const [error, setError] = useState<string|null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'participants' | 'roulette'>('overview')
@@ -70,6 +70,28 @@ export default function GiveawayDetailPage(){
       reload()
     }
   })
+
+  if (guildLoading) {
+    return (
+      <div className="p-4 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Carregando...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!guildId) {
+    return (
+      <div className="p-4 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-2">Nenhum servidor selecionado</h1>
+          <p className="text-gray-400">Selecione um servidor para ver os detalhes do giveaway.</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!id) return <div className="p-4">{t('giveaways.error.invalidId','Invalid ID')}</div>
 
