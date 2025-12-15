@@ -48,11 +48,18 @@ export default function GuildSelector() {
     const controller = new AbortController()
     ;(async () => {
       try {
+        console.log('[GuildSelector] Loading guilds for current:', current)
         const res = await fetch('/api/guilds', { credentials: 'include', signal: controller.signal })
-        if (!res.ok) return
+        console.log('[GuildSelector] Guilds response status:', res.status)
+        if (!res.ok) {
+          console.error('[GuildSelector] Failed to load guilds:', res.status, res.statusText)
+          return
+        }
         const data = await res.json()
+        console.log('[GuildSelector] Guilds data:', data)
         setGuilds(Array.isArray(data?.guilds) ? data.guilds : [])
       } catch (e: any) {
+        console.error('[GuildSelector] Error loading guilds:', e)
         // Silent fail - será carregado quando abrir o dropdown
       }
     })()
@@ -66,12 +73,16 @@ export default function GuildSelector() {
     setError(null)
     ;(async () => {
       try {
+        console.log('[GuildSelector] Fetching guilds on dropdown open...')
         const res = await fetch('/api/guilds', { credentials: 'include', signal: controller.signal })
+        console.log('[GuildSelector] Response status:', res.status)
         if (!res.ok) throw new Error(`Failed ${res.status}`)
         const data = await res.json()
+        console.log('[GuildSelector] Received data:', data)
         setGuilds(Array.isArray(data?.guilds) ? data.guilds : [])
       } catch (e: any) {
         if (e.name !== 'AbortError') {
+          console.error('[GuildSelector] Error:', e)
           setError((e instanceof Error ? e.message : String(e)) || 'Falha ao carregar guilds')
         }
       } finally {
