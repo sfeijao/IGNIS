@@ -151,11 +151,11 @@ export default function TicketCategoriesPage() {
                 </div>
 
                 <div className="space-y-2 mb-4 text-sm">
-                  <p className="text-gray-300">📊 Total Tickets: <span className="text-white font-semibold">{cat.stats.totalTickets}</span></p>
-                  <p className="text-gray-300">⏱️ Tempo Resposta: <span className="text-white font-semibold">{cat.stats.averageResponseTime}min</span></p>
-                  <p className="text-gray-300">✅ Tempo Resolução: <span className="text-white font-semibold">{cat.stats.averageResolutionTime}min</span></p>
-                  <p className="text-gray-300">🔢 Padrão Nome: <span className="text-white font-mono text-xs">{cat.channelSettings.namingPattern}</span></p>
-                  <p className="text-gray-300">👤 Limite/Usuário: <span className="text-white font-semibold">{cat.maxOpenPerUser}</span></p>
+                  <p className="text-gray-300">📊 Total Tickets: <span className="text-white font-semibold">{cat.stats?.totalTickets || 0}</span></p>
+                  <p className="text-gray-300">⏱️ Tempo Resposta: <span className="text-white font-semibold">{cat.stats?.averageResponseTime || 0}min</span></p>
+                  <p className="text-gray-300">✅ Tempo Resolução: <span className="text-white font-semibold">{cat.stats?.averageResolutionTime || 0}min</span></p>
+                  <p className="text-gray-300">🔢 Padrão Nome: <span className="text-white font-mono text-xs">{cat.channelSettings?.namingPattern || 'ticket-{number}'}</span></p>
+                  <p className="text-gray-300">👤 Limite/Usuário: <span className="text-white font-semibold">{cat.maxOpenPerUser || 1}</span></p>
                 </div>
 
                 <div className="flex gap-2">
