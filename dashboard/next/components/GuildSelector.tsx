@@ -14,10 +14,50 @@ export default function GuildSelector() {
   const [current, setCurrent] = useState<string | null>(null)
   const popRef = useRef<HTMLDivElement | null>(null)
 
+  // Carrega o guildId inicial e observa mudanças
   useEffect(() => {
-    const cur = getGuildId()
-    setCurrent(cur)
+    const updateCurrent = () => {
+      const cur = getGuildId()
+      setCurrent(cur)
+    }
+    
+    updateCurrent()
+    
+    // Listener para mudanças no localStorage (entre tabs/componentes)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'guildId') {
+        updateCurrent()
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    
+    // Listener para mudanças dentro da mesma tab (custom event)
+    const handleGuildChange = () => updateCurrent()
+    window.addEventListener('guildIdChanged', handleGuildChange)
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('guildIdChanged', handleGuildChange)
+    }
   }, [])
+
+  // Carrega guilds automaticamente quando há um current selecionado (para mostrar o nome)
+  useEffect(() => {
+    if (guilds.length || !current) return
+    const controller = new AbortController()
+    ;(async () => {
+      try {
+        const res = await fetch('/api/guilds', { credentials: 'include', signal: controller.signal })
+        if (!res.ok) return
+        const data = await res.json()
+        setGuilds(Array.isArray(data?.guilds) ? data.guilds : [])
+      } catch (e: any) {
+        // Silent fail - será carregado quando abrir o dropdown
+      }
+    })()
+    return () => controller.abort()
+  }, [current, guilds.length])
 
   useEffect(() => {
     if (!open || guilds.length) return
@@ -56,6 +96,11 @@ export default function GuildSelector() {
     return guilds.filter(g => g.name?.toLowerCase().includes(q) || g.id.includes(q))
   }, [guilds, query])
 
+  const currentGuild = useMemo(() => {
+    if (!current) return null
+    return guilds.find(g => g.id === current)
+  }, [current, guilds])
+
   const select = (g: Guild) => {
     setGuildId(g.id, true)
     setCurrent(g.id)
@@ -72,14 +117,13 @@ export default function GuildSelector() {
         type="button"
         className="flex items-center gap-2 rounded-xl border border-neutral-700 bg-neutral-900 hover:bg-neutral-800 px-3 py-1.5 text-sm min-w-[200px]"
         onClick={() => setOpen(v => !v)}
-        title={current ? `Servidor: ${current}` : 'Selecionar servidor'}
+        title={currentGuild ? `Servidor: ${currentGuild.name}` : 'Selecionar servidor'}
       >
         <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-neutral-800 border border-neutral-700">
-          {/* Placeholder icon. We could draw the selected guild initial here. */}
-          <span className="text-[10px]">G</span>
+          <span className="text-[10px]">{currentGuild?.name?.[0]?.toUpperCase() || 'G'}</span>
         </span>
         <span className="truncate text-left">
-          {current ? `Guild: ${current}` : 'Selecionar servidor'}
+          {currentGuild ? currentGuild.name : current ? `ID: ${current}` : 'Selecionar servidor'}
         </span>
         <span className="ml-auto opacity-60">▾</span>
       </button>

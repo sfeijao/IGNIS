@@ -24,6 +24,10 @@ export function setGuildId(id: string, updateUrl: boolean = true) {
       window.history.replaceState({}, '', url.toString())
     } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
   }
+  // Dispara evento customizado para notificar outros componentes
+  try {
+    window.dispatchEvent(new Event('guildIdChanged'))
+  } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
 }
 
 // Hydration-safe hook: returns null on the server and during the first client render,
@@ -34,9 +38,20 @@ import { useEffect, useState } from 'react'
 
 export function useGuildId(): string | null {
   const [id, setId] = useState<string | null>(null)
+  
   useEffect(() => {
-    setId(getGuildId())
+    const updateId = () => setId(getGuildId())
+    
+    updateId()
+    
+    // Listener para mudanças no guildId
+    window.addEventListener('guildIdChanged', updateId)
+    
+    return () => {
+      window.removeEventListener('guildIdChanged', updateId)
+    }
   }, [])
+  
   return id
 }
 
@@ -46,9 +61,21 @@ export function useGuildIdWithLoading(): { guildId: string | null; loading: bool
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const id = getGuildId()
-    setGuildId(id)
-    setLoading(false)
+    const updateGuildId = () => {
+      const id = getGuildId()
+      setGuildId(id)
+      setLoading(false)
+    }
+    
+    updateGuildId()
+    
+    // Listener para mudanças no guildId
+    const handleGuildChange = () => updateGuildId()
+    window.addEventListener('guildIdChanged', handleGuildChange)
+    
+    return () => {
+      window.removeEventListener('guildIdChanged', handleGuildChange)
+    }
   }, [])
 
   return { guildId, loading }
