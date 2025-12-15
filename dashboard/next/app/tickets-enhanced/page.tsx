@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useGuildIdWithLoading } from '@/lib/guild';
 import { useSafeAPI, safeFetch } from '@/lib/useSafeAPI';
 import { LoadingState, ErrorState, EmptyState } from '@/components/StateComponents';
 
@@ -43,8 +43,7 @@ interface TicketsData {
 }
 
 export default function TicketsEnhancedPage() {
-  const params = useParams();
-  const guildId = params?.guildId as string;
+  const { guildId, loading: guildLoading } = useGuildIdWithLoading();
   const [filter, setFilter] = useState({ status: '', priority: '', categoryId: '' });
 
   const { data, loading, error, refetch } = useSafeAPI<TicketsData>(
@@ -109,6 +108,10 @@ export default function TicketsEnhancedPage() {
     };
     return colors[priority] || 'bg-gray-500';
   };
+
+  if (guildLoading) {
+    return <LoadingState message="Carregando..." />;
+  }
 
   if (!guildId) {
     return <EmptyState icon="🏠" title="Selecione um servidor" description="Escolha um servidor na sidebar para ver tickets" />;
