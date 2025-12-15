@@ -92,13 +92,13 @@ export default function TicketCategoriesPage() {
   const editCategory = (category: TicketCategory) => {
     setEditingId(category._id);
     setFormData({
-      name: category.name,
-      description: category.description,
-      emoji: category.emoji,
-      namingPattern: category.channelSettings.namingPattern,
-      maxOpenPerUser: category.maxOpenPerUser,
-      requireReason: category.requireReason,
-      enabled: category.enabled
+      name: category.name || '',
+      description: category.description || '',
+      emoji: category.emoji || '🎫',
+      namingPattern: category.channelSettings?.namingPattern || 'ticket-{number}',
+      maxOpenPerUser: category.maxOpenPerUser || 1,
+      requireReason: category.requireReason || false,
+      enabled: category.enabled !== false
     });
     setShowModal(true);
   };
