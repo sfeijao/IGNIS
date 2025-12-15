@@ -64,7 +64,7 @@ export default function TimeTrackingReports({ guildId }: TimeTrackingReportsProp
       const statsRes = await fetch(`/api/guild/${guildId}/timetracking/report?${params}`);
       const statsData = await statsRes.json();
 
-      if (statsData.success) {
+      if (statsData.success && statsData.stats) {
         setStats(statsData.stats);
       }
 
@@ -72,7 +72,7 @@ export default function TimeTrackingReports({ guildId }: TimeTrackingReportsProp
       const sessionsRes = await fetch(`/api/guild/${guildId}/timetracking/sessions?${params}`);
       const sessionsData = await sessionsRes.json();
 
-      if (sessionsData.success) {
+      if (sessionsData.success && Array.isArray(sessionsData.sessions)) {
         setSessions(sessionsData.sessions);
       }
 
@@ -103,7 +103,7 @@ export default function TimeTrackingReports({ guildId }: TimeTrackingReportsProp
 
   const exportToCSV = () => {
     const headers = ['User ID', 'Status', 'Started At', 'Ended At', 'Total Time', 'Active Time', 'Pauses'];
-    const rows = sessions.map(session => [
+    const rows = sessions && Array.isArray(sessions) ? sessions.map(session => [
       session.user_id,
       session.status,
       new Date(session.started_at).toLocaleString(),
@@ -111,7 +111,7 @@ export default function TimeTrackingReports({ guildId }: TimeTrackingReportsProp
       formatDuration(session.total_time_ms),
       formatDuration(session.active_time_ms),
       session.pauses.length.toString()
-    ]);
+    ]) : [];
 
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -188,7 +188,7 @@ export default function TimeTrackingReports({ guildId }: TimeTrackingReportsProp
               className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
             >
               <option value="">Todos</option>
-              {stats && Object.keys(stats.user_stats).map(userId => (
+              {stats && stats.user_stats && Object.keys(stats.user_stats).map(userId => (
                 <option key={userId} value={userId}>{userId}</option>
               ))}
             </select>

@@ -41,11 +41,10 @@ export default function RolesManager() {
 
   useEffect(() => {
     if (!guildId || !selectedId) { setDetails(null); setPermSet(new Set()); return }
-    let cancelled = false
+    const controller = new AbortController()
     ;(async () => {
       try {
         const d = await api.getRole(guildId, selectedId)
-        if (cancelled) return
         const r = d.role as RoleDetails
         setDetails(r)
         if (r.permissions) {
@@ -63,11 +62,13 @@ export default function RolesManager() {
         } else {
           setPermSet(new Set())
         }
-      } catch (e:any) {
-        toast({ type:'error', title: t('roles.role.load.failed'), description: (e instanceof Error ? e.message : String(e)) })
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          toast({ type:'error', title: t('roles.role.load.failed'), description: (e instanceof Error ? e.message : String(e)) })
+        }
       }
     })()
-    return () => { cancelled = true }
+    return () => controller.abort()
   }, [guildId, selectedId])
 
   const create = async () => {
@@ -148,9 +149,9 @@ export default function RolesManager() {
     finally { setLoading(false) }
   }
 
-  const totalRoles = roles.length
-  const managedRoles = roles.filter(r => r.managed).length
-  const hoistedRoles = roles.filter(r => details?.id === r.id ? details.hoist : false).length
+  const totalRoles = roles ? roles.length : 0
+  const managedRoles = roles && Array.isArray(roles) ? roles.filter(r => r.managed).length : 0
+  const hoistedRoles = roles && Array.isArray(roles) ? roles.filter(r => details?.id === r.id ? details.hoist : false).length : 0
 
   return (
     <div className="space-y-6">
@@ -307,7 +308,7 @@ export default function RolesManager() {
                 <div className="text-gray-400">{t('roles.loading')}</div>
               </div>
             )}
-            {!loading && roles.map(r => (
+            {!loading && roles && Array.isArray(roles) && roles.map(r => (
               <div
                 key={r.id}
                 onDragOver={(e)=> onDragOverRow(e, r.id)}

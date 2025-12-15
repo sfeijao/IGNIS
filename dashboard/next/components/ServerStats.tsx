@@ -93,7 +93,7 @@ export default function ServerStats({ guildId }: ServerStatsProps) {
       if (configData.success) {
         setConfig(configData.config);
 
-        if (configData.config) {
+        if (configData.config && configData.config.metrics) {
           // Set selected metrics from existing config
           const selected = new Set<keyof Metrics>();
           Object.entries(configData.config.metrics).forEach(([key, value]) => {
@@ -104,7 +104,7 @@ export default function ServerStats({ guildId }: ServerStatsProps) {
           setSelectedMetrics(selected);
           setSelectedCategory(configData.config.category_id || '');
           setUpdateInterval(configData.config.update_interval_minutes || 10);
-        } else if (configData.defaults) {
+        } else if (configData.defaults && configData.defaults.metrics) {
           // Use defaults
           const selected = new Set<keyof Metrics>();
           Object.entries(configData.defaults.metrics).forEach(([key, value]) => {
@@ -427,7 +427,7 @@ export default function ServerStats({ guildId }: ServerStatsProps) {
           </div>
         </div>
 
-        {config && Object.keys(config.channels).some((k) => config.channels[k as keyof typeof config.channels]) && (
+        {config && config.channels && Object.keys(config.channels).some((k) => config.channels[k as keyof typeof config.channels]) && (
           <div className="mt-6 border-t pt-4">
             <h3 className="font-semibold mb-3">Created Channels:</h3>
             <div className="space-y-2">

@@ -32,17 +32,22 @@ export default function MembersList() {
 
   useEffect(() => {
     if (!guildId) return
-    let aborted = false
+    const controller = new AbortController()
     const run = async () => {
       setLoading(true)
       try {
         const res = await api.getMembers(guildId, params)
-        if (!aborted) setMembers(res.members || res)
-      } catch { if (!aborted) setMembers([]) }
-      finally { if (!aborted) setLoading(false) }
+        setMembers(res.members || res)
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          setMembers([])
+        }
+      } finally {
+        setLoading(false)
+      }
     }
     run()
-    return () => { aborted = true }
+    return () => controller.abort()
   }, [guildId, params])
 
   const filteredMembers = useMemo(() => {

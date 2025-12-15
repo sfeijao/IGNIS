@@ -121,7 +121,7 @@ export default function QuickTagsManager() {
             </div>
             <div>
               <p className="text-gray-400 text-sm">Total de Tags</p>
-              <p className="text-2xl font-bold">{tags.length}</p>
+              <p className="text-2xl font-bold">{tags ? tags.length : 0}</p>
             </div>
           </div>
         </div>
@@ -132,7 +132,7 @@ export default function QuickTagsManager() {
             </div>
             <div>
               <p className="text-gray-400 text-sm">Tags Ativas</p>
-              <p className="text-2xl font-bold">{tags.filter(t => !t.roleIds?.length).length}</p>
+              <p className="text-2xl font-bold">{tags && Array.isArray(tags) ? tags.filter(t => !t.roleIds?.length).length : 0}</p>
             </div>
           </div>
         </div>
@@ -143,7 +143,7 @@ export default function QuickTagsManager() {
             </div>
             <div>
               <p className="text-gray-400 text-sm">Com Restrições</p>
-              <p className="text-2xl font-bold">{tags.filter(t => t.roleIds?.length).length}</p>
+              <p className="text-2xl font-bold">{tags && Array.isArray(tags) ? tags.filter(t => t.roleIds?.length).length : 0}</p>
             </div>
           </div>
         </div>
@@ -233,7 +233,7 @@ export default function QuickTagsManager() {
 
       {/* Tags List */}
       <div className="space-y-4">
-        {tags.map((tag) => (
+        {tags && Array.isArray(tags) && tags.map((tag) => (
           <div
             key={tag.id}
             className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 rounded-xl p-5 hover:border-purple-500/50 transition-all"

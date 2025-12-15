@@ -14,17 +14,22 @@ export default function DiagnosticsPanel() {
 
   useEffect(() => {
     if (!guildId) return
-    let aborted = false
+    const controller = new AbortController()
     setLoading(true)
     ;(async () => {
       try {
-        const res = await fetch(`/api/guild/${guildId}/diagnostics`, { credentials: 'include' })
+        const res = await fetch(`/api/guild/${guildId}/diagnostics`, { credentials: 'include', signal: controller.signal })
         const json = await res.json()
-        if (!aborted) setData(json)
-      } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
-      finally { if (!aborted) setLoading(false) }
+        setData(json)
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          logger.debug('Caught error:', (e instanceof Error ? e.message : String(e)))
+        }
+      } finally {
+        setLoading(false)
+      }
     })()
-    return () => { aborted = true }
+    return () => controller.abort()
   }, [guildId])
 
   const copyReport = async () => {

@@ -21,22 +21,24 @@ export default function GuildSelector() {
 
   useEffect(() => {
     if (!open || guilds.length) return
-    let aborted = false
+    const controller = new AbortController()
     setLoading(true)
     setError(null)
     ;(async () => {
       try {
-        const res = await fetch('/api/guilds', { credentials: 'include' })
+        const res = await fetch('/api/guilds', { credentials: 'include', signal: controller.signal })
         if (!res.ok) throw new Error(`Failed ${res.status}`)
         const data = await res.json()
-        if (!aborted) setGuilds(Array.isArray(data?.guilds) ? data.guilds : [])
+        setGuilds(Array.isArray(data?.guilds) ? data.guilds : [])
       } catch (e: any) {
-        if (!aborted) setError((e instanceof Error ? e.message : String(e)) || 'Falha ao carregar guilds')
+        if (e.name !== 'AbortError') {
+          setError((e instanceof Error ? e.message : String(e)) || 'Falha ao carregar guilds')
+        }
       } finally {
-        if (!aborted) setLoading(false)
+        setLoading(false)
       }
     })()
-    return () => { aborted = true }
+    return () => controller.abort()
   }, [open, guilds.length])
 
   useEffect(() => {

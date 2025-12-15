@@ -98,8 +98,8 @@ export default function ModerationCenterTools() {
     }
   }
 
-  const successCount = results.filter(r => r.ok).length
-  const failCount = results.length - successCount
+  const successCount = results && Array.isArray(results) ? results.filter(r => r.ok).length : 0
+  const failCount = results ? results.length - successCount : 0
   const userCount = parseUserIds().length
 
   return (
@@ -288,7 +288,7 @@ export default function ModerationCenterTools() {
             <h3 className="text-lg font-semibold text-white">{t('mod.bulk.results')}</h3>
           </div>
           <div className="max-h-64 overflow-auto bg-gray-900/50 border border-gray-700 rounded-xl">
-            {results.map((r, i) => (
+            {results && Array.isArray(results) && results.map((r, i) => (
               <div
                 key={i}
                 className={`px-4 py-3 border-b border-gray-800 last:border-0 flex items-center justify-between ${

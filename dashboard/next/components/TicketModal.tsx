@@ -54,7 +54,7 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
   }
 
   useEffect(() => {
-    let aborted = false
+    const controller = new AbortController()
     const run = async () => {
       setLoading(true)
       setError(null)
@@ -62,32 +62,33 @@ export default function TicketModal({ guildId, ticketId, onClose }: Props) {
         const d = await api.getTicketDetails(guildId, ticketId)
         const l = await api.getTicketLogs(guildId, ticketId, { limit, offset: 0 })
         const ch = await api.getChannels(guildId).catch(() => ({ channels: [] }))
-        if (!aborted) {
-          setDetails(d)
-          try {
-            const fb = (d as any)?.ticket?.meta?.feedback
-            if (fb && typeof fb === 'object' && typeof fb.rating === 'number') {
-              setRating(fb.rating)
-              setComment(String(fb.comment||''))
-            }
-          } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
-          setLogs(l)
-          setOffset(l?.logs?.length || 0)
-          setChannels(((ch as any).channels || ch || []).filter((c: any) => c && c.id && c.name))
-          // initial transcript page
-          try {
-            const m = await api.getTicketMessages(guildId, ticketId, { limit: 100 })
-            if (!aborted) { setMessages(m.messages || []); setNextBefore(m.nextBefore || null) }
-          } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
-        }
+        setDetails(d)
+        try {
+          const fb = (d as any)?.ticket?.meta?.feedback
+          if (fb && typeof fb === 'object' && typeof fb.rating === 'number') {
+            setRating(fb.rating)
+            setComment(String(fb.comment||''))
+          }
+        } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
+        setLogs(l)
+        setOffset(l?.logs?.length || 0)
+        setChannels(((ch as any).channels || ch || []).filter((c: any) => c && c.id && c.name))
+        // initial transcript page
+        try {
+          const m = await api.getTicketMessages(guildId, ticketId, { limit: 100 })
+          setMessages(m.messages || [])
+          setNextBefore(m.nextBefore || null)
+        } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
       } catch (e: any) {
-        if (!aborted) setError((e instanceof Error ? e.message : String(e)) || 'Failed to load ticket')
+        if (e.name !== 'AbortError') {
+          setError((e instanceof Error ? e.message : String(e)) || 'Failed to load ticket')
+        }
       } finally {
-        if (!aborted) setLoading(false)
+        setLoading(false)
       }
     }
     run()
-    return () => { aborted = true }
+    return () => controller.abort()
   }, [guildId, ticketId])
 
   const loadMore = async () => {

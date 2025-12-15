@@ -13,23 +13,30 @@ export default function ModerationSummary() {
 
   const load = async () => {
     if (!guildId) return
+    const controller = new AbortController()
     setLoading(true)
     setError(null)
     try {
-      const s = await fetch(`/api/guild/${guildId}/mod/stats`, { credentials: 'include' })
+      const s = await fetch(`/api/guild/${guildId}/mod/stats`, { credentials: 'include', signal: controller.signal })
         .then(r => r.json())
         .catch(() => null)
-      const c = await fetch(`/api/guild/${guildId}/mod/cases?limit=20`, { credentials: 'include' })
+      const c = await fetch(`/api/guild/${guildId}/mod/cases?limit=20`, { credentials: 'include', signal: controller.signal })
         .then(r => r.json())
         .catch(() => null)
       setStats(s)
       setCases(c?.cases || c || [])
     } catch (e: any) {
-      setError((e instanceof Error ? e.message : String(e)) || 'Failed to load moderation data')
+      if (e.name !== 'AbortError') {
+        setError((e instanceof Error ? e.message : String(e)) || 'Failed to load moderation data')
+      }
     } finally { setLoading(false) }
+    return controller
   }
 
-  useEffect(() => { load() }, [guildId])
+  useEffect(() => {
+    const controller = load()
+    return () => { controller.then(c => c?.abort()).catch(() => {}) }
+  }, [guildId])
 
   const totalCases = cases.length
   const statEntries = Object.entries(stats?.totals || {})
@@ -68,7 +75,7 @@ export default function ModerationSummary() {
             <h3 className="text-lg font-semibold text-white">Statistics</h3>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {statEntries.map(([k, v]) => (
+            {statEntries && Array.isArray(statEntries) && statEntries.map(([k, v]) => (
               <div key={k} className="bg-gray-900/50 border border-gray-700 rounded-xl p-4">
                 <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">{k}</div>
                 <div className="text-2xl font-bold text-white">{String(v)}</div>

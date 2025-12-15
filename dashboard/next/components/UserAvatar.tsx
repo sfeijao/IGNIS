@@ -9,16 +9,20 @@ export default function UserAvatar() {
   const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
-    let aborted = false
+    const controller = new AbortController()
     ;(async () => {
       try {
-        const r = await fetch('/api/user', { credentials: 'include' })
+        const r = await fetch('/api/user', { credentials: 'include', signal: controller.signal })
         if (!r.ok) return
         const d = await r.json()
-        if (!aborted && d && d.success && d.user) setUser(d.user)
-      } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
+        if (d && d.success && d.user) setUser(d.user)
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          logger.debug('Caught error:', (e instanceof Error ? e.message : String(e)))
+        }
+      }
     })()
-    return () => { aborted = true }
+    return () => controller.abort()
   }, [])
 
   if (!user) {

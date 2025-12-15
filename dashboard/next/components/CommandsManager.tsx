@@ -88,7 +88,7 @@ export default function CommandsManager() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return commands
-    return commands.filter(c => c.name.toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q))
+    return commands && Array.isArray(commands) ? commands.filter(c => c.name.toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q)) : []
   }, [commands, search])
 
   return (
@@ -268,7 +268,7 @@ export default function CommandsManager() {
               onChange={e => setRunChannelId(e.target.value)}
             >
               <option value="">— Select Channel —</option>
-              {channels.filter(isTextChannel).map(ch => (
+              {channels && Array.isArray(channels) && channels.filter(isTextChannel).map(ch => (
                 <option key={ch.id} value={ch.id}>{`#${ch.name} (${channelTypeLabel(ch)})`}</option>
               ))}
             </select>
@@ -296,7 +296,7 @@ export default function CommandsManager() {
           {loading && Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="p-4 rounded-xl bg-gray-900/50 border border-gray-700 animate-pulse h-20" />
           ))}
-          {!loading && filtered.map((c) => (
+          {!loading && filtered && Array.isArray(filtered) && filtered.map((c) => (
             <div key={c.id || c.name} className="p-4 rounded-xl bg-gray-900/50 border border-gray-700 hover:border-gray-600 transition-all duration-200">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-lg">⚡</span>

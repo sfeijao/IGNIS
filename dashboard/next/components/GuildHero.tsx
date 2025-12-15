@@ -26,40 +26,46 @@ export default function GuildHero() {
 
 
   useEffect(() => {
-    let aborted = false
     if (!guildId) { setInfo(null); setLoaded(true); return }
+    const controller = new AbortController()
     ;(async () => {
       try {
-        const r = await fetch(`/api/guild/${guildId}/info`, { credentials: 'include' })
+        const r = await fetch(`/api/guild/${guildId}/info`, { credentials: 'include', signal: controller.signal })
         if (!r.ok) { setLoaded(true); return }
         const d = await r.json()
-        if (!aborted && d && d.success) {
+        if (d && d.success) {
           setInfo(d.guild)
           setLoaded(true)
         }
-      } catch {
-        if (!aborted) setLoaded(true)
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          setLoaded(true)
+        }
       }
     })()
-    return () => { aborted = true }
+    return () => controller.abort()
   }, [guildId])
 
   // Live stats fetch + refresh
   useEffect(() => {
-    let aborted = false
+    if (!guildId) { setStats(null); return }
+    const controller = new AbortController()
     let timer: any
     const fetchStats = async () => {
-      if (!guildId) { setStats(null); return }
       try {
-        const r = await fetch(`/api/guild/${guildId}/stats`, { credentials: 'include' })
+        const r = await fetch(`/api/guild/${guildId}/stats`, { credentials: 'include', signal: controller.signal })
         if (!r.ok) return
         const d = await r.json()
-        if (!aborted && d && d.success && d.stats) setStats({ onlineCount: d.stats.onlineCount, channelCount: d.stats.channelCount, roleCount: d.stats.roleCount })
-      } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
+        if (d && d.success && d.stats) setStats({ onlineCount: d.stats.onlineCount, channelCount: d.stats.channelCount, roleCount: d.stats.roleCount })
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          logger.debug('Caught error:', (e instanceof Error ? e.message : String(e)))
+        }
+      }
     }
     fetchStats()
     timer = setInterval(fetchStats, 20000)
-    return () => { aborted = true; if (timer) clearInterval(timer) }
+    return () => { controller.abort(); if (timer) clearInterval(timer) }
   }, [guildId])
 
   const bgImage = useMemo(() => {

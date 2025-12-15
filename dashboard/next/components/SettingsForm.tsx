@@ -388,7 +388,7 @@ export default function SettingsForm() {
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings((s: Settings) => ({ ...s, modlogChannelId: e.target.value }))}
             >
               <option value="">—</option>
-              {channels.filter(isTextChannel).map(ch => (
+              {channels && Array.isArray(channels) && channels.filter(isTextChannel).map(ch => (
                 <option key={ch.id} value={ch.id}>{`#${ch.name} (${channelTypeLabel(ch)})`}</option>
               ))}
             </select>
@@ -503,7 +503,7 @@ export default function SettingsForm() {
             >
               <option value="">—</option>
               {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
-              {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+              {!rolesLoading && roles && Array.isArray(roles) && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
             </select>
             <p className="text-xs text-gray-500 mt-1">{t('settings.bot.systemRoles.staff.hint')}</p>
           </div>
@@ -517,7 +517,7 @@ export default function SettingsForm() {
             >
               <option value="">—</option>
               {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
-              {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+              {!rolesLoading && roles && Array.isArray(roles) && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
             </select>
             <p className="text-xs text-gray-500 mt-1">{t('settings.bot.systemRoles.admin.hint')}</p>
           </div>
@@ -531,7 +531,7 @@ export default function SettingsForm() {
             >
               <option value="">—</option>
               {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
-              {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+              {!rolesLoading && roles && Array.isArray(roles) && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
             </select>
             <p className="text-xs text-gray-500 mt-1">{t('settings.bot.systemRoles.verified.hint')}</p>
           </div>
@@ -545,7 +545,7 @@ export default function SettingsForm() {
             >
               <option value="">—</option>
               {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
-              {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+              {!rolesLoading && roles && Array.isArray(roles) && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
             </select>
             <p className="text-xs text-gray-500 mt-1">{t('settings.bot.systemRoles.unverified.hint')}</p>
           </div>
@@ -559,7 +559,7 @@ export default function SettingsForm() {
             >
               <option value="">—</option>
               {rolesLoading && <option disabled value="">{t('settings.bot.systemRoles.loading')}</option>}
-              {!rolesLoading && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
+              {!rolesLoading && roles && Array.isArray(roles) && roles.map(r => (<option key={r.id} value={r.id}>{`@${r.name}`}</option>))}
             </select>
             <p className="text-xs text-gray-500 mt-1">{t('settings.bot.systemRoles.giveawayManager.hint')}</p>
           </div>

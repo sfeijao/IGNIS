@@ -138,60 +138,74 @@ export default function TicketsList() {
   // Load staff roles for assignment dropdown
   useEffect(() => {
     if (!guildId) return
-    let aborted = false
+    const controller = new AbortController()
     ;(async () => {
       try {
         const res = await api.getRoles(guildId)
-        if (!aborted) setRoles((res.roles || []).map((r: any) => ({ id: String(r.id), name: String(r.name) })))
-      } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
+        setRoles((res.roles || []).map((r: any) => ({ id: String(r.id), name: String(r.name) })))
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          logger.debug('Caught error:', (e instanceof Error ? e.message : String(e)))
+        }
+      }
     })()
-    return () => { aborted = true }
+    return () => controller.abort()
   }, [guildId])
 
   // Load channels to improve channel label formatting
   useEffect(() => {
     if (!guildId) return
-    let aborted = false
+    const controller = new AbortController()
     ;(async () => {
       try {
         const res = await api.getChannels(guildId)
-        if (!aborted) setChannels(((res.channels || res || []) as Channel[]).filter(c => c && c.id && c.name))
-      } catch (e) { logger.debug('Caught error:', (e instanceof Error ? e.message : String(e))); }
+        setChannels(((res.channels || res || []) as Channel[]).filter(c => c && c.id && c.name))
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          logger.debug('Caught error:', (e instanceof Error ? e.message : String(e)))
+        }
+      }
     })()
-    return () => { aborted = true }
+    return () => controller.abort()
   }, [guildId])
 
   // Load members for selected role
   useEffect(() => {
     if (!guildId || !staffRole) { setAssignees([]); setAssignee(''); return }
-    let aborted = false
+    const controller = new AbortController()
     ;(async () => {
       try {
         const res = await api.getMembers(guildId, { role: staffRole, limit: 200 })
-        if (!aborted) setAssignees((res || []).map((m: any) => ({ id: String(m.id), username: String(m.username), discriminator: String(m.discriminator), nick: m.nick || null })))
-      } catch { if (!aborted) setAssignees([]) }
+        setAssignees((res || []).map((m: any) => ({ id: String(m.id), username: String(m.username), discriminator: String(m.discriminator), nick: m.nick || null })))
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          setAssignees([])
+        }
+      }
     })()
-    return () => { aborted = true }
+    return () => controller.abort()
   }, [guildId, staffRole])
 
   // Load tickets whenever filters/pagination change
   useEffect(() => {
     if (!guildId) return
-    let aborted = false
+    const controller = new AbortController()
     const run = async () => {
       setLoading(true)
       setError(null)
       try {
         const res = await api.getTickets(guildId, params)
-        if (!aborted) setData(res)
+        setData(res)
       } catch (e: any) {
-        if (!aborted) setError((e instanceof Error ? e.message : String(e)) || 'Failed to load tickets')
+        if (e.name !== 'AbortError') {
+          setError((e instanceof Error ? e.message : String(e)) || 'Failed to load tickets')
+        }
       } finally {
-        if (!aborted) setLoading(false)
+        setLoading(false)
       }
     }
     run()
-    return () => { aborted = true }
+    return () => controller.abort()
   }, [guildId, params])
 
   const onExport = () => {
@@ -218,7 +232,7 @@ export default function TicketsList() {
     setSelected(map)
   }
 
-  const selectedIds = useMemo(() => Object.keys(selected).filter(id => selected[id]), [selected])
+  const selectedIds = useMemo(() => selected ? Object.keys(selected).filter(id => selected[id]) : [], [selected])
 
   const bulkClose = async () => {
     if (!guildId || selectedIds.length === 0) return
@@ -268,14 +282,14 @@ export default function TicketsList() {
           <label htmlFor="tk-filter-status" className="text-xs text-neutral-400">{tr('tickets.status')}</label>
     <select id="tk-filter-status" name="status" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" aria-label="Filter by status" title="Filter by status"
                     value={status} onChange={(e: ChangeEvent<HTMLSelectElement>)=>{ setPage(1); setStatus(e.target.value) }}>
-            {statuses.map(s => <option key={s} value={s}>{s || tr('common.any')}</option>)}
+            {statuses && statuses.map(s => <option key={s} value={s}>{s || tr('common.any')}</option>)}
           </select>
         </div>
         <div>
           <label htmlFor="tk-filter-priority" className="text-xs text-neutral-400">{tr('tickets.priority')}</label>
     <select id="tk-filter-priority" name="priority" className="mt-1 w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1" aria-label="Filter by priority" title="Filter by priority"
                     value={priority} onChange={(e: ChangeEvent<HTMLSelectElement>)=>{ setPage(1); setPriority(e.target.value) }}>
-            {priorities.map(p => <option key={p} value={p}>{p || tr('common.any')}</option>)}
+            {priorities && priorities.map(p => <option key={p} value={p}>{p || tr('common.any')}</option>)}
           </select>
         </div>
         <div className="md:col-span-2">
@@ -291,14 +305,14 @@ export default function TicketsList() {
               <label htmlFor="tk-filter-staffrole" className="text-xs text-neutral-400">{tr('tickets.staffRole')}</label>
               <select id="tk-filter-staffrole" name="staffRole" className="mt-1 w-40 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" aria-label="Staff role" title="Staff role" value={staffRole} onChange={(e: ChangeEvent<HTMLSelectElement>)=>{ setStaffRole(e.target.value); setAssignee('') }}>
                 <option value="">{tr('tickets.selectRole')}</option>
-                {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                {roles && Array.isArray(roles) && roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
             </div>
             <div>
               <label htmlFor="tk-filter-assignee" className="text-xs text-neutral-400">{tr('tickets.assignee')}</label>
               <select id="tk-filter-assignee" name="assignee" className="mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded px-2 py-1" aria-label="Assignee" title="Assignee" value={assignee} onChange={(e: ChangeEvent<HTMLSelectElement>)=> setAssignee(e.target.value)}>
                 <option value="">{tr('tickets.selectMember')}</option>
-                {assignees.map(m => <option key={m.id} value={m.id}>{m.nick ? `${m.nick} (${m.username}#${m.discriminator})` : `${m.username}#${m.discriminator}`}</option>)}
+                {assignees && Array.isArray(assignees) && assignees.map(m => <option key={m.id} value={m.id}>{m.nick ? `${m.nick} (${m.username}#${m.discriminator})` : `${m.username}#${m.discriminator}`}</option>)}
               </select>
             </div>
             <div className="mt-5 flex items-center gap-2">

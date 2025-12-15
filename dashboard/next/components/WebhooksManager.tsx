@@ -105,7 +105,7 @@ export default function WebhooksManager() {
             </div>
             <div>
               <p className="text-gray-400 text-sm">Total de Webhooks</p>
-              <p className="text-2xl font-bold">{webhooks.length}</p>
+              <p className="text-2xl font-bold">{webhooks ? webhooks.length : 0}</p>
             </div>
           </div>
         </div>
@@ -116,7 +116,7 @@ export default function WebhooksManager() {
             </div>
             <div>
               <p className="text-gray-400 text-sm">Webhooks Ativos</p>
-              <p className="text-2xl font-bold">{webhooks.filter(w => w.url).length}</p>
+              <p className="text-2xl font-bold">{webhooks && webhooks.filter(w => w.url).length}</p>
             </div>
           </div>
         </div>
@@ -138,7 +138,7 @@ export default function WebhooksManager() {
 
       {/* Webhooks List */}
       <div className="space-y-4">
-        {webhooks.map((webhook) => (
+        {webhooks && webhooks.map((webhook) => (
           <div
             key={webhook.id}
             className="bg-gray-800/30 backdrop-blur-xl border border-gray-700/50 rounded-xl p-5 hover:border-teal-500/50 transition-all"

@@ -42,7 +42,7 @@ export default function VerificationMetrics() {
   const filteredLogs = useMemo(() => {
     const q = logSearch.trim().toLowerCase()
     if (!q) return logs
-    return logs.filter((l:any) => (l.message ? String(l.message).toLowerCase() : JSON.stringify(l).toLowerCase()).includes(q))
+    return logs && Array.isArray(logs) ? logs.filter((l:any) => (l.message ? String(l.message).toLowerCase() : JSON.stringify(l).toLowerCase()).includes(q)) : []
   }, [logs, logSearch])
 
   // Simple derived success rate & failure trend (if metrics provide counts)
@@ -107,7 +107,7 @@ export default function VerificationMetrics() {
         <div className="card-body text-xs max-h-[360px] overflow-auto" role="status" aria-live="polite" aria-busy={loading}>
           {loading && <div className="opacity-70">{t('common.loading')}</div>}
           {!loading && filteredLogs.length === 0 && <div className="opacity-70">{t('verification.metrics.noLogs')}</div>}
-          {!loading && filteredLogs.map((l:any, idx:number) => (
+          {!loading && filteredLogs && Array.isArray(filteredLogs) && filteredLogs.map((l:any, idx:number) => (
             <div key={idx} className="border-b border-neutral-900/60 py-1">
               <span className="opacity-60">
                 {l.timestamp ? (

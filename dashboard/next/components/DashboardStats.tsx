@@ -190,7 +190,7 @@ export default function DashboardStats() {
         </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        {stats.map((s) => (
+        {stats && Array.isArray(stats) && stats.map((s) => (
           <Stat key={s.label} label={s.label} value={s.value} dotColor={s.color} subtle={isRecent ? t('dash.recent') : undefined} />
         ))}
       </div>

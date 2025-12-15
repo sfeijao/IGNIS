@@ -15,26 +15,26 @@ export default function PerformancePanel() {
 
   useEffect(() => {
     if (!guildId) return
-    let aborted = false
+    const controller = new AbortController()
     let interval: any
     const load = async () => {
       try {
-        const res = await fetch(`/api/guild/${guildId}/performance`, { credentials: 'include' })
+        const res = await fetch(`/api/guild/${guildId}/performance`, { credentials: 'include', signal: controller.signal })
         if (!res.ok) throw new Error('Falha ao obter performance')
         const json = await res.json()
-        if (!aborted) {
-          setData(json)
-          const mem = Number(json?.metrics?.memoryMB || 0)
-          setSeries(prev => [...prev.slice(-99), mem])
-        }
+        setData(json)
+        const mem = Number(json?.metrics?.memoryMB || 0)
+        setSeries(prev => [...prev.slice(-99), mem])
       } catch (e: any) {
-        if (!aborted) toast({ type: 'error', title: 'Erro de performance', description: (e instanceof Error ? e.message : String(e)) })
+        if (e.name !== 'AbortError') {
+          toast({ type: 'error', title: 'Erro de performance', description: (e instanceof Error ? e.message : String(e)) })
+        }
       }
     }
     setLoading(true)
     load().finally(() => setLoading(false))
     interval = window.setInterval(load, 5000)
-    return () => { aborted = true; window.clearInterval(interval) }
+    return () => { controller.abort(); window.clearInterval(interval) }
   }, [guildId, toast])
 
   const formatUptime = (s?: number) => {

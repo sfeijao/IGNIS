@@ -185,9 +185,10 @@ export default function TicketsConfigForm() {
                 onChange={v => setConfig((c:any) => ({ ...c, tickets: { ...(c.tickets || {}), panelChannelId: v } }))}
                 query={panelQuery}
                 setQuery={setPanelQuery}
-                options={useMemo(() => channels
-                  .filter(ch => isTextChannel(ch) && ch.name.toLowerCase().includes(panelQuery.toLowerCase()))
-                  .map(ch => ({ value: ch.id, label: `#${ch.name} (${channelTypeLabel(ch)})` })), [channels, panelQuery])}
+                options={useMemo(() => channels && Array.isArray(channels)
+                  ? channels.filter(ch => isTextChannel(ch) && ch.name.toLowerCase().includes(panelQuery.toLowerCase()))
+                  .map(ch => ({ value: ch.id, label: `#${ch.name} (${channelTypeLabel(ch)})` }))
+                  : [], [channels, panelQuery])}
                 placeholder="Selecione o canal..."
                 icon="📢"
               />
@@ -206,9 +207,10 @@ export default function TicketsConfigForm() {
                 onChange={v => setConfig((c:any) => ({ ...c, tickets: { ...(c.tickets || {}), staffRoleId: v } }))}
                 query={roleQuery}
                 setQuery={setRoleQuery}
-                options={useMemo(() => roles
-                  .filter(r => r.name.toLowerCase().includes(roleQuery.toLowerCase()))
-                  .map(r => ({ value: r.id, label: r.name })), [roles, roleQuery])}
+                options={useMemo(() => roles && Array.isArray(roles)
+                  ? roles.filter(r => r.name.toLowerCase().includes(roleQuery.toLowerCase()))
+                  .map(r => ({ value: r.id, label: r.name }))
+                  : [], [roles, roleQuery])}
                 placeholder="Selecione o cargo..."
                 icon="👥"
               />
@@ -227,9 +229,10 @@ export default function TicketsConfigForm() {
                 onChange={v => setConfig((c:any) => ({ ...c, tickets: { ...(c.tickets || {}), archiveCategoryId: v } }))}
                 query={archiveQuery}
                 setQuery={setArchiveQuery}
-                options={useMemo(() => categories
-                  .filter(cat => cat.name.toLowerCase().includes(archiveQuery.toLowerCase()))
-                  .map(cat => ({ value: cat.id, label: cat.name })), [categories, archiveQuery])}
+                options={useMemo(() => categories && Array.isArray(categories)
+                  ? categories.filter(cat => cat.name.toLowerCase().includes(archiveQuery.toLowerCase()))
+                  .map(cat => ({ value: cat.id, label: cat.name }))
+                  : [], [categories, archiveQuery])}
                 placeholder="Selecione a categoria..."
                 icon="📁"
               />
@@ -248,9 +251,10 @@ export default function TicketsConfigForm() {
                 onChange={v => setConfig((c:any) => ({ ...c, tickets: { ...(c.tickets || {}), logChannelId: v } }))}
                 query={logChannelQuery}
                 setQuery={setLogChannelQuery}
-                options={useMemo(() => channels
-                  .filter(ch => isTextChannel(ch) && ch.name.toLowerCase().includes(logChannelQuery.toLowerCase()))
-                  .map(ch => ({ value: ch.id, label: `#${ch.name} (${channelTypeLabel(ch)})` })), [channels, logChannelQuery])}
+                options={useMemo(() => channels && Array.isArray(channels)
+                  ? channels.filter(ch => isTextChannel(ch) && ch.name.toLowerCase().includes(logChannelQuery.toLowerCase()))
+                  .map(ch => ({ value: ch.id, label: `#${ch.name} (${channelTypeLabel(ch)})` }))
+                  : [], [channels, logChannelQuery])}
                 placeholder="Selecione o canal..."
                 icon="📝"
               />
