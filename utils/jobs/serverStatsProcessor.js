@@ -81,7 +81,7 @@ class ServerStatsProcessor {
       const configs = await ServerStatsConfigModel.find({ enabled: true });
 
       if (configs.length === 0) {
-        logger.debug('[ServerStatsProcessor] No enabled configurations found');
+        logger.debug('[ServerStatsProcessor] No enabled configurations found - Configure via dashboard at /guild/{guildId}/stats');
         return;
       }
 

@@ -416,11 +416,13 @@ client.once('ready', () => {
                         }
                     }
                 } catch (e) {
-                    logger.warn('Falha a restaurar painel:', e.message);
+                    logger.warn('Falha a restaurar painel:', e?.message || String(e));
+                    if (e?.stack) logger.debug('Stack trace:', e.stack);
                 }
             }
         } catch (e) {
-            logger.warn('Falha ao restaurar paineis:', e.message);
+            logger.warn('Falha ao restaurar painéis:', e?.message || String(e));
+            if (e?.stack) logger.debug('Stack trace:', e.stack);
         }
     })();
 });
