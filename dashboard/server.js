@@ -2024,14 +2024,27 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                 const storage = require('../utils/storage-sqlite');
                 const savedKeys = new Set();
                 const newlySaved = [];
+                logger.debug(`Attempting to persist ${detected.length} detected panels via SQLite`);
                 for (const d of detected) {
-                        const doc = await storage.upsertPanel({ guild_id: d.guild_id, channel_id: d.channel_id, message_id: d.message_id, theme: d.theme, template: d.template || 'classic', type: 'tickets' });
-                    if (doc) {
-                        const key = `${doc.channel_id}`;
-                        savedKeys.add(key);
-                        newlySaved.push(doc);
+                    try {
+                        const doc = await storage.upsertPanel({ 
+                            guild_id: d.guild_id, 
+                            channel_id: d.channel_id, 
+                            message_id: d.message_id, 
+                            theme: d.theme, 
+                            template: d.template || 'classic', 
+                            type: 'tickets' 
+                        });
+                        if (doc) {
+                            const key = `${doc.channel_id}`;
+                            savedKeys.add(key);
+                            newlySaved.push(doc);
+                        }
+                    } catch (panelError) {
+                        logger.error(`Failed to upsert panel for channel ${d.channel_id}:`, panelError?.message || String(panelError));
                     }
                 }
+                logger.debug(`Successfully persisted ${newlySaved.length} out of ${detected.length} panels via SQLite`);
                 for (const p of newlySaved) {
                     const exists = enrichedCombined.find(e => `${e.channel_id}` === `${p.channel_id}`);
                     if (!exists) {
@@ -2047,22 +2060,38 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
             } else {
                 const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
                 const { isReady } = require('../utils/db/mongoose');
-                if (hasMongoEnv && isReady() && detected.length) {
+                const mongoReady = isReady();
+                
+                if (!hasMongoEnv) {
+                    logger.debug('Panel persistence: No MongoDB environment variables found');
+                } else if (!mongoReady) {
+                    logger.debug('Panel persistence: MongoDB not ready');
+                } else if (!detected.length) {
+                    logger.debug('Panel persistence: No panels detected to persist');
+                }
+                
+                if (hasMongoEnv && mongoReady && detected.length) {
                     const { PanelModel } = require('../utils/db/models');
                     const savedKeys = new Set();
                     const newlySaved = [];
+                    logger.debug(`Attempting to persist ${detected.length} detected panels via MongoDB`);
                     for (const d of detected) {
-                        const doc = await PanelModel.findOneAndUpdate(
-                            { guild_id: d.guild_id, channel_id: d.channel_id, type: 'tickets' },
-                            { $setOnInsert: { message_id: d.message_id, theme: d.theme, template: d.template || 'classic' }, $set: { message_id: d.message_id } },
-                            { upsert: true, new: true }
-                        ).lean();
-                        if (doc) {
-                            const key = `${doc.channel_id}`;
-                            savedKeys.add(key);
-                            newlySaved.push(doc);
+                        try {
+                            const doc = await PanelModel.findOneAndUpdate(
+                                { guild_id: d.guild_id, channel_id: d.channel_id, type: 'tickets' },
+                                { $setOnInsert: { message_id: d.message_id, theme: d.theme, template: d.template || 'classic' }, $set: { message_id: d.message_id } },
+                                { upsert: true, new: true }
+                            ).lean();
+                            if (doc) {
+                                const key = `${doc.channel_id}`;
+                                savedKeys.add(key);
+                                newlySaved.push(doc);
+                            }
+                        } catch (panelError) {
+                            logger.error(`Failed to upsert panel for channel ${d.channel_id}:`, panelError?.message || String(panelError));
                         }
                     }
+                    logger.debug(`Successfully persisted ${newlySaved.length} out of ${detected.length} panels via MongoDB`);
                     for (const p of newlySaved) {
                         const exists = enrichedCombined.find(e => `${e.channel_id}` === `${p.channel_id}`);
                         if (!exists) {
@@ -2078,8 +2107,19 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                 }
             }
         } catch (e) { 
-            logger.error('Panel persistence attempt error:', e?.message || e); 
-            if (e?.stack) logger.debug('Stack trace:', e.stack);
+            logger.error('Panel persistence attempt error:', e?.message || String(e)); 
+            logger.error('Error details:', { 
+                name: e?.name, 
+                message: e?.message, 
+                code: e?.code,
+                type: typeof e,
+                keys: e ? Object.keys(e) : []
+            });
+            if (e?.stack) {
+                logger.debug('Stack trace:', e.stack);
+            } else {
+                logger.debug('No stack trace available. Error object:', JSON.stringify(e, null, 2));
+            }
         }
 
         const finalList = [...enrichedCombined, ...remainingDetected];
