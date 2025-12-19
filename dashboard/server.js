@@ -2041,7 +2041,14 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                             newlySaved.push(doc);
                         }
                     } catch (panelError) {
-                        logger.error(`Failed to upsert panel for channel ${d.channel_id}:`, panelError?.message || String(panelError));
+                        logger.error(`Failed to upsert panel for channel ${d.channel_id}:`, {
+                            message: panelError?.message,
+                            name: panelError?.name,
+                            code: panelError?.code,
+                            stack: panelError?.stack,
+                            stringified: String(panelError),
+                            keys: panelError ? Object.keys(panelError) : []
+                        });
                     }
                 }
                 logger.debug(`Successfully persisted ${newlySaved.length} out of ${detected.length} panels via SQLite`);
@@ -2088,7 +2095,15 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                                 newlySaved.push(doc);
                             }
                         } catch (panelError) {
-                            logger.error(`Failed to upsert panel for channel ${d.channel_id}:`, panelError?.message || String(panelError));
+                            logger.error(`Failed to upsert panel for channel ${d.channel_id}:`, {
+                                message: panelError?.message,
+                                name: panelError?.name,
+                                code: panelError?.code,
+                                stack: panelError?.stack,
+                                stringified: String(panelError),
+                                keys: panelError ? Object.keys(panelError) : [],
+                                validationErrors: panelError?.errors
+                            });
                         }
                     }
                     logger.debug(`Successfully persisted ${newlySaved.length} out of ${detected.length} panels via MongoDB`);
@@ -2560,7 +2575,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 }
             }
             
-            // Para outros actions, buscar painel existente por channel_id
+            // Para outros actions em detected panels, buscar/criar painel existente
             panel = useMongoPanels
                 ? await PanelModel.findOne({ guild_id: guildId, channel_id: chId, type: 'tickets' }).lean()
                 : await (async () => {
@@ -2568,8 +2583,42 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                     return await storage.findPanelByChannelId(guildId, chId);
                 })();
             
+            // Se não existir, criar automaticamente para permitir actions
+            if (!panel && (action === 'theme' || action === 'template' || action === 'delete')) {
+                logger.info(`Auto-saving detected panel before action: ${action}`);
+                try {
+                    if (preferSqlite) {
+                        const storage = require('../utils/storage-sqlite');
+                        panel = await storage.upsertPanel({ 
+                            guild_id: guildId, 
+                            channel_id: chId, 
+                            message_id: msgId, 
+                            theme: 'dark', 
+                            template: 'classic',
+                            type: 'tickets'
+                        });
+                    } else {
+                        panel = await PanelModel.findOneAndUpdate(
+                            { guild_id: guildId, channel_id: chId, type: 'tickets' },
+                            { 
+                                $setOnInsert: { 
+                                    message_id: msgId, 
+                                    theme: 'dark', 
+                                    template: 'classic' 
+                                }, 
+                                $set: { message_id: msgId } 
+                            },
+                            { upsert: true, new: true }
+                        ).lean();
+                    }
+                } catch (e) {
+                    logger.error('Error auto-saving detected panel:', e);
+                    return res.status(500).json({ success: false, error: 'Failed to auto-save detected panel' });
+                }
+            }
+            
             if (!panel) {
-                return res.status(404).json({ success: false, error: 'Detected panel not yet saved. Please save it first.' });
+                return res.status(404).json({ success: false, error: 'Detected panel not found. Please save it first.' });
             }
         } else {
             // IDs normais (ObjectIds ou integers) - busca direta por ID
@@ -2589,6 +2638,9 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Channel not found' });
         }
 
+        // Use the actual panel ID for database operations (not the detected: format)
+        const actualPanelId = isDetected ? (panel._id || panel.id) : panelId;
+
         let message;
         let updated = null;
         switch (action) {
@@ -2596,10 +2648,10 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 const payload = panel.payload || { content: '🎫 Painel de tickets' };
                 message = await channel.send(payload);
                 if (useMongoPanels) {
-                    updated = await PanelModel.findByIdAndUpdate(panelId, { $set: { message_id: message.id } }, { new: true }).lean();
+                    updated = await PanelModel.findByIdAndUpdate(actualPanelId, { $set: { message_id: message.id } }, { new: true }).lean();
                 } else {
                     const storage = require('../utils/storage-sqlite');
-                    updated = await storage.updatePanel(panelId, { message_id: message.id });
+                    updated = await storage.updatePanel(actualPanelId, { message_id: message.id });
                 }
                 return res.json({ success: true, message: 'Panel resent', panel: updated });
             }
@@ -2611,10 +2663,10 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                 const payload = panel.payload || { content: '🎫 Painel de tickets' };
                 message = await channel.send(payload);
                 if (useMongoPanels) {
-                    updated = await PanelModel.findByIdAndUpdate(panelId, { $set: { message_id: message.id } }, { new: true }).lean();
+                    updated = await PanelModel.findByIdAndUpdate(actualPanelId, { $set: { message_id: message.id } }, { new: true }).lean();
                 } else {
                     const storage = require('../utils/storage-sqlite');
-                    updated = await storage.updatePanel(panelId, { message_id: message.id });
+                    updated = await storage.updatePanel(actualPanelId, { message_id: message.id });
                 }
                 return res.json({ success: true, message: 'Panel recreated', panel: updated });
             }
@@ -2627,18 +2679,18 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                     if (old) await old.delete().catch(() => {});
                 }
                 if (useMongoPanels) {
-                    await PanelModel.findByIdAndDelete(panelId);
+                    await PanelModel.findByIdAndDelete(actualPanelId);
                 } else {
                     const storage = require('../utils/storage-sqlite');
-                    await storage.deletePanel(panelId);
+                    await storage.deletePanel(actualPanelId);
                 }
                 return res.json({ success: true, message: 'Panel deleted' });
             }
             case 'theme': {
                 const newTheme = (data?.theme === 'light') ? 'light' : 'dark';
                 const updatedTheme = useMongoPanels
-                    ? await PanelModel.findByIdAndUpdate(panelId, { $set: { theme: newTheme } }, { new: true }).lean()
-                    : await (async () => { const storage = require('../utils/storage-sqlite'); return await storage.updatePanel(panelId, { theme: newTheme }); })();
+                    ? await PanelModel.findByIdAndUpdate(actualPanelId, { $set: { theme: newTheme } }, { new: true }).lean()
+                    : await (async () => { const storage = require('../utils/storage-sqlite'); return await storage.updatePanel(actualPanelId, { theme: newTheme }); })();
                 return res.json({ success: true, message: 'Theme updated', theme: newTheme, panel: updatedTheme });
             }
             case 'template': {
@@ -2727,8 +2779,8 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                     if (old) await old.edit(newPayload).catch(() => {});
                 }
                 const updatedPanel = useMongoPanels
-                    ? await PanelModel.findByIdAndUpdate(panelId, { $set: { template: tpl, payload: newPayload } }, { new: true }).lean()
-                    : await (async () => { const storage = require('../utils/storage-sqlite'); return await storage.updatePanel(panelId, { template: tpl, payload: newPayload }); })();
+                    ? await PanelModel.findByIdAndUpdate(actualPanelId, { $set: { template: tpl, payload: newPayload } }, { new: true }).lean()
+                    : await (async () => { const storage = require('../utils/storage-sqlite'); return await storage.updatePanel(actualPanelId, { template: tpl, payload: newPayload }); })();
                 // Auto-sync open ticket panels to V2 after template updates
                 let synced = null;
                 try {
