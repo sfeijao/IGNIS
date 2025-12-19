@@ -9,6 +9,18 @@ const nextConfig = {
   basePath: '/next',
   assetPrefix: '/next/',
   trailingSlash: true,
+  
+  // Prevent stale server action cache
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+  },
+  
+  // Generate unique build ID to prevent cache mismatches
+  generateBuildId: async () => {
+    return `build-${Date.now()}`;
+  },
 };
 
 module.exports = nextConfig;
