@@ -2086,7 +2086,15 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                         try {
                             const doc = await PanelModel.findOneAndUpdate(
                                 { guild_id: d.guild_id, channel_id: d.channel_id, type: 'tickets' },
-                                { $setOnInsert: { message_id: d.message_id, theme: d.theme, template: d.template || 'classic' }, $set: { message_id: d.message_id } },
+                                { 
+                                    $setOnInsert: { 
+                                        theme: d.theme, 
+                                        template: d.template || 'classic' 
+                                    }, 
+                                    $set: { 
+                                        message_id: d.message_id 
+                                    } 
+                                },
                                 { upsert: true, new: true }
                             ).lean();
                             if (doc) {
@@ -2564,7 +2572,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                     } else {
                         const doc = await PanelModel.findOneAndUpdate(
                             { guild_id: guildId, channel_id: chId, type: 'tickets' },
-                            { $setOnInsert: { message_id: msgId, theme: (data?.theme || 'dark'), template: (data?.template || 'classic') }, $set: { message_id: msgId } },
+                            { $setOnInsert: { theme: (data?.theme || 'dark'), template: (data?.template || 'classic') }, $set: { message_id: msgId } },
                             { upsert: true, new: true }
                         ).lean();
                         return res.json({ success: true, message: 'Panel saved', panel: doc });
@@ -2602,7 +2610,6 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                             { guild_id: guildId, channel_id: chId, type: 'tickets' },
                             { 
                                 $setOnInsert: { 
-                                    message_id: msgId, 
                                     theme: 'dark', 
                                     template: 'classic' 
                                 }, 
