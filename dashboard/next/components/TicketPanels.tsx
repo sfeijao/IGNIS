@@ -511,15 +511,7 @@ function PanelCard({ panel, guildId, isLoading, onToggleTheme, onSetTemplate, on
       {showActions && (
         <div className="border-t border-gray-700/50 pt-4 mt-4 space-y-3">
           <div className="flex flex-wrap gap-2">
-            {panel.detected ? (
-              <button
-                onClick={() => onAction('save')}
-                disabled={isLoading}
-                className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-600/30 rounded-lg text-sm font-medium text-blue-300 transition-all disabled:opacity-50"
-              >
-                💾 Guardar
-              </button>
-            ) : (
+            {!panel.detected && (
               <>
                 <button
                   onClick={() => onAction('resend')}
@@ -556,6 +548,13 @@ function PanelCard({ panel, guildId, isLoading, onToggleTheme, onSetTemplate, on
               🗑️ Remover
             </button>
           </div>
+          {panel.detected && (
+            <div className="bg-blue-600/10 border border-blue-600/30 rounded-lg p-3">
+              <p className="text-sm text-blue-300">
+                <span className="font-semibold">ℹ️ Painel Detetado:</span> Este painel será guardado automaticamente quando alterares o tema ou template.
+              </p>
+            </div>
+          )}
           <div>
             <label className="text-sm font-medium text-gray-300 mb-2 block">Template</label>
             <select

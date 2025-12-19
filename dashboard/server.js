@@ -2648,11 +2648,28 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
         // Use the actual panel ID for database operations (not the detected: format)
         const actualPanelId = isDetected ? (panel._id || panel.id) : panelId;
 
+        // Helper para criar payload básico se não existir
+        const getDefaultPayload = () => {
+            const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+            const embed = new EmbedBuilder()
+                .setColor(0x7C3AED)
+                .setTitle('🎫 Centro de Suporte')
+                .setDescription('Clica no botão abaixo para abrir um ticket privado com a equipa.');
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('ticket:create:general')
+                    .setLabel('Abrir Ticket')
+                    .setEmoji('🎫')
+                    .setStyle(ButtonStyle.Primary)
+            );
+            return { embeds: [embed], components: [row] };
+        };
+
         let message;
         let updated = null;
         switch (action) {
             case 'resend': {
-                const payload = panel.payload || { content: '🎫 Painel de tickets' };
+                const payload = panel.payload || getDefaultPayload();
                 message = await channel.send(payload);
                 if (useMongoPanels) {
                     updated = await PanelModel.findByIdAndUpdate(actualPanelId, { $set: { message_id: message.id } }, { new: true }).lean();
@@ -2665,9 +2682,9 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
             case 'recreate': {
                 if (panel.message_id && channel.messages?.fetch) {
                     const old = await channel.messages.fetch(panel.message_id).catch(() => null);
-                    if (old) await old.delete().catch(() => {});
+                    if (old && old.deletable) await old.delete().catch(() => {});
                 }
-                const payload = panel.payload || { content: '🎫 Painel de tickets' };
+                const payload = panel.payload || getDefaultPayload();
                 message = await channel.send(payload);
                 if (useMongoPanels) {
                     updated = await PanelModel.findByIdAndUpdate(actualPanelId, { $set: { message_id: message.id } }, { new: true }).lean();
@@ -2683,13 +2700,19 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
             case 'delete': {
                 if (panel.message_id && channel.messages?.fetch) {
                     const old = await channel.messages.fetch(panel.message_id).catch(() => null);
-                    if (old) await old.delete().catch(() => {});
+                    if (old && old.deletable) await old.delete().catch(err => {
+                        logger.warn(`Failed to delete panel message ${panel.message_id}:`, err?.message);
+                    });
                 }
                 if (useMongoPanels) {
-                    await PanelModel.findByIdAndDelete(actualPanelId);
+                    if (actualPanelId) {
+                        await PanelModel.findByIdAndDelete(actualPanelId);
+                    }
                 } else {
-                    const storage = require('../utils/storage-sqlite');
-                    await storage.deletePanel(actualPanelId);
+                    if (actualPanelId) {
+                        const storage = require('../utils/storage-sqlite');
+                        await storage.deletePanel(actualPanelId);
+                    }
                 }
                 return res.json({ success: true, message: 'Panel deleted' });
             }
