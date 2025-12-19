@@ -8,90 +8,90 @@ import { useGuildId } from '@/lib/guild'
 import { useState } from 'react'
 
 const nav = [
-  { href: '/', key: 'nav.dashboard', icon: '🏠', flag: 'stable' },
+  { href: '/', key: 'Dashboard', icon: '🏠', flag: 'stable' },
 
   // Gestão de Comunidade
   {
-    key: 'nav.community',
+    key: 'Comunidade',
     icon: '👥',
     flag: 'stable',
     children: [
-      { href: '/members', key: 'nav.members', icon: '👤' },
-      { href: '/roles', key: 'nav.roles', icon: '🎭' },
-      { href: '/invites', key: 'nav.invites', icon: '🎯' },
-      { href: '/guild/{gid}/welcome', key: 'nav.welcome', icon: '👋', requiresGuild: true },
+      { href: '/members', key: 'Membros', icon: '👤' },
+      { href: '/roles', key: 'Cargos', icon: '🎭' },
+      { href: '/invites', key: 'Convites', icon: '🎯' },
+      { href: '/guild/{gid}/welcome', key: 'Boas-vindas', icon: '👋', requiresGuild: true },
     ]
   },
 
   // Moderação
   {
-    key: 'nav.moderation',
+    key: 'Moderação',
     icon: '🛡️',
     flag: 'stable',
     children: [
-      { href: '/moderation', key: 'nav.moderationCenter', icon: '⚔️' },
-      { href: '/automod', key: 'nav.automod', icon: '🤖' },
-      { href: '/verification', key: 'nav.verification', icon: '✅' },
-      { href: '/appeals', key: 'nav.appeals', icon: '📝' },
-      { href: '/antiraid', key: 'nav.antiraid', icon: '🛡️' },
-      { href: '/warns', key: 'nav.warns', icon: '⚠️' },
-      { href: '/staff', key: 'nav.staffMonitoring', icon: '👮' },
+      { href: '/moderation', key: 'Centro de Moderação', icon: '⚔️' },
+      { href: '/automod', key: 'Automod', icon: '🤖' },
+      { href: '/verification', key: 'Verificação', icon: '✅' },
+      { href: '/appeals', key: 'Apelações', icon: '📝' },
+      { href: '/antiraid', key: 'Anti-Raid', icon: '🛡️' },
+      { href: '/warns', key: 'Avisos', icon: '⚠️' },
+      { href: '/staff', key: 'Monitoramento Staff', icon: '👮' },
     ]
   },
 
   // Tickets
   {
-    key: 'nav.tickets',
+    key: 'Tickets',
     icon: '🎫',
     flag: 'stable',
     children: [
-      { href: '/tickets', key: 'nav.tickets.list', icon: '📋' },
+      { href: '/tickets', key: 'Lista de Tickets', icon: '📋' },
       { href: '/tickets-enhanced', key: 'Tickets Avançados', icon: '🎫' },
       { href: '/ticket-categories', key: 'Categorias', icon: '🏷️' },
-      { href: '/tickets/panels', key: 'nav.tickets.panels', icon: '🎨' },
-      { href: '/tickets/config', key: 'nav.tickets.config', icon: '⚙️' },
+      { href: '/tickets/panels', key: 'Painéis', icon: '🎨' },
+      { href: '/tickets/config', key: 'Configurações', icon: '⚙️' },
     ]
   },
 
   // Conteúdo & Engagement
   {
-    key: 'nav.content',
+    key: 'Conteúdo',
     icon: '🎉',
     flag: 'stable',
     children: [
-      { href: '/giveaways', key: 'nav.giveaways', icon: '🎁' },
-      { href: '/tags', key: 'nav.tags', icon: '🏷️' },
-      { href: '/commands', key: 'nav.commands', icon: '⌨️' },
-      { href: '/suggestions', key: 'nav.suggestions', icon: '💡' },
-      { href: '/autoresponder', key: 'nav.autoresponder', icon: '🤖' },
-      { href: '/events', key: 'nav.events', icon: '📅' },
-      { href: '/announcements', key: 'nav.announcements', icon: '📢' },
+      { href: '/giveaways', key: 'Sorteios', icon: '🎁' },
+      { href: '/tags', key: 'Tags', icon: '🏷️' },
+      { href: '/commands', key: 'Comandos', icon: '⌨️' },
+      { href: '/suggestions', key: 'Sugestões', icon: '💡' },
+      { href: '/autoresponder', key: 'Auto-resposta', icon: '🤖' },
+      { href: '/events', key: 'Eventos', icon: '📅' },
+      { href: '/announcements', key: 'Anúncios', icon: '📢' },
     ]
   },
 
   // Estatísticas & Logs
   {
-    key: 'nav.analytics',
+    key: 'Análises',
     icon: '📊',
     flag: 'stable',
     children: [
-      { href: '/guild/{gid}/stats', key: 'nav.stats', icon: '📈', requiresGuild: true },
-      { href: '/guild/{gid}/server-stats', key: 'nav.serverStats', icon: '📉', requiresGuild: true },
-      { href: '/guild/{gid}/time-tracking', key: 'nav.timeTracking', icon: '⏱️', requiresGuild: true },
-      { href: '/performance', key: 'nav.performance', icon: '⚡' },
+      { href: '/guild/{gid}/stats', key: 'Estatísticas', icon: '📈', requiresGuild: true },
+      { href: '/guild/{gid}/server-stats', key: 'Stats do Servidor', icon: '📉', requiresGuild: true },
+      { href: '/guild/{gid}/time-tracking', key: 'Ponto Eletrônico', icon: '⏱️', requiresGuild: true },
+      { href: '/performance', key: 'Performance', icon: '⚡' },
     ]
   },
 
   // Configurações
   {
-    key: 'nav.configuration',
+    key: 'Configuração',
     icon: '⚙️',
     flag: 'stable',
     children: [
-      { href: '/settings', key: 'nav.settings', icon: '🔧' },
-      { href: '/webhooks', key: 'nav.webhooks', icon: '🔗' },
-      { href: '/guild/{gid}/webhooks-config', key: 'nav.webhooksConfig', icon: '🔌', requiresGuild: true },
-      { href: '/diagnostics', key: 'nav.diagnostics', icon: '🔍' },
+      { href: '/settings', key: 'Configurações', icon: '🔧' },
+      { href: '/webhooks', key: 'Webhooks', icon: '🔗' },
+      { href: '/guild/{gid}/webhooks-config', key: 'Config. Webhooks', icon: '🔌', requiresGuild: true },
+      { href: '/diagnostics', key: 'Diagnóstico', icon: '🔍' },
     ]
   },
 ]
