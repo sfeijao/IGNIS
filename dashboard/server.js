@@ -825,6 +825,23 @@ app.get('/api/health', (req, res) => {
     }
 });
 
+// Railway health check (simple endpoint at root /health)
+app.get('/health', (req, res) => {
+    try {
+        const client = global.discordClient;
+        const botReady = !!(client && (typeof client.isReady === 'function' ? client.isReady() : client?.readyAt));
+        res.json({
+            status: 'ok',
+            bot: botReady,
+            mode: 'full',
+            timestamp: new Date().toISOString()
+        });
+    } catch (e) {
+        logger.error('Error in /health endpoint:', e);
+        res.status(503).json({ status: 'error', error: e.message });
+    }
+});
+
 // Dev-only helper: list bot guilds without requiring OAuth (local/testing only)
 try {
     const IS_LOCAL = (process.env.NODE_ENV || 'development') !== 'production';

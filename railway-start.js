@@ -35,43 +35,6 @@ try {
 } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
 async function railwayStart() {
-    // 🚀 IMPORTANTE: Iniciar health endpoint IMEDIATAMENTE para Railway não matar o processo
-    const express = require('express');
-    const app = express();
-    const port = process.env.PORT || 3000;
-    
-    let startupComplete = false;
-    let startupError = null;
-    
-    // Health check endpoint - responde imediatamente durante startup
-    app.get('/health', (req, res) => {
-        if (startupError) {
-            res.status(503).json({
-                status: 'error',
-                error: startupError.message,
-                timestamp: new Date().toISOString(),
-                environment: process.env.RAILWAY_ENVIRONMENT_NAME
-            });
-        } else if (!startupComplete) {
-            res.status(503).json({
-                status: 'starting',
-                timestamp: new Date().toISOString(),
-                environment: process.env.RAILWAY_ENVIRONMENT_NAME
-            });
-        } else {
-            res.json({
-                status: 'ok',
-                timestamp: new Date().toISOString(),
-                environment: process.env.RAILWAY_ENVIRONMENT_NAME
-            });
-        }
-    });
-    
-    // Iniciar servidor HTTP primeiro para Railway não matar o processo
-    const server = app.listen(port, () => {
-        logger.info(`🏥 Health endpoint ativo na porta ${port}`);
-    });
-    
     try {
         // 1. Verificar configuração disponível
     logger.info('\n📋 Verificando configuração...');
@@ -166,18 +129,39 @@ async function railwayStart() {
             logger.info('\n🚀 Iniciando modo COMPLETO...');
 
             // Iniciar o index.js principal (bot + website)
+            // O dashboard/server.js já tem health endpoint em /api/health e escuta na porta
             require('./index.js');
 
         } else {
             logger.info('\n🤖 Iniciando modo BOT-ONLY...');
             
-            // Iniciar apenas o bot (já temos health endpoint rodando acima)
+            // Criar health endpoint dedicado APENAS para modo bot-only
+            const express = require('express');
+            const app = express();
+            const port = process.env.PORT || 3000;
+            
+            let botReady = false;
+            
+            app.get('/health', (req, res) => {
+                res.json({
+                    status: botReady ? 'ok' : 'starting',
+                    mode: 'bot-only',
+                    timestamp: new Date().toISOString(),
+                    environment: process.env.RAILWAY_ENVIRONMENT_NAME
+                });
+            });
+            
+            app.listen(port, () => {
+                logger.info(`🏥 Health endpoint ativo na porta ${port} (bot-only mode)`);
+            });
+            
+            // Iniciar apenas o bot
             const { startBotOnly } = require('./bot-only');
             await startBotOnly();
+            botReady = true;
         }
 
         // 6. Log de sucesso
-        startupComplete = true;
         logger.info('Railway startup completed', {
             mode: startMode,
             hasClientSecret,
@@ -187,7 +171,6 @@ async function railwayStart() {
         logger.info(`\n🎉 Bot iniciado com sucesso em modo ${startMode.toUpperCase()}!`);
 
     } catch (error) {
-        startupError = error;
         logger.error('\n❌ === ERRO FATAL ===');
         logger.error(`❌ ${error.message}`);
         logger.error('\n🔧 Verificações necessárias:');
@@ -202,8 +185,8 @@ async function railwayStart() {
             environment: process.env.RAILWAY_ENVIRONMENT_NAME
         });
 
-        // NÃO fazer process.exit(1) - deixar health endpoint rodando para debug
-        // process.exit(1);
+        // Forçar exit em caso de erro para Railway reiniciar
+        process.exit(1);
     }
 }
 
