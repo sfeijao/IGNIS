@@ -2027,13 +2027,13 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                 logger.debug(`Attempting to persist ${detected.length} detected panels via SQLite`);
                 for (const d of detected) {
                     try {
-                        const doc = await storage.upsertPanel({ 
-                            guild_id: d.guild_id, 
-                            channel_id: d.channel_id, 
-                            message_id: d.message_id, 
-                            theme: d.theme, 
-                            template: d.template || 'classic', 
-                            type: 'tickets' 
+                        const doc = await storage.upsertPanel({
+                            guild_id: d.guild_id,
+                            channel_id: d.channel_id,
+                            message_id: d.message_id,
+                            theme: d.theme,
+                            template: d.template || 'classic',
+                            type: 'tickets'
                         });
                         if (doc) {
                             const key = `${doc.channel_id}`;
@@ -2068,7 +2068,7 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                 const hasMongoEnv = (process.env.MONGO_URI || process.env.MONGODB_URI);
                 const { isReady } = require('../utils/db/mongoose');
                 const mongoReady = isReady();
-                
+
                 if (!hasMongoEnv) {
                     logger.debug('Panel persistence: No MongoDB environment variables found');
                 } else if (!mongoReady) {
@@ -2076,7 +2076,7 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                 } else if (!detected.length) {
                     logger.debug('Panel persistence: No panels detected to persist');
                 }
-                
+
                 if (hasMongoEnv && mongoReady && detected.length) {
                     const { PanelModel } = require('../utils/db/models');
                     const savedKeys = new Set();
@@ -2086,14 +2086,14 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                         try {
                             const doc = await PanelModel.findOneAndUpdate(
                                 { guild_id: d.guild_id, channel_id: d.channel_id, type: 'tickets' },
-                                { 
-                                    $setOnInsert: { 
-                                        theme: d.theme, 
-                                        template: d.template || 'classic' 
-                                    }, 
-                                    $set: { 
-                                        message_id: d.message_id 
-                                    } 
+                                {
+                                    $setOnInsert: {
+                                        theme: d.theme,
+                                        template: d.template || 'classic'
+                                    },
+                                    $set: {
+                                        message_id: d.message_id
+                                    }
                                 },
                                 { upsert: true, new: true }
                             ).lean();
@@ -2129,11 +2129,11 @@ app.get('/api/guild/:guildId/panels', async (req, res) => {
                     remainingDetected = detected.filter(d => !savedKeys.has(`${d.channel_id}`));
                 }
             }
-        } catch (e) { 
-            logger.error('Panel persistence attempt error:', e?.message || String(e)); 
-            logger.error('Error details:', { 
-                name: e?.name, 
-                message: e?.message, 
+        } catch (e) {
+            logger.error('Panel persistence attempt error:', e?.message || String(e));
+            logger.error('Error details:', {
+                name: e?.name,
+                message: e?.message,
                 code: e?.code,
                 type: typeof e,
                 keys: e ? Object.keys(e) : []
@@ -2554,14 +2554,14 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
         // CRITICAL: IDs detected não são ObjectIds válidos, precisam tratamento especial
         let panel = null;
         const isDetected = panelId.startsWith('detected:');
-        
+
         if (isDetected) {
             const parts = panelId.split(':');
             // detected:guildId:channelId:messageId
             const chId = parts[2];
             const msgId = parts[3];
             if (!chId || !msgId) return res.status(400).json({ success: false, error: 'Invalid detected panel id' });
-            
+
             // Para painéis detected, buscar ou criar no MongoDB/SQLite
             if (action === 'save') {
                 try {
@@ -2582,7 +2582,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                     return res.status(500).json({ success: false, error: 'Failed to save detected panel' });
                 }
             }
-            
+
             // Para outros actions em detected panels, buscar/criar painel existente
             panel = useMongoPanels
                 ? await PanelModel.findOne({ guild_id: guildId, channel_id: chId, type: 'tickets' }).lean()
@@ -2590,30 +2590,30 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                     const storage = require('../utils/storage-sqlite');
                     return await storage.findPanelByChannelId(guildId, chId);
                 })();
-            
+
             // Se não existir, criar automaticamente para permitir actions
             if (!panel && (action === 'theme' || action === 'template' || action === 'delete')) {
                 logger.info(`Auto-saving detected panel before action: ${action}`);
                 try {
                     if (preferSqlite) {
                         const storage = require('../utils/storage-sqlite');
-                        panel = await storage.upsertPanel({ 
-                            guild_id: guildId, 
-                            channel_id: chId, 
-                            message_id: msgId, 
-                            theme: 'dark', 
+                        panel = await storage.upsertPanel({
+                            guild_id: guildId,
+                            channel_id: chId,
+                            message_id: msgId,
+                            theme: 'dark',
                             template: 'classic',
                             type: 'tickets'
                         });
                     } else {
                         panel = await PanelModel.findOneAndUpdate(
                             { guild_id: guildId, channel_id: chId, type: 'tickets' },
-                            { 
-                                $setOnInsert: { 
-                                    theme: 'dark', 
-                                    template: 'classic' 
-                                }, 
-                                $set: { message_id: msgId } 
+                            {
+                                $setOnInsert: {
+                                    theme: 'dark',
+                                    template: 'classic'
+                                },
+                                $set: { message_id: msgId }
                             },
                             { upsert: true, new: true }
                         ).lean();
@@ -2623,7 +2623,7 @@ app.post('/api/guild/:guildId/panels/:panelId/action', async (req, res) => {
                     return res.status(500).json({ success: false, error: 'Failed to auto-save detected panel' });
                 }
             }
-            
+
             if (!panel) {
                 return res.status(404).json({ success: false, error: 'Detected panel not found. Please save it first.' });
             }
@@ -7596,14 +7596,14 @@ app.get('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
 
         const storage = require('../utils/storage');
         const tickets = await storage.getTickets(guildId);
-        
+
         // Try to find ticket by ID (support both string and number comparison)
         const ticket = tickets.find(t => {
             const tId = String(t.id || t._id || '');
             const searchId = String(ticketId);
             return tId === searchId || tId.includes(searchId) || searchId.includes(tId);
         });
-        
+
         if (!ticket) {
             logger.warn(`Ticket ${ticketId} not found in guild ${guildId}. Available tickets: ${tickets.map(t => t.id).join(', ')}`);
             return res.status(404).json({ success: false, error: 'Ticket not found', ticketId });
@@ -7870,14 +7870,14 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
 
         const storage = require('../utils/storage');
         const tickets = await storage.getTickets(guildId);
-        
+
         // Try to find ticket by ID (support both string and number comparison)
         const ticket = tickets.find(t => {
             const tId = String(t.id || t._id || '');
             const searchId = String(ticketId);
             return tId === searchId || tId.includes(searchId) || searchId.includes(tId);
         });
-        
+
         if (!ticket) {
             logger.warn(`Ticket ${ticketId} not found in guild ${guildId}. Available tickets: ${tickets.map(t => t.id).join(', ')}`);
             return res.status(404).json({ success: false, error: 'Ticket not found', ticketId });
@@ -8045,14 +8045,14 @@ app.post('/api/guild/:guildId/tickets/:ticketId/feedback', async (req, res) => {
 
         const storage = require('../utils/storage');
         const tickets = await storage.getTickets(guildId);
-        
+
         // Try to find ticket by ID (support both string and number comparison)
         const ticket = tickets.find(t => {
             const tId = String(t.id || t._id || '');
             const searchId = String(ticketId);
             return tId === searchId || tId.includes(searchId) || searchId.includes(tId);
         });
-        
+
         if (!ticket) {
             logger.warn(`Ticket ${ticketId} not found in guild ${guildId}. Available tickets: ${tickets.map(t => t.id).join(', ')}`);
             return res.status(404).json({ success: false, error: 'Ticket not found', ticketId });
@@ -8120,7 +8120,7 @@ app.delete('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
 
         const storage = require('../utils/storage');
         const tickets = await storage.getTickets(guildId);
-        
+
         // Try to find ticket by ID (support both string and number comparison)
         const ticket = tickets.find(t => {
             const tId = String(t.id || t._id || '');
@@ -8183,14 +8183,14 @@ app.get('/api/guild/:guildId/tickets/:ticketId/transcript', async (req, res) => 
 
         const storage = require('../utils/storage');
         const tickets = await storage.getTickets(guildId);
-        
+
         // Try to find ticket by ID (support both string and number comparison)
         const ticket = tickets.find(t => {
             const tId = String(t.id || t._id || '');
             const searchId = String(ticketId);
             return tId === searchId || tId.includes(searchId) || searchId.includes(tId);
         });
-        
+
         if (!ticket) {
             logger.warn(`Ticket ${ticketId} not found in guild ${guildId}. Available tickets: ${tickets.map(t => t.id).join(', ')}`);
             return res.status(404).json({ success: false, error: 'Ticket not found', ticketId });
@@ -8288,14 +8288,14 @@ app.post('/api/guild/:guildId/tickets/:ticketId/transcript/regenerate', async (r
 
         const storage = require('../utils/storage');
         const tickets = await storage.getTickets(guildId);
-        
+
         // Try to find ticket by ID (support both string and number comparison)
         const ticket = tickets.find(t => {
             const tId = String(t.id || t._id || '');
             const searchId = String(ticketId);
             return tId === searchId || tId.includes(searchId) || searchId.includes(tId);
         });
-        
+
         if (!ticket) {
             logger.warn(`Ticket ${ticketId} not found in guild ${guildId}. Available tickets: ${tickets.map(t => t.id).join(', ')}`);
             return res.status(404).json({ success: false, error: 'Ticket not found', ticketId });
