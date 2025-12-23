@@ -1,7 +1,7 @@
 # Explicit Nixpacks config to control build and caching
 
-# Fix: Force clean install to ensure all devDependencies are installed
-# Railway was caching old node_modules with only 46 packages instead of 167
+# Fix: Optimize Railway build to avoid SIGTERM during startup
+# Move Next.js build out of startup phase to prevent timeouts
 
 [phases.setup]
 # no-op: rely on default Node detection
@@ -10,8 +10,9 @@
 cmd = "npm ci"
 
 [phases.build]
-# Clean install dashboard/next dependencies with --legacy-peer-deps to avoid conflicts
-cmd = "npm install --no-audit --no-fund && cd dashboard/next && rm -rf node_modules && npm ci --legacy-peer-deps && npm run build"
+# Only install dashboard dependencies - skip Next.js build to avoid startup timeout
+# Next.js build is now done during Railway build phase via railway.json
+cmd = "npm install --no-audit --no-fund && cd dashboard/next && npm install --legacy-peer-deps --no-audit --no-fund"
 
 [phases.start]
 cmd = "npm start"

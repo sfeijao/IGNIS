@@ -35,6 +35,43 @@ try {
 } catch (e) { logger.debug('Caught error:', e?.message || e); }
 
 async function railwayStart() {
+    // 🚀 IMPORTANTE: Iniciar health endpoint IMEDIATAMENTE para Railway não matar o processo
+    const express = require('express');
+    const app = express();
+    const port = process.env.PORT || 3000;
+    
+    let startupComplete = false;
+    let startupError = null;
+    
+    // Health check endpoint - responde imediatamente durante startup
+    app.get('/health', (req, res) => {
+        if (startupError) {
+            res.status(503).json({
+                status: 'error',
+                error: startupError.message,
+                timestamp: new Date().toISOString(),
+                environment: process.env.RAILWAY_ENVIRONMENT_NAME
+            });
+        } else if (!startupComplete) {
+            res.status(503).json({
+                status: 'starting',
+                timestamp: new Date().toISOString(),
+                environment: process.env.RAILWAY_ENVIRONMENT_NAME
+            });
+        } else {
+            res.json({
+                status: 'ok',
+                timestamp: new Date().toISOString(),
+                environment: process.env.RAILWAY_ENVIRONMENT_NAME
+            });
+        }
+    });
+    
+    // Iniciar servidor HTTP primeiro para Railway não matar o processo
+    const server = app.listen(port, () => {
+        logger.info(`🏥 Health endpoint ativo na porta ${port}`);
+    });
+    
     try {
         // 1. Verificar configuração disponível
     logger.info('\n📋 Verificando configuração...');
@@ -67,43 +104,61 @@ async function railwayStart() {
             logger.info('   ℹ️  CLIENT_SECRET não encontrado, website será desabilitado');
         }
 
-        // 4. Deploy dos comandos primeiro
-    logger.info('\n⚙️  Deploying comandos slash...');
-        try {
-            const deployModule = require('./scripts/deploy-commands');
+        // 4. Deploy dos comandos - OTIMIZADO para Railway
+        // Skip command deployment em Railway se já foi feito recentemente
+        // Comandos em cache do Discord duram horas, não precisa re-deploy a cada restart
+        const skipCommandDeploy = process.env.SKIP_COMMAND_DEPLOY === 'true';
+        
+        if (skipCommandDeploy) {
+            logger.info('\n⚙️  Skipping comando deploy (SKIP_COMMAND_DEPLOY=true)');
+            logger.info('   Use SKIP_COMMAND_DEPLOY=false para forçar deploy');
+        } else {
+            logger.info('\n⚙️  Deploying comandos slash...');
+            
+            // Timeout de 30s para comando deploy - previne Railway SIGTERM
+            const deployTimeout = setTimeout(() => {
+                logger.warn('⚠️  Comando deploy timeout após 30s, continuando...');
+            }, 30000);
+            
+            try {
+                const deployModule = require('./scripts/deploy-commands');
 
-            // Suportar diferentes formatos de export (função, classe, objeto com run)
-            const isClass = (fn) => {
-                try {
-                    const src = Function.prototype.toString.call(fn);
-                    return src.startsWith('class ');
-                } catch { return false; }
-            };
+                // Suportar diferentes formatos de export (função, classe, objeto com run)
+                const isClass = (fn) => {
+                    try {
+                        const src = Function.prototype.toString.call(fn);
+                        return src.startsWith('class ');
+                    } catch { return false; }
+                };
 
-            const defaultOptions = { scope: 'guild', list: false, clear: false };
+                const defaultOptions = { scope: 'guild', list: false, clear: false };
 
-            if (typeof deployModule === 'function') {
-                if (isClass(deployModule)) {
-                    const instance = new deployModule();
-                    await instance.run(defaultOptions);
+                if (typeof deployModule === 'function') {
+                    if (isClass(deployModule)) {
+                        const instance = new deployModule();
+                        await instance.run(defaultOptions);
+                    } else {
+                        // Export é uma função executável
+                        await deployModule(defaultOptions);
+                    }
+                } else if (deployModule && typeof deployModule.run === 'function') {
+                    await deployModule.run(defaultOptions);
                 } else {
-                    // Export é uma função executável
-                    await deployModule(defaultOptions);
+                    // Fallback: executar via processo filho com timeout
+                    const { execSync } = require('child_process');
+                    execSync('node scripts/deploy-commands.js', {
+                        stdio: 'inherit',
+                        cwd: __dirname,
+                        timeout: 30000 // 30s timeout
+                    });
                 }
-            } else if (deployModule && typeof deployModule.run === 'function') {
-                await deployModule.run(defaultOptions);
-            } else {
-                // Fallback: executar via processo filho
-                const { execSync } = require('child_process');
-                execSync('node scripts/deploy-commands.js', {
-                    stdio: 'inherit',
-                    cwd: __dirname
-                });
+                clearTimeout(deployTimeout);
+                logger.info('✅ Comandos deployados com sucesso');
+            } catch (deployError) {
+                clearTimeout(deployTimeout);
+                logger.warn('⚠️  Erro ao deploy comandos:', { error: deployError && deployError.message ? deployError.message : deployError });
+                logger.warn('   Continuando mesmo assim...');
             }
-            logger.info('✅ Comandos deployados com sucesso');
-        } catch (deployError) {
-            logger.warn('⚠️  Erro ao deploy comandos:', { error: deployError && deployError.message ? deployError.message : deployError });
-            logger.warn('   Continuando mesmo assim...');
         }
 
         // 5. Iniciar modo apropriado
@@ -115,48 +170,31 @@ async function railwayStart() {
 
         } else {
             logger.info('\n🤖 Iniciando modo BOT-ONLY...');
-            // No Railway, precisamos expor uma porta para o healthcheck mesmo em bot-only
-            if (process.env.RAILWAY_ENVIRONMENT_NAME) {
-                const express = require('express');
-                const app = express();
-                const port = process.env.PORT || 3000;
-
-                app.get('/health', (req, res) => {
-                    res.json({
-                        status: 'ok',
-                        timestamp: new Date().toISOString(),
-                        environment: process.env.RAILWAY_ENVIRONMENT_NAME,
-                        mode: 'bot-only'
-                    });
-                });
-
-                app.listen(port, () => {
-                    logger.info(`🏥 Health check (bot-only) ativo na porta ${port}`);
-                });
-            }
-
-            // Iniciar apenas o bot
+            
+            // Iniciar apenas o bot (já temos health endpoint rodando acima)
             const { startBotOnly } = require('./bot-only');
             await startBotOnly();
         }
 
         // 6. Log de sucesso
+        startupComplete = true;
         logger.info('Railway startup completed', {
             mode: startMode,
             hasClientSecret,
             environment: process.env.RAILWAY_ENVIRONMENT_NAME
         });
 
-    logger.info(`\n🎉 Bot iniciado com sucesso em modo ${startMode.toUpperCase()}!`);
+        logger.info(`\n🎉 Bot iniciado com sucesso em modo ${startMode.toUpperCase()}!`);
 
     } catch (error) {
-    logger.error('\n❌ === ERRO FATAL ===');
-    logger.error(`❌ ${error.message}`);
-    logger.error('\n🔧 Verificações necessárias:');
-    logger.error('   1. DISCORD_TOKEN configurado na Railway');
-    logger.error('   2. CLIENT_ID configurado na Railway');
-    logger.error('   3. CLIENT_SECRET configurado na Railway (opcional para bot-only)');
-    logger.error('\n📚 Consulte: RAILWAY_DEPLOYMENT.md');
+        startupError = error;
+        logger.error('\n❌ === ERRO FATAL ===');
+        logger.error(`❌ ${error.message}`);
+        logger.error('\n🔧 Verificações necessárias:');
+        logger.error('   1. DISCORD_TOKEN configurado na Railway');
+        logger.error('   2. CLIENT_ID configurado na Railway');
+        logger.error('   3. CLIENT_SECRET configurado na Railway (opcional para bot-only)');
+        logger.error('\n📚 Consulte: RAILWAY_DEPLOYMENT.md');
 
         logger.error('Railway startup failed', {
             error: error.message,
@@ -164,7 +202,8 @@ async function railwayStart() {
             environment: process.env.RAILWAY_ENVIRONMENT_NAME
         });
 
-        process.exit(1);
+        // NÃO fazer process.exit(1) - deixar health endpoint rodando para debug
+        // process.exit(1);
     }
 }
 
