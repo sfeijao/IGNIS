@@ -7596,9 +7596,17 @@ app.get('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
 
         const storage = require('../utils/storage');
         const tickets = await storage.getTickets(guildId);
-        const ticket = tickets.find(t => `${t.id}` === `${ticketId}`);
+        
+        // Try to find ticket by ID (support both string and number comparison)
+        const ticket = tickets.find(t => {
+            const tId = String(t.id || t._id || '');
+            const searchId = String(ticketId);
+            return tId === searchId || tId.includes(searchId) || searchId.includes(tId);
+        });
+        
         if (!ticket) {
-            return res.status(404).json({ success: false, error: 'Ticket not found' });
+            logger.warn(`Ticket ${ticketId} not found in guild ${guildId}. Available tickets: ${tickets.map(t => t.id).join(', ')}`);
+            return res.status(404).json({ success: false, error: 'Ticket not found', ticketId });
         }
 
         // Buscar mensagens do canal do ticket
@@ -7862,9 +7870,17 @@ app.post('/api/guild/:guildId/tickets/:ticketId/action', async (req, res) => {
 
         const storage = require('../utils/storage');
         const tickets = await storage.getTickets(guildId);
-        const ticket = tickets.find(t => `${t.id}` === `${ticketId}`);
+        
+        // Try to find ticket by ID (support both string and number comparison)
+        const ticket = tickets.find(t => {
+            const tId = String(t.id || t._id || '');
+            const searchId = String(ticketId);
+            return tId === searchId || tId.includes(searchId) || searchId.includes(tId);
+        });
+        
         if (!ticket) {
-            return res.status(404).json({ success: false, error: 'Ticket not found' });
+            logger.warn(`Ticket ${ticketId} not found in guild ${guildId}. Available tickets: ${tickets.map(t => t.id).join(', ')}`);
+            return res.status(404).json({ success: false, error: 'Ticket not found', ticketId });
         }
 
         let success = false;
@@ -8029,8 +8045,18 @@ app.post('/api/guild/:guildId/tickets/:ticketId/feedback', async (req, res) => {
 
         const storage = require('../utils/storage');
         const tickets = await storage.getTickets(guildId);
-        const ticket = tickets.find(t => `${t.id}` === `${ticketId}`);
-        if (!ticket) return res.status(404).json({ success: false, error: 'Ticket not found' });
+        
+        // Try to find ticket by ID (support both string and number comparison)
+        const ticket = tickets.find(t => {
+            const tId = String(t.id || t._id || '');
+            const searchId = String(ticketId);
+            return tId === searchId || tId.includes(searchId) || searchId.includes(tId);
+        });
+        
+        if (!ticket) {
+            logger.warn(`Ticket ${ticketId} not found in guild ${guildId}. Available tickets: ${tickets.map(t => t.id).join(', ')}`);
+            return res.status(404).json({ success: false, error: 'Ticket not found', ticketId });
+        }
 
         // Only ticket owner or staff can submit/record feedback
         let isStaff = false;
@@ -8094,10 +8120,17 @@ app.delete('/api/guild/:guildId/tickets/:ticketId', async (req, res) => {
 
         const storage = require('../utils/storage');
         const tickets = await storage.getTickets(guildId);
-        const ticket = tickets.find(t => `${t.id}` === `${ticketId}`);
+        
+        // Try to find ticket by ID (support both string and number comparison)
+        const ticket = tickets.find(t => {
+            const tId = String(t.id || t._id || '');
+            const searchId = String(ticketId);
+            return tId === searchId || tId.includes(searchId) || searchId.includes(tId);
+        });
 
         if (!ticket) {
-            return res.status(404).json({ success: false, error: 'Ticket not found' });
+            logger.warn(`Ticket ${ticketId} not found in guild ${guildId}. Available tickets: ${tickets.map(t => t.id).join(', ')}`);
+            return res.status(404).json({ success: false, error: 'Ticket not found', ticketId });
         }
 
         // Only allow deletion of archived tickets
@@ -8150,8 +8183,18 @@ app.get('/api/guild/:guildId/tickets/:ticketId/transcript', async (req, res) => 
 
         const storage = require('../utils/storage');
         const tickets = await storage.getTickets(guildId);
-        const ticket = tickets.find(t => `${t.id}` === `${ticketId}`);
-        if (!ticket) return res.status(404).json({ success: false, error: 'Ticket not found' });
+        
+        // Try to find ticket by ID (support both string and number comparison)
+        const ticket = tickets.find(t => {
+            const tId = String(t.id || t._id || '');
+            const searchId = String(ticketId);
+            return tId === searchId || tId.includes(searchId) || searchId.includes(tId);
+        });
+        
+        if (!ticket) {
+            logger.warn(`Ticket ${ticketId} not found in guild ${guildId}. Available tickets: ${tickets.map(t => t.id).join(', ')}`);
+            return res.status(404).json({ success: false, error: 'Ticket not found', ticketId });
+        }
 
         const channel = guild.channels.cache.get(ticket.channel_id);
         const meta = (ticket.meta && typeof ticket.meta === 'object') ? ticket.meta : {};
@@ -8245,8 +8288,18 @@ app.post('/api/guild/:guildId/tickets/:ticketId/transcript/regenerate', async (r
 
         const storage = require('../utils/storage');
         const tickets = await storage.getTickets(guildId);
-        const ticket = tickets.find(t => `${t.id}` === `${ticketId}`);
-        if (!ticket) return res.status(404).json({ success: false, error: 'Ticket not found' });
+        
+        // Try to find ticket by ID (support both string and number comparison)
+        const ticket = tickets.find(t => {
+            const tId = String(t.id || t._id || '');
+            const searchId = String(ticketId);
+            return tId === searchId || tId.includes(searchId) || searchId.includes(tId);
+        });
+        
+        if (!ticket) {
+            logger.warn(`Ticket ${ticketId} not found in guild ${guildId}. Available tickets: ${tickets.map(t => t.id).join(', ')}`);
+            return res.status(404).json({ success: false, error: 'Ticket not found', ticketId });
+        }
 
         // Only ticket owner or staff can regenerate
         let isStaff = false;
