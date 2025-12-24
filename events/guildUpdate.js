@@ -84,45 +84,28 @@ module.exports = {
         } else if (t === 'premium') {
           embed
             .setTitle('🎫 Centro de Suporte • Premium')
-            .setDescription('Serviço prioritário, acompanhamento dedicado e histórico guardado.');
+            .setDescription('Serviço prioritário, acompanhamento dedicado e histórico guardado.\n\n**Carrega no botão e escolhe a categoria do teu pedido.**');
           if (iconThumb) embed.setThumbnail(iconThumb);
-          const r1 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ticket:create:vip').setLabel('VIP / Premium').setEmoji('👑').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger)
-          );
-          const r2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary)
-          );
-          rows = [r1, r2];
+          rows = [ new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Abrir Ticket Premium').setEmoji('👑').setStyle(ButtonStyle.Success)
+          ) ];
         } else if (t === 'gamer') {
           embed
             .setTitle('Precisas de ajuda? Clica aí 👇')
-            .setDescription('Escolhe o tipo de ajuda abaixo. Visual gamer, chill e funcional.');
+            .setDescription('Carrega no botão para abrir ticket. Vais escolher a categoria depois!');
           if (iconHero) embed.setImage(iconHero); else if (iconThumb) embed.setThumbnail(iconThumb);
           rows = [ new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('👤').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Abrir Ticket').setEmoji('🎮').setStyle(ButtonStyle.Success)
           ) ];
         } else {
           // classic
           embed
             .setTitle('🎫 Centro de Suporte')
-            .setDescription('Escolhe o departamento abaixo para abrir um ticket privado com a equipa.');
+            .setDescription('Carrega no botão abaixo para abrir um ticket privado com a equipa.\n\n**Depois de abrir, escolhe a categoria que melhor descreve o teu pedido.**');
           if (iconThumb) embed.setThumbnail(iconThumb);
-          const r1 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary)
-          );
-          const r2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('🧾').setStyle(ButtonStyle.Secondary)
-          );
-          rows = [r1, r2];
+          rows = [ new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Abrir Ticket').setEmoji('🎫').setStyle(ButtonStyle.Primary)
+          ) ];
         }
         return { embeds: [embed], components: rows };
       }

@@ -10,11 +10,15 @@ module.exports = {
         try {
             if (interaction.isButton()) {
                 if (!interaction.customId || !interaction.customId.startsWith('ticket:')) return;
+                
+                logger.debug(`[TicketHandler] Processing button: ${interaction.customId}`);
+                
                 // Convergence: try TS ticket handlers first for common actions, fallback to community
                 try {
                     const id = interaction.customId || '';
                     const tsActions = new Set(['ticket:cancel','ticket:how_dm','ticket:claim','ticket:close','ticket:close:confirm','ticket:close:cancel','ticket:rename','ticket:move','ticket:move:other','ticket:add_member','ticket:remove_member','ticket:call_member','ticket:greet','ticket:note','ticket:export','ticket:feedback']);
                     if (tsActions.has(id) || id.startsWith('ticket:move:cat:')) {
+                        logger.debug(`[TicketHandler] Trying TS handler for: ${id}`);
                         // Defer to TS interaction handler by emitting a synthetic Interaction event pipeline
                         // Simpler approach: require compiled TS handler directly
                         try {
@@ -22,11 +26,21 @@ module.exports = {
                             if (tsHandler && typeof tsHandler.execute === 'function') {
                                 await tsHandler.execute(interaction);
                                 // Se o handler TS não respondeu (canal legado), continuar para o comunitário
-                                if (interaction.replied || interaction.deferred) return;
+                                if (interaction.replied || interaction.deferred) {
+                                    logger.debug(`[TicketHandler] TS handler processed the interaction`);
+                                    return;
+                                }
+                                logger.debug(`[TicketHandler] TS handler didn't process, falling back to community`);
                             }
-                        } catch (e) { logger.debug('Caught error:', e?.message || e); }
+                        } catch (e) { 
+                            logger.warn(`[TicketHandler] TS handler error:`, e?.message || e);
+                        }
                     }
-                } catch (e) { logger.debug('Caught error:', e?.message || e); }
+                } catch (e) { 
+                    logger.warn(`[TicketHandler] Error in TS action check:`, e?.message || e);
+                }
+                
+                logger.debug(`[TicketHandler] Calling communityTickets.handleButton`);
                 await communityTickets.handleButton(interaction);
                 return;
             }

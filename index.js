@@ -389,17 +389,14 @@ client.once('ready', () => {
                                     }
                                 } catch (e) { logger.debug('Caught error:', e?.message || e); }
                             } else {
-                                const embed = new EmbedBuilder().setTitle('🎫 Centro de Suporte').setDescription('Escolhe um departamento para abrir um ticket.').setColor(0x7C3AED);
-                                const row1 = new ActionRowBuilder().addComponents(
-                                    new ButtonBuilder().setCustomId('ticket:create:technical').setLabel('Suporte Técnico').setEmoji('🔧').setStyle(ButtonStyle.Primary),
-                                    new ButtonBuilder().setCustomId('ticket:create:incident').setLabel('Reportar Problema').setEmoji('⚠️').setStyle(ButtonStyle.Danger),
-                                    new ButtonBuilder().setCustomId('ticket:create:moderation').setLabel('Moderação & Segurança').setEmoji('🛡️').setStyle(ButtonStyle.Secondary)
+                                const embed = new EmbedBuilder()
+                                    .setTitle('🎫 Centro de Suporte')
+                                    .setDescription('Carrega no botão abaixo para abrir um ticket privado.\n\n**Depois de abrir, escolhe a categoria que melhor descreve o teu pedido.**')
+                                    .setColor(0x7C3AED);
+                                const row = new ActionRowBuilder().addComponents(
+                                    new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Abrir Ticket').setEmoji('🎫').setStyle(ButtonStyle.Primary)
                                 );
-                                const row2 = new ActionRowBuilder().addComponents(
-                                    new ButtonBuilder().setCustomId('ticket:create:general').setLabel('Dúvidas Gerais').setEmoji('💬').setStyle(ButtonStyle.Secondary),
-                                    new ButtonBuilder().setCustomId('ticket:create:account').setLabel('Suporte de Conta').setEmoji('🧾').setStyle(ButtonStyle.Secondary)
-                                );
-                                msg = await channel.send({ embeds: [embed], components: [row1, row2] });
+                                msg = await channel.send({ embeds: [embed], components: [row] });
                             }
                         }
                         // Atualizar/guardar painel

@@ -618,6 +618,9 @@ async function isStaff(interaction) {
 
 async function handleButton(interaction) {
   const id = interaction.customId;
+  
+  try {
+    logger.debug(`[CommunityTickets] handleButton called for: ${id}`);
 
   // 🆕 Handler para botões de categoria de painéis avançados
   if (id.startsWith('ticket:category:')) {
@@ -1575,6 +1578,20 @@ async function handleSelect(interaction) {
       }
       default:
   return safeReply(interaction, { content: 'Ação inválida.', flags: MessageFlags.Ephemeral });
+    }
+  }
+  
+  } catch (error) {
+    logger.error(`[CommunityTickets] Error in handleButton for ${id}:`, error);
+    try {
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ 
+          content: '❌ Erro ao processar ação. Tenta novamente.', 
+          flags: MessageFlags.Ephemeral 
+        });
+      }
+    } catch (replyError) {
+      logger.error(`[CommunityTickets] Failed to send error response:`, replyError);
     }
   }
 }
