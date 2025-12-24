@@ -979,14 +979,14 @@ async function handleButton(interaction) {
       } catch (e) { logger.debug('Caught error:', e?.message || e); }
       setTimeout(async () => {
         try {
-          await interaction.channel.delete('Ticket resolvido (auto delete ~3min)');
+          await interaction.channel.delete('Ticket resolvido (auto delete ~5seg)');
           try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'delete', message: 'Canal apagado automaticamente após resolver' }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
         } catch (e) { logger.debug('Caught error:', e?.message || e); }
-      }, 3 * 60 * 1000);
+      }, 5000);
       if (interaction.deferred) {
-        return interaction.editReply({ content: '✅ Resolvido. O canal será apagado automaticamente em ~3 minutos.' });
+        return interaction.editReply({ content: '✅ Resolvido. O canal será apagado automaticamente em ~5 segundos.' });
       }
-      return safeReply(interaction, { content: '✅ Resolvido. O canal será apagado automaticamente em ~3 minutos.', flags: MessageFlags.Ephemeral });
+      return safeReply(interaction, { content: '✅ Resolvido. O canal será apagado automaticamente em ~5 segundos.', flags: MessageFlags.Ephemeral });
     }
 
     if (id === 'ticket:reopen') {
@@ -1258,17 +1258,17 @@ async function handleModal(interaction) {
         }
       }
     } catch (e) { logger.debug('Caught error:', e?.message || e); }
-    // Agendar eliminação do canal em ~3 minutos
+    // Agendar eliminação do canal em ~5 segundos
     setTimeout(async () => {
       try {
-        await interaction.channel.delete('Ticket finalizado (auto delete ~3min)');
+        await interaction.channel.delete('Ticket finalizado (auto delete ~5seg)');
         try { await storage.addTicketLog({ ticket_id: t.id, guild_id: interaction.guild.id, actor_id: interaction.user.id, action: 'delete', message: 'Canal apagado automaticamente após finalizar' }); } catch (e) { logger.debug('Caught error:', e?.message || e); }
       } catch (e) { logger.debug('Caught error:', e?.message || e); }
-    }, 3 * 60 * 1000);
+    }, 5000);
     if (interaction.deferred) {
-      return interaction.editReply({ content: '✅ Finalizado. O canal será apagado automaticamente em ~3 minutos.' });
+      return interaction.editReply({ content: '✅ Finalizado. O canal será apagado automaticamente em ~5 segundos.' });
     }
-    return interaction.reply({ content: '✅ Finalizado. O canal será apagado automaticamente em ~3 minutos.', flags: MessageFlags.Ephemeral });
+    return interaction.reply({ content: '✅ Finalizado. O canal será apagado automaticamente em ~5 segundos.', flags: MessageFlags.Ephemeral });
   }
   if (id === 'ticket:add_member:modal') {
     const staff = await isStaff(interaction);
