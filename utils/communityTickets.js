@@ -834,7 +834,9 @@ async function handleButton(interaction) {
   // (Removido) painel efémero Ctrl-Staff: botões agora estão sempre visíveis nas linhas principais
 
   // Ações administrativas (staff)
-  if (id === TICKET_IDS.CLOSE || id === 'ticket:finalize:open' || id === TICKET_IDS.CLAIM || id === 'ticket:release' || id === 'ticket:resolve' || id === 'ticket:reopen' || id.startsWith('ticket:priority') || id === 'ticket:note:open' || id === 'ticket:transcript' || id === 'ticket:member:add' || id === 'ticket:member:remove' || id === 'ticket:rename:open' || id === 'ticket:lock-toggle' || id === 'ticket:unlock:author' || id === 'ticket:unlock:everyone') {
+  // Nota: Os botões usam IDs simples (ticket:close, ticket:claim) mas TICKET_IDS usa prefixos diferentes (ticket:action:close)
+  // Adicionamos ambos para compatibilidade
+  if (id === TICKET_IDS.CLOSE || id === 'ticket:close' || id === 'ticket:finalize:open' || id === TICKET_IDS.CLAIM || id === 'ticket:claim' || id === 'ticket:release' || id === 'ticket:resolve' || id === 'ticket:reopen' || id.startsWith('ticket:priority') || id === 'ticket:note:open' || id === 'ticket:note' || id === 'ticket:transcript' || id === 'ticket:member:add' || id === 'ticket:member:remove' || id === 'ticket:rename:open' || id === 'ticket:lock-toggle' || id === 'ticket:unlock:author' || id === 'ticket:unlock:everyone') {
     const staff = await isStaff(interaction);
     if (!staff) {
       return safeReply(interaction, { content: '🚫 Apenas a equipa pode usar esta ação.', flags: MessageFlags.Ephemeral });
@@ -843,7 +845,7 @@ async function handleButton(interaction) {
     const t = await storage.getTicketByChannel(interaction.channel.id);
   if (!t) return safeReply(interaction, { content: '⚠️ Ticket não encontrado no armazenamento.', flags: MessageFlags.Ephemeral });
 
-    if (id === TICKET_IDS.CLOSE || id === 'ticket:finalize:open') {
+    if (id === TICKET_IDS.CLOSE || id === 'ticket:close' || id === 'ticket:finalize:open') {
       if (t.status === 'closed') return interaction.reply({ content: '⚠️ Já está finalizado/fechado.', flags: MessageFlags.Ephemeral });
       const modal = new ModalBuilder()
         .setCustomId('ticket:finalize:submit')
@@ -859,7 +861,7 @@ async function handleButton(interaction) {
       return interaction.showModal(modal);
     }
 
-    if (id === TICKET_IDS.CLAIM) {
+    if (id === TICKET_IDS.CLAIM || id === 'ticket:claim') {
       if (t.assigned_to) {
         return interaction.reply({ content: `⚠️ Já está reclamado por <@${t.assigned_to}>.`, flags: MessageFlags.Ephemeral });
       }
@@ -1017,7 +1019,7 @@ async function handleButton(interaction) {
       return interaction.showModal(modal);
     }
 
-    if (id === 'ticket:note:open') {
+    if (id === 'ticket:note:open' || id === 'ticket:note') {
       const modal = new ModalBuilder()
         .setCustomId('ticket:note:submit')
         .setTitle('📝 Nota interna');
