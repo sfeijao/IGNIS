@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 5175",
     "build": "next build && node scripts/after-build.js",
+    "build:clean": "node scripts/clean-build.js",
     "start": "next start"
   },
   "dependencies": {
