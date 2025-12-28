@@ -1,13 +1,64 @@
 const { ScheduledAnnouncement } = require('../models/scheduledAnnouncement');
 const { EmbedBuilder } = require('discord.js');
+const logger = require('../../utils/logger');
 
 class ScheduledAnnouncementService {
     async createAnnouncement(guildId, createdBy, announcementData) {
-        return await ScheduledAnnouncement.create({
+        const announcement = await ScheduledAnnouncement.create({
             guildId,
             createdBy,
-            ...announcementData
+            ...announcementData,
+            status: announcementData.sendNow ? 'sent' : 'pending'
         });
+        
+        // If sendNow is true, send immediately
+        if (announcementData.sendNow && global.discordClient) {
+            try {
+                const messageId = await this.sendAnnouncement(global.discordClient, announcement);
+                announcement.status = 'sent';
+                announcement.sentAt = new Date();
+                announcement.messageId = messageId;
+                await announcement.save();
+            } catch (error) {
+                announcement.status = 'failed';
+                announcement.errorMessage = error.message;
+                await announcement.save();
+                throw error;
+            }
+        }
+        
+        return announcement;
+    }
+
+    async updateAnnouncement(id, updateData) {
+        const announcement = await ScheduledAnnouncement.findById(id);
+        if (!announcement) throw new Error('Announcement not found');
+        
+        // Update fields
+        if (updateData.title) announcement.title = updateData.title;
+        if (updateData.message) announcement.message = updateData.message;
+        if (updateData.channelId) announcement.channelId = updateData.channelId;
+        if (updateData.scheduledFor) announcement.scheduledFor = updateData.scheduledFor;
+        if (updateData.embed) announcement.embed = { ...announcement.embed, ...updateData.embed };
+        
+        return await announcement.save();
+    }
+
+    async resendAnnouncement(id, client) {
+        const announcement = await ScheduledAnnouncement.findById(id);
+        if (!announcement) throw new Error('Announcement not found');
+        
+        try {
+            const messageId = await this.sendAnnouncement(client, announcement);
+            announcement.messageId = messageId;
+            announcement.sentAt = new Date();
+            await announcement.save();
+            return announcement;
+        } catch (error) {
+            announcement.errorMessage = error.message;
+            await announcement.save();
+            throw error;
+        }
     }
 
     async checkPendingAnnouncements(client) {
@@ -22,7 +73,7 @@ class ScheduledAnnouncementService {
             try {
                 await this.sendAnnouncement(client, announcement);
 
-                if (announcement.repeat.enabled) {
+                if (announcement.repeat && announcement.repeat.enabled) {
                     await this.scheduleNextRepeat(announcement);
                 } else {
                     announcement.status = 'sent';
@@ -41,29 +92,33 @@ class ScheduledAnnouncementService {
 
     async sendAnnouncement(client, announcement) {
         const channel = await client.channels.fetch(announcement.channelId);
+        if (!channel) throw new Error('Channel not found');
 
         let content = '';
-        if (announcement.mentions.everyone) content = '@everyone ';
-        if (announcement.mentions.here) content = '@here ';
-        if (announcement.mentions.roles.length > 0) {
+        if (announcement.mentions?.everyone) content = '@everyone ';
+        else if (announcement.mentions?.here) content = '@here ';
+        if (announcement.mentions?.roles?.length > 0) {
             content += announcement.mentions.roles.map(id => `<@&${id}>`).join(' ');
         }
 
-        if (announcement.embed.enabled) {
+        let sentMessage;
+        if (announcement.embed?.enabled) {
             const embed = new EmbedBuilder()
                 .setTitle(announcement.title)
                 .setDescription(announcement.message)
-                .setColor(announcement.embed.color)
+                .setColor(announcement.embed.color || '#5865F2')
                 .setTimestamp();
 
             if (announcement.embed.thumbnail) embed.setThumbnail(announcement.embed.thumbnail);
             if (announcement.embed.image) embed.setImage(announcement.embed.image);
             if (announcement.embed.footer) embed.setFooter({ text: announcement.embed.footer });
 
-            await channel.send({ content: content.trim() || undefined, embeds: [embed] });
+            sentMessage = await channel.send({ content: content.trim() || undefined, embeds: [embed] });
         } else {
-            await channel.send({ content: `${content}\n\n**${announcement.title}**\n${announcement.message}`.trim() });
+            sentMessage = await channel.send({ content: `${content}\n\n**${announcement.title}**\n${announcement.message}`.trim() });
         }
+        
+        return sentMessage?.id;
     }
 
     async scheduleNextRepeat(announcement) {
@@ -93,7 +148,7 @@ class ScheduledAnnouncementService {
         const query = { guildId };
         if (status) query.status = status;
 
-        return await ScheduledAnnouncement.find(query).sort({ scheduledFor: 1 });
+        return await ScheduledAnnouncement.find(query).sort({ createdAt: -1 });
     }
 
     async cancelAnnouncement(id) {

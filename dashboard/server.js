@@ -879,6 +879,39 @@ app.get('/api/user', (req, res) => {
     });
 });
 
+// Bot info (public - for branding in dashboard)
+app.get('/api/bot', (req, res) => {
+    try {
+        const { client, ready } = getDiscordClient();
+        if (!ready || !client?.user) {
+            return res.json({
+                success: true,
+                bot: {
+                    id: null,
+                    username: 'IGNIS',
+                    avatar: null,
+                    avatarUrl: null
+                }
+            });
+        }
+        res.json({
+            success: true,
+            bot: {
+                id: client.user.id,
+                username: client.user.username,
+                avatar: client.user.avatar,
+                avatarUrl: client.user.displayAvatarURL({ size: 128 })
+            }
+        });
+    } catch (e) {
+        logger.error('Bot info error:', e);
+        res.json({
+            success: true,
+            bot: { id: null, username: 'IGNIS', avatar: null, avatarUrl: null }
+        });
+    }
+});
+
 // List guilds available to the authenticated user (filtered to those where the bot is present)
 // Combines OAuth /users/@me/guilds (cached) with bot guild cache.
 // Response shape expected by Next dashboard and classic UI: { success, guilds: [{ id, name, iconUrl, permissions, owner, canManage }] }
@@ -1535,7 +1568,7 @@ app.get('/api/guild/:guildId/members', async (req, res) => {
         const schema = Joi.object({
             q: Joi.string().trim().max(100).allow('').default(''),
             role: Joi.alternatives().try(Joi.string().valid(''), Joi.string().pattern(/^\d+$/)).default(''),
-            limit: Joi.number().integer().min(1).max(200).default(50),
+            limit: Joi.number().integer().min(1).max(1000).default(100),
             refresh: Joi.boolean().truthy('true','1').falsy('false','0').default(false)
         });
         const { error: memErr, value: memQ } = schema.validate(req.query || {}, { abortEarly: false, convert: true });
@@ -1544,8 +1577,14 @@ app.get('/api/guild/:guildId/members', async (req, res) => {
         const roleId = memQ.role || '';
         let limit = memQ.limit;
         const refresh = !!memQ.refresh;
-        if (refresh) { try { await guild.members.fetch(); } catch (e) { logger.debug('Guild members fetch error:', e?.message || e); }
+        
+        // Always fetch members to ensure we have full list, not just cache
+        try { 
+            await guild.members.fetch({ limit: Math.min(limit, 1000) }); 
+        } catch (e) { 
+            logger.debug('Guild members fetch error:', e?.message || e); 
         }
+        
         let members = guild.members.cache;
         if (roleId) {
             const role = guild.roles.cache.get(roleId);
@@ -1561,7 +1600,7 @@ app.get('/api/guild/:guildId/members', async (req, res) => {
             const manageable = memberHighest < myHighest;
             out.push({ id: m.id, username: m.user.username, discriminator: m.user.discriminator, avatar: m.user.avatar, nick: m.nickname || null, roles: [...m.roles.cache.keys()], manageable });
         }
-        return res.json({ success: true, members: out, count: out.length });
+        return res.json({ success: true, members: out, count: out.length, total: guild.memberCount });
     } catch (e) {
         logger.error('members list error', e);
         return res.status(500).json({ success: false, error: 'members_failed' });
@@ -5860,7 +5899,26 @@ app.get('/api/guild/:guildId/logs/stats', async (req, res) => {
             else row.other++;
         }
         const series = Array.from(byDay.values()).sort((a,b)=>a.date.localeCompare(b.date));
-        return res.json({ success:true, period, series });
+        
+        // Calculate totals for DashboardStats component
+        const totals = {
+            warnings: filtered.filter(l => String(l.type||'').toLowerCase().startsWith('warn')).length,
+            bans: filtered.filter(l => String(l.type||'').toLowerCase().startsWith('ban')).length,
+            kicks: filtered.filter(l => String(l.type||'').toLowerCase().startsWith('kick')).length,
+            tickets: 0, // Will be fetched separately
+            logs: filtered.length,
+            activeModerators: new Set(filtered.map(l => l.data?.executorId || l.actor_id).filter(Boolean)).size
+        };
+        
+        // Get ticket count
+        try {
+            const ticketsData = await storage.getTickets(req.params.guildId);
+            totals.tickets = Array.isArray(ticketsData) ? ticketsData.length : 0;
+        } catch (e) {
+            // Ignore ticket count errors
+        }
+        
+        return res.json({ success:true, period, series, totals, updatedAt: new Date().toISOString() });
     } catch (e) {
         logger.error('Error building logs stats:', e);
         return res.status(500).json({ success: false, error: 'Failed to build stats' });
@@ -8923,6 +8981,38 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
         } catch (e) {
             logger.error('Error deleting announcement:', e);
             res.status(500).json({ success: false, error: 'Failed to delete announcement' });
+        }
+    });
+
+    // PUT: Atualizar anúncio existente
+    app.put('/api/guild/:guildId/announcements/:id', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const announcement = await scheduledAnnouncementService.updateAnnouncement(req.params.id, req.body);
+            res.json({ success: true, announcement });
+        } catch (e) {
+            logger.error('Error updating announcement:', e);
+            res.status(500).json({ success: false, error: 'Failed to update announcement' });
+        }
+    });
+
+    // POST: Reenviar anúncio
+    app.post('/api/guild/:guildId/announcements/:id/resend', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const announcement = await scheduledAnnouncementService.resendAnnouncement(req.params.id, client);
+            res.json({ success: true, announcement });
+        } catch (e) {
+            logger.error('Error resending announcement:', e);
+            res.status(500).json({ success: false, error: 'Failed to resend announcement' });
         }
     });
 

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import FeatureBadge from './FeatureBadge'
 import { useI18n } from '@/lib/i18n'
 import { useGuildId } from '@/lib/guild'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const nav = [
   { href: '/', key: 'Dashboard', icon: '🏠', flag: 'stable' },
@@ -45,11 +45,10 @@ const nav = [
     icon: '🎫',
     flag: 'stable',
     children: [
-      { href: '/tickets', key: 'Lista de Tickets', icon: '📋' },
-      { href: '/tickets-enhanced', key: 'Tickets Avançados', icon: '🎫' },
-      { href: '/ticket-categories', key: 'Categorias', icon: '🏷️' },
-      { href: '/tickets/panels', key: 'Painéis', icon: '🎨' },
+      { href: '/tickets', key: 'Tickets', icon: '📋' },
       { href: '/tickets/config', key: 'Configurações', icon: '⚙️' },
+      { href: '/guild/{gid}/ticket-categories', key: 'Categorias', icon: '🏷️', requiresGuild: true },
+      { href: '/tickets/panels', key: 'Painéis', icon: '🎨' },
     ]
   },
 
@@ -77,7 +76,6 @@ const nav = [
     children: [
       { href: '/guild/{gid}/stats', key: 'Estatísticas', icon: '📈', requiresGuild: true },
       { href: '/guild/{gid}/server-stats', key: 'Stats do Servidor', icon: '📉', requiresGuild: true },
-      { href: '/guild/{gid}/time-tracking', key: 'Ponto Eletrônico', icon: '⏱️', requiresGuild: true },
       { href: '/performance', key: 'Performance', icon: '⚡' },
     ]
   },
@@ -101,20 +99,38 @@ export default function Sidebar() {
   const { t } = useI18n()
   const guildId = useGuildId()
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [botAvatar, setBotAvatar] = useState<string | null>(null)
 
-
+  useEffect(() => {
+    // Fetch bot info for avatar
+    fetch('/api/bot', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (data?.bot?.avatarUrl) {
+          setBotAvatar(data.bot.avatarUrl)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   return (
     <aside className="hidden md:flex w-64 sidebar flex-col border-r border-neutral-800 bg-neutral-900/40 backdrop-blur-sm">
       {/* Header */}
       <div className="p-4 border-b border-neutral-800">
-        <div className="flex items-center gap-2">
-          <span className="text-3xl">🔥</span>
+        <div className="flex items-center gap-3">
+          {botAvatar ? (
+            <img 
+              src={botAvatar} 
+              alt="IGNIS" 
+              className="w-10 h-10 rounded-full ring-2 ring-purple-500/50"
+            />
+          ) : (
+            <span className="text-3xl">🔥</span>
+          )}
           <div>
-            <span className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
               IGNIS
             </span>
-            <p className="text-xs text-gray-500">Dashboard</p>
           </div>
         </div>
       </div>
@@ -211,7 +227,6 @@ export default function Sidebar() {
       <div className="p-3 border-t border-neutral-800">
         <div className="text-xs text-gray-500 text-center">
           <p>IGNIS v3.0</p>
-          <p className="text-purple-400/60">Sistema de Gestão</p>
         </div>
       </div>
     </aside>

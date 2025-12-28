@@ -12,13 +12,13 @@ export default function HomePage() {
       <section className="grid md:grid-cols-2 gap-6 items-center">
         <div className="space-y-4">
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-            Bem-vindo ao novo Centro de Moderação
+            Bem-vindo ao Centro de Moderação
           </h1>
           <p className="text-neutral-300">
-            Uma experiência moderna, rápida e responsiva — inspirada no MEE6 — mantendo a compatibilidade com seus sistemas atuais.
+            Uma experiência moderna, rápida e responsiva para gerir o teu servidor Discord.
           </p>
           <div className="flex gap-3">
-            <Link href="/plugins" className="inline-flex items-center rounded-xl px-4 py-2 bg-brand-600 hover:bg-brand-700 transition text-white font-medium">Explorar plugins</Link>
+            <Link href="/moderation" className="inline-flex items-center rounded-xl px-4 py-2 bg-brand-600 hover:bg-brand-700 transition text-white font-medium">Moderação</Link>
             <Link href="/tickets" className="inline-flex items-center rounded-xl px-4 py-2 bg-neutral-800 hover:bg-neutral-700 transition border border-neutral-700">{t('nav.tickets')}</Link>
           </div>
         </div>
@@ -26,22 +26,15 @@ export default function HomePage() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold">{t('nav.plugins')}</h2>
+        <h2 className="text-xl font-semibold">Funcionalidades</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {[
             {name:'Moderação',desc:'Automod, logs, ações e auditoria.', icon:'shield' as const, tip:'Configure regras, mod-logs e automod.', configHref: '/moderation', viewHref: '/moderation'},
-            {name:'Tickets',desc:'Gestão de tickets e painéis.', icon:'tickets' as const, tip:'Crie painéis e gerencie filas.', configHref: '/tickets', viewHref: '/tickets'},
+            {name:'Tickets',desc:'Gestão de tickets e painéis.', icon:'tickets' as const, tip:'Crie painéis e gerencie filas.', configHref: '/tickets/config', viewHref: '/tickets'},
             {name:'Tags',desc:'Respostas rápidas e painéis.', icon:'tag' as const, tip:'Defina atalhos e coleções.', configHref: '/tags', viewHref: '/tags'},
           ].map((p) => (
             <PluginCard key={p.name} name={p.name} desc={p.desc} icon={p.icon} tip={p.tip} configHref={p.configHref} viewHref={p.viewHref} />
           ))}
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold">{t('nav.tickets')}</h2>
-        <div className="card p-5">
-          <p className="text-neutral-300 text-sm">A nova interface de Tickets será conectada ao adaptador para o sistema atual. Esta é uma prévia do layout.</p>
         </div>
       </section>
     </main>

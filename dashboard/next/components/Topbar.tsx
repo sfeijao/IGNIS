@@ -2,8 +2,6 @@
 
 import Link from 'next/link'
 const logger = require('../utils/logger');
-import ThemeToggle from './ThemeToggle'
-import LanguageSwitcher from './LanguageSwitcher'
 import MobileSidebar from './MobileSidebar'
 import { useEffect, useState } from 'react'
 import GuildSelector from './GuildSelector'
@@ -51,16 +49,12 @@ export default function Topbar() {
           >
             {compact ? '⇤' : '⇥'}
           </button>
-          <Link href="/" className="font-bold">{t('nav.dashboard')}</Link>
-          <Link href="/moderation" className="text-sm text-neutral-300 hover:text-white">{t('nav.moderation.center')}</Link>
         </div>
         <div className="flex items-center gap-3">
           <GuildSelector />
           {mountedGuildId === null ? null : (!mountedGuildId && (
             <span className="text-xs px-2 py-1 rounded border border-amber-600/40 bg-amber-500/10 text-amber-300" title={t('common.selectGuild')}>Selecione um servidor</span>
           ))}
-          <LanguageSwitcher />
-          <ThemeToggle />
           {loading ? (
             <div className="hidden sm:flex items-center gap-2">
               <div className="h-9 w-9 rounded-full bg-neutral-800 border border-neutral-700 animate-pulse" aria-label={t('common.loading')} />
