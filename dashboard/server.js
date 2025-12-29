@@ -8733,6 +8733,59 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
         }
     });
 
+    // GET: Configuração de sugestões
+    app.get('/api/guild/:guildId/suggestions/config', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const guildConfig = await storage.getGuildConfig(req.params.guildId, 'suggestions') || { enabled: false };
+            
+            // Try to get channel name if channelId exists
+            if (guildConfig.channelId) {
+                try {
+                    const channel = await client.channels.fetch(guildConfig.channelId);
+                    if (channel) guildConfig.channelName = channel.name;
+                } catch (e) {
+                    // Channel may not exist anymore
+                }
+            }
+
+            res.json({ success: true, config: guildConfig });
+        } catch (e) {
+            logger.error('Error fetching suggestions config:', e);
+            res.status(500).json({ success: false, error: 'Failed to fetch suggestions config' });
+        }
+    });
+
+    // POST: Atualizar configuração de sugestões
+    app.post('/api/guild/:guildId/suggestions/config', async (req, res) => {
+        if (!req.isAuthenticated()) return res.status(401).json({ success: false, error: 'Not authenticated' });
+        try {
+            const { client, ready, error: clientError } = getDiscordClient(); if (!ready) return res.status(503).json({ success: false, error: clientError });
+            const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
+            if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
+
+            const { channelId, enabled } = req.body;
+            
+            const config = {
+                enabled: enabled !== false,
+                channelId: channelId || null,
+                updatedAt: new Date().toISOString(),
+                updatedBy: req.user.id
+            };
+
+            await storage.setGuildConfig(req.params.guildId, 'suggestions', config);
+            
+            res.json({ success: true, config });
+        } catch (e) {
+            logger.error('Error updating suggestions config:', e);
+            res.status(500).json({ success: false, error: 'Failed to update suggestions config' });
+        }
+    });
+
     // ════════════════════════════════════════════════════════════════════
     // 🤖 AUTO-RESPONDER API ROUTES
     // ════════════════════════════════════════════════════════════════════
