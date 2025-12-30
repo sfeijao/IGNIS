@@ -8741,6 +8741,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
+            const storage = require('../utils/storage');
             const guildConfig = await storage.getGuildConfig(req.params.guildId, 'suggestions') || { enabled: false };
             
             // Try to get channel name if channelId exists
@@ -8768,6 +8769,7 @@ if (config.DISCORD.CLIENT_SECRET && config.DISCORD.CLIENT_SECRET !== 'bot_only' 
             const check = await ensureGuildAdmin(client, req.params.guildId, req.user.id);
             if (!check.ok) return res.status(check.code).json({ success: false, error: check.error });
 
+            const storage = require('../utils/storage');
             const { channelId, enabled } = req.body;
             
             const config = {
